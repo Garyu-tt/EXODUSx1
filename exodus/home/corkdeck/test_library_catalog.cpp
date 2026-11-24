@@ -76,6 +76,15 @@ int main(int argc, char **argv)
     size_t game_index=5;
     if (std::string(exodus_library_id(lib,5))!=game) game_index=6;
     assert(!strcmp(exodus_library_provider(lib,game_index),"Other"));
+    const size_t update_index = game_index == 5 ? 6 : 5;
+    assert(exodus_library_is_discovered(lib,game_index));
+    assert(!exodus_library_is_discovered(lib,0));
+    assert(exodus_library_is_group_card(lib,game_index));
+    assert(!exodus_library_is_group_card(lib,update_index));
+    assert(exodus_library_group_size(lib,game_index)==2);
+    assert(exodus_library_group_size(lib,update_index)==2);
+    assert(exodus_library_group_size(lib,0)==1);
+    assert(exodus_library_group_size(lib,7)==0);
     assert(exodus_library_archive_detail(lib,game_index,detail,sizeof(detail)));
     assert(strstr(detail,"Owner metadata (unverified): base listed, update listed, 0 DLC."));
     exodus_library_close(lib);
@@ -83,6 +92,8 @@ int main(int argc, char **argv)
     lib=exodus_library_open_with_games(argv[1],root.c_str());
     assert(lib && exodus_library_count(lib)==7);
     assert(strstr(exodus_library_discovery_status(lib),"metadata rejected"));
+    assert(exodus_library_is_group_card(lib,5) && exodus_library_is_group_card(lib,6));
+    assert(exodus_library_group_size(lib,5)==1);
     exodus_library_close(lib);
     assert(std::filesystem::remove_all(root)==5);
     // Host mirror of the console namespace; no execution of fixture bytes.
