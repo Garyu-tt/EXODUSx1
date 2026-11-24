@@ -45,3 +45,11 @@ FILE *fwopen(void *cookie, int (*writefn)(void *, const char *, int))
     if (!f) free(w);
     return f;
 }
+
+#include <unistd.h>
+#include <fcntl.h>
+/* Preserve effective credentials; never substitute real-ID access(). */
+int eaccess(const char *path, int mode)
+{
+    return faccessat(AT_FDCWD, path, mode, AT_EACCESS);
+}
