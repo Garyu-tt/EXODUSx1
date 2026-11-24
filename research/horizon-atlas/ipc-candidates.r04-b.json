@@ -1,0 +1,1051 @@
+{
+  "schema": "exodus.horizon-ipc-candidates/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Literal source candidates only, not complete interfaces or permissions. Dynamic IDs and helpers unresolved; capture rights must be reviewed.",
+  "missing": [],
+  "counts": {
+    "requested": 8,
+    "fetched": 8,
+    "distinct_endpoint_tokens": 7,
+    "dispatch_occurrences": 76,
+    "version_check_occurrences": 75
+  },
+  "records": [
+    {
+      "module": "caps",
+      "path": "nx/source/services/caps.c",
+      "blob": "304eacadadf7c8b00d60882e527af875f7c6a144",
+      "line_count": 12,
+      "literal_endpoints": [],
+      "literal_dispatches": [],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "capsa",
+      "path": "nx/source/services/capsa.c",
+      "blob": "257e55127f217207e505b75a73058c5296e58cb8",
+      "line_count": 483,
+      "literal_endpoints": [
+        {
+          "name": "caps:a",
+          "line": 15
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 0,
+          "line": 37,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 1,
+          "line": 42,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 2,
+          "line": 49,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 3,
+          "line": 56,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 4,
+          "line": 65,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 5,
+          "line": 70,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 6,
+          "line": 75,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 7,
+          "line": 79,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 8,
+          "line": 83,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 11,
+          "line": 122,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 15,
+          "line": 187,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 17,
+          "line": 205,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 18,
+          "line": 219,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 100,
+          "line": 240,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 101,
+          "line": 252,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 401,
+          "line": 286,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 501,
+          "line": 298,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 8012,
+          "line": 340,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 8013,
+          "line": 350,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 8021,
+          "line": 360,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsaSrv",
+          "command": 60002,
+          "line": 366,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaAccessor",
+          "command": 2001,
+          "line": 374,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaAccessor",
+          "command": 2004,
+          "line": 383,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaAccessor",
+          "command": 2007,
+          "line": 395,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsaAccessor",
+          "command": 2002,
+          "line": 421,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaAccessor",
+          "command": 2003,
+          "line": 431,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsaAccessor",
+          "command": 2005,
+          "line": 451,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaAccessor",
+          "command": 2006,
+          "line": 461,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsaAccessor",
+          "command": 2008,
+          "line": 481,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 90
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 116
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 126
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 156
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 184
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 191
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 197
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 212
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 232
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 244
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 279
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 306
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 344
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 354
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 402
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 415
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 425
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 435
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 445
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 455
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 465
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 475
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "capsc",
+      "path": "nx/source/services/capsc.c",
+      "blob": "1098cf391f9cfa6ec278adddf1e528a92358b084",
+      "line_count": 380,
+      "literal_endpoints": [
+        {
+          "name": "caps:c",
+          "line": 19
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 33,
+          "line": 42,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2011,
+          "line": 66,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2011,
+          "line": 73,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2012,
+          "line": 86,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2012,
+          "line": 93,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2013,
+          "line": 102,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2013,
+          "line": 104,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2014,
+          "line": 110,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2101,
+          "line": 122,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2101,
+          "line": 129,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2102,
+          "line": 140,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2201,
+          "line": 146,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 2202,
+          "line": 161,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscSrv",
+          "command": 60001,
+          "line": 188,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscControl",
+          "command": 2003,
+          "line": 240,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscControl",
+          "command": 2006,
+          "line": 256,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscControl",
+          "command": 2008,
+          "line": 270,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscControl",
+          "command": 2406,
+          "line": 307,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capscControl",
+          "command": 2433,
+          "line": 364,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capscControl",
+          "command": 2434,
+          "line": 378,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 21
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 36
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 58
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "19.0.0",
+          "line": 61
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 78
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "19.0.0",
+          "line": 81
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 98
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "19.0.0",
+          "line": 101
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 108
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 114
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "19.0.0",
+          "line": 117
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 134
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 144
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "4.0.0",
+          "line": 144
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 153
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 175
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 181
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 200
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 215
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 223
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 236
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 252
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 264
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 274
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 303
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 331
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 358
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 368
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "capsdc",
+      "path": "nx/source/services/capsdc.c",
+      "blob": "10d43b86acb8c6333a960a59edc1340b4bf6b7f8",
+      "line_count": 86,
+      "literal_endpoints": [
+        {
+          "name": "caps:dc",
+          "line": 14
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsdcSrv",
+          "command": 3001,
+          "line": 31,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsdcSrv",
+          "command": 4001,
+          "line": 52,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsdcSrv",
+          "command": 4002,
+          "line": 75,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 11
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "17.0.0",
+          "line": 44
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 65
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "capsu",
+      "path": "nx/source/services/capsu.c",
+      "blob": "f9bd89194dd5cce73c5866b6e5908fa58233cd68",
+      "line_count": 356,
+      "literal_endpoints": [
+        {
+          "name": "caps:u",
+          "line": 22
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsuSrv",
+          "command": 32,
+          "line": 55,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsuSrv",
+          "command": 102,
+          "line": 70,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsuSrv",
+          "command": 103,
+          "line": 87,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsuSrv",
+          "command": 104,
+          "line": 98,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsuSrv",
+          "command": 130,
+          "line": 111,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsuSrv",
+          "command": 60002,
+          "line": 185,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsuAccessor",
+          "command": 2001,
+          "line": 198,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsuAccessor",
+          "command": 2003,
+          "line": 204,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsuAccessor",
+          "command": 2004,
+          "line": 213,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 19
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 24
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 47
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 233
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 243
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 253
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 263
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "capssc",
+      "path": "nx/source/services/capssc.c",
+      "blob": "8336d509f1733446e473b159c602a2293a9b724c",
+      "line_count": 103,
+      "literal_endpoints": [
+        {
+          "name": "caps:sc",
+          "line": 16
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capsscSrv",
+          "command": 2,
+          "line": 40,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsscSrv",
+          "command": 1201,
+          "line": 62,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_capsscSrv",
+          "command": 1202,
+          "line": 76,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsscSrv",
+          "command": 1203,
+          "line": 83,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capsscSrv",
+          "command": 1204,
+          "line": 99,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 13
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 47
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 73
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 80
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 90
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "capssu",
+      "path": "nx/source/services/capssu.c",
+      "blob": "26f90a77a7f3263945cedf36b967e9d770e5cab3",
+      "line_count": 149,
+      "literal_endpoints": [
+        {
+          "name": "caps:su",
+          "line": 20
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_capssuSrv",
+          "command": 32,
+          "line": 44,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_capssuSrv",
+          "command": 203,
+          "line": 57,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 17
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 22
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 36
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 136
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 143
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "grc",
+      "path": "nx/source/services/grc.c",
+      "blob": "f5368939ac9c6cee5958754bd757951f9ba30e57",
+      "line_count": 396,
+      "literal_endpoints": [
+        {
+          "name": "grc:d",
+          "line": 361
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&t->s",
+          "command": 1,
+          "line": 99,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&t->s",
+          "command": 2,
+          "line": 106,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&t->s",
+          "command": 20,
+          "line": 125,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&m->s",
+          "command": 24,
+          "line": 255,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&m->s",
+          "command": 25,
+          "line": 267,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&m->s",
+          "command": 26,
+          "line": 289,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&m->s",
+          "command": 41,
+          "line": 330,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_grcdSrv",
+          "command": 2,
+          "line": 384,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 168
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 195
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 280
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 306
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 313
+        }
+      ],
+      "status": "unreviewed_disabled"
+    }
+  ]
+}
