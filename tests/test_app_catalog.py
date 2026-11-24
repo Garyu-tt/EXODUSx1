@@ -103,6 +103,55 @@ class AppCatalogTests(unittest.TestCase):
         self.assertNotIn(self.root.name, result.stdout)
         self.assertNotIn("Author", result.stdout)
 
+    def test_file_output_matches_mixed_stdout_and_keeps_readable_partial_rows(self):
+        self.add_steam_manifest()
+        self.add_nro("Tools.nro", nro_image("Local tools"))
+        args = ("--steam-library", self.steam, "--switch-sd", self.sd)
+        streamed = self.run_catalog(*args)
+        self.assertEqual((streamed.returncode, streamed.stderr), (0, ""))
+        self.assertEqual(
+            [(entry["provider"], entry["provider_id"]) for entry in json.loads(streamed.stdout)["entries"]],
+            [("steam", "42"), ("switch_homebrew", "Tools.nro")],
+        )
+        expected = streamed.stdout.encode("ascii")
+        output = self.root / "selected catalog.json"
+        output.write_bytes(b"previous snapshot")
+        result = self.run_catalog(*args, "--output", output)
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+        self.assertEqual(output.read_bytes(), expected)
+
+        self.add_nro("Broken.nro", b"NRO0")
+        partial = self.run_catalog(*args, "--output", output)
+        self.assertEqual((partial.returncode, partial.stdout), (1, ""))
+        self.assertIn("Broken.nro", partial.stderr)
+        self.assertEqual(output.read_bytes(), expected)
+
+    def test_size_error_preserves_existing_catalog_file(self):
+        title = "界" * 360000
+        (self.steam / "appmanifest_42.acf").write_text(
+            f'AppState {{ appid 42 name "{title}" }}', encoding="utf-8",
+        )
+        self.add_nro("Tools.nro", nro_image("Local tools"))
+        output = self.root / "catalog.json"
+        previous = b'{"schema_version":1,"entries":[]}\n'
+        output.write_bytes(previous)
+        result = self.run_catalog("--steam-library", self.steam, "--switch-sd", self.sd,
+                                  "--output", output)
+        self.assertEqual((result.returncode, result.stdout), (1, ""))
+        self.assertIn("HOME catalog size limit", result.stderr)
+        self.assertEqual(output.read_bytes(), previous)
+        self.assertEqual(list(self.root.glob(".exodus-catalog-*")), [])
+
+    def test_publish_failure_keeps_destination_and_cleans_stage(self):
+        self.add_nro("Tools.nro", nro_image("Local tools"))
+        output = self.root / "catalog.json"
+        output.mkdir()
+        result = self.run_catalog("--switch-sd", self.sd, "--output", output)
+        self.assertEqual((result.returncode, result.stdout), (1, ""))
+        self.assertIn("Could not write the catalog. The previous output was preserved.", result.stderr)
+        self.assertTrue(output.is_dir())
+        self.assertEqual(list(self.root.glob(".exodus-catalog-*")), [])
+
     def test_homebrew_filename_fallback_when_no_embedded_title_is_available(self):
         self.add_nro("Blank title.nro", nro_image(""))
         self.add_nro("No assets.nro", nro_image())
