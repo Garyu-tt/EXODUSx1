@@ -45,4 +45,12 @@ chmod 755 "$work" "$work/src"
 su -m exodusref -c "cd '$work/src' && /usr/local/bin/python3 test_sessiond.py ./exodus-sessiond"
 echo EXODUS_NATIVE_SESSION_PASS
 su -m exodusref -c "cd '$work/src' && /usr/local/bin/dbus-run-session -- sh test_sessiond_dbus.sh ./exodus-sessiond-dbus"
+export_dir=$(mktemp -d /var/tmp/exodus-export.XXXXXX)
+mount -t msdosfs /dev/msdosfs/EXODUSOUT "$export_dir"
+tar -czf "$export_dir/exodus-native.tar.gz" exodus-sessiond exodus-sessiond-dbus
+pkg query -a '%n-%v %o' | sort > "$export_dir/dependencies.txt"
+(cd "$export_dir" && sha256 -r exodus-native.tar.gz dependencies.txt > SHA256SUMS)
+sync
+umount "$export_dir"
+rmdir "$export_dir"
 echo EXODUS_NATIVE_DBUS_PASS

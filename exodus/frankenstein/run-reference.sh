@@ -28,6 +28,9 @@ rm "$image"
 qemu-img resize -f raw disk.raw 32G
 truncate -s 4M seed.img
 mkfs.vfat -n CIDATA seed.img
+# Separate output volume; no host directory or physical device is exposed.
+truncate -s 128M export.img
+mkfs.vfat -n EXODUSOUT export.img
 printf 'instance-id: exodus-frankenstein-%s\nlocal-hostname: exodus-reference\n' "$mode" > meta-data
 cp "$here/$guest" user-data
 mcopy -i seed.img meta-data user-data ::
@@ -59,6 +62,8 @@ timeout "$limit" qemu-system-aarch64 \
     -device virtio-blk-device,drive=system \
     -drive if=none,file=seed.img,format=raw,id=seed \
     -device virtio-blk-device,drive=seed \
+    -drive if=none,file=export.img,format=raw,id=output \
+    -device virtio-blk-device,drive=output \
     -netdev user,id=net -device virtio-net-device,netdev=net || rc=$?
 kill "$log_pid" 2>/dev/null || :
 wait "$log_pid" 2>/dev/null || :
@@ -69,3 +74,25 @@ if [ "$rc" -ne 0 ]; then
 fi
 grep -F "$gate" "$out/serial.log"
 grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
+
+# Extract only known filenames after successful guest shutdown and validation.
+case "$mode" in
+    graphics) files="wayland.pkg gamescope.pkg dependencies.txt" ;;
+    native) files="exodus-native.tar.gz dependencies.txt" ;;
+    *) exit 0 ;;
+esac
+mkdir extracted
+mcopy -i export.img ::/SHA256SUMS extracted/guest-SHA256SUMS
+: > extracted/SHA256SUMS
+for f in $files; do
+    mcopy -i export.img "::/$f" "extracted/$f"
+    test -s "extracted/$f"
+    sum=$(awk -v name="$f" '$2==name && NF==2 {print $1}' extracted/guest-SHA256SUMS)
+    test "${#sum}" -eq 64
+    printf '%s\n' "$sum" | grep -Eq '^[0-9a-fA-F]{64}$'
+    printf '%s  %s\n' "$sum" "$f" >> extracted/SHA256SUMS
+done
+(cd extracted && sha256sum -c --strict SHA256SUMS)
+mkdir -p "$out/packages"
+cp extracted/* "$out/packages/"
+echo EXODUS_ARTIFACT_EXPORT_PASS

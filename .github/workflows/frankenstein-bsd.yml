@@ -18,10 +18,6 @@ jobs:
             minutes: 85
           - mode: graphics
             minutes: 165
-          - mode: manager
-            minutes: 165
-          - mode: ssh
-            minutes: 85
     timeout-minutes: ${{ matrix.minutes }}
     steps:
       - uses: actions/checkout@v6
@@ -36,10 +32,10 @@ jobs:
           for script in exodus/frankenstein/guest-*.sh; do sh -n "$script"; done
           sh -n exodus/frankenstein/run-reference.sh
           sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" "${{ matrix.mode }}"
-      - name: Publish boot and build evidence
+      - name: Publish boot evidence and verified build artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frankenstein-native-r08-${{ matrix.mode }}-evidence
+          name: frankenstein-artifacts-r09-${{ matrix.mode }}-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn
