@@ -1,0 +1,44 @@
+name: EXODUS Remote native admission
+on:
+  push:
+    branches: [feat/exodus-remote-r035-native]
+    paths: ['exodus/remote/**', '.github/workflows/exodus-remote-native.yml']
+  pull_request:
+    paths: ['exodus/remote/**', '.github/workflows/exodus-remote-native.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container: devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install target SDK and crypto
+        run: |
+          dkp-pacman -Q libnx switch-mbedtls
+          test -f "$DEVKITPRO/portlibs/switch/lib/libmbedcrypto.a"
+      - name: Record SDK and build
+        run: |
+          git -c safe.directory="$GITHUB_WORKSPACE" rev-parse HEAD
+          dkp-pacman -Q
+          make -C exodus/remote
+          "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-readelf" -h exodus/remote/build-native/exodus-remote-smoke.elf
+      - name: Check architecture and NRO magic
+        run: |
+          "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-readelf" -h exodus/remote/build-native/exodus-remote-smoke.elf | grep AArch64
+          cd exodus/remote
+          test "$(dd if=exodus-remote-smoke.nro bs=1 skip=16 count=4 2>/dev/null)" = NRO0
+          sha256sum exodus-remote-smoke.nro > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exodus-remote-r035-native-smoke
+          path: |
+            exodus/remote/exodus-remote-smoke.nro
+            exodus/remote/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
