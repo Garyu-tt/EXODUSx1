@@ -23,7 +23,15 @@ sysrc sshd_enable=NO
 export ASSUME_ALWAYS_YES=yes
 pkg bootstrap -y
 pkg update -f
-pkg install -y git-lite rust pkgconf dbus glib speech-dispatcher
+pkg install -y git-lite rust pkgconf dbus glib speech-dispatcher llvm19
+# Rust bindgen needs a shared libclang, not just the base clang executable.
+# The pinned ports tree uses LLVM 19 and installs libclang here.
+export LIBCLANG_PATH=/usr/local/llvm19/lib
+test -r "$LIBCLANG_PATH/libclang.so"
+test -r /usr/local/include/speech-dispatcher/libspeechd.h
+export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/local/include -I/usr/local/include/speech-dispatcher"
+export LIBRARY_PATH="/usr/local/lib"
+echo EXODUS_MANAGER_LIBCLANG_READY
 for tool in git rustc cargo; do command -v "$tool"; done
 rustc -Vv
 cargo -V
