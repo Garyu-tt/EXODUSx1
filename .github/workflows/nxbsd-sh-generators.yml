@@ -25,6 +25,9 @@ jobs:
             lib/libedit
             contrib/libedit
             sys/sys
+            bin/kill
+            bin/test
+            usr.bin/printf
           persist-credentials: false
       - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-a"
       - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-b"
@@ -130,6 +133,25 @@ jobs:
           nm -u "$RUNNER_TEMP/shell-builtins.o" > "$RUNNER_TEMP/grammar-a/builtins-undefined.txt"
           nm --defined-only "$RUNNER_TEMP/shell-builtins.o" > "$RUNNER_TEMP/grammar-a/builtins-defined.txt"
           cat "$RUNNER_TEMP/grammar-a/builtins-undefined.txt"
+      - name: Compile original printf, test and kill builtins
+        run: |
+          mkdir "$RUNNER_TEMP/tools"
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module kill --out "$RUNNER_TEMP/kill-host.c"
+          for module in printf test kill; do
+            case "$module" in
+              printf) source=donor-freebsd/usr.bin/printf/printf.c ;;
+              test) source=donor-freebsd/bin/test/test.c ;;
+              kill) source="$RUNNER_TEMP/kill-host.c" ;;
+            esac
+            cc -std=gnu11 -funsigned-char -DSHELL -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "$source" -o "$RUNNER_TEMP/tools/$module.o"
+          done
+          cc -r "$RUNNER_TEMP/shell-builtins.o" "$RUNNER_TEMP/tools/"*.o -o "$RUNNER_TEMP/shell-tools.o"
+          nm -u "$RUNNER_TEMP/shell-tools.o" > "$RUNNER_TEMP/grammar-a/tools-undefined.txt"
+          cat "$RUNNER_TEMP/grammar-a/tools-undefined.txt"
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
