@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "catalog.hpp"
+#include "catalog_homebrew_provider.hpp"
 
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <utility>
 
 using namespace exodus::home;
 
@@ -31,13 +36,20 @@ namespace {
     void CheckUtf16Le() {
         const std::u16string source = uR"({"schema_version":1,"entries":[{
             "provider":"steam","provider_id":"42","name":"Café 東京 🕹",
-            "artwork":null,"installation_state":"unknown","last_played":null,
+            "artwork":"sdmc:/switch/wine/covers/game.png","installation_state":"unknown","last_played":42,
             "compatibility_state":"unknown","launch_mode":null}]})";
         const auto bytes = EncodeUtf16Le(source);
-        const auto catalog = ParseCatalog(bytes);
+        std::string normalized;
+        const auto catalog = ParseCatalog(bytes, &normalized);
         assert(catalog.status == CatalogStatus::Ready && catalog.entries.size() == 1);
         assert(catalog.entries[0].provider == Provider::Steam
             && catalog.entries[0].title == "Café 東京 🕹");
+        assert(catalog.entries[0].artwork == "sdmc:/switch/wine/covers/game.png");
+        assert(catalog.entries[0].last_played == 42);
+        const auto again = ParseCatalog(normalized);
+        assert(again.status == CatalogStatus::Ready && again.entries.size() == 1);
+        assert(again.entries[0].artwork == catalog.entries[0].artwork);
+        assert(again.entries[0].last_played == catalog.entries[0].last_played);
 
         assert(ParseCatalog(bytes.substr(0, bytes.size() - 1)).status == CatalogStatus::Invalid);
         const auto icon = source.find(u"🕹");
@@ -58,10 +70,187 @@ namespace {
         assert(ParseCatalog(EncodeUtf16Le(std::u16string(CatalogByteLimit / 2, u' '))).status == CatalogStatus::TooLarge);
     }
 
+    void CheckSwitchApplicationIds() {
+        const std::string id = "0100aBcDeF123456";
+        constexpr std::uint64_t expected = 0x0100abcdef123456ULL;
+        const auto text = MakeCatalog(MakeEntry("switch", id, "Native")
+            + "," + MakeEntry("steam", id, "Steam"));
+        const auto catalog = ParseCatalog(text);
+        assert(catalog.status == CatalogStatus::Ready && catalog.entries.size() == 2);
+        assert(catalog.entries[0].id == id && catalog.entries[1].id == id);
+        assert(SwitchApplicationId(catalog.entries[0]) == expected);
+        assert(!SwitchApplicationId(catalog.entries[1]));
+
+        const auto utf16 = ParseCatalog(EncodeUtf16Le(std::u16string(text.begin(), text.end())));
+        assert(utf16.status == CatalogStatus::Ready && utf16.entries.size() == 2);
+        assert(utf16.entries[0].id == id && SwitchApplicationId(utf16.entries[0]) == expected);
+        assert(!SwitchApplicationId(utf16.entries[1]));
+
+        assert(SwitchApplicationId({Provider::Switch, "", "FFFFFFFFFFFFFFFF"}) == 0xffffffffffffffffULL);
+        assert(SwitchApplicationId({Provider::Switch, "", "0000000000000001"}) == 1);
+        assert(!SwitchApplicationId({Provider::Homebrew, "", id}));
+        for (const auto *invalid : {"", "0000000000000000", "0100abcdef12345", "0100abcdef1234567",
+                                    "0100abcdef12345g", " 100abcdef123456", "+100abcdef123456",
+                                    "-100abcdef123456", "0x00abcdef123456", "0000000000000１"}) {
+            assert(!SwitchApplicationId({Provider::Switch, "", invalid}));
+        }
+
+        const auto nul_id = MakeCatalog(MakeEntry("switch", "0100abcdef12345\\u0000", "Game"));
+        assert(ParseCatalog(nul_id).status == CatalogStatus::Invalid);
+        const auto missing_id = MakeCatalog(R"({"provider":"switch","name":"Game","artwork":null,
+            "installation_state":"unknown","last_played":null,"compatibility_state":"unknown","launch_mode":null})");
+        assert(ParseCatalog(missing_id).status == CatalogStatus::Invalid);
+    }
+
+    void CheckCanonicalHomebrewAppletIds() {
+        constexpr std::size_t path_capacity = 512;
+        const std::string id = "Tools/Café demo.NRO";
+        const auto catalog = ParseCatalog(MakeCatalog(MakeEntry("switch_homebrew", id, "Demo")));
+        assert(catalog.status == CatalogStatus::Ready && catalog.entries.size() == 1);
+        const auto &entry = catalog.entries[0];
+        const std::string path = "sdmc:/switch/" + id;
+        assert(entry.provider == Provider::Homebrew);
+        assert(IsCanonicalHomebrewAppletId(entry.id, path_capacity));
+        assert(HomebrewAppletPathMatches(entry.id, path));
+        assert(!HomebrewAppletPathMatches(entry.id, "sdmc:/switch/other.nro"));
+        assert(!HomebrewAppletPathMatches(entry.id, "sdmc:/switch/tools/Café demo.NRO"));
+        assert(!HomebrewAppletPathMatches(entry.id, "sdmc:/elsewhere/Tools/Café demo.NRO"));
+        assert(!HomebrewAppletPathMatches(entry.id, "sdmc:/"));
+        assert(!IsCanonicalHomebrewAppletId(entry.id, 0));
+
+        const auto max_id = std::string(244, 'a') + '/' + std::string(249, 'b') + ".nro";
+        const auto max_path = "sdmc:/switch/" + max_id;
+        assert(max_path.size() + 1 == path_capacity);
+        assert(IsCanonicalHomebrewAppletId(max_id, path_capacity));
+        assert(!IsCanonicalHomebrewAppletId(max_id, path_capacity - 1));
+
+        for (const auto *invalid : {"", "/tool.nro", "sdmc:/switch/tool.nro", "C:/tool.nro",
+                                   "dir\\tool.nro", "../tool.nro", "dir/../tool.nro", "./tool.nro",
+                                   "dir/./tool.nro", "dir/.. /tool.nro", "dir./tool.nro", "dir /tool.nro",
+                                   "dir//tool.nro", "tool.nro/", "tool.exe", ".nro", "tool.nro ",
+                                   "quote\".nro", "pipe|.nro", "wild*.nro", "query?.nro", "angle<.nro",
+                                   "angle>.nro", "newline\n.nro", "control\x7f.nro"}) {
+            assert(!IsCanonicalHomebrewAppletId(invalid, path_capacity));
+        }
+        const auto nul_id = std::string("nul") + '\0' + ".nro";
+        assert(!IsCanonicalHomebrewAppletId(nul_id, path_capacity));
+    }
+
+    void WriteFixture(const std::filesystem::path &path, std::string_view bytes) {
+        std::ofstream file(path, std::ios::binary | std::ios::trunc);
+        file.write(bytes.data(), bytes.size());
+        file.close();
+        assert(file.good());
+    }
+
+    void PutLe32(std::string &bytes, std::size_t offset, std::uint32_t value) {
+        for (std::size_t byte = 0; byte < 4; ++byte)
+            bytes[offset + byte] = static_cast<char>((value >> (8 * byte)) & 0xff);
+    }
+
+    void CheckHomebrewProvider() {
+        namespace fs = std::filesystem;
+        constexpr std::uint32_t homebrew_type = 2; // uLaunch EntryType::Homebrew.
+        constexpr std::size_t path_capacity = 512;
+        const auto temporary = fs::canonical(fs::temp_directory_path());
+        auto directory_name = (temporary / "exodus-homebrew-provider-XXXXXX").string();
+        if (mkdtemp(directory_name.data()) == nullptr)
+            std::abort();
+        const fs::path fixture(directory_name);
+        const auto grid = fixture / "grid";
+        const auto file = fixture / "switch" / "tools" / "Demo with spaces.NRO";
+        const std::string id = "tools/Demo with spaces.NRO";
+        const std::string registered = "sdmc:/switch/" + id;
+        const auto primary = grid / "0.m.json";
+        const auto extra = grid / "1.m.json";
+        const auto registration = "{\"type\":2,\"nro_path\":\"" + registered
+            + "\",\"nro_argv\":\"ignored registration arguments\"}";
+        auto resolve = [&] {
+            return ResolveRegisteredHomebrewApplet(grid.string(), id, path_capacity, homebrew_type, fixture.string());
+        };
+        fs::create_directory(grid);
+        fs::create_directories(file.parent_path());
+
+        assert(!resolve());
+        WriteFixture(primary, registration);
+        assert(!resolve());
+
+        // An inert disk fixture with the three page-aligned NRO segments and an asset trailer.
+        std::string image(0x3000, '\0');
+        PutLe32(image, 0x04, 0x100);
+        PutLe32(image, 0x10, 0x304f524e);
+        PutLe32(image, 0x18, 0x3000);
+        PutLe32(image, 0x24, 0x1000);
+        PutLe32(image, 0x28, 0x1000);
+        PutLe32(image, 0x2c, 0x1000);
+        PutLe32(image, 0x30, 0x2000);
+        PutLe32(image, 0x34, 0x1000);
+        image.append("ASET fixture");
+        WriteFixture(file, image);
+        assert(resolve() == registered);
+        assert(!ResolveRegisteredHomebrewApplet(grid.string(), id, path_capacity, 1, fixture.string()));
+        assert(!ResolveRegisteredHomebrewApplet(grid.string(), "../outside.nro", path_capacity,
+            homebrew_type, fixture.string()));
+
+        WriteFixture(extra, registration);
+        assert(!resolve());
+        WriteFixture(extra, "{\"type\":1,\"nro_path\":\"" + registered + "\"}");
+        assert(resolve() == registered);
+        WriteFixture(extra, std::string(16 * 1024 + 1, ' '));
+        assert(!resolve());
+        fs::remove(extra);
+
+        WriteFixture(primary, "{\"type\":2,\"type\":2,\"nro_path\":\"" + registered + "\"}");
+        assert(!resolve());
+        WriteFixture(primary, registration + '\0' + "trailing");
+        assert(!resolve());
+        fs::create_directory(grid / "folder");
+        WriteFixture(grid / "folder" / "0.m.json", registration);
+        fs::remove(primary);
+        assert(!resolve());
+        WriteFixture(primary, registration);
+
+        WriteFixture(file, "not an NRO");
+        assert(!resolve());
+        for (const auto &corruption : {std::pair{0x10, 0u}, std::pair{0x18, 0x4000u},
+                std::pair{0x28, 0u}, std::pair{0x34, 0x2000u}, std::pair{0x38, 0xffffffffu}}) {
+            auto malformed = image;
+            PutLe32(malformed, corruption.first, corruption.second);
+            WriteFixture(file, malformed);
+            assert(!resolve());
+        }
+        WriteFixture(file, image);
+        assert(resolve() == registered);
+
+        const auto alias = fixture / "switch" / "alias";
+        std::error_code symlink_error;
+        fs::create_directory_symlink(file.parent_path(), alias, symlink_error);
+        if (!symlink_error) {
+            WriteFixture(extra, R"({"type":2,"nro_path":"sdmc:/switch/alias/Demo with spaces.NRO"})");
+            assert(!ResolveRegisteredHomebrewApplet(grid.string(), "alias/Demo with spaces.NRO",
+                path_capacity, homebrew_type, fixture.string()));
+            fs::remove(extra);
+        }
+        fs::remove(file);
+        assert(!resolve());
+        symlink_error.clear();
+        const auto linked_target = fixture / "real.nro";
+        WriteFixture(linked_target, image);
+        fs::create_symlink(linked_target, file, symlink_error);
+        if (!symlink_error)
+            assert(!resolve());
+
+        assert(fs::canonical(fixture).parent_path() == temporary);
+        fs::remove_all(fixture);
+    }
+
 }
 
 int main(int argc, char **argv) {
     CheckUtf16Le();
+    CheckSwitchApplicationIds();
+    CheckCanonicalHomebrewAppletIds();
+    CheckHomebrewProvider();
     const auto steam = MakeEntry("steam", "42", "Portal");
     const auto native = MakeEntry("switch", "42", "Caf\\u00e9\\n[deluxe]");
     const auto homebrew = MakeEntry("switch_homebrew", "tools/example.nro", "Tool \\\\ \\\"A\\\"");

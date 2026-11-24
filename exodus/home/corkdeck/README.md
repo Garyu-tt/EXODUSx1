@@ -26,7 +26,7 @@ The donor is pinned and referenced, not copied into EXODUS. Preserve CorkDeck/Wi
 - Keep Latitude/uLaunch fallback until device acceptance.
 - Extract further actual CorkDeck shell screens incrementally; shell.inc currently relies on launcher state and is not standalone.
 
-No successful build or device run is claimed by this PR.
+The CorkDeck CI workflow covers the host build and one-frame smoke. Switch device acceptance is tracked separately.
 
 ## R03: Horizon status provider
 
@@ -146,7 +146,7 @@ cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/check_shell_nro.c exodus/
 /tmp/check-shell-nro /tmp/exodus-native/exodus-shell.nro
 ```
 
-The script restricts pkg-config to the Switch portlibs. Set JSON_INCLUDE if json.hpp is elsewhere; SWITCH_EXTRA_LIBS is available for SDK-specific static linking requirements. The new workflow runs portable tests, the host SDL smoke, and a separate native compilation and structural NRO check. The donor is pinned; the CI toolchain image and package versions are not yet locked. CI success is not asserted in this revision.
+The script restricts pkg-config to the Switch portlibs. Set JSON_INCLUDE if json.hpp is elsewhere; SWITCH_EXTRA_LIBS is available for SDK-specific static linking requirements. The workflow runs portable tests, the host SDL smoke, and a separate native compilation and structural NRO check. The donor is pinned; the CI toolchain image and package versions are not yet locked. CI records the NRO checksum. Linked binary distribution follows the provenance and license review above.
 
 ### Safe first deployment
 

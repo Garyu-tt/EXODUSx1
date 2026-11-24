@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -32,7 +33,7 @@ namespace exodus::home {
         Provider provider;
         std::string title;
         std::string id;
-        std::string artwork;
+        std::string artwork{};
         std::uint64_t last_played = 0;
     };
 
@@ -41,8 +42,9 @@ namespace exodus::home {
         std::vector<Entry> entries;
     };
 
-    Catalog ParseCatalog(std::string_view text);
+    Catalog ParseCatalog(std::string_view text, std::string *normalized_utf8 = nullptr);
     Catalog ReadCatalog(const char *path);
+    std::optional<std::uint64_t> SwitchApplicationId(const Entry &entry);
     std::string CatalogLabel();
     void ShowCatalog();
 
