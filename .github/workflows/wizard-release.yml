@@ -9,6 +9,11 @@ on:
       - 'exodus/build_wizard_release.py'
       - 'tests/test_wizard_release.py'
   workflow_dispatch:
+    inputs:
+      verify_only:
+        description: Build and upload the package for verification
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -43,7 +48,7 @@ jobs:
 
   draft-release:
     name: Create legacy Wizard release draft
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && !inputs.verify_only
     needs: build
     runs-on: ubuntu-latest
     permissions:
