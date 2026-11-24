@@ -45,6 +45,9 @@ if [ "$mode" = host ]; then
     "$lib/libmbedtls.a" "$lib/libmbedx509.a" "$lib/libmbedcrypto.a" \
     "$lib/libeverest.a" "$lib/libp256m.a" -Wl,--end-group -pthread -o "$out/host_mtls_smoke"
   "$out/host_mtls_smoke"
+  cc -std=c11 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all \
+    -I"$work/install/include" "$src/test_tcp_faults.c" -o "$out/test_tcp_faults"
+  "$out/test_tcp_faults"
   exit 0
 fi
 cc="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc"
