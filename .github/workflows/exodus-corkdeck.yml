@@ -64,6 +64,9 @@ jobs:
   native:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
+    env:
+      SOURCE_DATE_EPOCH: '0'
+      SWITCH_EXTRA_LIBS: ''
     steps:
       - uses: actions/checkout@v6
         with:

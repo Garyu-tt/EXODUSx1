@@ -35,17 +35,21 @@ CATALOG = "exodus/home/ulaunch"
 SHELL = "exodus/home/corkdeck"
 DONOR = "corkdeck-donor"
 DONOR_DOCS = ("AUTHORS", "COPYING", "LICENSE", "EXODUS-DONOR-PIN", "EXODUS-MODIFICATIONS")
+SHELL_TOOLS = Path(__file__).resolve().parent.parent
 
 
-def verify_nro(path, checker):
+def verify_nro(path):
     if path.is_symlink() or not path.is_file():
         raise ValueError("Expected a regular prebuilt NRO")
-    subprocess.run([sys.executable, "-B", str(checker), str(path)], check=True)
+    subprocess.run([sys.executable, "-B", str(SHELL_TOOLS / "check-release-nro.py"), str(path)], check=True)
 
 
 def verify_donor(files):
     expected = {}
-    for line in files[f"{SHELL}/donor-snapshot.sha256"].read_text(encoding="utf-8").splitlines():
+    manifest = files[f"{SHELL}/donor-snapshot.sha256"].read_text(encoding="ascii")
+    if manifest != (SHELL_TOOLS / "donor-snapshot.sha256").read_text(encoding="ascii"):
+        raise ValueError("Staged donor manifest differs from the build input manifest")
+    for line in manifest.splitlines():
         digest, separator, name = line.partition("  ")
         if not separator or not SHA256.fullmatch(digest):
             raise ValueError("Invalid checksum in staged donor manifest")
@@ -199,7 +203,7 @@ def bundle(app_source, dependencies, main_sha, nro, output):
     manifest = load_manifest()
     donor_pin = manifest["corkdeck_donor"]
     app = reviewed_source(app_source, donor_pin, main_sha)
-    verify_nro(nro, app[f"{SHELL}/check-release-nro.py"])
+    verify_nro(nro)
     deps = verify_dependencies(dependencies, manifest)
     identity = {
         "format": 1,
