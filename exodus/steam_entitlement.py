@@ -117,11 +117,11 @@ def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, o
     if type(timeout) is not int or not 1 <= timeout <= 900:
         return LicenseStatus.SIGN_IN_UNAVAILABLE
 
-    if opener is None:
-        opener = build_opener(ProxyHandler({}), NoSteamRedirect)
     try:
+        if opener is None:
+            opener = build_opener(ProxyHandler({}), NoSteamRedirect)
         steam_id = parse_identifier(sign_in(opener, open_browser or webbrowser.open, timeout), MAX_STEAM_ID)
-    except (SteamSyncError, ValueError, KeyboardInterrupt):
+    except (SteamSyncError, OSError, ValueError, KeyboardInterrupt):
         return LicenseStatus.SIGN_IN_UNAVAILABLE
     if steam_id is None:
         return LicenseStatus.SIGN_IN_UNAVAILABLE

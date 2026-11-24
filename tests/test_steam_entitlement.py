@@ -3,6 +3,7 @@ from email.message import Message
 from io import BytesIO, StringIO
 import json
 import os
+from ssl import SSLError
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -217,10 +218,12 @@ class SteamEntitlementTests(unittest.TestCase):
 
     def test_default_steam_opener_ignores_ambient_proxies_and_rejects_redirects(self):
         proxy_env = {
-            "HTTP_PROXY": "http://proxy.invalid:18990",
-            "HTTPS_PROXY": "http://proxy.invalid:18991",
-            "ALL_PROXY": "http://proxy.invalid:18992",
+            "http_proxy": "http://proxy.invalid:18990",
+            "https_proxy": "http://proxy.invalid:18991",
+            "all_proxy": "http://proxy.invalid:18992",
+            "no_proxy": "",
         }
+        proxy_env.update({name.upper(): value for name, value in proxy_env.items()})
         for location, expected in (
             (None, Status.ACTIVE_LICENSE),
             ("https://elsewhere.invalid/", Status.OWNERSHIP_UNAVAILABLE),
@@ -245,9 +248,16 @@ class SteamEntitlementTests(unittest.TestCase):
                         return response
                     return http_reply(request, b'{"ownsapp": true}')
 
-                with patch.dict(os.environ, proxy_env, clear=True), patch.object(HTTPSHandler, "https_open", synthetic_https):
+                with patch.dict(os.environ, proxy_env), patch.object(HTTPSHandler, "https_open", synthetic_https):
                     self.assertEqual(self.check(None), expected)
                 self.assertEqual(requests, [sync.OPENID_PROVIDER, PARTNER_ENDPOINT])
+
+    def test_tls_initialization_failure_stays_unverified(self):
+        with patch.object(entitlement, "build_opener", side_effect=SSLError("Synthetic TLS setup error")), \
+                patch.object(entitlement, "sign_in") as sign_in:
+            self.assertEqual(entitlement.check_entitlement(
+                APP_ID, publisher_app_id=APP_ID, publisher_key=PUBLISHER_KEY), Status.SIGN_IN_UNAVAILABLE)
+            sign_in.assert_not_called()
 
     def invoke_cli(self, args):
         stdout = StringIO()
