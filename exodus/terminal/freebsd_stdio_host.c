@@ -1,0 +1,47 @@
+/* Host reference only: BSD fwopen subset used by FreeBSD sh output.c. */
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <errno.h>
+#include <sys/types.h>
+
+struct writer {
+    void *cookie;
+    int (*write)(void *, const char *, int);
+};
+
+static ssize_t write_cookie(void *opaque, const char *buf, size_t size)
+{
+    struct writer *w = opaque;
+    size_t done = 0;
+    if (size > (size_t)SSIZE_MAX) { errno = EOVERFLOW; return -1; }
+    while (done < size) {
+        int n = size - done > INT_MAX ? INT_MAX : (int)(size - done);
+        int rc = w->write(w->cookie, buf + done, n);
+        if (rc <= 0 || rc > n) {
+            if (rc >= 0) errno = EIO;
+            return done ? (ssize_t)done : -1;
+        }
+        done += (size_t)rc;
+    }
+    return (ssize_t)done;
+}
+
+static int close_cookie(void *opaque)
+{
+    free(opaque);
+    return 0;
+}
+
+FILE *fwopen(void *cookie, int (*writefn)(void *, const char *, int))
+{
+    if (!writefn) { errno = EINVAL; return NULL; }
+    struct writer *w = malloc(sizeof(*w));
+    if (!w) return NULL;
+    *w = (struct writer){cookie, writefn};
+    cookie_io_functions_t io = {.write = write_cookie, .close = close_cookie};
+    FILE *f = fopencookie(w, "w", io);
+    if (!f) free(w);
+    return f;
+}
