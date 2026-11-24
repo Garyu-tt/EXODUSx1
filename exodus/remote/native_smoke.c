@@ -2,9 +2,11 @@
 #include <switch.h>
 #include <stdio.h>
 #include <time.h>
-#include <openssl/rand.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/version.h>
+#include <mbedtls/ssl.h>
 #include "horizon_provider.h"
-#include "remote_session.h"
+#include "remote_wire.h"
 
 static int clock_smoke(void) {
     struct timespec a,b;
@@ -12,16 +14,14 @@ static int clock_smoke(void) {
         clock_gettime(CLOCK_MONOTONIC,&b)==0 &&
         (b.tv_sec>a.tv_sec || (b.tv_sec==a.tv_sec && b.tv_nsec>=a.tv_nsec));
 }
-static int tls_smoke(void) {
-    /* No certificates, persistent credentials or connection established. */
+static int entropy_smoke(void) {
     unsigned char random[32];
-    SSL_CTX *ctx=SSL_CTX_new(TLS_server_method());
-    int ok=ctx && SSL_CTX_set_min_proto_version(ctx,TLS1_3_VERSION)==1 &&
-        SSL_CTX_set_max_proto_version(ctx,TLS1_3_VERSION)==1 &&
-        RAND_bytes(random,sizeof(random))==1;
-    OPENSSL_cleanse(random,sizeof(random));
-    SSL_CTX_free(ctx);
-    return ok;
+    mbedtls_entropy_context entropy;
+    mbedtls_entropy_init(&entropy);
+    int rc=mbedtls_entropy_func(&entropy,random,sizeof(random));
+    mbedtls_entropy_free(&entropy);
+    /* Never display or persist entropy bytes. */
+    return rc==0;
 }
 static void local_probe(void) {
     char out[EXR_RESPONSE_CAP];
@@ -32,23 +32,27 @@ static void local_probe(void) {
         if(rc==EXR_OK)puts(out);
     }
     printf("Monotonic clock: %s\n",clock_smoke()?"PASS":"FAIL");
-    printf("TLS 1.3 context / RNG: %s\n",tls_smoke()?"PASS":"FAIL");
+    printf("Mbed TLS entropy source: %s\n",entropy_smoke()?"PASS":"FAIL");
+#if defined(MBEDTLS_SSL_PROTO_TLS1_3)
+    puts("TLS 1.3 configured: yes (handshake not tested)");
+#else
+    puts("TLS 1.3 configured: NO - remote transport blocked");
+#endif
     /* Check deny-by-default with no remote policy admission. */
     exr_provider p=exr_horizon_probe(0);
     exr_session denied={0};
     exw_conn wire={0};
-    exs_conn session={0};
     int fail_closed=p.available==0 &&
         exr_dispatch(&denied,&p,0,"system.status",13,out,sizeof(out))==EXR_DENIED &&
-        exw_tick(&wire,&denied,0)==EXW_CLOSE &&
-        !exs_init(&session,NULL,0,1,0,NULL,0);
+        exw_tick(&wire,&denied,0)==EXW_CLOSE;
     printf("Remote disabled gate: %s\n",fail_closed?"PASS":"FAIL");
     puts("No TLS handshake, socket, or hardware acceptance inferred.");
 }
 int main(void){
     consoleInit(NULL);
     puts("EXODUS Remote R03.5 - local native smoke");
-    printf("OpenSSL: %s\n",OpenSSL_version(OPENSSL_VERSION));
+    char version[64]; mbedtls_version_get_string_full(version);
+    printf("Crypto diagnostic: %s\n",version);
     puts("Press A to run local read-only diagnostics; Plus to exit.");
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
