@@ -1,8 +1,13 @@
-name: Frankenstein FreeBSD ARM64 reference
+name: Tumor FreeBSD ARM64 reference
 on:
   pull_request:
     paths:
-      - 'exodus/frankenstein/**'
+      - 'exodus/frankenstein/guest-*.sh'
+      - 'exodus/frankenstein/run-reference.sh'
+      - 'exodus/frankenstein/sessiond.c'
+      - 'exodus/frankenstein/sessiond-dbus.inc'
+      - 'exodus/frankenstein/test_sessiond.py'
+      - 'exodus/frankenstein/test_sessiond_dbus.sh'
       - '.github/workflows/frankenstein-bsd.yml'
   workflow_dispatch:
 permissions:
