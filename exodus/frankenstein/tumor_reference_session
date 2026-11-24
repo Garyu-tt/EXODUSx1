@@ -14,6 +14,18 @@ command_args="-f -P $pidfile -p /var/run/tumor-reference-session.child.pid -u ex
 start_precmd=session_pre
 session_pre() {
     test "$(id -u exodusref)" -gt 0 || return 1
-    su -m exodusref -c 'test -S /home/exodusref/.config/exodus/bus && test -r /home/exodusref/.config/exodus/config'
+    # rcorder specifies order, not readiness. Wait for a real bus response,
+    # rather than merely a socket pathname. Run the check as the service user.
+    su -m exodusref -c 'test -r /home/exodusref/.config/exodus/config' || return 1
+    local attempt=0
+    while [ "$attempt" -lt 20 ]; do
+        if su -m exodusref -c '/usr/local/bin/gdbus call --address unix:path=/home/exodusref/.config/exodus/bus --timeout 2 --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.Peer.Ping' >/dev/null 2>&1; then
+            return 0
+        fi
+        attempt=$((attempt+1))
+        sleep 1
+    done
+    warn "Tumor reference bus not ready"
+    return 1
 }
 run_rc_command "$1"
