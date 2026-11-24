@@ -9,7 +9,7 @@ ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 all: $(TARGET).nro
 $(BUILD):
 	mkdir -p $@
-$(BUILD)/$(TARGET).elf: main.c Makefile | $(BUILD)
+$(BUILD)/$(TARGET).elf: main.c bsd_path.h Makefile | $(BUILD)
 	$(CC) -std=gnu11 -O2 -Wall -Wextra $(CFLAGS) $(ARCH) -D__SWITCH__ -I$(LIBNX)/include -specs=$(LIBNX)/switch.specs $(LDFLAGS) main.c -L$(LIBNX)/lib -lnx -o $@
 $(BUILD)/$(TARGET).nacp: Makefile | $(BUILD)
 	nacptool --create "EXODUS Terminal" "EXODUSx1" "0.1.0" $@
