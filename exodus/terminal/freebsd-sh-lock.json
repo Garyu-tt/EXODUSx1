@@ -150,6 +150,108 @@
       "blob": "4b598899dee1f49b7067e26743ef410afd24c407",
       "capability": "build.generated",
       "observed_calls": []
+    },
+    {
+      "path": "bin/sh/expand.h",
+      "blob": "f9fce10cc76447c1297a40bd6b11bc29f9d9a257",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/options.h",
+      "blob": "2ce2e6ebedf277c6ce4941f3526512b7ffeffa96",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/input.h",
+      "blob": "4e8992a5bf605e0bf93b48f8f9cd5e73e0761bcd",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/output.h",
+      "blob": "3afc3f289ad659fd76931c1e79b8ee6215744f0f",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/var.h",
+      "blob": "800f7bcc03909554a8db911da81ad8ea64a04cce",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/error.h",
+      "blob": "80c36a7f5f2eebe867df5f3c8f2dc71e0cf1a76a",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/memalloc.h",
+      "blob": "ef090d51896da67e8a0f96426090af13a8ca5e8b",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mystring.h",
+      "blob": "d51d22de83a104bcf12a38b207e0bb9473f3c9b8",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/alias.h",
+      "blob": "473f31ece6861a0a288f68446567e22f1cba9fda",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/show.h",
+      "blob": "d57ba9aee8c08e610ab6456e1cae3b95f5be6120",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/eval.h",
+      "blob": "aaffcf9af284d2ed046679613c049f68dc665405",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/exec.h",
+      "blob": "6463a72bb06f572fa330d8c8a0cafa0e38d038a9",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/main.h",
+      "blob": "68a3ddc3312684d14558a661fffaaf6bfcaf223b",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/jobs.h",
+      "blob": "69562e8c151ac70102636e4df8b770bf98970baa",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/myhistedit.h",
+      "blob": "64539fc06c188badf89642774d1dad5055cfe926",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "contrib/libedit/histedit.h",
+      "blob": "cf6fdd4a3321a431d96b6838db4851e83967f606",
+      "capability": "tty.edit",
+      "observed_calls": []
+    },
+    {
+      "path": "contrib/libedit/filecomplete.h",
+      "blob": "884586c438f718ea770f3946d2e2cf5f5aa2cf36",
+      "capability": "tty.edit",
+      "observed_calls": []
     }
   ],
   "providers": {
