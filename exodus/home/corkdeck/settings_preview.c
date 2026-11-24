@@ -195,7 +195,8 @@ static int show_library(struct ui *ui, const char *path)
                     break;
                 }
 #endif
-                snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
+                if (!exodus_library_archive_detail(library, index, detail, sizeof(detail)))
+                    snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
                 ui_message(ui, exodus_library_title(library, index), detail);
                 break;
             }
