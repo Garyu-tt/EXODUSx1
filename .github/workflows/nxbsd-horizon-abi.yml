@@ -24,6 +24,8 @@ jobs:
             bash exodus/terminal/probe_horizon_abi.sh horizon-results
             make -C exodus/terminal
             cp exodus/terminal/exodus-terminal.nro horizon-results/
+            make -C exodus/terminal build/nxbsd-pipe-probe.elf
+            cp exodus/terminal/build/nxbsd-pipe-probe.elf horizon-results/
           '
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
@@ -35,4 +37,5 @@ jobs:
             horizon-results/*.json
             horizon-results/*.log
             horizon-results/exodus-terminal.nro
+            horizon-results/nxbsd-pipe-probe.elf
           retention-days: 7
