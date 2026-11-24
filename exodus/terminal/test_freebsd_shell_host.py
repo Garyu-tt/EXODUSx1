@@ -6,8 +6,13 @@ import sys
 import tempfile
 import unittest
 
-SHELL = Path(sys.argv.pop(1)).resolve()
+SHELL = None
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        raise SystemExit("usage: test_freebsd_shell_host.py /path/to/nxbsd-sh")
+    SHELL = Path(sys.argv.pop(1)).resolve()
 
+@unittest.skipIf(SHELL is None, "requires the linked FreeBSD shell executable")
 class ShellTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
