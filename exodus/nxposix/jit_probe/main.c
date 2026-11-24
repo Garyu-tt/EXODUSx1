@@ -6,8 +6,23 @@
 
 /* AArch64: mov w0, #42; ret. No system calls or external memory access. */
 static const uint32_t return_42[] = {0x52800540u, 0xD65F03C0u};
-
 typedef int (*jit_entry_t)(void);
+
+static int finish(int status)
+{
+    puts("Press PLUS to exit.");
+    PadState pad;
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    padInitializeDefault(&pad);
+    while (appletMainLoop()) {
+        padUpdate(&pad);
+        if (padGetButtonsDown(&pad) & HidNpadButton_Plus)
+            break;
+        consoleUpdate(NULL);
+    }
+    consoleExit(NULL);
+    return status;
+}
 
 int main(void)
 {
@@ -19,6 +34,7 @@ int main(void)
                                envIsSyscallHinted(0x77) &&
                                envIsSyscallHinted(0x78);
 
+    consoleInit(NULL);
     printf("EXODUS NX JIT probe\n");
     printf("HOS version: 0x%08X\n", hosversionGet());
     printf("Own process handle: 0x%08X\n", envGetOwnProcessHandle());
@@ -28,8 +44,8 @@ int main(void)
 
     rc = jitCreate(&jit, 0x1000);
     if (R_FAILED(rc)) {
-        printf("jitCreate unavailable/failed: 0x%08X\n", rc);
-        return 77;
+        printf("jitCreate unavailable/failed: 0x%08X\n", (unsigned)rc);
+        return finish(77);
     }
 
     printf("JIT type: %s\n", jit.type == JitType_CodeMemory ?
@@ -40,11 +56,11 @@ int main(void)
     memcpy(jitGetRwAddr(&jit), return_42, sizeof(return_42));
     rc = jitTransitionToExecutable(&jit);
     if (R_FAILED(rc)) {
-        printf("jitTransitionToExecutable failed: 0x%08X\n", rc);
+        printf("jitTransitionToExecutable failed: 0x%08X\n", (unsigned)rc);
         Result close_rc = jitClose(&jit);
         if (R_FAILED(close_rc))
-            printf("jitClose after transition failure: 0x%08X\n", close_rc);
-        return 1;
+            printf("jitClose after transition failure: 0x%08X\n", (unsigned)close_rc);
+        return finish(1);
     }
 
     value = ((jit_entry_t)jitGetRxAddr(&jit))();
@@ -52,10 +68,10 @@ int main(void)
 
     rc = jitClose(&jit);
     if (R_FAILED(rc)) {
-        printf("jitClose failed: 0x%08X\n", rc);
-        return 1;
+        printf("jitClose failed: 0x%08X\n", (unsigned)rc);
+        return finish(1);
     }
 
     printf("JIT buffer closed cleanly\n");
-    return value == 42 ? 0 : 1;
+    return finish(value == 42 ? 0 : 1);
 }
