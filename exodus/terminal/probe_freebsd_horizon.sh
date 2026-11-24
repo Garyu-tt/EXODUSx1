@@ -32,6 +32,7 @@ probe echo "$donor/bin/sh/bltin/echo.c"
 probe printf "$donor/usr.bin/printf/printf.c"
 probe test "$donor/bin/test/test.c"
 probe kill "$donor/bin/kill/kill.c"
+probe target-stdio exodus/terminal/freebsd_stdio_horizon.c
 cat "$out/modules.tsv"
 if ((${#objects[@]})); then
     "$cc" -r "${objects[@]}" -o "$out/shell-partial.o"
@@ -46,5 +47,6 @@ fi
 printf 'compiled=%s\nfailed=%s\nfinal_link=%s\nruntime=not_tested\n' "${#objects[@]}" "$failed" "$link" | tee "$out/summary.txt"
 # A successful inventory does not mean the shell builds. Require a real target object.
 test -s "$out/objects/generated-syntax.o"
+test -s "$out/objects/target-stdio.o"
 test -s "$out/elf-header.txt"
 grep -q AArch64 "$out/elf-header.txt"
