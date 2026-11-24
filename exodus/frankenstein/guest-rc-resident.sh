@@ -269,6 +269,7 @@ coldboot_start() (
     service tumor_reference_bus status
     service tumor_reference_session status
     service sshd status
+    su -m exodusref -c "HOME=/home/exodusref DBUS_SESSION_BUS_ADDRESS=unix:path=/home/exodusref/.config/exodus/bus /usr/local/bin/gdbus wait --session --timeout 15 com.steampowered.SteamOSManager1"
     for child in /var/run/tumor-reference-bus.child.pid /var/run/tumor-reference-session.child.pid; do
         pid=$(cat "$child")
         kill -0 "$pid"
