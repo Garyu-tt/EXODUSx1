@@ -35,8 +35,9 @@ function analyze(registry) {
   return {errors,donors:registry.donors.length,admitted:errors.length?0:admitted,capabilities:[...groups].sort(([a],[b])=>a.localeCompare(b)).map(([id,donors])=>({id,owner:owners.get(id),donors:donors.sort()}))};
 }
 function selftest(analyze,registry,assert){
- const copy=()=>JSON.parse(JSON.stringify(registry));
- const clean=analyze(registry);assert(clean.errors.length===0,"baseline valid");assert(clean.donors===registry.donors.length,"count");assert(clean.admitted===0,"baseline not admitted");
+ const fixture={schema_version:1,gates:["source_commit_and_license","dependency_graph","single_provider_owner","host_contract_tests","native_build","physical_device_probe","reversible_integration"],donors:["First","Second"].map(name=>({repository:"Fixture/"+name,discovery_ref:"main",capability:"fixture.capability",owner:"fixture",blockers:"fixture",first_slice:"fixture",admission:"audit_required",pinned_commit:null,license_verified:false,device_verified:false}))};
+ const copy=()=>JSON.parse(JSON.stringify(fixture));
+ const clean=analyze(registry);assert(clean.errors.length===0,"registry valid");assert(clean.donors===registry.donors.length,"count");assert(analyze(fixture).admitted===0,"fixture not admitted");
  let r=copy();r.donors.push({...r.donors[0]});assert(analyze(r).errors.some(e=>e.includes("duplicate repository")),"duplicate");
  r=copy();r.donors[1].owner="competing";assert(analyze(r).errors.some(e=>e.includes("competing owners")),"owner conflict");
  r=copy();r.donors[0].admission="admitted";assert(analyze(r).errors.length>0&&analyze(r).admitted===0,"fail closed");
