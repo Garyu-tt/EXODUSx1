@@ -33,8 +33,10 @@ inline NativeMergeResult MergeNativeCatalog(Catalog &external, const Catalog &li
     std::set<std::pair<Provider,std::string>> seen;
     size_t bytes=0;
     auto append=[&](const Entry &e) {
-        auto key=NativeCatalogKey(e);
-        if (!seen.insert(std::move(key)).second) return true;
+        if (e.provider==Provider::Switch || e.provider==Provider::Homebrew) {
+            auto key=NativeCatalogKey(e);
+            if (!seen.insert(std::move(key)).second) return true;
+        }
         if (merged.entries.size()>=CatalogEntryLimit) return false;
         for (size_t n : {e.id.size(),e.title.size(),e.artwork.size()}) {
             if (n>CatalogByteLimit-bytes) return false;
