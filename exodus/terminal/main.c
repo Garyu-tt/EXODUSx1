@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <inttypes.h>
+#include <stdint.h>
 #ifdef __SWITCH__
 #include <switch.h>
 #endif
@@ -33,6 +35,7 @@ static int valid_path(const char *p) {
     if (!*p) return 0;
 #ifdef __SWITCH__
     /* Avoid selecting unrelated devoptab devices. */
+    if (!strncmp(p, "sdmc:/", 6)) p += 6;
     if (strchr(p, ':')) return 0;
 #endif
     return 1;
@@ -79,6 +82,48 @@ static void cat(const char *path) {
     putchar('\n');
     fclose(f);
 }
+static void file_info(const char *path) {
+    struct stat st;
+    if (stat(path, &st)) { report_error("stat"); return; }
+    const char *type = S_ISREG(st.st_mode) ? "file" :
+                       S_ISDIR(st.st_mode) ? "directory" : "other";
+    printf("type=%s size_bytes=%" PRIdMAX "\n", type, (intmax_t)st.st_size);
+}
+#ifdef __SWITCH__
+/* Same read-only SVC queries as Kernel Bridge admission R02 (#31).
+   Adapter remains temporary until shared provider #32 is merged. */
+static void observed(const char *name, Result rc, uint64_t value) {
+    if (R_SUCCEEDED(rc)) printf("%s=%" PRIu64 "\n", name, value);
+    else printf("%s=unknown result=0x%08" PRIx32 "\n", name, (uint32_t)rc);
+}
+#endif
+static void identity(void) {
+#ifdef __SWITCH__
+    uint64_t value = 0;
+    Result rc = svcGetProcessId(&value, CUR_PROCESS_HANDLE);
+    observed("process_id", rc, value);
+    value = 0;
+    rc = svcGetThreadId(&value, CUR_THREAD_HANDLE);
+    observed("thread_id", rc, value);
+#else
+    printf("process_id=%" PRIdMAX "\n", (intmax_t)getpid());
+    puts("thread_id=unknown (host reference)");
+#endif
+}
+static void memory_info(void) {
+#ifdef __SWITCH__
+    uint64_t value = 0;
+    Result rc = svcGetInfo(&value, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
+    observed("process_memory_limit_bytes", rc, value);
+    value = 0;
+    rc = svcGetInfo(&value, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
+    observed("process_memory_used_bytes", rc, value);
+#else
+    puts("process_memory_limit_bytes=unknown (host reference)");
+    puts("process_memory_used_bytes=unknown (host reference)");
+#endif
+    puts("Scope: current process only; not system RAM or GPU VRAM.");
+}
 static int dispatch(char *line) {
     size_t n = strlen(line);
     while (n && (line[n-1] == '\r' || line[n-1] == '\n')) line[--n] = 0;
@@ -89,7 +134,7 @@ static int dispatch(char *line) {
     if (!*cmd) return 0;
     if (!strcmp(cmd, "exit") && !*arg) return 1;
     if (!strcmp(cmd, "help") && !*arg)
-        puts("help | pwd | ls [path] | cd path | cat path | echo text | status | clear | exit");
+        puts("help | pwd | ls [path] | cd path | cat path | stat path | echo text | id | mem | status | clear | exit");
     else if (!strcmp(cmd, "pwd") && !*arg) pwd();
     else if (!strcmp(cmd, "ls")) {
         if (!*arg || valid_path(arg)) list(*arg ? arg : ".");
@@ -100,14 +145,19 @@ static int dispatch(char *line) {
     } else if (!strcmp(cmd, "cat")) {
         if (!valid_path(arg)) puts("invalid path");
         else cat(arg);
-    } else if (!strcmp(cmd, "echo")) { safe_text(arg); putchar('\n'); }
+    } else if (!strcmp(cmd, "stat")) {
+        if (!valid_path(arg)) puts("invalid path");
+        else file_info(arg);
+    } else if (!strcmp(cmd, "id") && !*arg) identity();
+    else if (!strcmp(cmd, "mem") && !*arg) memory_info();
+    else if (!strcmp(cmd, "echo")) { safe_text(arg); putchar('\n'); }
     else if (!strcmp(cmd, "status") && !*arg) {
 #ifdef __SWITCH__
-        printf("EXODUS R01 | Horizon | HOS %u.%u.%u\n",
+        printf("EXODUS R02 | Horizon | HOS %u.%u.%u\n",
             (unsigned)HOSVER_MAJOR(hosversionGet()), (unsigned)HOSVER_MINOR(hosversionGet()),
             (unsigned)HOSVER_MICRO(hosversionGet()));
 #else
-        puts("EXODUS R01 | host reference");
+        puts("EXODUS R02 | host reference");
 #endif
         puts("Process/service provider and interactive SSH not connected.");
     } else if (!strcmp(cmd, "clear") && !*arg) {
@@ -130,7 +180,7 @@ int main(void) {
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
-    puts("EXODUS Terminal R01\nA: enter command | +: exit | help: commands");
+    puts("EXODUS Terminal R02\nA: enter command | +: exit | help: commands");
     while (appletMainLoop()) {
         padUpdate(&pad);
         u64 buttons = padGetButtonsDown(&pad);
