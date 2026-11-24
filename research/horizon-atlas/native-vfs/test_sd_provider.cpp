@@ -59,3 +59,9 @@ int main(){
     check(unmounts==2);
     std::cout<<checks<<" checks passed\n";
 }
+
+// R14 metadata functions are linked by the virtual table even in read-only tests.
+Result fsFsGetEntryType(FsFileSystem*,const char*,FsDirEntryType*){return 1;}
+Result fsFsOpenDirectory(FsFileSystem*,const char*,u32,FsDir*){return 1;}
+Result fsDirRead(FsDir*,s64*,std::size_t,FsDirectoryEntry*){return 1;}
+void fsDirClose(FsDir*){}
