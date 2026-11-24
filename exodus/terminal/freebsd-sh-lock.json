@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/freebsd/freebsd-src",
+  "commit": "e5477acb8a8b7f69ae9143f4fd7270ede7174884",
+  "note": "Partial audited file set, not complete build closure. API observations are lexical examples, not a call graph. Native status not verified.",
+  "files": [
+    {
+      "path": "bin/sh/Makefile",
+      "blob": "2b1eca8e4b31fa1170b428fb610af97db9517930",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/jobs.c",
+      "blob": "af9dda11a483e574ee193d44e6e2dc16676f0aef",
+      "capability": "process.jobs",
+      "observed_calls": [
+        "fork",
+        "vfork",
+        "wait3",
+        "setpgid",
+        "tcgetpgrp",
+        "tcsetpgrp",
+        "kill",
+        "sigaction",
+        "sigprocmask"
+      ]
+    },
+    {
+      "path": "bin/sh/exec.c",
+      "blob": "42ce5414922bc764fd1c65be814528372126a483",
+      "capability": "process.exec",
+      "observed_calls": [
+        "execve",
+        "open"
+      ]
+    },
+    {
+      "path": "bin/sh/redir.c",
+      "blob": "eb0fc618a73e9833a58a2e1930e8c8a8451dbebc",
+      "capability": "fd.redirect",
+      "observed_calls": [
+        "open",
+        "dup2",
+        "fcntl",
+        "pipe"
+      ]
+    },
+    {
+      "path": "bin/sh/histedit.c",
+      "blob": "a9a4837a92e5870f459dbc8d97ab76590d1cc7a7",
+      "capability": "tty.edit",
+      "observed_calls": [
+        "history_init",
+        "el_init",
+        "isatty"
+      ]
+    },
+    {
+      "path": "bin/sh/trap.c",
+      "blob": "2863026a479403ccafc1b11c33d09d50ea763fa1",
+      "capability": "process.signals",
+      "observed_calls": [
+        "sigaction",
+        "sigprocmask",
+        "kill"
+      ]
+    },
+    {
+      "path": "bin/sh/input.c",
+      "blob": "c916fb29178bca5730d3394d1d35bf2da8ca30aa",
+      "capability": "fd.input",
+      "observed_calls": [
+        "read",
+        "open",
+        "fcntl"
+      ]
+    },
+    {
+      "path": "lib/libedit/Makefile",
+      "blob": "9161e05a7d36d09d4767073ae0fba701190b57e0",
+      "capability": "tty.edit",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/builtins.def",
+      "blob": "00f363bfb1c79e74c8f504e76dea33f5d2da4aa9",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/parser.c",
+      "blob": "f6ef8d80770486d052da9b30bf1128c5cb18b2fd",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/eval.c",
+      "blob": "b4c1924f04ad1f372a85d30b2abe1df37d843428",
+      "capability": "shell.eval",
+      "observed_calls": [
+        "pipe",
+        "dup2"
+      ]
+    }
+  ],
+  "providers": {
+    "build.generated": {
+      "owner": "build",
+      "status": "planned",
+      "requires": [],
+      "gate": "Run host mknodes/mksyntax and scripts; reproducible generated headers."
+    },
+    "shell.parser": {
+      "owner": "shell",
+      "status": "planned",
+      "requires": [
+        "build.generated"
+      ],
+      "gate": "Compile actual FreeBSD parser and compare syntax fixtures."
+    },
+    "fd.input": {
+      "owner": "nxposix",
+      "status": "planned",
+      "requires": [],
+      "gate": "Bounded read/EOF and descriptor flags."
+    },
+    "fd.redirect": {
+      "owner": "nxposix",
+      "status": "planned",
+      "requires": [
+        "fd.input"
+      ],
+      "gate": "Real pipes/dup2/close-on-exec and restoration."
+    },
+    "process.exec": {
+      "owner": "kernel_bridge",
+      "status": "planned",
+      "requires": [
+        "fd.redirect"
+      ],
+      "gate": "Argv/envp and exit semantics; no fake exec success."
+    },
+    "process.signals": {
+      "owner": "kernel_bridge",
+      "status": "planned",
+      "requires": [],
+      "gate": "Signal delivery and mask semantics."
+    },
+    "process.jobs": {
+      "owner": "kernel_bridge",
+      "status": "planned",
+      "requires": [
+        "process.exec",
+        "process.signals"
+      ],
+      "gate": "Fork/vfork semantics or explicitly adapted evaluation; wait and process groups."
+    },
+    "tty.edit": {
+      "owner": "terminal",
+      "status": "planned",
+      "requires": [
+        "fd.input"
+      ],
+      "gate": "PTY/termios/libedit/terminfo, history."
+    },
+    "shell.eval": {
+      "owner": "shell",
+      "status": "planned",
+      "requires": [
+        "shell.parser",
+        "fd.redirect",
+        "process.jobs"
+      ],
+      "gate": "Pipelines, subshells, builtins and status parity."
+    }
+  }
+}
