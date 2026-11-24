@@ -150,7 +150,9 @@ namespace exodus::home {
             if (!identities.emplace(provider, id).second)
                 return {CatalogStatus::Invalid, {}};
             const auto &name = entry["name"].get_ref<const std::string &>();
-            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name)});
+            if (id.find('\0') != std::string::npos)
+                return {CatalogStatus::Invalid, {}};
+            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name), id});
         }
         return catalog;
     }
