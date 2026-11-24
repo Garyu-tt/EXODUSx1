@@ -78,6 +78,20 @@ jobs:
           nm -u "$RUNNER_TEMP/shell-core.o" > "$RUNNER_TEMP/grammar-a/core-undefined.txt"
           nm --defined-only "$RUNNER_TEMP/shell-core.o" > "$RUNNER_TEMP/grammar-a/core-defined.txt"
           test -s "$RUNNER_TEMP/grammar-a/core-defined.txt"
+      - name: Compile original BSD input, redirection and options modules
+        run: |
+          mkdir "$RUNNER_TEMP/io"
+          for module in input redir error options; do
+            cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "donor-freebsd/bin/sh/$module.c" -o "$RUNNER_TEMP/io/$module.o"
+          done
+          cc -r "$RUNNER_TEMP/shell-core.o" "$RUNNER_TEMP/io/"*.o -o "$RUNNER_TEMP/shell-io.o"
+          nm -u "$RUNNER_TEMP/shell-io.o" > "$RUNNER_TEMP/grammar-a/io-undefined.txt"
+          nm --defined-only "$RUNNER_TEMP/shell-io.o" > "$RUNNER_TEMP/grammar-a/io-defined.txt"
+          test -s "$RUNNER_TEMP/grammar-a/io-defined.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: freebsd-sh-grammar
