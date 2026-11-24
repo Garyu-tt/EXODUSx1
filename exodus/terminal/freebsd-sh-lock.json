@@ -102,6 +102,54 @@
         "pipe",
         "dup2"
       ]
+    },
+    {
+      "path": "bin/sh/mknodes.c",
+      "blob": "0c5dfb1accfb9df9ad610ef5fe1eaa23d8f1aca7",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mksyntax.c",
+      "blob": "60570d0f60a4379b127bb35fe9bb00d72067ab2f",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mkbuiltins",
+      "blob": "e0f997ba50aef4fbca3e531b756374b2a58cf21b",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mktokens",
+      "blob": "1b0b0b9a586af381d7e68fa002dea11d7dbef9cb",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/nodetypes",
+      "blob": "1507a7ae847e5835a5ba68ed81852744bf2a800d",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/nodes.c.pat",
+      "blob": "9cee0715d4fcb30dd19de0ed0524dc677e7f3ea2",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/parser.h",
+      "blob": "933066be87f0243af625f5bb669f4b06d6d8a206",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/shell.h",
+      "blob": "4b598899dee1f49b7067e26743ef410afd24c407",
+      "capability": "build.generated",
+      "observed_calls": []
     }
   ],
   "providers": {
