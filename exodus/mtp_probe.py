@@ -172,18 +172,57 @@ def check_reconnect(usb_id, initial, seconds, sample):
     return "timed_out", last, disconnected
 
 
+def observe(usb_id, initial, seconds, sample):
+    """Observe state transitions even when the USB target starts absent.
+
+    Do not require the same instance ID: changing ports may legitimately change
+    it. Report only whether it changed, never the ID itself.
+    """
+    start = time.monotonic()
+    deadline = start + seconds
+    events = [{"elapsed_ms": 0, **initial.report(), "parent_changed": False}]
+    previous = initial
+    last_parent = initial.parent_id
+    while deadline - time.monotonic() > POLL_INTERVAL:
+        time.sleep(POLL_INTERVAL)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            current = sample(usb_id, timeout=min(remaining, QUERY_TIMEOUT))
+        except ProbeTimeout:
+            if remaining > QUERY_TIMEOUT:
+                raise
+            return {"events": events, "complete": False, "reason": "query_timeout"}
+        changed = (current.parent_id is not None and last_parent is not None
+                   and current.parent_id != last_parent)
+        if current.parent_id is not None:
+            last_parent = current.parent_id
+        if current.report() != previous.report() or changed:
+            events.append({"elapsed_ms": int((time.monotonic() - start) * 1000),
+                           **current.report(), "parent_changed": changed})
+        previous = current
+    return {"events": events, "complete": True, "reason": "window_finished"}
+
+
 def main(argv=None, sample=read_windows):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--usb-id", required=True, metavar="VID:PID", help="four hexadecimal digits per field")
-    parser.add_argument("--reconnect", type=int, metavar="SECONDS", help="observe a disconnect and reconnect in 5–300 seconds")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--reconnect", type=int, metavar="SECONDS", help="observe a disconnect and reconnect in 5–300 seconds")
+    mode.add_argument("--observe", type=int, metavar="SECONDS", help="record state transitions from any baseline for 5–300 seconds")
     args = parser.parse_args(argv)
     if USB_ID.fullmatch(args.usb_id) is None:
         parser.error("--usb-id must have the form VID:PID using four hexadecimal digits per field")
     if args.reconnect is not None and not 5 <= args.reconnect <= 300:
         parser.error("--reconnect must be between 5 and 300 seconds")
 
+    if args.observe is not None and not 5 <= args.observe <= 300:
+        parser.error("--observe must be between 5 and 300 seconds")
+
     usb_id = args.usb_id.lower()
     reconnect = None
+    observation = None
     try:
         initial = sample(usb_id)
         success = initial.state == "wpd_ready"
@@ -191,11 +230,17 @@ def main(argv=None, sample=read_windows):
             state, last, disconnected = check_reconnect(usb_id, initial, args.reconnect, sample)
             reconnect = {"state": state, "disconnect_seen": disconnected, "last": last.report()}
             success = state == "reconnected"
+        elif args.observe is not None:
+            observation = observe(usb_id, initial, args.observe, sample)
+            success = observation["complete"]
     except ProbeError as exc:
         print(f"MTP probe: {exc}", file=sys.stderr)
         return 2
 
-    print(json.dumps({"schema_version": 1, "usb_id": usb_id, "initial": initial.report(), "reconnect": reconnect}))
+    report = {"schema_version": 1, "usb_id": usb_id, "initial": initial.report(), "reconnect": reconnect}
+    if observation is not None:
+        report["observation"] = observation
+    print(json.dumps(report))
     return 0 if success else 1
 
 
