@@ -115,9 +115,16 @@ grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
 if [ "$mode" = manager ]; then
     tr -d '\r' < "$out/serial.log" > "$out/manager-evidence.txt"
     grep -Fx EXODUS_MANAGER_PROTOCOL_BUILD_PASS "$out/manager-evidence.txt"
-    result=$(sed -n 's/^EXODUS_MANAGER_DAEMON_CHECK_RESULT=//p' "$out/manager-evidence.txt")
-    if [ "$result" != 0 ]; then
-        printf 'Upstream manager daemon compile gate not passed (result=%s)\n' "$result" >&2
+    # Command substitution strips trailing newlines: count records before
+    # accepting their value, including empty duplicate result records.
+    if ! awk '
+        /^EXODUS_MANAGER_DAEMON_CHECK_RESULT=/ {
+            count++
+            if ($0 != "EXODUS_MANAGER_DAEMON_CHECK_RESULT=0") invalid=1
+        }
+        END { exit !(count == 1 && !invalid) }
+    ' "$out/manager-evidence.txt"; then
+        printf 'Upstream manager daemon compile gate not passed (expected exactly one result=0)\n' >&2
         exit 1
     fi
     echo EXODUS_MANAGER_DAEMON_COMPILE_PASS
