@@ -40,6 +40,17 @@ class TerminalTests(unittest.TestCase):
             self.assertIn("[output limited]", result)
             self.assertIn("regular files only", result)
 
+    def test_diagnostics(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "sample").write_bytes(b"abc")
+            result = self.run_commands("stat sample\nstat .\nstat missing\nid\nmem\n", d)
+            self.assertIn("type=file size_bytes=3", result)
+            self.assertIn("type=directory", result)
+            self.assertIn("stat: error", result)
+            self.assertRegex(result, r"process_id=[1-9][0-9]*")
+            self.assertIn("process_memory_limit_bytes=unknown", result)
+            self.assertIn("not system RAM or GPU VRAM", result)
+
     def test_long_line_and_unknown(self):
         with tempfile.TemporaryDirectory() as d:
             result = self.run_commands("echo " + "x"*700 + "\necho ok\nunknown\nstatus\n", d)
