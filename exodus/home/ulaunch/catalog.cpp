@@ -2,6 +2,7 @@
 #include "catalog.hpp"
 
 #include <array>
+#include <charconv>
 #include <cstdint>
 #include <fstream>
 #include <set>
@@ -148,7 +149,9 @@ namespace exodus::home {
             if (!identities.emplace(provider, id).second)
                 return {CatalogStatus::Invalid, {}};
             const auto &name = entry["name"].get_ref<const std::string &>();
-            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name)});
+            if (id.find('\0') != std::string::npos)
+                return {CatalogStatus::Invalid, {}};
+            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name), id});
         }
         if (normalized_utf8 != nullptr)
             *normalized_utf8 = document.dump();
@@ -195,6 +198,18 @@ namespace exodus::home {
         if (!input.read(text.data(), text.size()) || input.peek() != std::istream::traits_type::eof() || input.bad())
             return {CatalogStatus::Unavailable, {}};
         return ParseCatalog(text);
+    }
+
+    std::optional<std::uint64_t> SwitchApplicationId(const Entry &entry) {
+        if (entry.provider != Provider::Switch || entry.id.size() != 16)
+            return std::nullopt;
+
+        std::uint64_t id = 0;
+        const auto end = entry.id.data() + entry.id.size();
+        const auto parsed = std::from_chars(entry.id.data(), end, id, 16);
+        if (parsed.ec != std::errc{} || parsed.ptr != end || id == 0)
+            return std::nullopt;
+        return id;
     }
 
 }
