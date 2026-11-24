@@ -92,3 +92,20 @@ cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_runtime_handoff.c -o
 ```
 
 Native compilation, loader buffer limits on the installed loader, and physical-device handoff remain unverified. No new runtime is installed and no system firmware or HOME changes are made.
+
+## R07: offline artwork and library filters
+
+Y cycles All, Switch, Homebrew, Steam, CorkDeck, Other, Favorites and Recently played. X toggles a session-only favorite. Recent uses the snapshot's nonzero last_played values, descending; it is not a log of confirmed launches. Favorites are not persisted. Empty filters stay navigable. The selected filtered row always resolves to the original catalog index before launch confirmation.
+
+The shared parser retains artwork paths and last_played. The original CorkDeck launcher_image.c decoder handles PNG/JPEG files in sdmc:/switch/wine/ or sdmc:/ulaunch/ only. No URL fetch, arbitrary paths or SteamGridDB credentials are used. Missing/invalid art leaves a text card. Only eight visible thumbnails are kept, scaled to at most 256 pixels per side (at most 2 MiB RGBA pixel payload excluding driver overhead). Decoding remains synchronous on page changes, so device latency and transient allocations still need measurement. The host build additionally requires pkg-config packages libpng and libturbojpeg.
+
+SteamGridDB's donor API was audited; its network fetch is deliberately deferred until an explicit download action, key storage policy and offline fallback are implemented. No artwork is bundled.
+
+Portable filter test:
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_library_filter.c -o /tmp/exodus-filter-check
+/tmp/exodus-filter-check
+```
+
+Native build, interaction, rendering and performance acceptance remain pending.
