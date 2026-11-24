@@ -37,10 +37,12 @@ namespace exodus::home {
     struct Catalog {
         CatalogStatus status;
         std::vector<Entry> entries;
+        bool steam_snapshot_applied = false;
     };
 
     Catalog ParseCatalog(std::string_view text, std::string *normalized_utf8 = nullptr);
     Catalog ReadCatalog(const char *path);
+    std::optional<std::uint32_t> SteamApplicationId(const Entry &entry);
     std::optional<std::uint64_t> SwitchApplicationId(const Entry &entry);
     std::string CatalogLabel();
     void ShowCatalog();

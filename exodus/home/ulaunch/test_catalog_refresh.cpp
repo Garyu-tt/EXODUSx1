@@ -89,11 +89,13 @@ namespace {
         Write(files.base, base);
         const auto before = files.Read();
         assert(before.status == CatalogStatus::Ready && before.entries.size() == 3);
+        assert(!before.steam_snapshot_applied);
         assert(before.entries[0].title == "Manual Steam");
 
         const auto first = PublishSteamSnapshot(files.store.c_str(), SnapshotJson());
         assert(first && *first == 1);
         const auto refreshed = files.Read();
+        assert(refreshed.steam_snapshot_applied);
         assert(refreshed.entries.size() == 3);
         assert(refreshed.entries[0].provider == Provider::Steam &&
                refreshed.entries[0].title == "Signed-in Steam title");
@@ -105,10 +107,12 @@ namespace {
         Write(files.Snapshot(2), "{\"schema_version\":");
         Write(files.store + "/.steam-catalog-partial", SnapshotJson("Staged data"));
         auto fallback = files.Read();
+        assert(fallback.steam_snapshot_applied);
         assert(fallback.entries.size() == 3 && fallback.entries[0].title == "Signed-in Steam title");
         const auto empty = PublishSteamSnapshot(files.store.c_str(), R"({"schema_version":1,"entries":[]})");
         assert(empty && *empty == 3);
         const auto without_steam = files.Read();
+        assert(without_steam.steam_snapshot_applied);
         assert(without_steam.entries.size() == 2);
         assert(without_steam.entries[0].provider == Provider::Switch);
         assert(without_steam.entries[1].provider == Provider::Homebrew);
@@ -118,9 +122,11 @@ namespace {
 
     void TestCatalogFallback() {
         Fixture files;
-        assert(files.Read().status == CatalogStatus::Unavailable);
+        const auto absent = files.Read();
+        assert(absent.status == CatalogStatus::Unavailable && !absent.steam_snapshot_applied);
         assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson()) == 1);
-        assert(files.Read().entries.size() == 1);
+        const auto snapshot_only = files.Read();
+        assert(snapshot_only.steam_snapshot_applied && snapshot_only.entries.size() == 1);
 
         auto non_steam = JSON{{"schema_version", 1}, {"entries", JSON::array({
             EntryJson("switch", "1", "Unexpected row")})}}.dump();
@@ -130,7 +136,8 @@ namespace {
         assert(files.Read().entries[0].title == "Signed-in Steam title");
 
         Write(files.base, "corrupt base");
-        assert(files.Read().status == CatalogStatus::Invalid);
+        const auto invalid_base = files.Read();
+        assert(invalid_base.status == CatalogStatus::Invalid && !invalid_base.steam_snapshot_applied);
         Write(files.Snapshot(UINT64_MAX), "occupied maximum generation");
         assert(!PublishSteamSnapshot(files.store.c_str(), SnapshotJson("New entry")));
         assert(Read(files.Snapshot(UINT64_MAX)) == "occupied maximum generation");
@@ -142,7 +149,8 @@ namespace {
         Write(files.base, manual);
         Write(files.store, "occupied store path");
         assert(!PublishSteamSnapshot(files.store.c_str(), SnapshotJson()));
-        assert(files.Read().entries[0].title == "Manual catalog");
+        const auto fallback = files.Read();
+        assert(!fallback.steam_snapshot_applied && fallback.entries[0].title == "Manual catalog");
         assert(Read(files.base) == manual && Read(files.store) == "occupied store path");
     }
 
@@ -172,10 +180,15 @@ namespace {
         for (std::size_t i = 0; i < CatalogEntryLimit; ++i)
             entries.push_back(EntryJson("switch", std::to_string(i), "Local title"));
         Write(files.base, JSON{{"schema_version", 1}, {"entries", entries}}.dump());
-        assert(PublishSteamSnapshot(files.store.c_str(), R"({"schema_version":1,"entries":[]})") == 1);
-        assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson()) == 2);
+        assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson()) == 1);
+        const auto base_only = files.Read();
+        assert(!base_only.steam_snapshot_applied && base_only.entries.size() == CatalogEntryLimit);
+
+        assert(PublishSteamSnapshot(files.store.c_str(), R"({"schema_version":1,"entries":[]})") == 2);
+        assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson()) == 3);
         const auto fallback = files.Read();
         assert(fallback.status == CatalogStatus::Ready && fallback.entries.size() == CatalogEntryLimit);
+        assert(fallback.steam_snapshot_applied);
         assert(fallback.entries[0].provider == Provider::Switch);
     }
 
