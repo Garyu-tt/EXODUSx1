@@ -53,3 +53,11 @@ int eaccess(const char *path, int mode)
 {
     return faccessat(AT_FDCWD, path, mode, AT_EACCESS);
 }
+
+#include <signal.h>
+#include <string.h>
+/* Unnamed signals (including realtime signals without abbreviations) stay unknown. */
+const char *nxbsd_signal_name(int number)
+{
+    return number > 0 && number < NSIG ? sigabbrev_np(number) : NULL;
+}
