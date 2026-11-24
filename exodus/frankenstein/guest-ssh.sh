@@ -59,6 +59,7 @@ case "${1:-status}" in
     *) echo 'unsupported session' >&2; exit 2 ;;
 esac
 SCRIPT
+install -d -m 755 /usr/local/bin
 install -m 755 "$work/session-select" /usr/local/bin/exodus-session-select
 cat > "$work/sshd_config" <<EOF
 Port 22222
