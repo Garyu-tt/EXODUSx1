@@ -153,6 +153,47 @@ int main(int argc, char **argv)
     assert(exodus_library_group_size(lib,5)==1);
     exodus_library_close(lib);
     assert(std::filesystem::remove_all(root)==5);
+    // Split archives stay inventory-only. A declared group key survives renaming.
+    assert(std::filesystem::create_directory(root));
+    const auto split=root+"/Split.nsp";
+    const auto patch=root+"/Patch.nsp";
+    const auto moved=root+"/Renamed.nsp";
+    assert(std::filesystem::create_directory(split));
+    { std::ofstream f(split+"/00"); f<<"1234"; }
+    { std::ofstream f(split+"/01"); f<<"12"; }
+    { std::ofstream f(patch); f<<"dummy"; }
+    { std::ofstream f(split+".evcs"); f<<"EVCS1 0000000000000010 0000000000000010 0 base\n"; }
+    { std::ofstream f(patch+".evcs"); f<<"EVCS1 0000000000000010 0000000000000011 1 update\n"; }
+    lib=exodus_library_open_with_games(argv[1],root.c_str());
+    assert(lib && exodus_library_count(lib)==7);
+    size_t split_index=5;
+    if (std::string(exodus_library_id(lib,5))!=split) split_index=6;
+    size_t patch_index=split_index==5?6:5;
+    assert(exodus_library_group_representative(lib,split_index)==split_index);
+    assert(exodus_library_group_representative(lib,patch_index)==split_index);
+    char key[64], key2[64];
+    assert(exodus_library_declared_group_key(lib,split_index,key,sizeof(key)));
+    assert(!strcmp(key,"evcs-declared:0000000000000010"));
+    assert(exodus_library_declared_group_key(lib,patch_index,key2,sizeof(key2)) && !strcmp(key,key2));
+    assert(!exodus_library_declared_group_key(lib,0,key2,sizeof(key2)));
+    assert(!exodus_library_declared_group_key(lib,split_index,key2,5) && !key2[0]);
+    assert(exodus_library_archive_detail(lib,split_index,detail,sizeof(detail)) && strstr(detail,"2 contiguous parts, 6 bytes"));
+    assert(strstr(detail,"Not launchable"));
+    assert(!strcmp(exodus_library_provider(lib,split_index),"Other"));
+    assert(std::filesystem::remove(split+"/01"));
+    assert(exodus_library_archive_detail(lib,split_index,detail,sizeof(detail)) && strstr(detail,"invalid"));
+    exodus_library_close(lib);
+    { std::ofstream f(split+"/01"); f<<"12"; }
+    std::filesystem::rename(split,moved);
+    std::filesystem::rename(split+".evcs",moved+".evcs");
+    lib=exodus_library_open_with_games(argv[1],root.c_str());
+    assert(lib && exodus_library_count(lib)==7);
+    for (size_t n=5;n<7;++n)
+        assert(exodus_library_declared_group_key(lib,n,key2,sizeof(key2)) && !strcmp(key,key2));
+    assert(exodus_library_group_representative(lib,99)==SIZE_MAX);
+    exodus_library_close(lib);
+    assert(std::filesystem::file_size(moved+"/00")==4);
+    assert(std::filesystem::remove_all(root)==7);
     // Host mirror of the console namespace; no execution of fixture bytes.
     const auto base_path = std::filesystem::absolute(argv[1]);
     const auto original_cwd = std::filesystem::current_path();
