@@ -1,0 +1,22 @@
+name: EXODUS donor registry
+on:
+  pull_request:
+    paths:
+      - 'exodus/donors/**'
+      - '.github/workflows/exodus-donor-registry.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'exodus/donors/**'
+      - '.github/workflows/exodus-donor-registry.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node exodus/donors/validate.cjs --self-test
