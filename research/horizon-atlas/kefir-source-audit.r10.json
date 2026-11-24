@@ -1,0 +1,2636 @@
+{
+  "schema": "exodus.community-source-audit/v1",
+  "source": {
+    "repo": "rashevskyv/kefir-hub",
+    "build_path": "sphaira/CMakeLists.txt",
+    "build_blob": "236701e772a103b62eb4c2aeacbd0f0b65b936d8",
+    "version": "0.14.438",
+    "license_document": {
+      "path": "LICENSE",
+      "blob": "e62ec04cdeece724caeeeeaeb6ae1f6af1bb6b9a",
+      "family": "GPLv3 license text; individual file and dependency terms require audit"
+    }
+  },
+  "counts": {
+    "manifest_paths": 413,
+    "inspected": 10
+  },
+  "scope": "Build manifest paths including conditional sources; not complete tree or code dependency graph. No donor code copied, no tests run.",
+  "manifest": [
+    {
+      "path": "sphaira/source/ui/menus/appstore.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/appstore/appstore_repo.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/appstore/appstore_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/appstore/appstore_entry_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/appstore/appstore_filter.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/file_viewer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/file_viewer/file_viewer_internal.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/file_viewer/file_viewer_text.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/file_viewer/file_viewer_text_layout.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/file_viewer/file_viewer_text_index.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/file_viewer/file_viewer_image.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_internal.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_view.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_view_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_scan.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_metadata.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_options.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_options_advanced.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_share.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_sources.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_assoc.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_forwarder.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_ops_archive.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_recursive_install.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/filebrowser/filebrowser_romfs_pack.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/file_picker.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/file_picker_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/homebrew.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/homebrew_scan.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/homebrew_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/homebrew_folders.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/homebrew_delete.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/install_share.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/console_games_transfer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/console_files_transfer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ownfoil.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ownfoil_servers.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ownfoil_catalog.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ownfoil_screenshot_viewer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ownfoil_title.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ownfoil_title_install.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ownfoil_title_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_downgrade_box.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_links.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_changelog.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_changelog_page.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_apps.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_changelog_parser.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_firmware.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_firmware_store.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/kefir/kefir_firmware_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/main_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/menu_base.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/menu_base_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_menu_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_internal.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_categories.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_categories_items.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_software.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_dbi.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_kefir.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_nextendo.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_themes.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_translate.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_sources.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_fs_utils.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_translations.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_tweaks.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_fancurve.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_fancurve_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/settings/settings_fancurve_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_hub_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_paths.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_discovery.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_metadata_decoders.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_archive_metadata.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_backup_inspection.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_folder_discovery.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_locations.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_detail.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_badges.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_filters.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_options.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_scan.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_target.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_catalog.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_actions.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_game_group.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_backup_pub.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_backup_writer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_deletion.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_auto_backup.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_folder_restore.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_menu_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_remote_sync.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_restore_route.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_restore_zip.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_slot_backend.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_slot_admission.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/themezer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/themezer/themezer_api.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/themezer/themezer_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/themezer/themezer_dialogs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/theme_creator.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/tools_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/l_button.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/system_tools_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/trash_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/preview_pane.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/system_info_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/wifi_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/wifi_manager.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/uninstaller_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/uninstaller_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_internal.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_profile.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_profile_dialogs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_manage.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_manage_backups.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_manage_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_restore.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_restore_worker.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_restore_library.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_restore_remote.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_restore_remote_parser.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_nand.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_nand_library.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/users/users_nand_library_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_link.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_link_users.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_link_donor.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_link_pkg.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_user.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_user_export.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_user_packs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_playtime.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_restore.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/account_restore_safety.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/nand_transfer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/nand_transfer_archive.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/account/nand_transfer_users.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/meminfo.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheats_game_scanner.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheats_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheats_gfx_pack.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheats_dmnt.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheats_lookup.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheats_db.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheat_files_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheat_content_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheat_game_select_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheat_game_select_scan.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheat_download_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheat_download_parsers.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheat_download_net.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/cheats/cheat_download_writer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ghdl.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/ghdl_api.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_menu_options.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_internal.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_draw_transfer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_usb.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_local.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_plan.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_session.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/dbi/dbi_resolve.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/gc_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/gc_menu_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_internal.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_details.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_details_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_edit.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_actions.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_compress.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_details_delete.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_save_manager.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_scan.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/game/game_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/grid_menu_base.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/install_stream_menu_base.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/install_stream.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/error_box.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/about_box.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/first_run_hint.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/first_start.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/notification.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/nvg_util.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/image_viewport.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/action_icon.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/option_box.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/nextendo_link_box.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/popup_list.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/popup_multi_select.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/zip_extract_box.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/progress_box.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/install_queue.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/remote_shop.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/rom_files.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/rom_thumbs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/rom_meta.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/rom_collections.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/nso_ui.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/nso_source.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/nso_cover.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/nso_write.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/remote_shop_fetch.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/progress_box_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/screensaver.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/screensaver_views.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/scrollable_text.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/hold_confirm_box.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/sidebar.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/sidebar_entries.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/widget.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/list.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/list_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/scrolling_text.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/forwarder_editor.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/image_crop.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/file_icon.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/steamgriddb_icon.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/steamgriddb_widgets.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/remote_input.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/markdown_lite.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/markdown_html.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_startup.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_loop.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_frame.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_ui_stack.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_usb.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/usb_install_probe.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_settings.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_mtp_settings.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_network_settings.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_save_settings.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_theme.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/app_display_options.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/download.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/download_cache.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/download_curl_callbacks.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/download_curl_transfer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/download_webdav.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/dumper.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/option.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/evman.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/fs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/fs_file_dir.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/image.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/location.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/log.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/main.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ams_su.c",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/hats_version.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/net.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/nro.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ntp.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/nxlink.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/owo.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/owo_romfs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/owo_nca.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/forwarder_auto_install.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/auto_update.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/swkbd.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_qr.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_upload.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_mdns.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_fs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_upload_routes.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_part_upload.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_part_install.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_file_routes.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_router.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_games.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_http.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_screenshots.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/hasher.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/i18n.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ftpsrv_helper.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ftpsrv_vfs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze_helper.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze/haze_internal.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze/haze_fs_proxy.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze/haze_install_proxy.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze/haze_save_proxy.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze/haze_save_proxy_scan.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze/haze_game_proxy.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze/haze_game_proxy_catalog.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/haze/haze_game_proxy_install.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/threaded_file_transfer.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/threaded_file_transfer_core.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/threaded_file_transfer_preflight.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/threaded_file_transfer_verify.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/threaded_file_transfer_zip_io.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/title_info.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/title_move.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/title_nacp.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/title_nsp.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/archive_extract.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/rar_reader.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/sd_bundle.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_page.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_write.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_charge.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/nextendo_apply.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/nextendo_refresh.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_drain.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_drain_sample.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_drain_draw.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_calib.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_calib_report.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_zero_write.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_hop.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/battery_cal0.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/storage_menu.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/fancontrol_cleanup.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/forced_language.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/zero_fill.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/romfs_pack.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/romfs_pack_layout.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/repack/bktr_table.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/repack/cnmt_patch.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/repack/nca_build.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/repack/program_romfs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/repack/repack.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/repack/romfs_image.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/repack/romfs_walk.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/game_updates.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/chromium_nx.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/speed_test.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/parental_controls.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/bios_download.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/download_jobs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/rom_download.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/save/save_orphans.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/orphan_content.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/keys_dump.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/demo/demo_input.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/system_cleanup.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/trash.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/system_info.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/system_info_power.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/system_info_storage.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/control_patch.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/minizip_helper.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/fs_archive.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/fs_virtual_tree.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/fs_zip.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/fs_ncm.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/utils.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/utils_payload.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/utils_reboot.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_common.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_common_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_buffered.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_curl_thread.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_curl_device.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_curl_file.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_curl_dir.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_romfs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_nca.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_smb2.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_nfs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_mtp.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_mtp_usb.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_mtp_proto.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/devoptab_mtp_ops.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/ownfoil.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/ownfoil_discovery.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/ownfoil_api.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/ownfoil_api_details.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/utils/ownfoil_installed.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/usb/base.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/usb/usbds.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/usb/usbhs.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/usb/usb_uploader.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/yati.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/yati_analysis.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/yati_pipeline.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/yati_metadata.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/container/nsp.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/container/xci.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/source/file.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/source/http.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/source/usb.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/source/usb_dbi.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/source/stream.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/nx/es.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/nx/keys.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/nx/nca.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/nx/ncz.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/nx/ncm.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/nx/ns.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/yati/nx/nxdumptool_rsa.c",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/demo/demo_data.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/demo/demo_http.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/demo/demo_scene.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/demo/demo_install.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/demo/demo_wrap.cpp",
+      "status": "build_manifest_only",
+      "admission": "not_admitted",
+      "executable": false
+    }
+  ],
+  "candidates": [
+    {
+      "path": "sphaira/include/path_util.hpp",
+      "blob": "fc410a0e14424d02ed138c4445cae039f7ee077a",
+      "classification": "host_candidate",
+      "requirements": [
+        "posix.files.open",
+        "posix.files.directory"
+      ],
+      "notes": "Case-insensitive path helpers and SD path normalization; license and path confinement tests required.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/include/path_util_url.hpp",
+      "blob": "d7596e85c733df34972199396f465ed713fe7f4f",
+      "classification": "host_candidate",
+      "requirements": [
+        "posix.files.open",
+        "posix.dns"
+      ],
+      "notes": "URL and repository parsing helpers; verify scheme restrictions at caller.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/fs_file_dir.cpp",
+      "blob": "37f1d73047e17162b43706876762b0b24829488d",
+      "classification": "adapter_candidate",
+      "requirements": [
+        "posix.files.open",
+        "posix.files.io",
+        "posix.files.directory",
+        "posix.files.sync"
+      ],
+      "notes": "Native, virtual and stdio backends; review partial I/O, ownership, path scope, and close behavior.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/threaded_file_transfer_core.cpp",
+      "blob": "d3c2e8a34e827056b56b98a35a49b1c006c7e7c9",
+      "classification": "adapter_candidate",
+      "requirements": [
+        "posix.thread",
+        "posix.sync",
+        "posix.files.io"
+      ],
+      "notes": "Ring-buffer read/write pipeline coupled to App and ProgressBox; extract only reviewed general transfer logic.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/menus/homebrew_scan.cpp",
+      "blob": "b5c135a08ceb3ea8100c25bb1902c79baf168c90",
+      "classification": "mixed_review",
+      "requirements": [
+        "posix.files.directory",
+        "bsd.shell"
+      ],
+      "notes": "NRO discovery, deduplication, cache invalidation; separate from installer and forwarder dependencies; shell link is catalog/discovery only.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/net.cpp",
+      "blob": "1e186d3e0ce792f9523df73e5b8cff6185097655",
+      "classification": "mixed_review",
+      "requirements": [
+        "kde.network",
+        "posix.socket"
+      ],
+      "notes": "NIFM lifecycle and cache; split read-only status from radio/network activation.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/ui/image_viewport.cpp",
+      "blob": "5add55ff1787fcd2c9ee2f90f46eae7e7bb33667",
+      "classification": "adapter_candidate",
+      "requirements": [
+        "kde.input",
+        "kde.qpa"
+      ],
+      "notes": "Zoom, pan, touch viewport; isolate pure geometry from controller/renderer.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/i18n.cpp",
+      "blob": "5bbb779ed49151502269cbec4d0266df87a7f576",
+      "classification": "adapter_candidate",
+      "requirements": [
+        "kde.font",
+        "kde.qpa"
+      ],
+      "notes": "Locale discovery, JSON translation cache; review thread safety, own app localization only.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_router.cpp",
+      "blob": "b76dd1946235e9a5c2f8a912c15682f69c06f602",
+      "classification": "mixed_review",
+      "requirements": [
+        "posix.socket.io",
+        "posix.files.io"
+      ],
+      "notes": "Mixed routes including installation and sensitive input; do not copy router wholesale; independent authenticated allowlist.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    },
+    {
+      "path": "sphaira/source/web_file_routes.cpp",
+      "blob": "1fe8b163ea845a6b14ca97e2ddefba1aaf50ea59",
+      "classification": "mixed_review",
+      "requirements": [
+        "posix.files.directory",
+        "posix.files.io"
+      ],
+      "notes": "Canonicalization and file routes; inspect mount scope, authentication, destructive operations, traversal and cross-root restrictions.",
+      "verification": "source_inspected_not_built",
+      "executable": false
+    }
+  ],
+  "additional_evidence": [
+    {
+      "path": "tests/test_path_util.cpp",
+      "blob": "30d4df42fe08d9165c52d974828c38be601621d3",
+      "status": "test source inspected, not run"
+    },
+    {
+      "path": "tests/run.sh",
+      "blob": "e11096eb3aca76f46eca17548ad040639bec5008",
+      "status": "host test runner inspected, not run"
+    }
+  ]
+}
