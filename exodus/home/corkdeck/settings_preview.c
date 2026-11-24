@@ -118,7 +118,7 @@ static size_t filter_cards(const struct exodus_library *library, enum exodus_fil
             continue;
         }
         if (!exodus_library_is_group_card(library, n)) continue;
-        if (exodus_filter_matches(filter, exodus_library_provider(library, n), favorites[n], recent))
+        if (exodus_filter_matches(filter, exodus_library_provider(library, n), favorites[exodus_library_group_representative(library,n)], recent))
             cards[count++] = (struct exodus_card_index){n, recent};
     }
     if (filter == FILTER_RECENT) qsort(cards, count, sizeof(*cards), exodus_recent_compare);
@@ -145,6 +145,12 @@ static int show_library(struct ui *ui, const char *path)
         ui_message(ui, "EXODUS Library", "Not enough memory");
         goto done;
     }
+    const char *native_status=exodus_library_native_inventory_status(library);
+    const char *games_status=exodus_library_discovery_status(library);
+    if (strcmp(native_status,"Not requested") && strcmp(native_status,"Native inventory merged"))
+        ui_message(ui,"Native inventory",native_status);
+    if (strcmp(games_status,"Not requested") && strcmp(games_status,"Games scan complete"))
+        ui_message(ui,"Games inventory",games_status);
     count = filter_cards(library, filter, favorites, cards);
     const struct ui_hint hints[] = {
         {UI_A, "A: Open"}, {UI_B, "B: Back"}, {UI_L, "L: Previous"}, {UI_R, "R: Next"},
@@ -166,7 +172,8 @@ static int show_library(struct ui *ui, const char *path)
             if (!count) continue;
             size_t index = cards[selection].index;
             if (input.button == UI_X) {
-                favorites[index] = !favorites[index];
+                size_t representative=exodus_library_group_representative(library,index);
+                favorites[representative] = !favorites[representative];
                 if (filter == FILTER_FAVORITES) {
                     count = filter_cards(library, filter, favorites, cards);
                     if (selection >= count) selection = count ? count - 1 : 0;
@@ -243,7 +250,7 @@ static int show_library(struct ui *ui, const char *path)
                 snprintf(group_label, sizeof(group_label), "%zu files (declared)", group_size);
                 ui_text_fit(ui, ui->small, x + 12, y + 192, 240, group_label, ui->dim, 0);
             }
-            if (favorites[index]) ui_text(ui, ui->small, x + 230, y + 12, "*", ui->text);
+            if (favorites[exodus_library_group_representative(library,index)]) ui_text(ui, ui->small, x + 230, y + 12, "*", ui->text);
             struct cover_slot *cover = &covers[n - first];
             if (cover->texture) {
                 float scale = 116.0f / cover->height;
