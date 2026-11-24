@@ -1,6 +1,7 @@
 /* cc -std=c11 -Wall -Wextra -Werror evcs_discovery_test.c -o /tmp/evcs-test && /tmp/evcs-test */
 #define _POSIX_C_SOURCE 200809L
 #include "../home/corkdeck/evcs_discovery.h"
+#include "../home/corkdeck/evcs_pfs0.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -24,8 +25,39 @@ static void touch(const char *path, int nonempty)
     if (nonempty) assert(fputc('x',f) != EOF);
     assert(fclose(f) == 0);
 }
+static void pfs0_fixture(void)
+{
+    unsigned char b[128]={0};
+    memcpy(b,"PFS0",4);
+    b[4]=2; b[8]=32; /* two records, 32 string bytes */
+    b[24]=4; /* first file size */
+    b[40]=4; b[48]=4; b[56]=6; /* second offset, size, name offset */
+    memcpy(b+64,"a.nca",6);
+    memcpy(b+70,"b.cnmt.nca",11);
+    FILE *f=tmpfile();
+    assert(f && fwrite(b,1,sizeof(b),f)==sizeof(b));
+    struct evcs_pfs0_info info;
+    assert(evcs_pfs0_probe(f,sizeof(b),&info)==EVCS_PFS0_OK);
+    assert(info.entries==2 && info.nca==2 && info.meta_nca==1 && info.directory_bytes==96);
+    assert(ftell(f)==96); /* no payload read */
+    assert(evcs_pfs0_probe(f,100,&info)==EVCS_PFS0_INVALID); /* truncated payload */
+    b[40]=2; /* overlapping ranges */
+    rewind(f); assert(fwrite(b,1,sizeof(b),f)==sizeof(b));
+    assert(evcs_pfs0_probe(f,sizeof(b),&info)==EVCS_PFS0_INVALID && info.entries==0);
+    b[40]=4; b[56]=0; /* duplicate filename */
+    rewind(f); assert(fwrite(b,1,sizeof(b),f)==sizeof(b));
+    assert(evcs_pfs0_probe(f,sizeof(b),&info)==EVCS_PFS0_INVALID);
+    b[56]=6; b[70]='/'; /* unsafe name */
+    rewind(f); assert(fwrite(b,1,sizeof(b),f)==sizeof(b));
+    assert(evcs_pfs0_probe(f,sizeof(b),&info)==EVCS_PFS0_INVALID);
+    b[5]=5; /* entry count over budget */
+    rewind(f); assert(fwrite(b,1,sizeof(b),f)==sizeof(b));
+    assert(evcs_pfs0_probe(f,sizeof(b),&info)==EVCS_PFS0_LIMIT);
+    assert(fclose(f)==0);
+}
 int main(void)
 {
+    pfs0_fixture();
     char dir[] = "/tmp/evcs-r01-XXXXXX";
     assert(mkdtemp(dir));
     char p[512], nested[512];
