@@ -13,6 +13,7 @@ case "$mode" in
     native) guest=guest-native.sh; gate=EXODUS_NATIVE_DBUS_PASS ;;
     linuxabi) guest=guest-linuxabi.sh; gate=EXODUS_LINUX_ABI_REFERENCE_PASS ;;
     linuxdynamic) guest=guest-linuxdynamic.sh; gate=EXODUS_LINUX_DYNAMIC_PASS ;;
+    resident) guest=guest-resident.sh; gate=EXODUS_RESIDENT_SSH_DBUS_PASS ;;
     *) echo "Unknown reference mode" >&2; exit 2 ;;
 esac
 work=$(mktemp -d)
@@ -56,6 +57,9 @@ if [ "$mode" = linuxdynamic ]; then
     grep -Fx TUMOR_GLIBC_PTHREAD_OK "$out/linux-dynamic-host.txt"
     mcopy -i seed.img linux-dynamic ld-linux-aarch64.so.1 libc.so.6 ::
 fi
+if [ "$mode" = resident ]; then
+    for f in sessiond.c sessiond-dbus.inc; do mcopy -i seed.img "$here/$f" ::; done
+fi
 if [ "$mode" = native ]; then
     for f in sessiond.c sessiond-dbus.inc test_sessiond.py test_sessiond_dbus.sh; do
         mcopy -i seed.img "$here/$f" ::
@@ -69,6 +73,7 @@ test -f "$efi"
 limit=145m
 [ "$mode" != ssh ] || limit=65m
 [ "$mode" != native ] || limit=65m
+[ "$mode" != resident ] || limit=65m
 [ "$mode" != boot ] || limit=12m
 [ "$mode" != linuxabi ] || limit=12m
 [ "$mode" != linuxdynamic ] || limit=12m
