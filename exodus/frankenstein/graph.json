@@ -142,7 +142,8 @@
       "depends": [
         "gamescope",
         "pipewire",
-        "linux-arm64-abi"
+        "linux-arm64-abi",
+        "linux-glibc"
       ]
     },
     {
@@ -235,9 +236,22 @@
     {
       "id": "linux-arm64-abi",
       "origin": "freebsd/freebsd-src@releng/15.1:sys/arm64/linux",
-      "state": "probe-pending",
+      "state": "static-syscall-verified",
       "depends": [
         "kernel"
+      ],
+      "evidence": {
+        "run": 45500312919,
+        "job": 138821525600,
+        "scope": "Static Linux AArch64 write/exit probe passed under Linuxulator 5.15.0; overall job failed due to inconclusive LSE status through su."
+      }
+    },
+    {
+      "id": "linux-glibc",
+      "origin": "exodus/frankenstein/linux-dynamic-probe.c",
+      "state": "probe-pending",
+      "depends": [
+        "linux-arm64-abi"
       ]
     }
   ],
