@@ -21,6 +21,8 @@ size_t exodus_library_group_representative(const struct exodus_library *library,
 /* Stable owner-declared group key; never a launch ID. Returns 0 for orphan/unclassified. */
 int exodus_library_declared_group_key(const struct exodus_library *library, size_t index, char *out, size_t cap);
 int exodus_library_is_group_card(const struct exodus_library *library, size_t index);
+/* Preference identity only; not a launch target. */
+int exodus_library_favorite_key(const struct exodus_library *library, size_t index, char *out, size_t cap);
 int exodus_library_is_discovered(const struct exodus_library *library, size_t index);
 size_t exodus_library_group_size(const struct exodus_library *library, size_t index);
 void exodus_library_close(struct exodus_library *library);

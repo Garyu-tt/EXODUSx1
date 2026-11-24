@@ -3,6 +3,9 @@
 #define SDL_MAIN_HANDLED
 #include "launcher_ui.h"
 #include "horizon_settings.h"
+#ifdef __SWITCH__
+#include "favorites_store.h"
+#endif
 #include "library_catalog.h"
 #include "native_launch.h"
 #include "library_filter.h"
@@ -136,6 +139,11 @@ static int show_library(struct ui *ui, const char *path)
         exodus_library_close(library);
         return 0;
     }
+#ifdef __SWITCH__
+    const char *fav_path="sdmc:/switch/exodus-shell/favorites.v1";
+    struct exodus_favorites persisted={0};
+    int persistent=0;
+#endif
     unsigned char *favorites = calloc(total, 1);
     struct exodus_card_index *cards = calloc(total, sizeof(*cards));
     struct cover_slot covers[8] = {{0}};
@@ -145,6 +153,16 @@ static int show_library(struct ui *ui, const char *path)
         ui_message(ui, "EXODUS Library", "Not enough memory");
         goto done;
     }
+#ifdef __SWITCH__
+    persistent=exodus_fav_load(fav_path,&persisted);
+    if (!persistent) ui_message(ui,"Favorites","Preferences unreadable. Session only; existing file left unchanged.");
+    for (size_t i=0;i<total;++i) {
+        char key[EXODUS_FAV_KEY];
+        if (exodus_library_favorite_key(library,i,key,sizeof(key)) &&
+            exodus_fav_find(&persisted,key)<persisted.count)
+            favorites[exodus_library_group_representative(library,i)]=1;
+    }
+#endif
     const char *native_status=exodus_library_native_inventory_status(library);
     const char *games_status=exodus_library_discovery_status(library);
     if (strcmp(native_status,"Not requested") && strcmp(native_status,"Native inventory merged"))
@@ -174,6 +192,17 @@ static int show_library(struct ui *ui, const char *path)
             if (input.button == UI_X) {
                 size_t representative=exodus_library_group_representative(library,index);
                 favorites[representative] = !favorites[representative];
+#ifdef __SWITCH__
+                if (persistent) {
+                    char key[EXODUS_FAV_KEY];
+                    if (!exodus_library_favorite_key(library,representative,key,sizeof(key)) ||
+                        !exodus_fav_set(&persisted,key,favorites[representative]) ||
+                        !exodus_fav_save(fav_path,&persisted)) {
+                        persistent=0;
+                        ui_message(ui,"Favorites","Cannot save preferences. Changes remain in this session only.");
+                    }
+                }
+#endif
                 if (filter == FILTER_FAVORITES) {
                     count = filter_cards(library, filter, favorites, cards);
                     if (selection >= count) selection = count ? count - 1 : 0;
@@ -272,6 +301,9 @@ done:
     clear_covers(covers);
     free(cards);
     free(favorites);
+#ifdef __SWITCH__
+    exodus_fav_free(&persisted);
+#endif
     exodus_library_close(library);
     return handoff;
 }

@@ -292,6 +292,32 @@ int exodus_library_declared_group_key(const struct exodus_library *library, size
     }
     return 0;
 }
+int exodus_library_favorite_key(const struct exodus_library *library, size_t index, char *out, size_t cap)
+{
+    if (!out || !cap) return 0;
+    out[0]=0;
+    if (!library || index>=library->catalog.entries.size()) return 0;
+    if (exodus_library_declared_group_key(library,index,out,cap)) return 1;
+    const auto &entry=library->catalog.entries[index];
+    if (entry.id.find('\0')!=std::string::npos) return 0;
+    const char *id=entry.id.c_str();
+    char normalized[512];
+    uint64_t title=0;
+    const char *ns="";
+    if (entry.provider==Provider::Switch) {
+        if (exodus_title_id(id,&title)) {
+            snprintf(normalized,sizeof(normalized),"%016llx",(unsigned long long)title);
+            id=normalized;
+        } else ns="raw:";
+    } else if (entry.provider==Provider::Homebrew) {
+        if (exodus_nro_path(id,normalized)) id=normalized;
+        else ns="raw:";
+    }
+    int n=snprintf(out,cap,"%s:%s%s",exodus_library_provider(library,index),ns,id);
+    if (n<0 || (size_t)n>=cap) {out[0]=0;return 0;}
+    for (int i=0;i<n;++i) if ((unsigned char)out[i]<32 || out[i]==127) {out[0]=0;return 0;}
+    return 1;
+}
 int exodus_library_is_discovered(const struct exodus_library *library, size_t index)
 {
     return library && index>=library->first_game && index<library->catalog.entries.size();
