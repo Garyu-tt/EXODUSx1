@@ -1,4 +1,4 @@
-# Frankenstein R01: real SteamOS component port to FreeBSD ARM64
+# EXODUS Tumor R01: real SteamOS component port to FreeBSD ARM64
 
 Owner direction: #105 and #103. This is an upstream-component port, not a replacement UI. The reference VM is intentionally separate from Horizon and Switch firmware.
 
@@ -55,3 +55,7 @@ R08 copies the exact checkout's service sources and integration tests into the d
 ## R09: verified binary/package exports
 
 Graphics mode now exports the source-built Wayland and Gamescope packages. Native mode exports a tar archive of the tested FreeBSD session binaries, preserving execute permissions. Both provide an installed package/origin manifest and guest SHA256 checksums. The host attaches a separate 128 MiB disposable FAT volume, extracts only the expected filenames after a successful guest shutdown and acceptance marker, validates the hashes independently, and publishes the outputs in the CI artifact's packages directory. No host directory or real console storage is mounted into the guest. The package manifest records installed dependencies, not a complete offline bundle; their binaries, redistributability audit, repository signing, dependency closure and installable system image are subsequent gates. R09 repeats only the native and graphics workloads; R08 retains the manager and SSH jobs. No successful artifact export asserted until CI evidence.
+
+## R10: official track name and evidence graph
+
+Owner terminology: EXODUS Tumor (Опухоль) is the architectural/source-port track. Frankenstein names a separate programming language. Existing branch names, source directory and workflow file paths remain historical identifiers to avoid breaking stacked PRs and in-flight checks. New branch names use tumor. The integration graph now records scoped CI evidence for FreeBSD QEMU boot and Linux service/D-Bus tests; the graph validator checks unique nodes, dependency references, cycles and evidence fields. This is not proof of native FreeBSD application builds or physical Switch support. R08/R09 native jobs were still pending at inspection.
