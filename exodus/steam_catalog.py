@@ -161,20 +161,27 @@ def scan_libraries(libraries, *, steam_installs=()):
     entries = {}
     discovered, errors = discover_libraries(steam_installs)
     scanned = set()
+    checked_steamapps_paths = set()
     for library in list(libraries) + discovered:
         nested = library / "steamapps"
-        steamapps = library if library.name.lower() == "steamapps" else nested
+        named_steamapps = library.name.lower() == "steamapps"
+        steamapps = library if named_steamapps else nested
         try:
-            if steamapps.resolve() in scanned:
+            candidate_path = steamapps.resolve()
+            # A steamapps input can select a deeper directory than an ordinary root.
+            checked = checked_steamapps_paths if named_steamapps else scanned
+            if candidate_path in checked:
                 continue
             manifests = sorted(steamapps.iterdir())
             # A library root can share the name of its manifest directory.
-            if (steamapps == library
+            if (named_steamapps
                     and not any(MANIFEST.fullmatch(path.name) for path in manifests)
                     and nested.is_dir()):
                 steamapps = nested
                 manifests = sorted(steamapps.iterdir())
             canonical = steamapps.resolve()
+            if named_steamapps:
+                checked_steamapps_paths.add(candidate_path)
             if canonical in scanned:
                 continue
             scanned.add(canonical)
