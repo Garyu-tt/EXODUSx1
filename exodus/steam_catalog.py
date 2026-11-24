@@ -111,9 +111,16 @@ def scan_libraries(libraries):
     entries = {}
     errors = False
     for library in libraries:
-        steamapps = library if library.name.lower() == "steamapps" else library / "steamapps"
+        nested = library / "steamapps"
+        steamapps = library if library.name.lower() == "steamapps" else nested
         try:
             manifests = sorted(steamapps.iterdir())
+            # A library root can share the name of its manifest directory.
+            if (steamapps == library
+                    and not any(MANIFEST.fullmatch(path.name) for path in manifests)
+                    and nested.is_dir()):
+                steamapps = nested
+                manifests = sorted(steamapps.iterdir())
         except OSError as exc:
             print(f"{steamapps}: {exc.strerror}", file=sys.stderr)
             errors = True
