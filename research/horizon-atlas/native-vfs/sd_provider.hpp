@@ -8,8 +8,13 @@ namespace exodus::vfs {
 // Research-only provider. The caller owns FS service initialization and must
 // hold it until this provider is destroyed. No implicit mount or admission.
 class SdProvider final : public Provider {
-    FsFileSystem fs_{};
-    bool opened_ = false;
+    struct Session {
+        FsFileSystem fs{};
+        bool opened=false, active=false;
+        ~Session(){if(opened) fsFsClose(&fs);}
+    };
+    std::shared_ptr<Session> session_;
+    std::weak_ptr<Session> retired_;
     static constexpr std::string_view root = "/switch/exodus/data/";
     static bool make_path(std::string_view relative, std::string& out) {
         if(relative.empty() || relative.size() >= FS_MAX_PATH-root.size() ||
@@ -51,30 +56,110 @@ class SdProvider final : public Provider {
         FileGuard(const FileGuard&)=delete;
         FileGuard& operator=(const FileGuard&)=delete;
     };
+    struct PersistentFile final : FileHandle {
+        std::shared_ptr<Session> session;
+        FileGuard guard;
+        explicit PersistentFile(std::shared_ptr<Session> s):session(std::move(s)){}
+        StatResult stat() override {
+            if(!session->active) return {Error::unavailable};
+            s64 size=0;
+            if(R_FAILED(fsFileGetSize(&guard.file,&size))||size<0) return {Error::backend_error};
+            return {Error::ok,{EntryType::file,static_cast<std::uint64_t>(size)}};
+        }
+        ReadResult read_at(std::uint64_t offset,std::uint8_t* buffer,std::size_t capacity) override {
+            if(!session->active) return {Error::unavailable,0};
+            constexpr auto max=static_cast<std::uint64_t>(std::numeric_limits<s64>::max());
+            if(capacity>1024*1024 || (capacity&&!buffer) || offset>max || capacity>max-offset)
+                return {Error::invalid_buffer,0};
+            if(!capacity) return {Error::ok,0};
+            auto m=stat();
+            if(m.error!=Error::ok) return {m.error,0};
+            if(offset>=m.metadata.size) return {Error::ok,0};
+            const auto available=m.metadata.size-offset;
+            const auto requested=available<capacity?available:capacity;
+            u64 actual=0;
+            if(R_FAILED(fsFileRead(&guard.file,static_cast<s64>(offset),buffer,requested,
+                                   FsReadOption_None,&actual))||actual>requested) return {Error::backend_error,0};
+            return {Error::ok,static_cast<std::size_t>(actual)};
+        }
+    };
+    struct PersistentDir final : DirectoryHandle {
+        std::shared_ptr<Session> session;
+        DirGuard guard;
+        bool eof=false, failed=false;
+        explicit PersistentDir(std::shared_ptr<Session> s):session(std::move(s)){}
+        NextResult next() override {
+            if(!session->active) return {Error::unavailable};
+            if(failed) return {Error::backend_error};
+            if(eof) return {Error::ok,true};
+            auto fail=[&](){failed=true;return NextResult{Error::backend_error};};
+            FsDirectoryEntry e{};
+            s64 count=0;
+            if(R_FAILED(fsDirRead(&guard.dir,&count,1,&e))||count<0||count>1) return fail();
+            if(!count){eof=true;return {Error::ok,true};}
+            const auto* nul=static_cast<const char*>(std::memchr(e.name,0,sizeof(e.name)));
+            if(!nul) return fail();
+            std::string_view name(e.name,static_cast<std::size_t>(nul-e.name));
+            std::string checked;
+            if(name.find('/')!=std::string_view::npos||!make_path(name,checked)) return fail();
+            Metadata meta{};
+            if(e.type==FsDirEntryType_Dir) meta={EntryType::directory,0};
+            else if(e.type==FsDirEntryType_File&&e.file_size>=0) meta={EntryType::file,static_cast<std::uint64_t>(e.file_size)};
+            else return fail();
+            return {Error::ok,false,{std::string(name),meta}};
+        }
+    };
 public:
     SdProvider()=default;
     SdProvider(const SdProvider&)=delete;
     SdProvider& operator=(const SdProvider&)=delete;
     ~SdProvider() override {close();}
     bool open() {
-        if(opened_) return true;
-        if(R_FAILED(fsOpenSdCardFileSystem(&fs_))) return false;
-        opened_=true;
+        if(session_) return true;
+        if(!retired_.expired()) return false;
+        auto next=std::make_shared<Session>();
+        if(R_FAILED(fsOpenSdCardFileSystem(&next->fs))) return false;
+        next->opened=next->active=true;
+        session_=std::move(next);
         return true;
     }
     void close() {
-        if(opened_) {fsFsClose(&fs_);opened_=false;}
+        if(session_) {
+            session_->active=false;
+            retired_=session_;
+            session_.reset();
+        }
+    }
+    OpenResult<FileHandle> open_file(std::string_view path) override {
+        if(!session_) return {Error::unavailable};
+        std::string full;
+        if(!make_path(path,full)) return {Error::invalid_path};
+        auto h=std::make_unique<PersistentFile>(session_);
+        if(R_FAILED(fsFsOpenFile(&session_->fs,full.c_str(),FsOpenMode_Read,&h->guard.file)))
+            return {Error::backend_error};
+        h->guard.opened=true;
+        return {Error::ok,std::move(h)};
+    }
+    OpenResult<DirectoryHandle> open_directory(std::string_view path) override {
+        if(!session_) return {Error::unavailable};
+        std::string full;
+        if(!metadata_path(path,full)) return {Error::invalid_path};
+        auto h=std::make_unique<PersistentDir>(session_);
+        if(R_FAILED(fsFsOpenDirectory(&session_->fs,full.c_str(),
+              FsDirOpenMode_ReadDirs|FsDirOpenMode_ReadFiles,&h->guard.dir))) return {Error::backend_error};
+        h->guard.opened=true;
+        return {Error::ok,std::move(h)};
     }
     StatResult stat(std::string_view path) override {
-        if(!opened_) return {Error::unavailable};
+        if(!session_) return {Error::unavailable};
         std::string full;
         if(!metadata_path(path,full)) return {Error::invalid_path};
         FsDirEntryType type{};
-        if(R_FAILED(fsFsGetEntryType(&fs_,full.c_str(),&type))) return {Error::backend_error};
+        if(R_FAILED(fsFsGetEntryType(&session_->fs,full.c_str(),&type))) return {Error::backend_error};
         if(type==FsDirEntryType_Dir) return {Error::ok,{EntryType::directory,0}};
         if(type!=FsDirEntryType_File || path.empty()) return {Error::backend_error};
         FileGuard f;
-        if(R_FAILED(fsFsOpenFile(&fs_,full.c_str(),FsOpenMode_Read,&f.file)))
+        if(R_FAILED(fsFsOpenFile(&session_->fs,full.c_str(),FsOpenMode_Read,&f.file)))
             return {Error::backend_error};
         f.opened=true;
         s64 size=0;
@@ -82,12 +167,12 @@ public:
         return {Error::ok,{EntryType::file,static_cast<std::uint64_t>(size)}};
     }
     ListResult list(std::string_view path,std::size_t limit) override {
-        if(!opened_) return {Error::unavailable};
+        if(!session_) return {Error::unavailable};
         if(!limit || limit>max_list_entries) return {Error::invalid_buffer};
         std::string full;
         if(!metadata_path(path,full)) return {Error::invalid_path};
         DirGuard d;
-        if(R_FAILED(fsFsOpenDirectory(&fs_,full.c_str(),
+        if(R_FAILED(fsFsOpenDirectory(&session_->fs,full.c_str(),
             FsDirOpenMode_ReadDirs|FsDirOpenMode_ReadFiles,&d.dir))) return {Error::backend_error};
         d.opened=true;
         ListResult result{Error::ok};
@@ -117,7 +202,7 @@ public:
     }
     ReadResult read(std::string_view path,std::uint64_t offset,
                     std::uint8_t* buffer,std::size_t capacity) override {
-        if(!opened_) return {Error::unavailable,0};
+        if(!session_) return {Error::unavailable,0};
         std::string full;
         if(!make_path(path,full)) return {Error::invalid_path,0};
         constexpr auto max_offset=static_cast<std::uint64_t>(std::numeric_limits<s64>::max());
@@ -125,7 +210,7 @@ public:
            capacity>max_offset-offset) return {Error::invalid_buffer,0};
         if(!capacity) return {Error::ok,0};
         FileGuard f;
-        if(R_FAILED(fsFsOpenFile(&fs_,full.c_str(),FsOpenMode_Read,&f.file)))
+        if(R_FAILED(fsFsOpenFile(&session_->fs,full.c_str(),FsOpenMode_Read,&f.file)))
             return {Error::backend_error,0};
         f.opened=true;
         s64 size=0;
