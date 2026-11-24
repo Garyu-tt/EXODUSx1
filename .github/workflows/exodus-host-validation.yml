@@ -39,11 +39,24 @@ jobs:
           persist-credentials: false
       - run: make -C exodus/memory check
 
-  home-launch-policy:
-    name: HOME launch policy
+  catalog:
+    name: Catalog C++ host checks
     runs-on: ubuntu-latest
+    env:
+      JSON_INCLUDE: ${{ github.workspace }}/.ci-deps/json/single_include/nlohmann
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - run: make -C exodus/home/ulaunch check-launch-policy CXXFLAGS="-O2 -Werror -fsanitize=undefined -fno-sanitize-recover=all"
+      - name: Check out the JSON dependency pinned by uLaunch 1.2.6
+        uses: actions/checkout@v6
+        with:
+          repository: nlohmann/json
+          ref: 55f93686c01528224f448c19128836e7df245f72
+          path: .ci-deps/json
+          sparse-checkout: single_include/nlohmann
+          persist-credentials: false
+      - name: Test the HOME catalog and refresh
+        run: make -C exodus/home/ulaunch check CPPFLAGS="-I\"$JSON_INCLUDE\"" CXXFLAGS="-O2 -Werror"
+      - name: Test the Switch Steam Sync host code
+        run: make -C exodus/steam_switch check JSON_INCLUDE="$JSON_INCLUDE" HOST_FLAGS=-Werror
