@@ -22,7 +22,7 @@ def pack_titles(nacp, titles):
     nacp[0x3215] = 1
 
 
-def nro_image(title=None, *, locale=0, compressed=False):
+def nro_image(title=None, *, locale=0, compressed=False, invalid_first_title=False):
     code = bytearray(0x100)
     struct.pack_into("<4sII", code, 0x10, b"NRO0", 0, len(code))
     if title is None:
@@ -34,6 +34,8 @@ def nro_image(title=None, *, locale=0, compressed=False):
     start = locale * 0x300
     titles[start:start + len(name)] = name
     titles[start + 0x200:start + 0x206] = b"Author"
+    if invalid_first_title:
+        titles[0] = 0xFF
     if compressed:
         pack_titles(nacp, titles)
     else:
@@ -138,6 +140,18 @@ class AppCatalogTests(unittest.TestCase):
         self.assertEqual(
             [item["name"] for item in json.loads(result.stdout)["entries"]],
             ["拡張タイトル"],
+        )
+
+    def test_reads_later_valid_titles_after_invalid_first_locale(self):
+        self.add_nro("Inline.nro", nro_image("Приклад", locale=6, invalid_first_title=True))
+        self.add_nro("Compressed.nro", nro_image(
+            "拡張タイトル", locale=23, compressed=True, invalid_first_title=True,
+        ))
+        result = self.run_catalog("--switch-sd", self.sd)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(
+            [(item["provider_id"], item["name"]) for item in json.loads(result.stdout)["entries"]],
+            [("Compressed.nro", "拡張タイトル"), ("Inline.nro", "Приклад")],
         )
 
     def test_malformed_nros_report_partial_success_without_hiding_other_entries(self):
