@@ -34,7 +34,7 @@ python -m exodus.steam_sync --output steam-catalog.json
 
 The command verifies the one-time browser callback with Steam and uses `GetOwnedGames` for the verified SteamID. The key and the account's game-details visibility determine which library data the API returns. An inaccessible library, a cancelled sign-in or a failed request leaves any previous output in place. An explicitly empty library is exported as an empty Steam list. [Steam GetOwnedGames](https://partner.steamgames.com/doc/webapi/IPlayerService#GetOwnedGames)
 
-To refresh the Steam rows of an existing HOME snapshot, pass it as `--base-catalog`. The sync keeps the existing Switch and homebrew entries and replaces only the Steam entries. The output path can be the base catalog itself.
+To refresh the Steam rows of an existing HOME snapshot, pass it as `--base-catalog`. The sync keeps the existing Switch and homebrew entries and replaces only the Steam entries. The output path can be the base catalog itself. Base snapshots may use UTF-8 or UTF-16LE with a BOM, as written by Windows PowerShell 5.1 redirection. A successful refresh writes UTF-8 JSON; invalid input preserves the existing output and stops before sign-in.
 
 ```shell
 python -m exodus.steam_sync --base-catalog F:/ulaunch/exodus-catalog.json --output F:/ulaunch/exodus-catalog.json
