@@ -25,7 +25,7 @@ for macro in ('MBEDTLS_NET_C','MBEDTLS_TIMING_C',
               'MBEDTLS_PSA_CRYPTO_STORAGE_C','MBEDTLS_PSA_ITS_FILE_C'):
     s,n=re.subn(r'^#define '+macro+r'[ \t]*$', '// #define '+macro,s,flags=re.M)
     assert n==1,macro
-for macro in ('MBEDTLS_ENTROPY_HARDWARE_ALT','MBEDTLS_NO_PLATFORM_ENTROPY'):
+for macro in ('MBEDTLS_ENTROPY_HARDWARE_ALT','MBEDTLS_NO_PLATFORM_ENTROPY','MBEDTLS_PLATFORM_MS_TIME_ALT'):
     s,n=re.subn(r'^//\s*#define '+macro+r'[ \t]*$', '#define '+macro,s,flags=re.M)
     assert n==1,macro
 p.write_text(s)
