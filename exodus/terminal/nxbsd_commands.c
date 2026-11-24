@@ -1,5 +1,7 @@
 #include "nxbsd_commands.h"
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -91,17 +93,65 @@ int nxbsd_command_run(struct nxbsd_context *c,int argc,const char *const *argv)
     if(!cmd) { errno=ENOENT; return 127; }
     return cmd->fn(c,argc,argv);
 }
+static int redirect_one(struct nxbsd_context *c,const struct nxbsd_redir *r)
+{
+    if(r->kind==NXBSD_REDIR_CLOSE) {
+        if(nxbsd_fd_close(&c->fd,r->fd)<0 && errno!=EBADF) return -1;
+        return 0;
+    }
+    if(r->kind==NXBSD_REDIR_DUP)
+        return nxbsd_fd_dup2(&c->fd,r->source,r->fd)<0?-1:0;
+    int flags;
+    switch(r->kind) {
+        case NXBSD_REDIR_IN: flags=O_RDONLY; break;
+        case NXBSD_REDIR_OUT: flags=O_WRONLY|O_CREAT|O_TRUNC; break;
+        case NXBSD_REDIR_APPEND: flags=O_WRONLY|O_CREAT|O_APPEND; break;
+        case NXBSD_REDIR_EXCLUSIVE: flags=O_WRONLY|O_CREAT|O_EXCL; break;
+        default: errno=EINVAL; return -1;
+    }
+    char path[NXBSD_CWD_MAX];
+    int n;
+    if(r->path[0]=='/' || !strncmp(r->path,"sdmc:/",6))
+        n=snprintf(path,sizeof(path),"%s",r->path);
+    else
+        n=snprintf(path,sizeof(path),"%s/%s",c->cwd,r->path);
+    if(n<0 || (size_t)n>=sizeof(path)) { errno=ENAMETOOLONG; return -1; }
+#ifdef __SWITCH__
+    /* Do not select other devoptab devices through a path operand. */
+    if(strchr(!strncmp(path,"sdmc:/",6)?path+6:path,':')) { errno=EINVAL; return -1; }
+#endif
+    int native=open(path,flags,0666);
+    if(native<0) return -1;
+    int v=nxbsd_fd_adopt(&c->fd,native);
+    if(v<0) { int e=errno; close(native); errno=e; return -1; }
+    if(v==r->fd) return 0;
+    int rc=nxbsd_fd_dup2(&c->fd,v,r->fd);
+    int e=errno;
+    nxbsd_fd_close(&c->fd,v);
+    errno=e;
+    return rc<0?-1:0;
+}
 struct invocation_run {
     const struct nxbsd_command *cmd;
     struct nxbsd_invocation call;
+    const struct nxbsd_redir_list *redirs;
 };
 static int invoke(struct nxbsd_context *c,void *arg)
 {
     const struct invocation_run *r=arg;
+    if(r->redirs)
+        for(size_t i=0;i<r->redirs->count;i++)
+            if(redirect_one(c,&r->redirs->items[i])) return 1;
     return r->cmd->fn(c,r->call.argc,r->call.argv);
 }
 int nxbsd_commands_pipeline(const struct nxbsd_context *parent,
                             const struct nxbsd_invocation *calls,size_t n,int *status)
+{
+    return nxbsd_commands_pipeline_redirect(parent,calls,NULL,n,status);
+}
+int nxbsd_commands_pipeline_redirect(const struct nxbsd_context *parent,
+                            const struct nxbsd_invocation *calls,
+                            const struct nxbsd_redir_list *redirs,size_t n,int *status)
 {
     if(!parent || !calls || !status || !n || n>NXBSD_PIPELINE_MAX) {
         errno=EINVAL; return -1;
@@ -112,7 +162,19 @@ int nxbsd_commands_pipeline(const struct nxbsd_context *parent,
         if(!valid_argv(calls[i].argc,calls[i].argv)) { errno=EINVAL; return -1; }
         const struct nxbsd_command *cmd=nxbsd_command_lookup(calls[i].argv[0]);
         if(!cmd) { errno=ENOENT; return -1; }
-        runs[i]=(struct invocation_run){cmd,calls[i]};
+        if(redirs) {
+            if(redirs[i].count>NXBSD_REDIR_MAX) { errno=EINVAL; return -1; }
+            for(size_t j=0;j<redirs[i].count;j++) {
+                const struct nxbsd_redir *r=&redirs[i].items[j];
+                if(r->fd<0 || r->fd>=NXBSD_FD_MAX ||
+                   r->kind<NXBSD_REDIR_IN || r->kind>NXBSD_REDIR_CLOSE ||
+                   (r->kind==NXBSD_REDIR_DUP && (r->source<0 || r->source>=NXBSD_FD_MAX)) ||
+                   (r->kind<=NXBSD_REDIR_EXCLUSIVE && (!r->path || !*r->path))) {
+                    errno=EINVAL; return -1;
+                }
+            }
+        }
+        runs[i]=(struct invocation_run){cmd,calls[i],redirs?&redirs[i]:NULL};
         stages[i]=(struct nxbsd_stage){invoke,&runs[i]};
     }
     return nxbsd_pipeline_run(parent,stages,n,status);
