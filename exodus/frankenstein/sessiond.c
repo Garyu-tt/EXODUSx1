@@ -51,6 +51,9 @@ static void report(const char *event, const struct config *c) {
            event, c->generation, c->mode, (long)getpid());
     fflush(stdout);
 }
+#ifdef EXODUS_DBUS
+#include "sessiond-dbus.inc"
+#else
 int main(int argc, char **argv) {
     if (argc != 2) { fputs("usage: exodus-sessiond CONFIG\n", stderr); return 2; }
     sigset_t signals;
@@ -72,3 +75,5 @@ int main(int argc, char **argv) {
         }
     }
 }
+
+#endif
