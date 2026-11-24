@@ -12,7 +12,7 @@ donor=$(CDPATH= cd -- "$1" && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
-python3 "$here/prepare-donor.py" "$donor" "$tmp/corkdeck-donor"
+"${PYTHON:-python3}" "$here/prepare-donor.py" "$donor" "$tmp/corkdeck-donor"
 src="$tmp/corkdeck-donor/horizon-wine/source"
 json_include="${JSON_INCLUDE:-/usr/include/nlohmann}"
 # shellcheck disable=SC2046

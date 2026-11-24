@@ -9,9 +9,10 @@ The prepared `corkdeck-donor` tree contains the launcher subset from CorkDeck
 `adc0b52284e9e57d18808427a770a2a162c76bf0`, whose parent project is Autorun.
 EXODUS applies GPL version 2 to this copy under section 3 of LGPL 2.1.
 The selected source preserves upstream authorship, records the EXODUS changes,
-and uses the copy's GPLv2 notices and license text. The included `AUTHORS`
-and `LICENSE` identify the original work and the modified files. EXODUS
-replaced the old focus implementation with its own stationary SDL frame.
+and uses the copy's GPLv2 notices and license text. See `AUTHORS` and
+`LICENSE` for the upstream attribution and the elected license notice.
+`EXODUS-MODIFICATIONS` records the changes and date. EXODUS replaced the
+old focus implementation with its own stationary SDL frame.
 
 The original UI comes from Autorun
 [`5d5811d`](https://github.com/autorunhq/autorun/commit/5d5811dff49472f70d9f4ae9ac4f3da0b48099bb)
@@ -47,5 +48,6 @@ sha256sum ./out/exodus-shell.nro
 
 The same build command accepts a clean checkout of the pinned donor revision.
 Both forms verify the prepared source files against `donor-snapshot.sha256`.
+Set `PYTHON=python` where Python 3 is installed under that command name.
 The release CI builds from the Git input and the exported source tree and
 compares their ARM64 ELF and NRO outputs byte for byte.

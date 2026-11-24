@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 set -eu
 if [ "$#" -ne 3 ]; then
-    printf '%s\n' "usage: sh $0 EXODUS_SOURCE_DIRECTORY CORKDECK_CHECKOUT OUTPUT_DIRECTORY" >&2
+    printf '%s\n' "usage: sh $0 EXODUS_SOURCE_DIRECTORY CORKDECK_SOURCE OUTPUT_DIRECTORY" >&2
     exit 2
 fi
 

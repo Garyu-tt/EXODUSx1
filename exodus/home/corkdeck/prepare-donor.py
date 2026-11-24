@@ -16,14 +16,10 @@ FILES = (
     "launcher_audio.c", "launcher_audio.h", "launcher_image.c", "launcher_image.h",
     "launcher_pe.h", "launcher_svg.c", "launcher_svg.h", "launcher_ui.c", "launcher_ui.h",
 )
-NOTICE = b"""Copyright (c) 1993-2026 the Wine project authors (see AUTHORS).
-
-This copy of the CorkDeck launcher subset is available under the GNU General
-Public License, version 2, as published by the Free Software Foundation.
-See COPYING for the license and warranty terms.
-
-The upstream source is CorkDeck commit adc0b52284e9e57d18808427a770a2a162c76bf0:
+MODIFICATIONS = b"""The upstream source is CorkDeck commit adc0b52284e9e57d18808427a770a2a162c76bf0:
 https://github.com/plv890/CorkDeck/tree/adc0b52284e9e57d18808427a770a2a162c76bf0
+
+The terms for this prepared copy are the GNU General Public License, version 2.
 The EXODUSx1 contributors modified launcher_ui.c and launcher_ui.h on
 2026-11-25 to remove the prior focus implementation and connect a separately
 written stationary SDL frame. The upstream authorship notices are retained.
@@ -45,10 +41,19 @@ def replace_region(data, first, following, replacement):
     return data[:start] + replacement + data[stop:]
 
 
+def elect_gpl2(license_notice):
+    # LGPL 2.1 section 3 changes the license references in this copy.
+    return (license_notice.replace(b"GNU Lesser General Public License", b"GNU General Public License")
+            .replace(b"GNU\nLesser General Public License", b"GNU\nGeneral Public License")
+            .replace(b"either version 2.1 of the License, or (at\nyour option) any later version. ",
+                     b"version 2 of the License.")
+            .replace(b"COPYING.LIB", b"COPYING"))
+
+
 def checkout_snapshot(source):
     if git(source, "rev-parse", "HEAD").strip().decode("ascii") != PIN:
         raise ValueError(f"CorkDeck checkout must be pinned to {PIN}")
-    git(source, "diff", "--quiet", "HEAD", "--", SOURCE_DIR.as_posix(), "AUTHORS")
+    git(source, "diff", "--quiet", "HEAD", "--", SOURCE_DIR.as_posix(), "AUTHORS", "LICENSE")
     result = {}
     for name in FILES:
         path = SOURCE_DIR / name
@@ -66,7 +71,8 @@ def checkout_snapshot(source):
         result[path] = b"// SPDX-License-Identifier: GPL-2.0-only\n" + data
     result[Path("AUTHORS")] = git(source, "show", f"{PIN}:AUTHORS")
     result[Path("COPYING")] = (HERE.parent / "ulaunch" / "COPYING").read_bytes().replace(b"\r\n", b"\n")
-    result[Path("LICENSE")] = NOTICE
+    result[Path("LICENSE")] = elect_gpl2(git(source, "show", f"{PIN}:LICENSE"))
+    result[Path("EXODUS-MODIFICATIONS")] = MODIFICATIONS
     result[MARKER] = (PIN + "\n").encode("ascii")
     return result
 

@@ -21,6 +21,23 @@ INPUTS = (
 )
 
 
+def extract_inputs(data, output):
+    output.mkdir(parents=True)
+    output = output.resolve()
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:") as archive:
+        for item in archive:
+            target = (output / item.name).resolve()
+            if not target.is_relative_to(output) or not (item.isdir() or item.isfile()):
+                raise ValueError(f"Unexpected path in shell Git archive: {item.name}")
+            if item.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with archive.extractfile(item) as source, target.open("wb") as destination:
+                    shutil.copyfileobj(source, destination)
+                target.chmod(item.mode & 0o777)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("revision", help="Git commit to export")
@@ -30,12 +47,12 @@ def main():
 
     git = ["git", "-C", str(REPO)]
     revision = subprocess.check_output(
-        [*git, "rev-parse", "--verify", f"{args.revision}^{{commit}}"], text=True
+        [*git, "rev-parse", "--verify", "--end-of-options", args.revision], text=True
     ).strip()
+    if subprocess.check_output([*git, "cat-file", "-t", revision]).strip() != b"commit":
+        parser.error("revision must identify a Git commit")
     data = subprocess.check_output([*git, "archive", revision, "--", *INPUTS])
-    args.output.mkdir(parents=True)
-    with tarfile.open(fileobj=io.BytesIO(data), mode="r:") as archive:
-        archive.extractall(args.output, filter="data")
+    extract_inputs(data, args.output)
     subprocess.run(
         [sys.executable, str(args.output / SHELL / "prepare-donor.py"),
          str(args.donor.resolve()), str(args.output / "corkdeck-donor")],

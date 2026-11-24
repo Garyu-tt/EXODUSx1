@@ -128,7 +128,7 @@ jobs:
           source=$(find /tmp/exodus-release-source-check -name EXODUS-SHELL-COMMIT -type f)
           test "$(cat "$source")" = "$GITHUB_SHA"
           source=$(dirname "$source")
-          sh "$source/exodus/home/corkdeck/build-switch.sh" "$source/corkdeck-donor" /tmp/exodus-source-rebuilt
+          (cd "$source" && sh exodus/home/corkdeck/build-switch.sh "$source/corkdeck-donor" /tmp/exodus-source-rebuilt)
           cmp /tmp/exodus-build/exodus-shell.elf /tmp/exodus-source-rebuilt/exodus-shell.elf
           cmp /tmp/exodus-build/exodus-shell.nro /tmp/exodus-source-rebuilt/exodus-shell.nro
       - uses: actions/upload-artifact@v4
