@@ -17,7 +17,12 @@ from pathlib import Path
 import re
 p=Path('include/mbedtls/mbedtls_config.h')
 s=p.read_text()
-for macro in ('MBEDTLS_NET_C','MBEDTLS_TIMING_C'):
+for macro in ('MBEDTLS_NET_C','MBEDTLS_TIMING_C',
+              'MBEDTLS_SSL_SESSION_TICKETS','MBEDTLS_SSL_TICKET_C',
+              'MBEDTLS_SSL_CACHE_C','MBEDTLS_SSL_CONTEXT_SERIALIZATION',
+              'MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_PSK_ENABLED',
+              'MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_PSK_EPHEMERAL_ENABLED',
+              'MBEDTLS_PSA_CRYPTO_STORAGE_C','MBEDTLS_PSA_ITS_FILE_C'):
     s,n=re.subn(r'^#define '+macro+r'[ \t]*$', '// #define '+macro,s,flags=re.M)
     assert n==1,macro
 for macro in ('MBEDTLS_ENTROPY_HARDWARE_ALT','MBEDTLS_NO_PLATFORM_ENTROPY'):
