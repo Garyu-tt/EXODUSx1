@@ -9,7 +9,7 @@ ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 all: $(TARGET).nro
 $(BUILD):
 	mkdir -p $@
-$(BUILD)/$(TARGET).elf: main.c bsd_path.h Makefile | $(BUILD)
+$(BUILD)/$(TARGET).elf: main.c bsd_path.h tool_return.h Makefile | $(BUILD)
 	$(CC) -std=gnu11 -O2 -Wall -Wextra $(CFLAGS) $(ARCH) -D__SWITCH__ -I$(LIBNX)/include -specs=$(LIBNX)/switch.specs $(LDFLAGS) main.c -L$(LIBNX)/lib -lnx -o $@
 # Link-only pipe contract probe; not a device-executed test.
 $(BUILD)/nxbsd-pipe-probe.elf: nxbsd_pipe.c nxbsd_pipe.h test_nxbsd_pipe.c Makefile | $(BUILD)
