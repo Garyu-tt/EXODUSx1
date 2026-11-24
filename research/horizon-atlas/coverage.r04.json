@@ -1,0 +1,654 @@
+{
+  "schema": "exodus.horizon-coverage/v1",
+  "scope": "R01 service umbrella header inventory only, not all Horizon services, commands, interfaces or access permissions",
+  "counts": {
+    "expected_headers": 91,
+    "source_modules_scanned": 90,
+    "common_type_headers": 1,
+    "unresolved": 0,
+    "direct_dispatch_occurrences": 916,
+    "version_check_occurrences": 1329,
+    "helper_call_candidates": 209
+  },
+  "coverage": [
+    {
+      "module": "sm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r02.json"
+    },
+    {
+      "module": "smm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-f.json"
+    },
+    {
+      "module": "fs",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r02.json"
+    },
+    {
+      "module": "fsldr",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-f.json"
+    },
+    {
+      "module": "fspr",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-f.json"
+    },
+    {
+      "module": "acc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-g.json"
+    },
+    {
+      "module": "apm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-b.json"
+    },
+    {
+      "module": "applet",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-b.json"
+    },
+    {
+      "module": "async",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-e.json"
+    },
+    {
+      "module": "aud",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-f.json"
+    },
+    {
+      "module": "audctl",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-a.json"
+    },
+    {
+      "module": "audin",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-a.json"
+    },
+    {
+      "module": "audout",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r02.json"
+    },
+    {
+      "module": "audrec",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-a.json"
+    },
+    {
+      "module": "audren",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-a.json"
+    },
+    {
+      "module": "auddev",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-a.json"
+    },
+    {
+      "module": "hwopus",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-a.json"
+    },
+    {
+      "module": "csrng",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-a.json"
+    },
+    {
+      "module": "lbl",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-c.json"
+    },
+    {
+      "module": "i2c",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-d.json"
+    },
+    {
+      "module": "gpio",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-d.json"
+    },
+    {
+      "module": "uart",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-e.json"
+    },
+    {
+      "module": "bpc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-d.json"
+    },
+    {
+      "module": "pcv",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-d.json"
+    },
+    {
+      "module": "clkrst",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-a.json"
+    },
+    {
+      "module": "fan",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-a.json"
+    },
+    {
+      "module": "pgl",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-e.json"
+    },
+    {
+      "module": "psm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r02.json"
+    },
+    {
+      "module": "spsm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-d.json"
+    },
+    {
+      "module": "bsd",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-a.json"
+    },
+    {
+      "module": "sfdnsres",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-a.json"
+    },
+    {
+      "module": "htcs",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-e.json"
+    },
+    {
+      "module": "fatal",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-c.json"
+    },
+    {
+      "module": "time",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-a.json"
+    },
+    {
+      "module": "usb",
+      "status": "common_type_header_reviewed",
+      "batch": null,
+      "header_blob": "92f706e192bd944cb544cadbf439e6c4423e3b5f",
+      "reason": "Common descriptors, enums and types; IPC implementations represented by usbhs and usbds."
+    },
+    {
+      "module": "usbds",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-a.json"
+    },
+    {
+      "module": "usbhs",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-a.json"
+    },
+    {
+      "module": "hid",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r02.json"
+    },
+    {
+      "module": "hidbus",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-c.json"
+    },
+    {
+      "module": "hiddbg",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-g.json"
+    },
+    {
+      "module": "hidsys",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-f.json"
+    },
+    {
+      "module": "irs",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-c.json"
+    },
+    {
+      "module": "pl",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-b.json"
+    },
+    {
+      "module": "vi",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r02.json"
+    },
+    {
+      "module": "nv",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r02.json"
+    },
+    {
+      "module": "nifm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r02.json"
+    },
+    {
+      "module": "nim",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-g.json"
+    },
+    {
+      "module": "ns",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-f.json"
+    },
+    {
+      "module": "ldr",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-b.json"
+    },
+    {
+      "module": "ro",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-b.json"
+    },
+    {
+      "module": "tc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-c.json"
+    },
+    {
+      "module": "ts",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-c.json"
+    },
+    {
+      "module": "pm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-b.json"
+    },
+    {
+      "module": "set",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-b.json"
+    },
+    {
+      "module": "ssl",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-a.json"
+    },
+    {
+      "module": "lr",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-b.json"
+    },
+    {
+      "module": "bt",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-c.json"
+    },
+    {
+      "module": "btdrv",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-f.json"
+    },
+    {
+      "module": "btm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-c.json"
+    },
+    {
+      "module": "btmu",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r03-c.json"
+    },
+    {
+      "module": "btmsys",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-f.json"
+    },
+    {
+      "module": "spl",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-g.json"
+    },
+    {
+      "module": "ncm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-g.json"
+    },
+    {
+      "module": "psc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-d.json"
+    },
+    {
+      "module": "caps",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-b.json"
+    },
+    {
+      "module": "capsa",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-b.json"
+    },
+    {
+      "module": "capsc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-b.json"
+    },
+    {
+      "module": "capsdc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-b.json"
+    },
+    {
+      "module": "capsu",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-b.json"
+    },
+    {
+      "module": "capssc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-b.json"
+    },
+    {
+      "module": "capssu",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-b.json"
+    },
+    {
+      "module": "capmtp",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-g.json"
+    },
+    {
+      "module": "nfc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-g.json"
+    },
+    {
+      "module": "wlaninf",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-e.json"
+    },
+    {
+      "module": "pctl",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-g.json"
+    },
+    {
+      "module": "pdm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-c.json"
+    },
+    {
+      "module": "grc",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-b.json"
+    },
+    {
+      "module": "friends",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-h.json"
+    },
+    {
+      "module": "notif",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-c.json"
+    },
+    {
+      "module": "mii",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-c.json"
+    },
+    {
+      "module": "miiimg",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-c.json"
+    },
+    {
+      "module": "ldn",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-e.json"
+    },
+    {
+      "module": "lp2p",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-e.json"
+    },
+    {
+      "module": "news",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-h.json"
+    },
+    {
+      "module": "ins",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-c.json"
+    },
+    {
+      "module": "ectx",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-c.json"
+    },
+    {
+      "module": "avm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-c.json"
+    },
+    {
+      "module": "mm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-d.json"
+    },
+    {
+      "module": "omm",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-a.json"
+    },
+    {
+      "module": "idlesys",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-d.json"
+    },
+    {
+      "module": "ovln",
+      "status": "source_literal_scan_complete",
+      "batch": "ipc-candidates.r04-h.json"
+    }
+  ],
+  "batches": [
+    {
+      "file": "ipc-candidates.r02.json",
+      "modules": [
+        "sm",
+        "fs",
+        "vi",
+        "nv",
+        "hid",
+        "psm",
+        "nifm",
+        "audout"
+      ],
+      "dispatches": 102,
+      "versions": 144
+    },
+    {
+      "file": "ipc-candidates.r03-a.json",
+      "modules": [
+        "audin",
+        "audren",
+        "ssl",
+        "bsd",
+        "sfdnsres",
+        "usbhs",
+        "usbds",
+        "time"
+      ],
+      "dispatches": 35,
+      "versions": 104
+    },
+    {
+      "file": "ipc-candidates.r03-b.json",
+      "modules": [
+        "set",
+        "pl",
+        "apm",
+        "applet",
+        "ro",
+        "pm",
+        "ldr",
+        "lr"
+      ],
+      "dispatches": 210,
+      "versions": 255
+    },
+    {
+      "file": "ipc-candidates.r03-c.json",
+      "modules": [
+        "bt",
+        "btm",
+        "btmu",
+        "hidbus",
+        "irs",
+        "lbl",
+        "tc",
+        "ts"
+      ],
+      "dispatches": 59,
+      "versions": 118
+    },
+    {
+      "file": "ipc-candidates.r04-a.json",
+      "modules": [
+        "audctl",
+        "audrec",
+        "auddev",
+        "hwopus",
+        "csrng",
+        "fan",
+        "clkrst",
+        "omm"
+      ],
+      "dispatches": 52,
+      "versions": 22
+    },
+    {
+      "file": "ipc-candidates.r04-b.json",
+      "modules": [
+        "caps",
+        "capsa",
+        "capsc",
+        "capsdc",
+        "capsu",
+        "capssc",
+        "capssu",
+        "grc"
+      ],
+      "dispatches": 76,
+      "versions": 75
+    },
+    {
+      "file": "ipc-candidates.r04-c.json",
+      "modules": [
+        "pdm",
+        "notif",
+        "mii",
+        "miiimg",
+        "avm",
+        "fatal",
+        "ectx",
+        "ins"
+      ],
+      "dispatches": 46,
+      "versions": 18
+    },
+    {
+      "file": "ipc-candidates.r04-d.json",
+      "modules": [
+        "bpc",
+        "pcv",
+        "spsm",
+        "psc",
+        "idlesys",
+        "mm",
+        "i2c",
+        "gpio"
+      ],
+      "dispatches": 21,
+      "versions": 17
+    },
+    {
+      "file": "ipc-candidates.r04-e.json",
+      "modules": [
+        "uart",
+        "async",
+        "pgl",
+        "htcs",
+        "wlaninf",
+        "ldn",
+        "lp2p"
+      ],
+      "dispatches": 34,
+      "versions": 41
+    },
+    {
+      "file": "ipc-candidates.r04-f.json",
+      "modules": [
+        "smm",
+        "fsldr",
+        "fspr",
+        "aud",
+        "hidsys",
+        "ns",
+        "btdrv",
+        "btmsys"
+      ],
+      "dispatches": 130,
+      "versions": 395
+    },
+    {
+      "file": "ipc-candidates.r04-g.json",
+      "modules": [
+        "acc",
+        "hiddbg",
+        "nim",
+        "spl",
+        "ncm",
+        "capmtp",
+        "nfc",
+        "pctl"
+      ],
+      "dispatches": 120,
+      "versions": 130
+    },
+    {
+      "file": "ipc-candidates.r04-h.json",
+      "modules": [
+        "friends",
+        "news",
+        "ovln"
+      ],
+      "dispatches": 31,
+      "versions": 10
+    }
+  ],
+  "limitations": [
+    "Literal scans do not cover all macros, helpers, dynamic dispatch or commands.",
+    "No HOS version applicability or NPDM ACL proven by this inventory.",
+    "No native execution or device tests. Restricted capabilities remain disabled.",
+    "Prior four batch totals reused from recorded R02/R03 results."
+  ]
+}
