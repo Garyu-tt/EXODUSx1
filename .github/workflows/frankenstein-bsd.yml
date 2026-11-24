@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'exodus/frankenstein/guest-*.sh'
+      - 'exodus/frankenstein/tumor_reference_*'
       - 'exodus/frankenstein/linux-abi-probe.S'
       - 'exodus/frankenstein/linux-dynamic-probe.c'
       - 'exodus/frankenstein/run-reference.sh'
@@ -21,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - mode: resident
+          - mode: rcresident
             minutes: 85
     timeout-minutes: ${{ matrix.minutes }}
     steps:
@@ -41,6 +42,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tumor-r15-${{ matrix.mode }}-evidence
+          name: tumor-r16-${{ matrix.mode }}-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn
