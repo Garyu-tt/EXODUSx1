@@ -303,12 +303,17 @@ int exodus_library_favorite_key(const struct exodus_library *library, size_t ind
     const char *id=entry.id.c_str();
     char normalized[512];
     uint64_t title=0;
-    if (entry.provider==Provider::Switch && exodus_title_id(id,&title)) {
-        snprintf(normalized,sizeof(normalized),"%016llx",(unsigned long long)title);
-        id=normalized;
-    } else if (entry.provider==Provider::Homebrew && exodus_nro_path(id,normalized))
-        id=normalized;
-    int n=snprintf(out,cap,"%s:%s",exodus_library_provider(library,index),id);
+    const char *ns="";
+    if (entry.provider==Provider::Switch) {
+        if (exodus_title_id(id,&title)) {
+            snprintf(normalized,sizeof(normalized),"%016llx",(unsigned long long)title);
+            id=normalized;
+        } else ns="raw:";
+    } else if (entry.provider==Provider::Homebrew) {
+        if (exodus_nro_path(id,normalized)) id=normalized;
+        else ns="raw:";
+    }
+    int n=snprintf(out,cap,"%s:%s%s",exodus_library_provider(library,index),ns,id);
     if (n<0 || (size_t)n>=cap) {out[0]=0;return 0;}
     for (int i=0;i<n;++i) if ((unsigned char)out[i]<32 || out[i]==127) {out[0]=0;return 0;}
     return 1;
