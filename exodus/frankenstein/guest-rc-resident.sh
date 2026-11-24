@@ -190,4 +190,33 @@ echo EXODUS_SSH_REVOCATION_PASS
 cat "$work/sshd.log"
 service tumor_reference_session stop
 service tumor_reference_bus stop
+# Publish only the exact tested reference components, never credentials,
+# account state, SSH keys or live bus sockets. Not a production installer.
+bundle="$src/bundle"
+install -d -m 755 "$bundle/bin" "$bundle/rc.d"
+install -m 755 /usr/local/bin/exodus-sessiond-dbus "$bundle/bin/"
+install -m 755 /usr/local/bin/exodus-session-select "$bundle/bin/"
+for f in tumor_reference_bus tumor_reference_session; do
+    install -m 555 "/usr/local/etc/rc.d/$f" "$bundle/rc.d/$f"
+done
+pkg query -a '%n-%v %o' | sort > "$bundle/dependencies.txt"
+freebsd-version -ku > "$bundle/freebsd-version.txt"
+cat > "$bundle/README.txt" <<'EOF'
+Tumor FreeBSD ARM64 reference components
+Test-account-specific rc.d scripts; opt-in only.
+No SSH private keys or persisted user configuration included.
+Not a production installer, boot image or physical Switch build.
+Requires FreeBSD 15.1 ARM64, GLib, D-Bus and an explicitly provisioned
+unprivileged exodusref account and private configuration directory.
+Graphical mode is not implemented.
+EOF
+(cd "$bundle" && sha256 -r bin/* rc.d/* dependencies.txt freebsd-version.txt README.txt > SHA256SUMS)
+export_dir=$(mktemp -d /var/tmp/tumor-rc-export.XXXXXX)
+mount -t msdosfs /dev/msdosfs/EXODUSOUT "$export_dir"
+tar -czf "$export_dir/tumor-resident-reference.tar.gz" -C "$bundle" .
+cp "$bundle/dependencies.txt" "$export_dir/dependencies.txt"
+(cd "$export_dir" && sha256 -r tumor-resident-reference.tar.gz dependencies.txt > SHA256SUMS)
+sync
+umount "$export_dir"
+rmdir "$export_dir"
 echo EXODUS_RC_RESIDENT_PASS
