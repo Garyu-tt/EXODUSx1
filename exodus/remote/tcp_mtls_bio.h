@@ -49,6 +49,17 @@ static int ext_open(ext_pair *p){
        peer.sin_addr.s_addr!=htonl(INADDR_LOOPBACK))goto done;
     int err=0;socklen_t elen=sizeof(err);
     if(!ext_ready(p->client,POLLOUT)||getsockopt(p->client,SOL_SOCKET,SO_ERROR,&err,&elen)||err)goto done;
+    /* Accept only the exact local client created by this diagnostic. */
+    struct sockaddr_in local={0},remote={0};
+    socklen_t llen=sizeof(local),rlen=sizeof(remote);
+    if(getsockname(p->client,(struct sockaddr*)&local,&llen)||
+       getpeername(p->server,(struct sockaddr*)&remote,&rlen)||
+       local.sin_family!=AF_INET||remote.sin_family!=AF_INET||
+       local.sin_addr.s_addr!=htonl(INADDR_LOOPBACK)||
+       local.sin_addr.s_addr!=peer.sin_addr.s_addr||
+       local.sin_port!=peer.sin_port||
+       remote.sin_addr.s_addr!=local.sin_addr.s_addr||
+       remote.sin_port!=local.sin_port)goto done;
     ok=1;
 done:
     if(listener>=0)close(listener);
