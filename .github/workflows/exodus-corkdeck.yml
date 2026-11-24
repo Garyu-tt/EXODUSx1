@@ -110,9 +110,18 @@ jobs:
         env:
           TOOL: ${{ matrix.tool }}
         run: |
-          dkp-pacman -Syu --noconfirm --needed switch-dev
+          # The devkita64 image already includes the SDK used by terminal.
+          test -x "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc"
+          test -f "$DEVKITPRO/libnx/switch.specs"
           if [ "$TOOL" = ssh ]; then
-            dkp-pacman -S --noconfirm --needed switch-libssh2
+            export PKG_CONFIG_PATH=
+            export PKG_CONFIG_LIBDIR="$DEVKITPRO/portlibs/switch/lib/pkgconfig:$DEVKITPRO/portlibs/switch/share/pkgconfig"
+            if ! pkg-config --exists libssh2; then
+              # First use the existing package database, then refresh once.
+              dkp-pacman -S --noconfirm --needed switch-libssh2 ||
+                dkp-pacman -Syu --noconfirm --needed switch-libssh2
+            fi
+            pkg-config --exists libssh2
           fi
       - name: Build pinned native tool
         env:
