@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "library_catalog.h"
+#include "native_catalog_merge.hpp"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -7,8 +8,51 @@
 #include <filesystem>
 #include <string>
 
+static void native_merge_fixture()
+{
+    using namespace exodus::home;
+    Catalog external{CatalogStatus::Ready, {
+        {Provider::Steam,"Steam game","42"},
+        {Provider::Switch,"Saved title","010000000000ABCD","art",123},
+        {Provider::Homebrew,"Saved tool","tools/tool.nro"},
+        {Provider::Other,"Unknown A","same"},
+        {Provider::Other,"Unknown B","same"}
+    },true};
+    const Catalog live{CatalogStatus::Ready,{
+        {Provider::Switch,"Live duplicate","010000000000abcd"},
+        {Provider::Switch,"Native title","0100000000001234"},
+        {Provider::Homebrew,"Live duplicate","tools/tool.nro"},
+        {Provider::Homebrew,"New tool","new.nro"}
+    }};
+    assert(MergeNativeCatalog(external,live)==NativeMergeResult::Ready);
+    assert(external.entries.size()==7 && external.steam_snapshot_applied);
+    assert(external.entries[0].provider==Provider::Steam);
+    assert(external.entries[1].artwork=="art" && external.entries[1].last_played==123);
+    assert(external.entries[5].id=="0100000000001234");
+    assert(external.entries[6].id=="new.nro");
+    assert(MergeNativeCatalog(external,live)==NativeMergeResult::Ready);
+    assert(external.entries.size()==7);
+    const Catalog unavailable{CatalogStatus::Unavailable,{}};
+    assert(MergeNativeCatalog(external,unavailable)==NativeMergeResult::Unavailable);
+    assert(external.entries.size()==7);
+    Catalog invalid{CatalogStatus::Invalid,{}};
+    assert(MergeNativeCatalog(invalid,live)==NativeMergeResult::Invalid);
+    assert(invalid.status==CatalogStatus::Invalid && invalid.entries.empty());
+    Catalog absent{CatalogStatus::Unavailable,{}};
+    assert(MergeNativeCatalog(absent,live)==NativeMergeResult::Ready);
+    assert(absent.entries.size()==4);
+    Catalog full{CatalogStatus::Ready,{}};
+    for (size_t i=0;i<CatalogEntryLimit;++i)
+        full.entries.push_back({Provider::Steam,"Game",std::to_string(i+1)});
+    assert(MergeNativeCatalog(full,live)==NativeMergeResult::Limit);
+    assert(full.entries.size()==CatalogEntryLimit && full.entries.back().provider==Provider::Steam);
+    Catalog huge{CatalogStatus::Ready,{{Provider::Steam,std::string(CatalogByteLimit,'a'),"42"}}};
+    assert(MergeNativeCatalog(huge,live)==NativeMergeResult::Limit);
+    assert(huge.entries.size()==1 && huge.entries[0].title.size()==CatalogByteLimit);
+}
 int main(int argc, char **argv)
 {
+    native_merge_fixture();
     assert(argc == 2);
     const char *providers[] = {"steam", "switch", "switch_homebrew", "corkdeck", "other"};
     const char *labels[] = {"Steam", "Switch", "Homebrew", "CorkDeck", "Other"};
