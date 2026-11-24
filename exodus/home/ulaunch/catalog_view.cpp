@@ -44,19 +44,14 @@ namespace exodus::home {
             return "exodus_catalog_unavailable";
         }
 
-        struct LaunchChoice {
-            std::uint64_t id;
-            std::string title;
-        };
-
-        bool SelectTitle(const std::vector<LaunchChoice> &launchable) {
+        bool SelectTitle(const std::vector<const Entry *> &launchable) {
             std::string content;
             std::vector<std::string> options;
             for (const auto &choice : launchable) {
                 if (!content.empty())
                     content += '\n';
                 const auto number = std::to_string(options.size() + 1);
-                content += number + ". " + choice.title;
+                content += number + ". [" + CatalogText(ProviderLabel(choice->provider)) + "] " + choice->title;
                 options.push_back(number);
             }
             options.push_back(CatalogText("cancel"));
@@ -64,9 +59,12 @@ namespace exodus::home {
                 CatalogText("exodus_catalog_select_title"), content, options, true);
             if (selected < 0 || static_cast<std::size_t>(selected) >= launchable.size())
                 return false;
-            const auto &choice = launchable[static_cast<std::size_t>(selected)];
-            return g_MenuApplication->GetLayout<ul::menu::ui::MainMenuLayout>()
-                ->TryLaunchCatalogApplication(choice.id);
+            const auto &choice = *launchable[static_cast<std::size_t>(selected)];
+            const auto &menu = g_MenuApplication->GetLayout<ul::menu::ui::MainMenuLayout>();
+            if (choice.provider == Provider::Homebrew)
+                return menu->TryLaunchCatalogHomebrew(choice.id);
+            const auto id = SwitchApplicationId(choice);
+            return id && menu->TryLaunchCatalogApplication(*id);
         }
 
     }
@@ -90,7 +88,7 @@ namespace exodus::home {
             const auto first = page * ItemsPerPage;
             const auto end = std::min(first + ItemsPerPage, catalog.entries.size());
             std::string content;
-            std::vector<LaunchChoice> launchable;
+            std::vector<const Entry *> launchable;
             for (auto index = first; index < end; ++index) {
                 if (index > first)
                     content += '\n';
@@ -98,7 +96,9 @@ namespace exodus::home {
                 content += "[" + CatalogText(ProviderLabel(entry.provider)) + "] " + entry.title;
                 const auto id = SwitchApplicationId(entry);
                 if (id && main_menu->CanLaunchCatalogApplication(*id)) {
-                    launchable.push_back({*id, entry.title});
+                    launchable.push_back(&entry);
+                } else if (entry.provider == Provider::Homebrew && main_menu->CanLaunchCatalogHomebrew(entry.id)) {
+                    launchable.push_back(&entry);
                 }
             }
             const auto page_title = title + " " + std::to_string(page + 1) + "/" + std::to_string(page_count);

@@ -1,28 +1,255 @@
+diff --git a/libs/uCommon/include/ul/loader/loader_TargetTypes.hpp b/libs/uCommon/include/ul/loader/loader_TargetTypes.hpp
+index f3d2f71..c44f616 100755
+--- a/libs/uCommon/include/ul/loader/loader_TargetTypes.hpp
++++ b/libs/uCommon/include/ul/loader/loader_TargetTypes.hpp
+@@ -16,0 +17 @@ namespace ul::loader {
++        static constexpr u32 CatalogAppletMagic = 0x31434855; // "UHC1"
 diff --git a/libs/uCommon/include/ul/smi/smi_Protocol.hpp b/libs/uCommon/include/ul/smi/smi_Protocol.hpp
-index 7dd331d..a0d0d6d 100755
+index 7dd331d..efe7b9a 100755
 --- a/libs/uCommon/include/ul/smi/smi_Protocol.hpp
 +++ b/libs/uCommon/include/ul/smi/smi_Protocol.hpp
-@@ -82 +82,8 @@ namespace ul::smi {
+@@ -82 +82,14 @@ namespace ul::smi {
 -        OpenControllerKeyRemapping
 +        OpenControllerKeyRemapping,
 +        QueryCatalogGameCardApplication,
 +        LaunchCatalogGameCardApplication,
++        QueryCatalogHomebrewApplet,
++        LaunchCatalogHomebrewApplet,
 +    };
 +
 +    struct CatalogGameCardInfo {
 +        u64 application_id;
 +        char name[0x200];
++    };
++
++    struct CatalogHomebrewAppletInfo {
++        char path[loader::NroPathSize];
 diff --git a/libs/uCommon/include/ul/ul_Results.rc.hpp b/libs/uCommon/include/ul/ul_Results.rc.hpp
 index abd7983..14336ad 100644
 --- a/libs/uCommon/include/ul/ul_Results.rc.hpp
 +++ b/libs/uCommon/include/ul/ul_Results.rc.hpp
 @@ -34,0 +35 @@ namespace ulaunch {
 +    R_DEFINE_ERROR_RESULT(CatalogLaunchDenied, 407);
+diff --git a/projects/uLoader/source/ul/loader/loader_Input.cpp b/projects/uLoader/source/ul/loader/loader_Input.cpp
+index 931898d..1e34f4d 100755
+--- a/projects/uLoader/source/ul/loader/loader_Input.cpp
++++ b/projects/uLoader/source/ul/loader/loader_Input.cpp
+@@ -2,0 +3 @@
++#include <ul/menu/catalog_homebrew_policy.hpp>
+@@ -5,0 +7 @@
++#include <cstring>
+@@ -36 +38 @@ namespace ul::loader {
+-        if(static_cast<size_t>(storage_size) >= sizeof(out_target_ipt)) {
++        if(storage_size >= static_cast<s64>(sizeof(out_target_ipt))) {
+@@ -37,0 +40,22 @@ namespace ul::loader {
++            if(out_target_ipt.magic == TargetInput::CatalogAppletMagic) {
++                constexpr bool once = true;
++                constexpr bool auto_record = false;
++                if(!SelfIsApplet() || storage_size != static_cast<s64>(sizeof(out_target_ipt))
++                    || std::memcmp(&out_target_ipt.target_once, &once, sizeof(once)) != 0
++                    || std::memcmp(&out_target_ipt.is_auto_game_recording, &auto_record, sizeof(auto_record)) != 0
++                    || std::memchr(out_target_ipt.nro_path, '\0', sizeof(out_target_ipt.nro_path)) == nullptr
++                    || std::memchr(out_target_ipt.nro_argv, '\0', sizeof(out_target_ipt.nro_argv)) == nullptr
++                    || std::memchr(out_target_ipt.menu_caption, '\0', sizeof(out_target_ipt.menu_caption)) == nullptr) {
++                    return ResultCatalogLaunchDenied;
++                }
++
++                constexpr auto root = exodus::home::HomebrewAppletDirectory;
++                const std::string_view path(out_target_ipt.nro_path);
++                const std::string_view argv(out_target_ipt.nro_argv);
++                if(!path.starts_with(root) || !exodus::home::IsCanonicalHomebrewAppletId(path.substr(root.size()), NroPathSize)
++                    || argv.size() != path.size() + 2 || argv.front() != '"' || argv.back() != '"'
++                    || argv.substr(1, path.size()) != path) {
++                    return ResultCatalogLaunchDenied;
++                }
++                return ResultSuccess;
++            }
+diff --git a/projects/uLoader/source/ul/loader/loader_Target.cpp b/projects/uLoader/source/ul/loader/loader_Target.cpp
+index 4cf7a18..e115f10 100755
+--- a/projects/uLoader/source/ul/loader/loader_Target.cpp
++++ b/projects/uLoader/source/ul/loader/loader_Target.cpp
+@@ -10,0 +11 @@
++#include "loader_nro_bounds.hpp"
+@@ -37,0 +39 @@ namespace ul::loader {
++        size_t g_TargetWritableSize = 0;
+@@ -56,2 +57,0 @@ namespace ul::loader {
+-        constexpr size_t PageAlignment = 0x1000;
+-
+@@ -156 +156 @@ namespace ul::loader {
+-                UL_RC_ASSERT(hbloader::ResultAllocateHeapFailure);
++                return hbloader::ResultAllocateHeapFailure;
+@@ -164 +164,13 @@ namespace ul::loader {
+-        Result InitializeFsdev() {
++        bool IsCatalogAppletTarget() {
++            return g_TargetInput.magic == TargetInput::CatalogAppletMagic;
++        }
++
++        void CheckTargetResult(const Result rc) {
++            if(R_FAILED(rc) && IsCatalogAppletTarget()) {
++                UL_LOG_WARN("Catalog homebrew applet load stopped (%x)", R_VALUE(rc));
++                exit(EXIT_FAILURE);
++            }
++            UL_RC_ASSERT(rc);
++        }
++
++        Result ReadTargetImage(size_t &out_mapped_size) {
+@@ -165,0 +178 @@ namespace ul::loader {
++            util::OnScopeExit close_sm([]() { smExit(); });
+@@ -166,0 +180 @@ namespace ul::loader {
++            util::OnScopeExit close_fs([]() { fsExit(); });
+@@ -167,0 +182 @@ namespace ul::loader {
++            util::OnScopeExit unmount([]() { fsdevUnmountAll(); });
+@@ -169,2 +184,5 @@ namespace ul::loader {
+-            return ResultSuccess;
+-        }
++            const auto file = fopen(g_NextTargetPath, "rb");
++            if(file == nullptr) {
++                return hbloader::ResultNroOpenFailure;
++            }
++            util::OnScopeExit close_file([&]() { fclose(file); });
+@@ -172,4 +190,30 @@ namespace ul::loader {
+-        void FinalizeFsdev() {
+-            fsdevUnmountAll();
+-            fsExit();
+-            smExit();
++            NroStart start;
++            NroHeader header;
++            if(fread(&start, sizeof(start), 1, file) != 1 || fread(&header, sizeof(header), 1, file) != 1) {
++                return hbloader::ResultNroHeaderReadFailure;
++            }
++            if(header.magic != NROHEADER_MAGIC) {
++                return hbloader::ResultInvalidNroMagic;
++            }
++
++            constexpr auto prefix_size = sizeof(start) + sizeof(header);
++            const std::array<exodus::home::NroLoadSegment, 3> segments = {{
++                {header.segments[0].file_off, header.segments[0].size},
++                {header.segments[1].file_off, header.segments[1].size},
++                {header.segments[2].file_off, header.segments[2].size}
++            }};
++            const auto mapped_size = exodus::home::NroMappedSize(segments, prefix_size, header.size, header.bss_size, g_TargetHeapSize);
++            if(!mapped_size || start.mod_offset >= header.size) {
++                return hbloader::ResultInvalidNroSegments;
++            }
++
++            memcpy(g_TargetHeapAddress, &start, sizeof(start));
++            memcpy(g_TargetHeapAddress + sizeof(start), &header, sizeof(header));
++            const auto rest_size = header.size - prefix_size;
++            if(fread(g_TargetHeapAddress + prefix_size, 1, rest_size, file) != rest_size) {
++                return hbloader::ResultNroReadFailure;
++            }
++            memset(g_TargetHeapAddress + header.size, 0, *mapped_size - header.size);
++            g_TargetHeader = header;
++            out_mapped_size = *mapped_size;
++            return ResultSuccess;
+@@ -183,2 +226,0 @@ namespace ul::loader {
+-                const auto rw_size = AlignUp<PageAlignment>(g_TargetHeader.segments[2].size + g_TargetHeader.bss_size);
+-
+@@ -193 +235 @@ namespace ul::loader {
+-                if(R_FAILED(svcUnmapProcessCodeMemory(g_SelfProcessHandle, g_TargetMapAddress + g_TargetHeader.segments[2].file_off, reinterpret_cast<u64>(g_TargetHeapAddress) + g_TargetHeader.segments[2].file_off, rw_size))) {
++                if(R_FAILED(svcUnmapProcessCodeMemory(g_SelfProcessHandle, g_TargetMapAddress + g_TargetHeader.segments[2].file_off, reinterpret_cast<u64>(g_TargetHeapAddress) + g_TargetHeader.segments[2].file_off, g_TargetWritableSize))) {
+@@ -207,38 +249,2 @@ namespace ul::loader {
+-            auto target_base = g_TargetHeapAddress;
+-            auto target_start = reinterpret_cast<NroStart*>(target_base);
+-            auto target_header = reinterpret_cast<NroHeader*>(target_base + sizeof(NroStart));
+-            auto rest = target_base + sizeof(NroStart) + sizeof(NroHeader);
+-
+-            {
+-                UL_RC_ASSERT(InitializeFsdev());
+-                util::OnScopeExit exit_fsdev([]() {
+-                    FinalizeFsdev();
+-                });
+-
+-                {
+-                    auto f = fopen(g_NextTargetPath, "rb");
+-                    if(f == nullptr) {
+-                        UL_RC_ASSERT(MAKERESULT(333, 900 + errno));
+-                        UL_RC_ASSERT(hbloader::ResultNroOpenFailure);
+-                    }
+-                    util::OnScopeExit file_close([&]() {
+-                        fclose(f);
+-                    });
+-
+-                    if(fread(target_start, sizeof(NroStart), 1, f) != 1) {
+-                        UL_RC_ASSERT(hbloader::ResultNroHeaderReadFailure);
+-                    }
+-                    if(fread(target_header, sizeof(NroHeader), 1, f) != 1) {
+-                        UL_RC_ASSERT(hbloader::ResultNroHeaderReadFailure);
+-                    }
+-
+-                    if(target_header->magic != NROHEADER_MAGIC) {
+-                        UL_RC_ASSERT(hbloader::ResultInvalidNroMagic);
+-                    }
+-
+-                    const auto rest_size = target_header->size - (sizeof(NroStart) + sizeof(NroHeader));
+-                    if(fread(rest, rest_size, 1, f) != 1) {
+-                        UL_RC_ASSERT(hbloader::ResultNroReadFailure);
+-                    }
+-                }
+-            }
++            size_t total_size = 0;
++            CheckTargetResult(ReadTargetImage(total_size));
+@@ -249,13 +255 @@ namespace ul::loader {
+-            const auto total_size = AlignUp<PageAlignment>(target_header->size + target_header->bss_size);
+-            const auto rw_size = AlignUp<PageAlignment>(target_header->segments[2].size + target_header->bss_size);
+-
+-            for(u32 i = 0; i < 3; i++) {
+-                if((target_header->segments[i].file_off >= target_header->size) || (target_header->segments[i].size > target_header->size) || ((target_header->segments[i].file_off + target_header->segments[i].size) > target_header->size)) {
+-                    UL_RC_ASSERT(hbloader::ResultInvalidNroSegments);
+-                }
+-            }
+-
+-            // TODO (hbloader): Detect whether NRO fits into heap or not
+-
+-            // Make a copy of the header before unmapping it
+-            g_TargetHeader = *target_header;
++            g_TargetWritableSize = total_size - g_TargetHeader.segments[2].file_off;
+@@ -267,2 +261,2 @@ namespace ul::loader {
+-            if(R_FAILED(svcMapProcessCodeMemory(g_SelfProcessHandle, map_addr, reinterpret_cast<u64>(target_base), total_size))) {
+-                UL_RC_ASSERT(hbloader::ResultMapCodeMemoryFailure);
++            if(R_FAILED(svcMapProcessCodeMemory(g_SelfProcessHandle, map_addr, reinterpret_cast<u64>(g_TargetHeapAddress), total_size))) {
++                CheckTargetResult(hbloader::ResultMapCodeMemoryFailure);
+@@ -273 +267 @@ namespace ul::loader {
+-                UL_RC_ASSERT(hbloader::ResultMapTextFailure);
++                CheckTargetResult(hbloader::ResultMapTextFailure);
+@@ -278 +272 @@ namespace ul::loader {
+-                UL_RC_ASSERT(hbloader::ResultMapRodataFailure);
++                CheckTargetResult(hbloader::ResultMapRodataFailure);
+@@ -282,2 +276,2 @@ namespace ul::loader {
+-            if(R_FAILED(svcSetProcessMemoryPermission(g_SelfProcessHandle, map_addr + g_TargetHeader.segments[2].file_off, rw_size, Perm_Rw))) {
+-                UL_RC_ASSERT(hbloader::ResultMapDataBssFailure);
++            if(R_FAILED(svcSetProcessMemoryPermission(g_SelfProcessHandle, map_addr + g_TargetHeader.segments[2].file_off, g_TargetWritableSize, Perm_Rw))) {
++                CheckTargetResult(hbloader::ResultMapDataBssFailure);
+@@ -286,3 +280,2 @@ namespace ul::loader {
+-            const auto target_size = g_TargetHeader.segments[2].file_off + rw_size;
+-            const auto target_heap_addr = reinterpret_cast<u64>(g_TargetHeapAddress) + target_size;
+-            const auto target_heap_size = g_TargetHeapSize - target_size;
++            const auto target_heap_addr = reinterpret_cast<u64>(g_TargetHeapAddress) + total_size;
++            const auto target_heap_size = g_TargetHeapSize - total_size;
+@@ -401 +394 @@ namespace ul::loader {
+-            svcBreak(BreakReason_NotificationOnlyFlag | BreakReason_PostLoadDll, g_TargetMapAddress, target_size);
++            svcBreak(BreakReason_NotificationOnlyFlag | BreakReason_PostLoadDll, g_TargetMapAddress, total_size);
+@@ -406,0 +400,4 @@ namespace ul::loader {
++                if(IsCatalogAppletTarget()) {
++                    RestoreTls();
++                    exit(EXIT_SUCCESS);
++                }
+@@ -442,2 +438,0 @@ namespace ul::loader {
+-        UL_RC_ASSERT(GetSelfProcessHandle(g_SelfProcessHandle));
+-
+@@ -445 +440,2 @@ namespace ul::loader {
+-        UL_RC_ASSERT(SetupTargetHeap(target_ipt.is_auto_game_recording, applet_heap_size, applet_heap_reservation_size, g_TargetHeapAddress, g_TargetHeapSize));
++        CheckTargetResult(GetSelfProcessHandle(g_SelfProcessHandle));
++        CheckTargetResult(SetupTargetHeap(target_ipt.is_auto_game_recording, applet_heap_size, applet_heap_reservation_size, g_TargetHeapAddress, g_TargetHeapSize));
 diff --git a/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp b/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
-index 4c5a30d..c51db63 100755
+index 4c5a30d..d6ef254 100755
 --- a/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
 +++ b/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
-@@ -45,0 +46,25 @@ namespace ul::menu::smi {
+@@ -3,0 +4,3 @@
++#include <ul/menu/catalog_homebrew_policy.hpp>
++#include <array>
++#include <string_view>
+@@ -45,0 +49,52 @@ namespace ul::menu::smi {
 +    inline Result QueryCatalogGameCardApplication(const u64 app_id, CatalogGameCardInfo &info) {
 +        return SendCommand(SystemMessage::QueryCatalogGameCardApplication,
 +            [&](ScopedStorageWriter &writer) {
@@ -48,21 +275,50 @@ index 4c5a30d..c51db63 100755
 +        );
 +    }
 +
++    inline Result CatalogHomebrewAppletRequest(const std::string_view id, CatalogHomebrewAppletInfo *info = nullptr) {
++        std::array<char, loader::NroPathSize> payload{};
++        if(!exodus::home::IsCanonicalHomebrewAppletId(id, payload.size())) {
++            return ResultCatalogLaunchDenied;
++        }
++        memcpy(payload.data(), id.data(), id.size());
++        const auto command = info == nullptr ? SystemMessage::LaunchCatalogHomebrewApplet
++            : SystemMessage::QueryCatalogHomebrewApplet;
++        return SendCommand(command,
++            [&](ScopedStorageWriter &writer) {
++                return writer.Push(payload);
++            },
++            [&](ScopedStorageReader &reader) -> Result {
++                if(info == nullptr) {
++                    return ResultSuccess;
++                }
++                UL_RC_TRY(reader.Pop(*info));
++                if(info->path[sizeof(info->path) - 1] != '\0') {
++                    return ResultCatalogLaunchDenied;
++                }
++                const std::string_view path(info->path);
++                return exodus::home::HomebrewAppletPathMatches(id, path)
++                    ? ResultSuccess : ResultCatalogLaunchDenied;
++            }
++        );
++    }
++
 diff --git a/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp b/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
-index 933d011..449012b 100755
+index 933d011..6320efa 100755
 --- a/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
 +++ b/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
 @@ -125,0 +126,2 @@ namespace ul::menu::ui {
 +            bool HandleLaunchEntry(const Entry &entry);
-+            bool CompleteNativeApplicationLaunch(const Result rc);
-@@ -200,0 +203,2 @@ namespace ul::menu::ui {
++            bool CompleteLaunch(const Result rc);
+@@ -200,0 +203,4 @@ namespace ul::menu::ui {
 +            bool CanLaunchCatalogApplication(const u64 app_id);
 +            bool TryLaunchCatalogApplication(const u64 app_id);
++            bool CanLaunchCatalogHomebrew(const std::string_view id);
++            bool TryLaunchCatalogHomebrew(const std::string_view id);
 diff --git a/projects/uMenu/romfs/lang/en.json b/projects/uMenu/romfs/lang/en.json
-index 6014634..1b6a674 100755
+index 6014634..c2f3f48 100755
 --- a/projects/uMenu/romfs/lang/en.json
 +++ b/projects/uMenu/romfs/lang/en.json
-@@ -5,0 +6,15 @@
+@@ -5,0 +6,17 @@
 +    "exodus_catalog": "EXODUS library",
 +    "exodus_catalog_unavailable": "Copy a catalog snapshot to /ulaunch/exodus-catalog.json.",
 +    "exodus_catalog_invalid": "The snapshot must use the EXODUS v1 catalog format.",
@@ -76,15 +332,17 @@ index 6014634..1b6a674 100755
 +    "exodus_catalog_next": "Next",
 +    "exodus_catalog_close": "Close",
 +    "exodus_catalog_launch": "Launch",
-+    "exodus_catalog_select_title": "Select a title from the inserted game card",
++    "exodus_catalog_select_title": "Select a local application",
++    "exodus_catalog_homebrew_launch": "Launch homebrew as an applet",
++    "exodus_catalog_homebrew_unavailable": "The registered homebrew applet is no longer available.",
 +    "exodus_catalog_title_unavailable": "Launch requires a ready game card title and no suspended application.",
 diff --git a/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp b/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
-index 19a6a26..3dd232b 100755
+index 19a6a26..ac74cc6 100755
 --- a/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
 +++ b/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
 @@ -10,0 +11 @@
 +#include <cstdio>
-@@ -64,0 +66,127 @@ namespace ul::menu::ui {
+@@ -64,0 +66,149 @@ namespace ul::menu::ui {
 +    bool MainMenuLayout::HandleLaunchEntry(const Entry &entry) {
 +        auto do_launch_entry = true;
 +
@@ -170,13 +428,13 @@ index 19a6a26..3dd232b 100755
 +                pu::audio::PlaySfx(this->launch_app_sfx);
 +
 +                g_MenuApplication->FadeOutToNonLibraryApplet();
-+                return this->CompleteNativeApplicationLaunch(smi::LaunchApplication(entry.app_info.app_id));
++                return this->CompleteLaunch(smi::LaunchApplication(entry.app_info.app_id));
 +            }
 +        }
 +        return false;
 +    }
 +
-+    bool MainMenuLayout::CompleteNativeApplicationLaunch(const Result rc) {
++    bool MainMenuLayout::CompleteLaunch(const Result rc) {
 +        if(R_SUCCEEDED(rc)) {
 +            g_MenuApplication->Finalize();
 +            return true;
@@ -209,10 +467,32 @@ index 19a6a26..3dd232b 100755
 +        }
 +        pu::audio::PlaySfx(this->launch_app_sfx);
 +        g_MenuApplication->FadeOutToNonLibraryApplet();
-+        return this->CompleteNativeApplicationLaunch(smi::LaunchCatalogGameCardApplication(app_id));
++        return this->CompleteLaunch(smi::LaunchCatalogGameCardApplication(app_id));
 +    }
 +
-@@ -156,95 +284,2 @@ namespace ul::menu::ui {
++    bool MainMenuLayout::CanLaunchCatalogHomebrew(const std::string_view id) {
++        smi::CatalogHomebrewAppletInfo info{};
++        return R_SUCCEEDED(smi::CatalogHomebrewAppletRequest(id, &info));
++    }
++
++    bool MainMenuLayout::TryLaunchCatalogHomebrew(const std::string_view id) {
++        smi::CatalogHomebrewAppletInfo info{};
++        if(R_FAILED(smi::CatalogHomebrewAppletRequest(id, &info))) {
++            g_MenuApplication->ShowNotification(GetLanguageString("exodus_catalog_homebrew_unavailable"));
++            return false;
++        }
++        const auto confirmed = g_MenuApplication->DisplayDialog(
++            GetLanguageString("exodus_catalog_homebrew_launch"), info.path,
++            { GetLanguageString("exodus_catalog_launch"), GetLanguageString("cancel") }, true);
++        if(confirmed != 0) {
++            return false;
++        }
++        pu::audio::PlaySfx(this->launch_hb_sfx);
++        g_MenuApplication->FadeOutToNonLibraryApplet();
++        return this->CompleteLaunch(smi::CatalogHomebrewAppletRequest(id));
++    }
++
+@@ -156,95 +306,2 @@ namespace ul::menu::ui {
 -                        auto do_launch_entry = true;
 -
 -                        if(g_GlobalSettings.IsSuspended()) {
@@ -323,22 +603,29 @@ index 075eb97..80ca142 100755
 +        catalog_menu_item->AddOnKey(&exodus::home::ShowCatalog);
 +        this->options_menu->AddItem(catalog_menu_item);
 diff --git a/projects/uSystem/source/main.cpp b/projects/uSystem/source/main.cpp
-index 2d6aca3..c9956ca 100644
+index 2d6aca3..0d467d9 100644
 --- a/projects/uSystem/source/main.cpp
 +++ b/projects/uSystem/source/main.cpp
-@@ -16,0 +17,4 @@
+@@ -16,0 +17,6 @@
 +#include "catalog_gamecard_policy.hpp"
++#include "catalog_homebrew_provider.hpp"
 +#include <algorithm>
 +#include <array>
 +#include <memory>
-@@ -77,0 +82 @@ namespace {
++#include <optional>
+@@ -77,0 +84,2 @@ namespace {
 +        LaunchCatalogGameCardApplication,
-@@ -85,0 +91,4 @@ namespace {
++        LaunchCatalogHomebrewApplet,
+@@ -85,0 +94,8 @@ namespace {
 +            struct {
 +                u64 app_id;
 +                AccountUid user;
 +            } launch_catalog_gamecard;
-@@ -736,0 +746,67 @@ namespace {
++            struct {
++                std::array<char, ul::loader::NroPathSize> id;
++                AccountUid user;
++            } launch_catalog_homebrew;
+@@ -736,0 +753,84 @@ namespace {
 +    bool CheckLocalCatalogGameCard(const u64 app_id, ul::smi::CatalogGameCardInfo *info = nullptr) {
 +        using namespace exodus::home;
 +        if(!IsApplicationProgramId(app_id) || app::IsActive()) {
@@ -406,9 +693,27 @@ index 2d6aca3..c9956ca 100644
 +        return true;
 +    }
 +
-@@ -739,0 +816 @@ namespace {
++    std::optional<std::string> ResolveCatalogHomebrew(const std::string_view id) {
++        if(!accountUidIsValid(&g_SelectedUser)) {
++            return std::nullopt;
++        }
++        {
++            ul::ScopedLock lk(g_ConfigLock);
++            u64 configured_applet = 0;
++            if(!g_Config.GetEntry(ul::cfg::ConfigEntryId::HomebrewAppletTakeoverProgramId, configured_applet) ||
++                configured_applet != ul::la::LibraryAppletPhotoViewer) {
++                return std::nullopt;
++            }
++        }
++        return exodus::home::ResolveRegisteredHomebrewApplet(
++            ul::menu::MakeMenuPath(g_AmsIsEmuMMC, g_SelectedUser), id, ul::loader::NroPathSize,
++            static_cast<u32>(ul::menu::EntryType::Homebrew));
++    }
++
+@@ -739,0 +840,2 @@ namespace {
 +            ul::smi::CatalogGameCardInfo catalog_gamecard{};
-@@ -768,0 +846,20 @@ namespace {
++            ul::smi::CatalogHomebrewAppletInfo catalog_homebrew{};
+@@ -768,0 +871,49 @@ namespace {
 +                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication:
 +                        case ul::smi::SystemMessage::LaunchCatalogGameCardApplication: {
 +                            u64 app_id;
@@ -429,11 +734,43 @@ index 2d6aca3..c9956ca 100644
 +                            }
 +                            break;
 +                        }
-@@ -979,0 +1077,3 @@ namespace {
++                        case ul::smi::SystemMessage::QueryCatalogHomebrewApplet:
++                        case ul::smi::SystemMessage::LaunchCatalogHomebrewApplet: {
++                            std::array<char, ul::loader::NroPathSize> payload{};
++                            UL_RC_TRY(reader.Pop(payload));
++                            const auto end = std::find(payload.begin(), payload.end(), '\0');
++                            if(end == payload.end() || std::any_of(end, payload.end(), [](char value) { return value != '\0'; })) {
++                                return ul::ResultCatalogLaunchDenied;
++                            }
++                            const std::string_view id(payload.data(), static_cast<size_t>(end - payload.begin()));
++                            const auto path = ResolveCatalogHomebrew(id);
++                            if(!path || path->size() >= sizeof(catalog_homebrew.path)) {
++                                return ul::ResultCatalogLaunchDenied;
++                            }
++                            if(msg == ul::smi::SystemMessage::LaunchCatalogHomebrewApplet) {
++                                if(std::any_of(g_ActionQueue.begin(), g_ActionQueue.end(), [](const Action &item) {
++                                        return item.type == ActionType::LaunchCatalogHomebrewApplet;
++                                    })) {
++                                    return ul::ResultAlreadyQueued;
++                                }
++                                g_ActionQueue.push_back({
++                                    .type = ActionType::LaunchCatalogHomebrewApplet,
++                                    .launch_catalog_homebrew = { payload, g_SelectedUser }
++                                });
++                            }
++                            else {
++                                memcpy(catalog_homebrew.path, path->data(), path->size());
++                            }
++                            break;
++                        }
+@@ -979,0 +1131,6 @@ namespace {
 +                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication: {
 +                            return writer.Push(catalog_gamecard);
 +                        }
-@@ -1038,0 +1139,22 @@ namespace {
++                        case ul::smi::SystemMessage::QueryCatalogHomebrewApplet: {
++                            return writer.Push(catalog_homebrew);
++                        }
+@@ -1038,0 +1196,53 @@ namespace {
 +            case ActionType::LaunchCatalogGameCardApplication: {
 +                if(!la::IsActive()) {
 +                    const auto &request = action.launch_catalog_gamecard;
@@ -451,6 +788,37 @@ index 2d6aca3..c9956ca 100644
 +                            UL_RC_ASSERT(LaunchMenu(mode));
 +                            PushSimpleMenuMessage(ul::smi::MenuMessage::PreviousLaunchFailure);
 +                        }
++                    }
++                    return true;
++                }
++                break;
++            }
++            case ActionType::LaunchCatalogHomebrewApplet: {
++                if(!la::IsActive()) {
++                    const auto &request = action.launch_catalog_homebrew;
++                    Result rc = ul::ResultCatalogLaunchDenied;
++                    if(memcmp(&request.user, &g_SelectedUser, sizeof(g_SelectedUser)) == 0) {
++                        const auto path = ResolveCatalogHomebrew(request.id.data());
++                        if(path) {
++                            const auto argv = "\"" + *path + "\"";
++                            if(argv.size() < ul::loader::NroArgvSize) {
++                                auto target = ul::loader::TargetInput::Create(*path, argv, true, "");
++                                target.magic = ul::loader::TargetInput::CatalogAppletMagic;
++                                rc = ecs::RegisterLaunchAsApplet(ul::la::LibraryAppletPhotoViewer, 0,
++                                    "/ulaunch/bin/uLoader/applet", &target, sizeof(target));
++                            }
++                        }
++                    }
++                    if(R_SUCCEEDED(rc)) {
++                        g_LastLibraryAppletLaunchedNotMenu = true;
++                        g_ExpectsLoaderChooseOutput = false;
++                    }
++                    else {
++                        UL_LOG_WARN("Catalog homebrew applet launch stopped with %s", ul::util::FormatResultDisplay(rc).c_str());
++                        const auto mode = accountUidIsValid(&g_SelectedUser)
++                            ? ul::smi::MenuStartMode::MainMenu : ul::smi::MenuStartMode::StartupMenu;
++                        UL_RC_ASSERT(LaunchMenu(mode));
++                        PushSimpleMenuMessage(ul::smi::MenuMessage::PreviousLaunchFailure);
 +                    }
 +                    return true;
 +                }
