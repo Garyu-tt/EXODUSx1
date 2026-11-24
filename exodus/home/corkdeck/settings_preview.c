@@ -5,6 +5,8 @@
 #include "horizon_settings.h"
 #include "library_catalog.h"
 #include "native_launch.h"
+#include "library_filter.h"
+#include "launcher_image.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,21 +60,70 @@ static void settings_snapshot(struct ui_row rows[9])
     set_row(&rows[8], 2, "Performance", s.performance, "APM mode; no clock or voltage writes.");
 }
 
-/* Eight cards per page; the donor renderer and input system stay in charge.
- * Launch is explicit, validated and restricted to supported native providers. */
+/* Eight visible covers at most; cache rebuilt only on filter/page changes. */
+struct cover_slot { SDL_Texture *texture; int width, height; };
+
+static void clear_covers(struct cover_slot covers[8])
+{
+    for (int i = 0; i < 8; ++i) {
+        if (covers[i].texture) SDL_DestroyTexture(covers[i].texture);
+        covers[i] = (struct cover_slot){0};
+    }
+}
+
+static void load_cover(struct ui *ui, const char *path, struct cover_slot *slot)
+{
+    struct launcher_icon icon = {0};
+    if (!exodus_artwork_path(path) || !launcher_image_load(path, &icon)) return;
+    if (launcher_icon_fit(&icon, 256)) {
+        slot->texture = SDL_CreateTexture(ui->renderer, SDL_PIXELFORMAT_RGBA32,
+                                          SDL_TEXTUREACCESS_STATIC, icon.width, icon.height);
+        if (slot->texture && SDL_UpdateTexture(slot->texture, NULL, icon.data, icon.width * 4)) {
+            SDL_DestroyTexture(slot->texture);
+            slot->texture = NULL;
+        }
+        slot->width = icon.width;
+        slot->height = icon.height;
+    }
+    launcher_icon_free(&icon);
+}
+
+static size_t filter_cards(const struct exodus_library *library, enum exodus_filter filter,
+                           const unsigned char *favorites, struct exodus_card_index *cards)
+{
+    size_t count = 0;
+    for (size_t n = 0; n < exodus_library_count(library); ++n) {
+        uint64_t recent = exodus_library_last_played(library, n);
+        if (exodus_filter_matches(filter, exodus_library_provider(library, n), favorites[n], recent))
+            cards[count++] = (struct exodus_card_index){n, recent};
+    }
+    if (filter == FILTER_RECENT) qsort(cards, count, sizeof(*cards), exodus_recent_compare);
+    return count;
+}
+
 static void show_library(struct ui *ui, const char *path)
 {
     struct exodus_library *library = exodus_library_open(path);
-    size_t count = exodus_library_count(library), selection = 0;
-    if (!count) {
+    size_t total = exodus_library_count(library), selection = 0, count = total;
+    if (!total) {
         const char *status = exodus_library_status(library);
-        ui_message(ui, "EXODUS Library",
-                   strcmp(status, "Ready") == 0 ? "Empty catalog" : status);
+        ui_message(ui, "EXODUS Library", strcmp(status, "Ready") == 0 ? "Empty catalog" : status);
         exodus_library_close(library);
         return;
     }
+    unsigned char *favorites = calloc(total, 1);
+    struct exodus_card_index *cards = calloc(total, sizeof(*cards));
+    struct cover_slot covers[8] = {{0}};
+    size_t cached_page = (size_t)-1;
+    enum exodus_filter filter = FILTER_ALL;
+    if (!favorites || !cards) {
+        ui_message(ui, "EXODUS Library", "Not enough memory");
+        goto done;
+    }
+    count = filter_cards(library, filter, favorites, cards);
     const struct ui_hint hints[] = {
-        {UI_A, "Open"}, {UI_B, "Back"}, {UI_L, "Previous"}, {UI_R, "Next"}
+        {UI_A, "Open"}, {UI_B, "Back"}, {UI_L, "Previous"}, {UI_R, "Next"},
+        {UI_X, "Favorite"}, {UI_Y, "Filter"}
     };
     ui_start_screen(ui);
     while (ui_begin_frame(ui)) {
@@ -80,6 +131,24 @@ static void show_library(struct ui *ui, const char *path)
         while (ui_poll(ui, &input)) {
             size_t previous = selection;
             if (input.button == UI_B) goto done;
+            if (input.button == UI_Y) {
+                filter = (enum exodus_filter)((filter + 1) % FILTER_COUNT);
+                count = filter_cards(library, filter, favorites, cards);
+                selection = 0;
+                cached_page = (size_t)-1;
+                continue;
+            }
+            if (!count) continue;
+            size_t index = cards[selection].index;
+            if (input.button == UI_X) {
+                favorites[index] = !favorites[index];
+                if (filter == FILTER_FAVORITES) {
+                    count = filter_cards(library, filter, favorites, cards);
+                    if (selection >= count) selection = count ? count - 1 : 0;
+                    cached_page = (size_t)-1;
+                }
+                continue;
+            }
             if (input.button == UI_LEFT && selection > 0) selection--;
             if (input.button == UI_RIGHT && selection + 1 < count) selection++;
             if (input.button == UI_UP && selection >= 4) selection -= 4;
@@ -90,15 +159,17 @@ static void show_library(struct ui *ui, const char *path)
                 if (selection >= count) selection = count - 1;
             }
             if (input.button == UI_A) {
-                char detail[640], result[256];
-                const char *provider = exodus_library_provider(library, selection);
-                const char *id = exodus_library_id(library, selection);
+                char detail[640];
+                const char *provider = exodus_library_provider(library, index);
+                const char *id = exodus_library_id(library, index);
                 enum exodus_route route = exodus_route_for(provider, id);
 #ifdef __SWITCH__
+                char result[256];
                 if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW ||
                     route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
                     snprintf(detail, sizeof(detail), "Target: %s\n%.500s", exodus_route_name(route), id);
-                    if (ui_confirm(ui, exodus_library_title(library, selection), detail, route == EXODUS_ROUTE_STEAM ? "Open library" : "Launch")) {
+                    if (ui_confirm(ui, exodus_library_title(library, index), detail,
+                                   route == EXODUS_ROUTE_STEAM ? "Open library" : "Launch")) {
                         if (exodus_launch(route, id, result)) goto done;
                         ui_message(ui, "Launch unavailable", result);
                     }
@@ -106,32 +177,55 @@ static void show_library(struct ui *ui, const char *path)
                 }
 #endif
                 snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
-                ui_message(ui, exodus_library_title(library, selection), detail);
+                ui_message(ui, exodus_library_title(library, index), detail);
                 break;
             }
             if (previous != selection) ui_sound(ui, LAUNCHER_SOUND_MOVE);
         }
         if (!ui->running) break;
-        char page[64];
-        snprintf(page, sizeof(page), "Page %zu / %zu", selection / 8 + 1, (count + 7) / 8);
+        size_t first = selection / 8 * 8;
+        if (cached_page != first) {
+            clear_covers(covers);
+            for (size_t n = first; n < count && n < first + 8; ++n)
+                load_cover(ui, exodus_library_artwork(library, cards[n].index), &covers[n - first]);
+            cached_page = first;
+        }
+        char page[96];
+        snprintf(page, sizeof(page), "%s | %zu items | %zu / %zu", exodus_filter_name(filter),
+                 count, count ? selection / 8 + 1 : 0, (count + 7) / 8);
         ui_background(ui);
         ui_header(ui, "EXODUS Library", page);
-        size_t first = selection / 8 * 8;
+        if (!count) ui_text(ui, ui.normal, 84, 180, "No matching entries. Press Y to change filter.", ui->text);
         for (size_t n = first; n < count && n < first + 8; ++n) {
+            size_t index = cards[n].index;
             int col = (int)((n - first) % 4), row = (int)((n - first) / 4);
             int x = 84 + 280 * col, y = 132 + 244 * row;
             ui_panel(ui, x, y, 264, 220);
             if (n == selection) ui_outline(ui, x, y, 264, 220, 6, 3, ui->selection);
-            ui_text_fit(ui, ui->small, x + 12, y + 18, 240,
-                        exodus_library_provider(library, n), ui->dim, 0);
-            ui_text_fit(ui, ui->normal, x + 12, y + 160, 240,
-                        exodus_library_title(library, n), ui->text, n == selection);
+            ui_text_fit(ui, ui->small, x + 12, y + 12, 200,
+                        exodus_library_provider(library, index), ui->dim, 0);
+            if (favorites[index]) ui_text(ui, ui.small, x + 230, y + 12, "*", ui->text);
+            struct cover_slot *cover = &covers[n - first];
+            if (cover->texture) {
+                float scale = 116.0f / cover->height;
+                if (cover->width * scale > 240) scale = 240.0f / cover->width;
+                int w = (int)(cover->width * scale), h = (int)(cover->height * scale);
+                if (w < 1) w = 1;
+                if (h < 1) h = 1;
+                SDL_Rect dst = {x + (264-w)/2, y + 40 + (116-h)/2, w, h};
+                SDL_RenderCopy(ui->renderer, cover->texture, NULL, &dst);
+            }
+            ui_text_fit(ui, ui->normal, x + 12, y + 168, 240,
+                        exodus_library_title(library, index), ui->text, n == selection);
         }
-        ui_footer(ui, hints, 4);
+        ui_footer(ui, hints, 6);
         ui_present(ui);
         ui_wait(ui);
     }
 done:
+    clear_covers(covers);
+    free(cards);
+    free(favorites);
     exodus_library_close(library);
 }
 
