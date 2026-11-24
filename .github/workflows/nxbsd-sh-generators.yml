@@ -95,7 +95,23 @@ jobs:
           nm -u "$RUNNER_TEMP/shell-io.o" > "$RUNNER_TEMP/grammar-a/io-undefined.txt"
           nm --defined-only "$RUNNER_TEMP/shell-io.o" > "$RUNNER_TEMP/grammar-a/io-defined.txt"
           test -s "$RUNNER_TEMP/grammar-a/io-defined.txt"
+      - name: Compile original BSD job and execution modules
+        run: |
+          mkdir "$RUNNER_TEMP/process"
+          for module in jobs exec; do
+            cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "donor-freebsd/bin/sh/$module.c" -o "$RUNNER_TEMP/process/$module.o"
+          done
+          cc -r "$RUNNER_TEMP/shell-io.o" "$RUNNER_TEMP/process/"*.o -o "$RUNNER_TEMP/shell-process.o"
+          nm -u "$RUNNER_TEMP/shell-process.o" > "$RUNNER_TEMP/grammar-a/process-undefined.txt"
+          nm --defined-only "$RUNNER_TEMP/shell-process.o" > "$RUNNER_TEMP/grammar-a/process-defined.txt"
+          test -s "$RUNNER_TEMP/grammar-a/process-defined.txt"
+          cat "$RUNNER_TEMP/grammar-a/process-undefined.txt"
       - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
         with:
           name: freebsd-sh-grammar
           path: ${{ runner.temp }}/grammar-a
