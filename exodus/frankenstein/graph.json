@@ -194,10 +194,15 @@
     {
       "id": "manager-proxy",
       "origin": "evlav/steamos-manager@a0d399defebd60db30ba38325d9cf47dbda49bee",
-      "state": "build-pending",
+      "state": "freebsd-qemu-arm64-build-verified",
       "depends": [
         "kernel"
-      ]
+      ],
+      "evidence": {
+        "run": 45505350961,
+        "job": 138839013545,
+        "scope": "Original pinned upstream proxy and proc-macro crates compiled on FreeBSD ARM64 QEMU. Full daemon cargo check returned 101 due to missing libclang in historical revision 032f8c8; audit job success is NOT daemon success. Corrected LLVM provisioning is under CI; no full daemon or runtime proof."
+      }
     },
     {
       "id": "manager-dbus",
@@ -285,10 +290,10 @@
         "resident-ssh-dbus"
       ],
       "evidence": {
-        "run": 45504844294,
-        "job": 138837269432,
-        "artifact": 14973126956,
-        "scope": "Native FreeBSD ARM64 rc.d boot order, stop/start, persisted desired mode, independent SSH and revoked-key rejection; guest exit 0, host SHA256 verification, exact archive member and internal checksum validation, executable mode and AArch64 ELF64 checks, artifact upload PASS. Opt-in test-account userspace bundle only; cold boot, graphical execution and physical hardware remain separate unproven gates."
+        "run": 45508579085,
+        "job": 138850083502,
+        "artifact": 14976490503,
+        "scope": "Integrated be3e319 (checkout 4e96bf60): FreeBSD 15.1 ARM64 QEMU rc.d order, service restart, saved generation 6 restored on fresh QEMU process without seed/output disk, key revocation preserved, generation 7 request; both guest results 0; internal archive and SHA256 validation passed. Desired mode only; no actual graphics or physical Switch."
       }
     }
   ],
