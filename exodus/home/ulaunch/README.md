@@ -14,13 +14,13 @@ The viewer skips incomplete, malformed and oversized Steam snapshots, as well as
 
 To restore the manual catalog view, close the NRO and move the `snapshots` directory to a backup location. Both apps leave `/ulaunch/exodus-catalog.json` and earlier manually exported catalogs intact. A later successful sync creates a new snapshot directory.
 
-## Launch installed Switch titles
+## Launch from an inserted game card
 
-Choose **Launch** on a page with registered Switch titles, then choose its number. The confirmation dialog displays the title from uLaunch's local application metadata and its hexadecimal application ID. After confirmation, uMenu checks the live Horizon application record and view again and reuses the HOME grid's launch checks for content, game cards, updates and suspended applications.
+Nintendo Safe Mode admits one Switch catalog launch provider. With no application suspended, insert a game card and select **Launch** on the page containing a ready title from that card. Choose its number and confirm the name and hexadecimal ID read from local control data. uMenu asks the matching uSystem to discover and queue the catalog route. uSystem rechecks the provider and selected user when it consumes the queued action, immediately before starting the title.
 
-Launch candidates come from catalog rows with provider `switch` and a nonzero 16-digit hexadecimal `provider_id` present in Horizon's application registry. The catalog page also displays Steam, homebrew and other providers. Their rows have no launch action in this adapter. [EX-006 tracker](https://github.com/Garyu-tt/EXODUSx1/pull/3) · [Nintendo Safe Mode provider review](https://github.com/Garyu-tt/EXODUSx1/issues/55)
+The gate requires a canonical Switch application ID, a matching registered Horizon application and view, exact membership on the currently inserted card, a ready launch version and complete control data from local storage. It denies incomplete evidence, startup network licensing or network account requirements, required repairs or updates, and suspended applications. The catalog route uses local provider queries and has its own uSystem command. Digital titles, Steam, homebrew and unclassified catalog rows are available for browsing in this slice. The provider review is limited to this EXODUS entry point. [EX-006 tracker](https://github.com/Garyu-tt/EXODUSx1/pull/3) · [Nintendo Safe Mode #55](https://github.com/Garyu-tt/EXODUSx1/issues/55) · [Pinned libnx NS API](https://github.com/switchbrew/libnx/blob/b156b4774fb2df7b93402169509266da7547fc4c/nx/include/switch/services/ns.h)
 
-## Build the patched uMenu
+## Build the matching uMenu and uSystem
 
 The source patch targets uLaunch 1.2.6 and uses its pinned Plutonium, libnx-ext and nlohmann/json submodules. The build uses the upstream devkitPro and Python dependencies and needs the source libnx layout for NACP language data. [uLaunch release](https://github.com/XorTroll/uLaunch/releases/tag/1.2.6) · [Upstream build workflow](https://github.com/XorTroll/uLaunch/blob/6e0e1de633eec601fb527aadb602abe3bc817541/.github/workflows/main.yml) · [Tested libnx revision](https://github.com/switchbrew/libnx/tree/b156b4774fb2df7b93402169509266da7547fc4c)
 
@@ -28,29 +28,31 @@ The source patch targets uLaunch 1.2.6 and uses its pinned Plutonium, libnx-ext 
 adapter="$PWD/exodus/home/ulaunch"
 git clone --branch 1.2.6 --depth 1 https://github.com/XorTroll/uLaunch.git
 test "$(git -C uLaunch rev-parse HEAD)" = 6e0e1de633eec601fb527aadb602abe3bc817541 || exit 1
-git -C uLaunch submodule update --init --depth 1 arc libs/Plutonium libs/libnx-ext libs/json libs/zip
+git -C uLaunch submodule update --init --recursive --depth 1 arc libs/Plutonium libs/libnx-ext libs/json libs/zip libs/Atmosphere-libs
 git -C uLaunch apply --unidiff-zero --check "$adapter/quick-menu.patch"
 git -C uLaunch apply --unidiff-zero "$adapter/quick-menu.patch"
 cp "$adapter"/catalog.hpp "$adapter"/catalog.cpp "$adapter"/catalog_view.cpp \
   "$adapter"/catalog_refresh.hpp "$adapter"/catalog_refresh.cpp \
   uLaunch/projects/uMenu/source/ul/menu/ui/
+cp "$adapter"/catalog_gamecard_policy.hpp uLaunch/projects/uSystem/source/
 
 git init libnx
 git -C libnx fetch --depth 1 https://github.com/switchbrew/libnx.git b156b4774fb2df7b93402169509266da7547fc4c
 git -C libnx checkout --detach FETCH_HEAD
 make -C libnx
 cp -r libnx/nx/external/bsd/include/. libnx/nx/include/
-PYTHONUTF8=1 make -C uLaunch LIBNX="$PWD/libnx/nx" umenu
+PYTHONUTF8=1 make -C uLaunch LIBNX="$PWD/libnx/nx" umenu usystem
 ```
 
-The target produces `uLaunch/SdOut/ulaunch/bin/uMenu/` for the matching uLaunch release. Keep the original uMenu directory to restore the release bundle. The patch and adapter use GPL-2.0-only. [COPYING](COPYING)
+The targets populate `uLaunch/SdOut/ulaunch/bin/uMenu/` and both uSystem locations under `SdOut`. Install the pair together on a test SD for uLaunch 1.2.6 and save the original files for rollback. An older uSystem does not return a typed catalog admission reply, so uMenu offers browsing only with it. The patch and adapter use GPL-2.0-only. [COPYING](COPYING)
 
 ## Check the adapter on a host
 
 ```sh
 make -C "$adapter" check CPPFLAGS="-I$PWD/uLaunch/libs/json/single_include/nlohmann"
+make -C "$adapter" check-launch-policy CXXFLAGS="-O2 -Werror -fsanitize=undefined"
 ```
 
 On a Switch running the matching uLaunch release, start with a manual catalog containing Steam and Switch or homebrew entries. Open **EXODUS library** to check the baseline, sync from the NRO, then reopen the library to confirm the Steam rows update and the local entries remain. Repeat with an authorized Steam account whose shared library is empty to check Steam row removal. On a test SD card, add an invalid file with a newer snapshot number and verify that the last valid library still opens.
 
-Check that **Launch** can select a registered title from the catalog, that cancelling the confirmation returns to the same page, and that the confirmed title opens. Exercise a stale title ID and an ejected game card. Check that the normal HOME grid still opens a title, then restore the backed-up uMenu directory.
+Check that **Launch** appears for a ready title on an inserted card and opens it after confirmation. Check cancellation, a stale ID, an ejected card, an installed digital title and a suspended application. Check that the normal HOME grid still opens a title, then restore the backed-up uMenu directory.

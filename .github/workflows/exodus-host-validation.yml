@@ -38,3 +38,12 @@ jobs:
         with:
           persist-credentials: false
       - run: make -C exodus/memory check
+
+  home-launch-policy:
+    name: HOME launch policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: make -C exodus/home/ulaunch check-launch-policy CXXFLAGS="-O2 -Werror -fsanitize=undefined -fno-sanitize-recover=all"

@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <ul/menu/ui/ui_MenuApplication.hpp>
-#include <ul/os/os_Applications.hpp>
 
 extern ul::menu::ui::GlobalSettings g_GlobalSettings;
 extern ul::menu::ui::MenuApplication::Ref g_MenuApplication;
@@ -85,7 +84,7 @@ namespace exodus::home {
             return;
         }
 
-        const auto registered = ul::os::ListApplicationRecords();
+        const auto &main_menu = g_MenuApplication->GetLayout<ul::menu::ui::MainMenuLayout>();
         const auto page_count = (catalog.entries.size() + ItemsPerPage - 1) / ItemsPerPage;
         for (std::size_t page = 0; ; ) {
             const auto first = page * ItemsPerPage;
@@ -98,9 +97,7 @@ namespace exodus::home {
                 const auto &entry = catalog.entries[index];
                 content += "[" + CatalogText(ProviderLabel(entry.provider)) + "] " + entry.title;
                 const auto id = SwitchApplicationId(entry);
-                if (id && std::any_of(registered.begin(), registered.end(), [id](const auto &record) {
-                        return record.id == *id;
-                    })) {
+                if (id && main_menu->CanLaunchCatalogApplication(*id)) {
                     launchable.push_back({*id, entry.title});
                 }
             }
