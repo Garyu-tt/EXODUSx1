@@ -145,6 +145,40 @@ class SteamCatalogTests(unittest.TestCase):
         self.assertEqual((code, errors), (0, ""))
         self.assertEqual(catalog, {"schema_version": 1, "entries": []})
 
+    def test_root_named_steamapps_imports_nested_manifests_in_both_commands(self):
+        library = self.first.parent / "SteamApps"
+        nested = library / "steamapps"
+        nested.mkdir(parents=True)
+        self.manifest(nested, 42, "Nested library", 4)
+
+        expected = self.scan(nested)
+        self.assertEqual((expected[0], expected[2]), (0, ""))
+        self.assertEqual([entry["provider_id"] for entry in expected[1]["entries"]], ["42"])
+        self.assertEqual(self.scan(library), expected)
+
+        combined = subprocess.run(
+            [sys.executable, "-B", "-X", "utf8", "-m", "exodus.app_catalog", "--steam-library", str(library)],
+            cwd=SCRIPT.parent.parent, capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertEqual((combined.returncode, json.loads(combined.stdout), combined.stderr), expected)
+
+    def test_direct_manifest_candidates_keep_precedence_over_nested_directory(self):
+        nested = self.first / "steamapps"
+        nested.mkdir()
+        self.manifest(nested, 42, "Nested library", 4)
+        (self.first / "appmanifest_7.acf").write_text(
+            'AppState { appid 7 name "unfinished', encoding="utf-8",
+        )
+
+        code, catalog, errors = self.scan(self.first)
+        self.assertEqual((code, catalog["entries"]), (1, []))
+        self.assertIn("appmanifest_7.acf: unterminated quoted string", errors)
+
+        self.manifest(self.first, 8, "Direct library", 4)
+        code, catalog, errors = self.scan(self.first)
+        self.assertEqual((code, [entry["provider_id"] for entry in catalog["entries"]]), (1, ["8"]))
+        self.assertIn("appmanifest_7.acf: unterminated quoted string", errors)
+
 
 if __name__ == "__main__":
     unittest.main()
