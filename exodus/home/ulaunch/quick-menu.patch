@@ -5,10 +5,12 @@ index f3d2f71..c44f616 100755
 @@ -16,0 +17 @@ namespace ul::loader {
 +        static constexpr u32 CatalogAppletMagic = 0x31434855; // "UHC1"
 diff --git a/libs/uCommon/include/ul/smi/smi_Protocol.hpp b/libs/uCommon/include/ul/smi/smi_Protocol.hpp
-index 7dd331d..51e747d 100755
+index 7dd331d..e575f7b 100755
 --- a/libs/uCommon/include/ul/smi/smi_Protocol.hpp
 +++ b/libs/uCommon/include/ul/smi/smi_Protocol.hpp
-@@ -82 +82,6 @@ namespace ul::smi {
+@@ -3,0 +4 @@
++#include <ul/menu/catalog_steam_install.hpp>
+@@ -82 +83,7 @@ namespace ul::smi {
 -        OpenControllerKeyRemapping
 +        OpenControllerKeyRemapping,
 +        QueryCatalogGameCardApplication,
@@ -16,7 +18,8 @@ index 7dd331d..51e747d 100755
 +        QueryCatalogHomebrewApplet,
 +        LaunchCatalogHomebrewApplet,
 +        QueryCatalogSteamLaunchStatus,
-@@ -84,0 +90,19 @@ namespace ul::smi {
++        QueryCatalogSteamInstallEvidence,
+@@ -84,0 +92,25 @@ namespace ul::smi {
 +    struct CatalogGameCardInfo {
 +        u64 application_id;
 +        char name[0x200];
@@ -35,6 +38,12 @@ index 7dd331d..51e747d 100755
 +        CatalogSteamLaunchState state;
 +    };
 +    static_assert(sizeof(CatalogSteamLaunchInfo) == 2 * sizeof(u32));
++
++    struct CatalogSteamInstallInfo {
++        u32 application_id;
++        exodus::home::SteamInstallEvidence evidence;
++    };
++    static_assert(sizeof(CatalogSteamInstallInfo) == 2 * sizeof(u32));
 +
 diff --git a/libs/uCommon/include/ul/ul_Results.rc.hpp b/libs/uCommon/include/ul/ul_Results.rc.hpp
 index abd7983..14336ad 100644
@@ -254,14 +263,14 @@ index 4cf7a18..e115f10 100755
 +        CheckTargetResult(GetSelfProcessHandle(g_SelfProcessHandle));
 +        CheckTargetResult(SetupTargetHeap(target_ipt.is_auto_game_recording, applet_heap_size, applet_heap_reservation_size, g_TargetHeapAddress, g_TargetHeapSize));
 diff --git a/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp b/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
-index 4c5a30d..2897083 100755
+index 4c5a30d..7594912 100755
 --- a/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
 +++ b/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
 @@ -3,0 +4,3 @@
 +#include <ul/menu/catalog_homebrew_policy.hpp>
 +#include <array>
 +#include <string_view>
-@@ -45,0 +49,68 @@ namespace ul::menu::smi {
+@@ -45,0 +49,86 @@ namespace ul::menu::smi {
 +    inline Result QueryCatalogGameCardApplication(const u64 app_id, CatalogGameCardInfo &info) {
 +        return SendCommand(SystemMessage::QueryCatalogGameCardApplication,
 +            [&](ScopedStorageWriter &writer) {
@@ -330,6 +339,24 @@ index 4c5a30d..2897083 100755
 +        );
 +    }
 +
++    inline Result QueryCatalogSteamInstallEvidence(const u32 app_id, CatalogSteamInstallInfo &info) {
++        if(app_id == 0) {
++            return ResultCatalogLaunchDenied;
++        }
++        return SendCommand(SystemMessage::QueryCatalogSteamInstallEvidence,
++            [&](ScopedStorageWriter &writer) {
++                return writer.Push(app_id);
++            },
++            [&](ScopedStorageReader &reader) -> Result {
++                UL_RC_TRY(reader.Pop(info));
++                using exodus::home::SteamInstallEvidence;
++                return (info.application_id == app_id && info.evidence >= SteamInstallEvidence::NoManifest
++                    && info.evidence <= SteamInstallEvidence::Unavailable)
++                    ? ResultSuccess : ResultCatalogLaunchDenied;
++            }
++        );
++    }
++
 diff --git a/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp b/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
 index 933d011..6320efa 100755
 --- a/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
@@ -343,10 +370,10 @@ index 933d011..6320efa 100755
 +            bool CanLaunchCatalogHomebrew(const std::string_view id);
 +            bool TryLaunchCatalogHomebrew(const std::string_view id);
 diff --git a/projects/uMenu/romfs/lang/en.json b/projects/uMenu/romfs/lang/en.json
-index 6014634..b7f5637 100755
+index 6014634..74db8a5 100755
 --- a/projects/uMenu/romfs/lang/en.json
 +++ b/projects/uMenu/romfs/lang/en.json
-@@ -5,0 +6,24 @@
+@@ -5,0 +6,30 @@
 +    "exodus_catalog": "EXODUS library",
 +    "exodus_catalog_unavailable": "Copy a catalog snapshot to /ulaunch/exodus-catalog.json.",
 +    "exodus_catalog_invalid": "The snapshot must use the EXODUS v1 catalog format.",
@@ -368,6 +395,12 @@ index 6014634..b7f5637 100755
 +    "exodus_catalog_steam_status_unavailable": "Launch status unavailable. Check that uMenu and uSystem match.",
 +    "exodus_catalog_steam_saved_library": "From the saved Steam Sync library",
 +    "exodus_catalog_steam_manual_library": "From the manual catalog",
++    "exodus_catalog_steam_install_no_manifest": "SD has no Steam manifest for this AppID.",
++    "exodus_catalog_steam_install_invalid": "The SD Steam manifest is invalid.",
++    "exodus_catalog_steam_install_incomplete": "The SD manifest reports an incomplete installation.",
++    "exodus_catalog_steam_install_missing_game": "The Steam game folder is missing on SD.",
++    "exodus_catalog_steam_install_found": "SD Steam manifest and game folder found.",
++    "exodus_catalog_steam_install_unavailable": "SD Steam installation check unavailable.",
 +    "exodus_catalog_homebrew_launch": "Launch homebrew as an applet",
 +    "exodus_catalog_homebrew_unavailable": "The registered homebrew applet is no longer available.",
 +    "exodus_catalog_title_unavailable": "Launch requires a ready game card title and no suspended application.",
@@ -638,7 +671,7 @@ index 075eb97..80ca142 100755
 +        catalog_menu_item->AddOnKey(&exodus::home::ShowCatalog);
 +        this->options_menu->AddItem(catalog_menu_item);
 diff --git a/projects/uSystem/source/main.cpp b/projects/uSystem/source/main.cpp
-index 2d6aca3..9dbd6b5 100644
+index 2d6aca3..a4eca98 100644
 --- a/projects/uSystem/source/main.cpp
 +++ b/projects/uSystem/source/main.cpp
 @@ -16,0 +17,6 @@
@@ -745,11 +778,12 @@ index 2d6aca3..9dbd6b5 100644
 +            static_cast<u32>(ul::menu::EntryType::Homebrew));
 +    }
 +
-@@ -739,0 +840,3 @@ namespace {
+@@ -739,0 +840,4 @@ namespace {
 +            ul::smi::CatalogGameCardInfo catalog_gamecard{};
 +            ul::smi::CatalogHomebrewAppletInfo catalog_homebrew{};
 +            ul::smi::CatalogSteamLaunchInfo catalog_steam{};
-@@ -768,0 +872,58 @@ namespace {
++            ul::smi::CatalogSteamInstallInfo catalog_steam_install{};
+@@ -768,0 +873,67 @@ namespace {
 +                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication:
 +                        case ul::smi::SystemMessage::LaunchCatalogGameCardApplication: {
 +                            u64 app_id;
@@ -777,6 +811,15 @@ index 2d6aca3..9dbd6b5 100644
 +                                return ul::ResultCatalogLaunchDenied;
 +                            }
 +                            catalog_steam = { app_id, ul::smi::CatalogSteamLaunchState::NoApprovedSwitchRuntime };
++                            break;
++                        }
++                        case ul::smi::SystemMessage::QueryCatalogSteamInstallEvidence: {
++                            u32 app_id = 0;
++                            UL_RC_TRY(reader.Pop(app_id));
++                            if(app_id == 0) {
++                                return ul::ResultCatalogLaunchDenied;
++                            }
++                            catalog_steam_install = { app_id, exodus::home::ProbeLocalSteamInstallation("sdmc:", app_id) };
 +                            break;
 +                        }
 +                        case ul::smi::SystemMessage::QueryCatalogHomebrewApplet:
@@ -808,7 +851,7 @@ index 2d6aca3..9dbd6b5 100644
 +                            }
 +                            break;
 +                        }
-@@ -979,0 +1141,9 @@ namespace {
+@@ -979,0 +1151,12 @@ namespace {
 +                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication: {
 +                            return writer.Push(catalog_gamecard);
 +                        }
@@ -818,7 +861,10 @@ index 2d6aca3..9dbd6b5 100644
 +                        case ul::smi::SystemMessage::QueryCatalogSteamLaunchStatus: {
 +                            return writer.Push(catalog_steam);
 +                        }
-@@ -1038,0 +1209,53 @@ namespace {
++                        case ul::smi::SystemMessage::QueryCatalogSteamInstallEvidence: {
++                            return writer.Push(catalog_steam_install);
++                        }
+@@ -1038,0 +1222,53 @@ namespace {
 +            case ActionType::LaunchCatalogGameCardApplication: {
 +                if(!la::IsActive()) {
 +                    const auto &request = action.launch_catalog_gamecard;

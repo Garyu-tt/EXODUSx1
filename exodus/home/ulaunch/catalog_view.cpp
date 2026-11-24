@@ -71,6 +71,18 @@ namespace exodus::home {
             return id && menu->TryLaunchCatalogApplication(*id);
         }
 
+        const char *SteamInstallMessage(SteamInstallEvidence evidence) {
+            switch (evidence) {
+                case SteamInstallEvidence::NoManifest: return "exodus_catalog_steam_install_no_manifest";
+                case SteamInstallEvidence::InvalidManifest: return "exodus_catalog_steam_install_invalid";
+                case SteamInstallEvidence::IncompleteManifest: return "exodus_catalog_steam_install_incomplete";
+                case SteamInstallEvidence::MissingGameDirectory: return "exodus_catalog_steam_install_missing_game";
+                case SteamInstallEvidence::ManifestAndDirectoryFound: return "exodus_catalog_steam_install_found";
+                case SteamInstallEvidence::Unavailable: break;
+            }
+            return "exodus_catalog_steam_install_unavailable";
+        }
+
         void ShowSteamLaunchStatus(const Entry &choice, bool steam_snapshot_applied) {
             const auto id = SteamApplicationId(choice);
             if (!id)
@@ -82,8 +94,12 @@ namespace exodus::home {
                 : "exodus_catalog_steam_manual_library";
             const auto status = R_SUCCEEDED(rc) ? "exodus_catalog_steam_status_pending"
                 : "exodus_catalog_steam_status_unavailable";
+            ul::smi::CatalogSteamInstallInfo local{};
+            const auto evidence = R_SUCCEEDED(rc) && R_SUCCEEDED(ul::menu::smi::QueryCatalogSteamInstallEvidence(*id, local))
+                ? local.evidence : SteamInstallEvidence::Unavailable;
             const auto content = CatalogText("exodus_catalog_steam_appid") + " " + std::to_string(*id)
-                + "\n" + CatalogText(source) + "\n\n" + CatalogText(status);
+                + "\n" + CatalogText(source) + "\n\n" + CatalogText(SteamInstallMessage(evidence))
+                + "\n" + CatalogText(status);
             g_MenuApplication->DisplayDialog(choice.title, content, {CatalogText("ok")}, true);
         }
 
