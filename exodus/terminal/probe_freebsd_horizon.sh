@@ -8,7 +8,7 @@ nm="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-nm"
 readelf="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-readelf"
 libnx="$DEVKITPRO/libnx"
 mkdir -p "$out/objects"
-flags=(-std=gnu11 -funsigned-char -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE -D__SWITCH__ -DNO_HISTORY -DSHELL -DNXBSD_AST_BRIDGE -Werror=implicit-function-declaration -include exodus/terminal/freebsd_horizon_compile.h -I"$libnx/include" -I"$donor/bin/sh" -I"$donor/contrib/libedit" -I"$generated")
+flags=(-std=gnu11 -funsigned-char -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIC -ffunction-sections -fdata-sections -D__SWITCH__ -DNO_HISTORY -DSHELL -DNXBSD_AST_BRIDGE -Werror=implicit-function-declaration -include exodus/terminal/freebsd_horizon_compile.h -I"$libnx/include" -I"$donor/bin/sh" -I"$donor/contrib/libedit" -I"$generated")
 "$cc" --version > "$out/toolchain.txt"
 printf 'module\tcompile\truntime\n' > "$out/modules.tsv"
 objects=(); failed=0
@@ -17,6 +17,7 @@ probe() {
     if "$cc" "${flags[@]}" -c "$source" -o "$obj" > "$out/$name.log" 2>&1; then
         objects+=("$obj")
         "$nm" -u "$obj" > "$out/$name.undefined.txt"
+        "$readelf" -SWr "$obj" > "$out/$name.relocations.txt"
         printf '%s\tyes\tnot_tested\n' "$name" >> "$out/modules.tsv"
     else
         failed=$((failed+1))
@@ -48,10 +49,20 @@ fi
 link=not_attempted
 if ((failed==0)); then
     link=no
-    if "$cc" -specs="$libnx/switch.specs" "$out/shell-partial.o" -L"$libnx/lib" -lnx -o "$out/shell-probe.elf" > "$out/final-link.log" 2>&1; then
+    # Link the original per-module PIC objects, not the diagnostic partial link.
+    # Preserve libnx's -z text and segment permission checks.
+    cp "$libnx/switch.ld" "$out/sdk-linker-script.txt"
+    cp "$libnx/switch.specs" "$out/sdk-linker-specs.txt"
+    if "$cc" -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIC -specs="$libnx/switch.specs" -Wl,-Map,"$out/final-link.map" "${objects[@]}" -L"$libnx/lib" -lnx -o "$out/shell-probe.elf" > "$out/final-link.log" 2>&1; then
         link=yes
         "$readelf" -h "$out/shell-probe.elf" > "$out/final-elf-header.txt"
         "$nm" -u "$out/shell-probe.elf" > "$out/final-undefined.txt"
+        "$readelf" -lWd "$out/shell-probe.elf" > "$out/final-segments.txt"
+        if grep -q TEXTREL "$out/final-segments.txt"; then
+            echo "Unexpected text relocations: refusing ELF" >&2
+            rm -f "$out/shell-probe.elf"
+            link=no
+        fi
     else
         cat "$out/final-link.log"
     fi
