@@ -7,7 +7,13 @@ import struct
 import sys
 import zlib
 
-from .steam_catalog import CatalogLimitError, scan_libraries, write_catalog
+from .steam_catalog import (
+    CatalogLimitError,
+    CatalogOutputError,
+    scan_libraries,
+    write_catalog,
+    write_catalog_file,
+)
 
 
 # Layouts from libnx's switch/nro.h and switch/nacp.h.
@@ -143,15 +149,21 @@ def main():
                         help="Steam installation root whose libraryfolders.vdf lists libraries to scan. May be repeated.")
     parser.add_argument("--switch-sd", metavar="ROOT", type=Path,
                         help="Mounted Switch SD card root containing the switch directory.")
+    parser.add_argument("--output", metavar="FILE", type=Path,
+                        help="Write the catalog directly to FILE. Defaults to stdout.")
     args = parser.parse_args()
     if not args.steam_library and not args.steam_install and args.switch_sd is None:
         parser.error("supply at least one --steam-library, --steam-install or --switch-sd")
 
     steam, steam_errors = scan_libraries(args.steam_library, steam_installs=args.steam_install)
     homebrew, homebrew_errors = scan_homebrew(args.switch_sd) if args.switch_sd else ([], False)
+    entries = steam + homebrew
     try:
-        write_catalog(steam + homebrew)
-    except CatalogLimitError as exc:
+        if args.output is None:
+            write_catalog(entries)
+        else:
+            write_catalog_file(args.output, entries)
+    except (CatalogLimitError, CatalogOutputError) as exc:
         print(exc, file=sys.stderr)
         return 1
     return int(steam_errors or homebrew_errors)
