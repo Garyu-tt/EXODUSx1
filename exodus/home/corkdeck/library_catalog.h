@@ -10,6 +10,7 @@ struct exodus_library *exodus_library_open(const char *path);
 void exodus_library_close(struct exodus_library *library);
 const char *exodus_library_status(const struct exodus_library *library);
 size_t exodus_library_count(const struct exodus_library *library);
+const char *exodus_library_id(const struct exodus_library *library, size_t index);
 const char *exodus_library_title(const struct exodus_library *library, size_t index);
 const char *exodus_library_provider(const struct exodus_library *library, size_t index);
 #ifdef __cplusplus
