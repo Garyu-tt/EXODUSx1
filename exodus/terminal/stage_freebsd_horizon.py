@@ -104,11 +104,16 @@ def prepare(donor, out):
     dst.write_bytes(data[:start] + b"\tif (timeout >= 0)\n\t\terrorwithstatus(125, \"timed read unavailable on Horizon\");\n" + data[end:])
     body(misc, b"umaskcmd(int argc __unused, char **argv __unused)",
          b"\t(void)argc; (void)argv;\n\terrorwithstatus(125, \"umask unavailable on Horizon\");")
+    # The resource-limit table and printer are unreachable in this profile.
+    # Omit them rather than synthesizing an unsupported rlimit ABI.
+    replace(misc, b"struct limits {", b"#ifndef __SWITCH__\nstruct limits {")
+    replace(misc, b"\nint\nulimitcmd(int argc __unused, char **argv __unused)", b"\n#endif\nint\nulimitcmd(int argc __unused, char **argv __unused)")
     body(misc, b"ulimitcmd(int argc __unused, char **argv __unused)",
          b"\t(void)argc; (void)argv;\n\terrorwithstatus(125, \"ulimit unavailable on Horizon\");")
     body(jobs, b"vforkexecshell(struct job *jp, char **argv, char **envp, const char *path, int idx, int pip[2])",
          b"\t(void)jp; (void)argv; (void)envp; (void)path; (void)idx; (void)pip;\n\terrorwithstatus(125, \"native external executable unavailable on Horizon\");")
     trap = "bin/sh/trap.c"
+    replace(trap, b'#include "shell.h"', b'#include <errno.h>\n#include "shell.h"')
     body(trap, b"sigstring_to_signum(char *sig)",
          b"\tif (!strcasecmp(sig, \"EXIT\") || !strcmp(sig, \"0\")) return 0;\n\treturn -1;")
     body(trap, b"printsignals(void)",
