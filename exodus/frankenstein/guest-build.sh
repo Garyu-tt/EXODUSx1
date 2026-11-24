@@ -41,7 +41,9 @@ for port in graphics/wayland graphics/mesa-libs graphics/mesa-dri graphics/vulka
     done
 done
 make -C /usr/ports/graphics/wayland BATCH=yes USE_PACKAGE_DEPENDS=yes package
-make -C /usr/ports/graphics/wayland -V PKGFILE
+wayland_package=$(make -C /usr/ports/graphics/wayland -V PKGFILE)
+test -s "$wayland_package"
+sha256 "$wayland_package"
 echo EXODUS_WAYLAND_SOURCE_BUILD_PASS
 # Run an actual Valve Gamescope source package build against the BSD port.
 # Dependencies may be installed from the binary repository; the target may not.
@@ -59,4 +61,13 @@ pkg info -d gamescope
 file /usr/local/bin/gamescope
 /usr/local/bin/gamescope --help
 pkg info
+export_dir=$(mktemp -d /var/tmp/exodus-export.XXXXXX)
+mount -t msdosfs /dev/msdosfs/EXODUSOUT "$export_dir"
+cp "$wayland_package" "$export_dir/wayland.pkg"
+cp "$package" "$export_dir/gamescope.pkg"
+pkg query -a '%n-%v %o' | sort > "$export_dir/dependencies.txt"
+(cd "$export_dir" && sha256 -r wayland.pkg gamescope.pkg dependencies.txt > SHA256SUMS)
+sync
+umount "$export_dir"
+rmdir "$export_dir"
 echo EXODUS_GAMESCOPE_SOURCE_BUILD_PASS
