@@ -35,6 +35,14 @@ def generate(checkout, out):
             data = (source / name).read_bytes()
             if blob_id(data) != entries["bin/sh/" + name]:
                 raise ValueError("generator input changed: " + name)
+            if name in ("mkbuiltins", "mktokens"):
+                # BSD mktemp -t accepts a prefix; GNU requires a template.
+                # Modify only the verified private build copy, not the donor.
+                old = b"mktemp -t ka"
+                new = b'mktemp "${TMPDIR:-/tmp}/ka.XXXXXXXX"'
+                if data.count(old) != 1:
+                    raise ValueError("unexpected mktemp invocation: " + name)
+                data = data.replace(old, new)
             (src / name).write_bytes(data)
         # Host-only annotation shim, not a target libc compatibility shim.
         shim = work / "host_annotations.h"
@@ -53,8 +61,8 @@ def generate(checkout, out):
                  str(src / (name + ".c")), "-o", str(work / name)])
         run([str(work / "mknodes"), str(src / "nodetypes"), str(src / "nodes.c.pat")])
         run([str(work / "mksyntax")])
-        run(["sh", str(src / "mkbuiltins"), "src"])
-        run(["sh", str(src / "mktokens")])
+        run(["sh", "-e", str(src / "mkbuiltins"), "src"])
+        run(["sh", "-e", str(src / "mktokens")])
         required = {"nodes.h": ("NCMD", "NPIPE", "union node"),
                     "syntax.h": ("BASESYNTAX", "CWORD"),
                     "builtins.h": ("builtinfunc", "CDCMD"),
