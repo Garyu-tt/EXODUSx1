@@ -4,6 +4,7 @@ on:
     paths:
       - 'exodus/frankenstein/graph.json'
       - 'exodus/frankenstein/validate_graph.py'
+      - 'exodus/frankenstein/partition_contract.py'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/test_sessiond.py'
       - 'exodus/frankenstein/sessiond-dbus.inc'
@@ -25,6 +26,7 @@ jobs:
           persist-credentials: false
       - run: |
           python3 exodus/frankenstein/validate_graph.py
+          python3 exodus/frankenstein/partition_contract.py
           cc -std=c11 -Wall -Wextra -Werror -O2 exodus/frankenstein/sessiond.c -o /tmp/exodus-sessiond
           python3 exodus/frankenstein/test_sessiond.py /tmp/exodus-sessiond
       - name: Install native GLib and D-Bus test tools
