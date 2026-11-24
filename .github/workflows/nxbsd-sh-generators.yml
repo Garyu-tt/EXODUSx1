@@ -24,6 +24,7 @@ jobs:
             bin/sh
             lib/libedit
             contrib/libedit
+            sys/sys
           persist-credentials: false
       - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-a"
       - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-b"
@@ -40,6 +41,17 @@ jobs:
             -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
             -I "$RUNNER_TEMP/grammar-a" \
             -c donor-freebsd/bin/sh/parser.c -o "$RUNNER_TEMP/parser.o"
+      - name: Compile original FreeBSD evaluator to a host object (no link)
+        run: |
+          cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+            -include exodus/terminal/freebsd_parser_host.h \
+            -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+            -I "$RUNNER_TEMP/grammar-a" \
+            -c donor-freebsd/bin/sh/eval.c -o "$RUNNER_TEMP/eval.o"
+      - name: Inventory unresolved parser and evaluator symbols
+        run: |
+          nm -u "$RUNNER_TEMP/parser.o" > "$RUNNER_TEMP/grammar-a/parser-undefined.txt"
+          nm -u "$RUNNER_TEMP/eval.o" > "$RUNNER_TEMP/grammar-a/eval-undefined.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: freebsd-sh-grammar
