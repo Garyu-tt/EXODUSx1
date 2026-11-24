@@ -13,14 +13,17 @@ PAGE = 4096
 class ProbeTests(unittest.TestCase):
     def test_accounting(self):
         dense = bytes(range(256)) * 16
-        sparse = b"x" + bytes(PAGE - 1)
-        for sample, pages, sparse_count, payload, tail in [
-            (b"", 0, 0, 0, 0),
-            (b"abc", 0, 0, 3, 3),
-            (bytes(PAGE), 1, 1, 8, 0),
-            (dense, 1, 0, PAGE, 0),
-            (bytes(PAGE) + sparse + dense + b"abc", 3, 2, 8 + 72 + PAGE + 3, 3),
-            (sparse * 129 + b"end", 129, 129, 129 * 72 + 3, 3),
+        sparse = bytes(range(1, 65)) + bytes(PAGE - 64)
+        pixel_run = bytes.fromhex("44 77 aa ff") * (PAGE // 4)
+        single_byte = b"x" + bytes(PAGE - 1)
+        for sample, pages, sparse_count, word_run_count, payload, tail in [
+            (b"", 0, 0, 0, 0, 0),
+            (b"abc", 0, 0, 0, 3, 3),
+            (bytes(PAGE), 1, 1, 0, 8, 0),
+            (dense, 1, 0, 0, PAGE, 0),
+            (single_byte, 1, 0, 1, 47, 0),
+            (bytes(PAGE) + sparse + dense + pixel_run + b"abc", 4, 2, 1, 8 + 72 + PAGE + 41 + 3, 3),
+            (sparse * 128 + pixel_run + b"end", 129, 128, 1, 128 * 72 + 41 + 3, 3),
         ]:
             with self.subTest(size=len(sample)), tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp) / "input with spaces.bin"
@@ -29,6 +32,7 @@ class ProbeTests(unittest.TestCase):
                 self.assertEqual(json.loads(result.stdout), {
                     "pages": pages,
                     "sparse_pages": sparse_count,
+                    "word_run_pages": word_run_count,
                     "input_bytes": len(sample),
                     "payload_bytes": payload,
                     "length_index_bytes": 2 * pages,
