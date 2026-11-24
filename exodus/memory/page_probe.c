@@ -2,6 +2,9 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#if defined(_MSC_VER)
+#include <share.h>
+#endif
 
 static int measure_sample(FILE *input, const char *error_label)
 {
@@ -41,7 +44,12 @@ int wmain(int argc, wchar_t **argv)
         fputs("Usage: page_probe SAMPLE\n", stderr);
         return EXIT_FAILURE;
     }
-    return measure_sample(_wfopen(argv[1], L"rb"), "page_probe sample");
+#if defined(_MSC_VER)
+    FILE *input = _wfsopen(argv[1], L"rb", _SH_DENYNO);
+#else
+    FILE *input = _wfopen(argv[1], L"rb");
+#endif
+    return measure_sample(input, "page_probe sample");
 }
 #else
 int main(int argc, char **argv)
