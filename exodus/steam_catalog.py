@@ -2,9 +2,11 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import sys
+from tempfile import NamedTemporaryFile
 
 
 # Steam app manifests use a subset of Valve's text KeyValues format.
@@ -20,6 +22,10 @@ STATE_PRIORITY = {"unknown": 0, "not_fully_installed": 1, "reported_installed": 
 
 class CatalogLimitError(ValueError):
     """A catalog cannot fit in the HOME reader's entry or byte budget."""
+
+
+class CatalogOutputError(OSError):
+    """A catalog file could not be published."""
 
 
 def token_text(token):
@@ -238,21 +244,48 @@ def write_catalog(entries, stream=None):
     stream.write(data.decode("ascii"))
 
 
+def write_catalog_file(path, entries):
+    """Check the complete catalog and atomically replace the destination."""
+    data = serialize_catalog(entries)
+    staged = None
+    try:
+        with NamedTemporaryFile(dir=path.parent, prefix=".exodus-catalog-", delete=False) as file:
+            staged = Path(file.name)
+            file.write(data)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(staged, path)
+        staged = None
+    except OSError:
+        raise CatalogOutputError("Could not write the catalog. The previous output was preserved.") from None
+    finally:
+        if staged is not None:
+            try:
+                staged.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Read local Steam app manifests and write an offline metadata catalog to stdout."
+        description="Read local Steam app manifests and write an offline metadata catalog."
     )
     parser.add_argument("libraries", metavar="LIBRARY", type=Path, nargs="*",
                         help="Steam library root containing steamapps, or the steamapps directory itself")
     parser.add_argument("--steam-install", metavar="ROOT", type=Path, action="append", default=[],
                         help="Steam installation root whose libraryfolders.vdf lists libraries to scan. May be repeated.")
+    parser.add_argument("--output", metavar="FILE", type=Path,
+                        help="Write the catalog directly to FILE. Defaults to stdout.")
     args = parser.parse_intermixed_args()
     if not args.libraries and not args.steam_install:
         parser.error("supply at least one LIBRARY or --steam-install")
     entries, errors = scan_libraries(args.libraries, steam_installs=args.steam_install)
     try:
-        write_catalog(entries)
-    except CatalogLimitError as exc:
+        if args.output is None:
+            write_catalog(entries)
+        else:
+            write_catalog_file(args.output, entries)
+    except (CatalogLimitError, CatalogOutputError) as exc:
         print(exc, file=sys.stderr)
         return 1
     return int(errors)

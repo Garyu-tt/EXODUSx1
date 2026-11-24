@@ -3,8 +3,10 @@
 From the EXODUSx1 checkout on a PC, run the importer with Python 3.8 or newer. Pass each library that you want to scan. A library root and its `steamapps` directory are both accepted.
 
 ```shell
-python exodus/steam_catalog.py "D:/SteamLibrary" "E:/Games/Steam/steamapps" > catalog.json
+python exodus/steam_catalog.py "D:/SteamLibrary" "E:/Games/Steam/steamapps" --output catalog.json
 ```
+
+Use `--output` for direct file output in Windows PowerShell 5.1. Its `>` redirection encodes the catalog as UTF-16LE, which can push a valid catalog over the HOME byte limit. Omit `--output` to send JSON to stdout.
 
 The JSON document has a `schema_version` and an `entries` array. Each entry contains the provider `steam`, the decimal App ID as a string, and the display name from the manifest. When supplied by the manifest, `last_played` contains Unix time in seconds. Missing or zero timestamps and unavailable artwork are exported as `null`. The pair of provider and ID identifies a catalog entry. App IDs are sorted numerically.
 
@@ -17,7 +19,7 @@ The command reads local manifests without signing in or contacting Steam. Only c
 Pass `--steam-install` to read the libraries configured by an installed Steam client. Supply the installation root, such as `C:/Program Files (x86)/Steam`, rather than its `steamapps` directory. The option may be repeated and is available in both catalog commands:
 
 ```shell
-python exodus/steam_catalog.py --steam-install "C:/Program Files (x86)/Steam" > steam.json
+python exodus/steam_catalog.py --steam-install "C:/Program Files (x86)/Steam" --output steam.json
 python -m exodus.app_catalog --steam-install "C:/Program Files (x86)/Steam" --switch-sd F:/ > catalog.json
 ```
 
@@ -43,7 +45,7 @@ The homebrew scan reads `.nro` metadata under `switch` and uses the first nonemp
 
 Both offline commands check the complete combined catalog against HOME's limits of 4,096 entries and 2 MiB before writing any output. The byte budget includes JSON formatting, Unicode escapes and the final newline. The commands emit ASCII JSON with LF line endings on both Windows and Linux, so Windows text-mode newline expansion cannot push an otherwise valid document over the limit.
 
-An oversized catalog produces a diagnostic on stderr, exits with code 1 and writes no JSON to stdout. No entries are silently dropped. Select fewer source libraries or correct oversized source metadata before exporting again. Ordinary partial scans still emit their readable entries with exit code 1 when the resulting catalog fits these limits. Steam sign-in refreshes use the same output check before staging a replacement, preserving the existing output file if the combined library is too large.
+An oversized catalog produces a diagnostic on stderr, exits with code 1 and writes no JSON to stdout. No entries are silently dropped. Select fewer source libraries or correct oversized source metadata before exporting again. Ordinary partial scans still emit their readable entries with exit code 1 when the resulting catalog fits these limits. Steam sign-in refreshes and the standalone importer's `--output` option use the same checks and atomic file replacement to preserve any existing snapshot on a size or write error.
 
 ## Refresh Steam titles after browser sign-in
 

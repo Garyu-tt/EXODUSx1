@@ -11,7 +11,6 @@ from pathlib import Path
 import re
 import secrets
 import sys
-from tempfile import NamedTemporaryFile
 from threading import Thread
 import time
 from urllib.error import HTTPError
@@ -21,10 +20,11 @@ import webbrowser
 
 from .steam_catalog import (
     CatalogLimitError,
+    CatalogOutputError,
     MAX_CATALOG_BYTES,
     MAX_CATALOG_ENTRIES,
-    serialize_catalog,
     steam_entry,
+    write_catalog_file,
 )
 
 
@@ -337,27 +337,9 @@ def read_base_catalog(path):
 
 def save_catalog(path, entries):
     try:
-        data = serialize_catalog(entries)
-    except CatalogLimitError as exc:
+        write_catalog_file(path, entries)
+    except (CatalogLimitError, CatalogOutputError) as exc:
         raise SteamSyncError(str(exc)) from None
-
-    staged = None
-    try:
-        with NamedTemporaryFile(dir=path.parent, prefix=".exodus-catalog-", delete=False) as file:
-            staged = Path(file.name)
-            file.write(data)
-            file.flush()
-            os.fsync(file.fileno())
-        os.replace(staged, path)
-        staged = None
-    except OSError:
-        raise SteamSyncError("Could not write the catalog. The previous output was preserved.") from None
-    finally:
-        if staged is not None:
-            try:
-                staged.unlink(missing_ok=True)
-            except OSError:
-                pass
 
 
 def sync_library(output, key, *, base_catalog=None, timeout=180, open_browser=None, opener=None):
