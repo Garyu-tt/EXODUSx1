@@ -7,9 +7,9 @@ from audit_freebsd import LOCK, blob_id
 
 def stage(checkout, output, module="expand"):
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    if module not in ("expand", "input", "trap", "main", "kill", "histedit"):
+    if module not in ("expand", "input", "trap", "main", "kill", "histedit", "evalbridge"):
         raise ValueError("unsupported module")
-    path = "bin/kill/kill.c" if module == "kill" else "bin/sh/" + module + ".c"
+    path = "bin/kill/kill.c" if module == "kill" else "bin/sh/" + ("eval" if module == "evalbridge" else module) + ".c"
     expected = next(x["blob"] for x in lock["files"] if x["path"] == path)
     data = (checkout / path).read_bytes()
     if blob_id(data) != expected:
@@ -26,6 +26,10 @@ def stage(checkout, output, module="expand"):
         # A verified profile must not be executed without verification.
         old = b"oflags |= O_VERIFY;"
         new = b'errorwithstatus(126, "verified profile open unavailable on host");'
+    elif module == "evalbridge":
+        # Dedicated host bridge profile only: intercept NPIPE evaluation.
+        old = b'evalpipe(union node *n)\n{'
+        new = old + b'\n#ifdef NXBSD_AST_BRIDGE\n\textern int nxbsd_ast_pipeline(const union node *);\n\tflushall();\n\texitstatus = nxbsd_ast_pipeline(n);\n\treturn;\n#endif'
     elif module == "histedit":
         # GNU qsort_r uses the same comparator signature and context position.
         old = b"qsort_s(matches + 1, i, sizeof(matches[0]), comparator,"
@@ -60,6 +64,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--checkout", required=True, type=Path)
     p.add_argument("--out", required=True, type=Path)
-    p.add_argument("--module", choices=("expand", "input", "trap", "main", "kill", "histedit"), default="expand")
+    p.add_argument("--module", choices=("expand", "input", "trap", "main", "kill", "histedit", "evalbridge"), default="expand")
     args = p.parse_args()
     stage(args.checkout, args.out, args.module)
