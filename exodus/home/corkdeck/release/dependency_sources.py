@@ -5,6 +5,7 @@
 import concurrent.futures
 import contextlib
 import hashlib
+from itertools import takewhile
 import json
 import re
 import shutil
@@ -44,7 +45,9 @@ def load_manifest():
         manifest = json.load(stream)
     if manifest["format"] != 1:
         raise ValueError("Unknown dependency manifest format")
-    for entry in manifest["inputs"] + manifest["notices"] + manifest["source_variants"]:
+    entries = (manifest["inputs"] + manifest["notices"] + manifest["source_variants"]
+               + manifest["external_recipe_references"])
+    for entry in entries:
         relative_path(entry["path"])
         if not SHA256.fullmatch(entry["sha256"]) or entry["size"] <= 0:
             raise ValueError(f"Invalid size or digest for {entry['path']}")
@@ -127,14 +130,36 @@ def cached_file(entry, cache, offline):
 
 def c_license_comment(content):
     match = re.match(rb"/\*.*?\*/\r?\n", content, re.DOTALL)
-    if not match or b"Copyright" not in match[0] or b"Permission" not in match[0]:
+    if (not match or b"Copyright" not in match[0]
+            or not any(word in match[0] for word in (b"Permission", b"Redistribution"))):
         raise ValueError("Expected a complete leading C copyright and license notice")
     return match[0]
+
+
+def patch_license_notice(source, member_name):
+    marker = b"+++ b/" + member_name.encode("ascii")
+    lines = source.read_bytes().splitlines()
+    start = lines.index(marker) + 1
+    if not lines[start].startswith(b"@@ -0,0 "):
+        raise ValueError(f"Expected an added source file in {source}: {member_name}")
+    additions = takewhile(lambda line: line.startswith(b"+"), lines[start + 1:])
+    content = b"\n".join(line[1:] for line in additions) + b"\n"
+    if content.startswith(b"/*"):
+        return c_license_comment(content)
+    header = re.match(rb"(?:(?:#[^\n]*)?\n)+", content)
+    if not header or b"Copyright" not in header[0] or b"Permission" not in header[0]:
+        raise ValueError(f"Expected a leading build-file license notice: {member_name}")
+    return header[0].rstrip() + b"\n"
 
 
 def extract_notices(stage, notices, sources):
     grouped = {}
     for notice in notices:
+        if notice.get("patch_member"):
+            destination = stage / notice["path"]
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(patch_license_notice(sources[notice["source"]], notice["member"]))
+            continue
         grouped.setdefault(notice["source"], {})[notice["member"]] = notice
     for source, expected in grouped.items():
         with tarfile.open(sources[source], "r|*") as archive:

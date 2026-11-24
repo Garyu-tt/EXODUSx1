@@ -16,7 +16,7 @@ python3 "$release/bundle-shell-release.py" \
 ~~~
 
 The first command verifies the size and SHA-256 of every dependency input,
-copies the relevant recipes and patches, and extracts the release notices.
+stages the library sources and their port patches, and extracts the release notices.
 Use --offline to reconstruct the material from a verified cache. The cache
 holds the original inputs by SHA-256. The dependency output includes the pinned
 manifest and its own SHA256SUMS.
@@ -39,12 +39,24 @@ reproduction job establishes that the staged shell inputs rebuild the NRO.
 ## Dependency provenance
 
 dependency-sources.json records the package versions, expected input bytes, and
-upstream references for the dependency closure of the pinned native image. The
-devkitPro package recipes contain the source archive checksums and Switch
-patches. Mesa's package version is 20.1.0-5 and its recipe uses the upstream
-20.1.0-rc3 source. The selected FreeType license option for the linked shell is
-GPL version 2. Preserve the recorded notices for other components under their
-respective terms.
+upstream references for the dependency closure of the pinned native image.
+The source archive includes the exact patches applied to the component source.
+The manifest's external_recipe_references retain the URLs and hashes of the
+devkitPro SDK packaging recipes and standalone build helpers. The shell build
+uses the pinned SDK image and the build scripts in this source archive.
+Mesa's package version is 20.1.0-5 and its recipe uses the upstream 20.1.0-rc3
+source. The selected FreeType license option for the linked shell is GPL
+version 2. The other components retain their documented terms.
+
+The Switch software-keyboard files in the SDL patch match the
+[devkitPro SDL port](https://github.com/devkitPro/SDL/commit/84fd9f55ec69ae08dd9a5fd805869f0bec17878c)
+under its [zlib notice](https://github.com/devkitPro/SDL/blob/0738d3c9f6993875e2f3dd0e8cc0bb4ae4440b4e/LICENSE.txt).
+The added Mesa drivers match the [MIT-licensed Mesa port](https://github.com/devkitPro/mesa/blob/05fc4b1d449b8fe12cf1a47b46c4a1c1f4e4e3a6/docs/license.html).
+The libsysbase code comes from the [devkitPro Newlib port](https://github.com/devkitPro/newlib/tree/57bd8e1ade3cf46d2e61a72516ac8bfaf8fdfd62/libgloss/libsysbase).
+Its [libgloss notice](https://github.com/devkitPro/newlib/blob/57bd8e1ade3cf46d2e61a72516ac8bfaf8fdfd62/COPYING.LIBGLOSS)
+applies unless a source file specifies its own terms. The package includes
+the copyright and license notices from the Mesa Switch driver and from the
+Newlib thread and semaphore files.
 
 The devkitA64 r29.2 build records specify GCC 15.2.0-7, binutils 2.45.1-2, and
 newlib 4.6.0.20260123-4. GCC's archive matches the GNU release SHA-512.

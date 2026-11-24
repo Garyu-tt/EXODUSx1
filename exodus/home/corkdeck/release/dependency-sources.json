@@ -1,932 +1,966 @@
 {
-  "format": 1,
-  "native_image": "devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282",
   "corkdeck_donor": "adc0b52284e9e57d18808427a770a2a162c76bf0",
-  "devkitpro_package_recipes": "5c46517a8a1a1f0939a90b8068655ea00fa125b9",
   "devkitpro_buildscripts": "96819633754f9c99a4cb546fcdbc762e9451bac4",
-  "packages": [
-    {
-      "name": "devkita64-gcc",
-      "version": "15.2.0-7",
-      "role": "libgcc, libstdc++ and GCC startup objects"
-    },
-    {
-      "name": "devkita64-newlib",
-      "version": "4.6.0.20260123-4",
-      "role": "libc, libm and libsysbase"
-    },
-    {
-      "name": "libnx",
-      "version": "4.12.0-1",
-      "role": "libnx, Switch linker inputs and interfaces"
-    },
-    {
-      "name": "switch-bzip2",
-      "version": "1.0.8-1",
-      "role": "libbz2"
-    },
-    {
-      "name": "switch-freetype",
-      "version": "2.13.3-1",
-      "role": "libfreetype, GPLv2 as the upstream license option"
-    },
-    {
-      "name": "switch-harfbuzz",
-      "version": "10.0.1-1",
-      "role": "libharfbuzz"
-    },
-    {
-      "name": "switch-libdrm_nouveau",
-      "version": "1.0.1-2",
-      "role": "libdrm_nouveau"
-    },
-    {
-      "name": "switch-libjpeg-turbo",
-      "version": "2.1.2-2",
-      "role": "libturbojpeg"
-    },
-    {
-      "name": "switch-libpng",
-      "version": "1.6.48-1",
-      "role": "libpng16"
-    },
-    {
-      "name": "switch-mesa",
-      "version": "20.1.0-5",
-      "role": "libEGL and libglapi, from the 20.1.0-rc3 archive"
-    },
-    {
-      "name": "switch-sdl2",
-      "version": "2.28.5-4",
-      "role": "libSDL2"
-    },
-    {
-      "name": "switch-sdl2_ttf",
-      "version": "2.22.0-2",
-      "role": "libSDL2_ttf"
-    },
-    {
-      "name": "switch-zlib",
-      "version": "1.3.1-1",
-      "role": "libz"
-    },
-    {
-      "name": "nlohmann-json3-dev",
-      "version": "3.11.2-2",
-      "role": "Debian C++ headers compiled into the shell"
-    },
-    {
-      "name": "devkita64-binutils",
-      "version": "2.45.1-2",
-      "role": "Host package build tooling"
-    },
-    {
-      "name": "switch-tools",
-      "version": "1.13.1-1",
-      "role": "Host NRO and NACP packaging tools"
-    }
-  ],
-  "inputs": [
+  "devkitpro_package_recipes": "5c46517a8a1a1f0939a90b8068655ea00fa125b9",
+  "external_recipe_references": [
     {
       "path": "recipes/devkitpro-buildscripts/README.TXT",
+      "sha256": "c0711e602438c12ba979d5cd3ad7cc8fc09acb5311978dd37938dd6506b557fe",
+      "size": 4825,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/README.TXT"
-      ],
-      "sha256": "c0711e602438c12ba979d5cd3ad7cc8fc09acb5311978dd37938dd6506b557fe",
-      "size": 4825
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/build-binutils.sh",
+      "sha256": "887a577f04878e807f6f893d0c6d1f6a727abdde1d6bf3fad732492ff991d2d7",
+      "size": 1068,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/build-binutils.sh"
-      ],
-      "sha256": "887a577f04878e807f6f893d0c6d1f6a727abdde1d6bf3fad732492ff991d2d7",
-      "size": 1068
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/build-crtls.sh",
+      "sha256": "725caf4d6df08fd9ed41d4eecc1e8e9ea0b84e996d9927f19a82e35822889b5e",
+      "size": 1325,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/build-crtls.sh"
-      ],
-      "sha256": "725caf4d6df08fd9ed41d4eecc1e8e9ea0b84e996d9927f19a82e35822889b5e",
-      "size": 1325
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/build-devkit.sh",
+      "sha256": "7b6e841ac57b9d963375347873be172a1d1d00e57d0a3a3d4415355d861be04b",
+      "size": 9268,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/build-devkit.sh"
-      ],
-      "sha256": "7b6e841ac57b9d963375347873be172a1d1d00e57d0a3a3d4415355d861be04b",
-      "size": 9268
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/build-gcc-stage1.sh",
+      "sha256": "e6f7fc2884ede2c538fea93ca077a18e2633313ce75360b78dd62fda653c0d4c",
+      "size": 1753,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/build-gcc-stage1.sh"
-      ],
-      "sha256": "e6f7fc2884ede2c538fea93ca077a18e2633313ce75360b78dd62fda653c0d4c",
-      "size": 1753
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/build-gcc-stage2.sh",
+      "sha256": "122b0bf41459a57a3c89627182a15cd475388ddb3e8b19ef4fde00b66277ab8f",
+      "size": 622,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/build-gcc-stage2.sh"
-      ],
-      "sha256": "122b0bf41459a57a3c89627182a15cd475388ddb3e8b19ef4fde00b66277ab8f",
-      "size": 622
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/build-newlib.sh",
+      "sha256": "b2f79db703ae6523520b3019c5208d0f2ad532ecd7fc243c4469a3c0b09a22bf",
+      "size": 1503,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/build-newlib.sh"
-      ],
-      "sha256": "b2f79db703ae6523520b3019c5208d0f2ad532ecd7fc243c4469a3c0b09a22bf",
-      "size": 1503
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/config.guess",
+      "sha256": "50205cf3ec5c7615b17f937a0a57babf4ec5cd0aade3d7b3cccbe5f1bf91a7ef",
+      "size": 50850,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/config.guess"
-      ],
-      "sha256": "50205cf3ec5c7615b17f937a0a57babf4ec5cd0aade3d7b3cccbe5f1bf91a7ef",
-      "size": 50850
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/config.sh.sample",
+      "sha256": "675b8edad2a11d4535c4e03440807b6e19bf231d30ad3f0abd4782294a29937a",
+      "size": 2484,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/config.sh.sample"
-      ],
-      "sha256": "675b8edad2a11d4535c4e03440807b6e19bf231d30ad3f0abd4782294a29937a",
-      "size": 2484
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/makedist.sh",
+      "sha256": "7aab0d35b95252b31d643b19cdcb591a921539509f4f3a4cebaf02b5175a150b",
+      "size": 338,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/makedist.sh"
-      ],
-      "sha256": "7aab0d35b95252b31d643b19cdcb591a921539509f4f3a4cebaf02b5175a150b",
-      "size": 338
-    },
-    {
-      "path": "recipes/devkitpro-buildscripts/patches/binutils-2.45.1-2.patch",
-      "urls": [
-        "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/patches/binutils-2.45.1-2.patch"
-      ],
-      "sha256": "eeb8d74bd74393f6e3a86ebef732fee2bb8f4d19b89aad6b7d3fd23439d2344a",
-      "size": 20196
-    },
-    {
-      "path": "recipes/devkitpro-buildscripts/patches/gcc-15.2.0-7.patch",
-      "urls": [
-        "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/patches/gcc-15.2.0-7.patch"
-      ],
-      "sha256": "0e1897cb98948c40513a6288ce65adc6c201986c69535daf18bda91b7b726034",
-      "size": 45173
-    },
-    {
-      "path": "recipes/devkitpro-buildscripts/patches/newlib-4.6.0.20260123-4.patch",
-      "urls": [
-        "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/patches/newlib-4.6.0.20260123-4.patch"
-      ],
-      "sha256": "6d5aba4356553c727765c98e7553d3784f31d361c856e220ef27cc26353fb88f",
-      "size": 538721
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/select_toolchain.sh",
+      "sha256": "3a2c208eb43812428eb6f085b6e66cf30c5c8264a1cc8e2993a747c47d85c023",
+      "size": 1833,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/select_toolchain.sh"
-      ],
-      "sha256": "3a2c208eb43812428eb6f085b6e66cf30c5c8264a1cc8e2993a747c47d85c023",
-      "size": 1833
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/strip_bins.sh",
+      "sha256": "c869814e48a2a45d4d77bb0ab67aa33f4860b8944b65822e77e706b84713c12d",
+      "size": 1180,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/strip_bins.sh"
-      ],
-      "sha256": "c869814e48a2a45d4d77bb0ab67aa33f4860b8944b65822e77e706b84713c12d",
-      "size": 1180
+      ]
     },
     {
       "path": "recipes/devkitpro-buildscripts/strip_toolchain.sh",
+      "sha256": "6c8c9975f9f7d13c376cdda1df23b055d59aed42b23a3b037c22162432547ca5",
+      "size": 858,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/strip_toolchain.sh"
-      ],
-      "sha256": "6c8c9975f9f7d13c376cdda1df23b055d59aed42b23a3b037c22162432547ca5",
-      "size": 858
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/Generic-dkP.cmake",
+      "sha256": "161873070c09b4ac759f25a9ba5d2ae72194ca66e2d577fd121fb835229536d3",
+      "size": 2717,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/Generic-dkP.cmake"
-      ],
-      "sha256": "161873070c09b4ac759f25a9ba5d2ae72194ca66e2d577fd121fb835229536d3",
-      "size": 2717
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/PKGBUILD",
+      "sha256": "4a36160f3f0be9ed8945c18a3d8b25129d8fc4a1fcc790b4a6b09826a56f7eea",
+      "size": 1921,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/PKGBUILD"
-      ],
-      "sha256": "4a36160f3f0be9ed8945c18a3d8b25129d8fc4a1fcc790b4a6b09826a56f7eea",
-      "size": 1921
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/dkp-asset-folder.cmake",
+      "sha256": "f24abd66dea5a2b60be52f1244c4523025828cc9fa71e14cf4c58f24a06007d0",
+      "size": 2745,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/dkp-asset-folder.cmake"
-      ],
-      "sha256": "f24abd66dea5a2b60be52f1244c4523025828cc9fa71e14cf4c58f24a06007d0",
-      "size": 2745
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/dkp-custom-target.cmake",
+      "sha256": "0f0ac9a7a92c6dff4975c2204433d4b7515893bc461b3022a135b0ed4728b32d",
+      "size": 1077,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/dkp-custom-target.cmake"
-      ],
-      "sha256": "0f0ac9a7a92c6dff4975c2204433d4b7515893bc461b3022a135b0ed4728b32d",
-      "size": 1077
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/dkp-embedded-binary.cmake",
+      "sha256": "b39f405f459b4e4aa55ad3a04d8d56ba567da2c02425e3b8d60f46bde55d5274",
+      "size": 1996,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/dkp-embedded-binary.cmake"
-      ],
-      "sha256": "b39f405f459b4e4aa55ad3a04d8d56ba567da2c02425e3b8d60f46bde55d5274",
-      "size": 1996
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/dkp-impl-helpers.cmake",
+      "sha256": "b775c77dbc3128885f4db0a04f751ea592d3b8924b8c78e7f246f91b0e5b89b6",
+      "size": 718,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/dkp-impl-helpers.cmake"
-      ],
-      "sha256": "b775c77dbc3128885f4db0a04f751ea592d3b8924b8c78e7f246f91b0e5b89b6",
-      "size": 718
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/dkp-initialize-path.cmake",
+      "sha256": "758b8cc680112d87870f84e8d69abfadc0cbcd1b0987e88329d1fafa7470f9f4",
+      "size": 323,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/dkp-initialize-path.cmake"
-      ],
-      "sha256": "758b8cc680112d87870f84e8d69abfadc0cbcd1b0987e88329d1fafa7470f9f4",
-      "size": 323
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/dkp-linker-utils.cmake",
+      "sha256": "beabc5b2c53de05adbc26b7264080041c84578a76a5783f02d771ac0790f5db2",
+      "size": 427,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/dkp-linker-utils.cmake"
-      ],
-      "sha256": "beabc5b2c53de05adbc26b7264080041c84578a76a5783f02d771ac0790f5db2",
-      "size": 427
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/dkp-rule-overrides.cmake",
+      "sha256": "c52a1b59e132d18f432883ef748db7b2e2b15d9a7c75208e02a01f8d29149392",
+      "size": 1305,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/dkp-rule-overrides.cmake"
-      ],
-      "sha256": "c52a1b59e132d18f432883ef748db7b2e2b15d9a7c75208e02a01f8d29149392",
-      "size": 1305
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/common-utils/dkp-toolchain-common.cmake",
+      "sha256": "07e6aba12cc3bbba8ede5e5cf27f0491b1deab221c35a622d0024c3a975044a5",
+      "size": 2425,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/common-utils/dkp-toolchain-common.cmake"
-      ],
-      "sha256": "07e6aba12cc3bbba8ede5e5cf27f0491b1deab221c35a622d0024c3a975044a5",
-      "size": 2425
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/devkita64/PKGBUILD",
+      "sha256": "eeaa53a64823ba176dda73b9a12d5218570071238efd50d2fd1138bdd5ff95e1",
+      "size": 723,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/devkita64/PKGBUILD"
-      ],
-      "sha256": "eeaa53a64823ba176dda73b9a12d5218570071238efd50d2fd1138bdd5ff95e1",
-      "size": 723
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/devkita64/aarch64-none-elf-cmake",
+      "sha256": "0409bc0eb82c6a7fe164a611a997e26ea3204af2a3eb80d35d445e2e310e692b",
+      "size": 106,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/devkita64/aarch64-none-elf-cmake"
-      ],
-      "sha256": "0409bc0eb82c6a7fe164a611a997e26ea3204af2a3eb80d35d445e2e310e692b",
-      "size": 106
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/devkita64/devkitA64.cmake",
+      "sha256": "f71682d3d6f6aa8ab54c7ec6ee2a5cfc0e5a7cca9724ae7ee55097ee69b6fbc9",
+      "size": 173,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/devkita64/devkitA64.cmake"
-      ],
-      "sha256": "f71682d3d6f6aa8ab54c7ec6ee2a5cfc0e5a7cca9724ae7ee55097ee69b6fbc9",
-      "size": 173
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/switch/NintendoSwitch.cmake",
+      "sha256": "db6cbc7f3e9bfcbe45f9745a9a5b9ed8ac54b358a7ac4c491f6850c6e3ee8287",
+      "size": 9699,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/switch/NintendoSwitch.cmake"
-      ],
-      "sha256": "db6cbc7f3e9bfcbe45f9745a9a5b9ed8ac54b358a7ac4c491f6850c6e3ee8287",
-      "size": 9699
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/switch/PKGBUILD",
+      "sha256": "e0e0fb0975b4e6846b2d3fddb90bc3951a066dd4c289e38ffcb4b05bdc69d0d7",
+      "size": 994,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/switch/PKGBUILD"
-      ],
-      "sha256": "e0e0fb0975b4e6846b2d3fddb90bc3951a066dd4c289e38ffcb4b05bdc69d0d7",
-      "size": 994
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/switch/Switch.cmake",
+      "sha256": "c73bb5a328f33ff210228dd93d1257c88bc96722fd16b2dc0702aa57e962ebb0",
+      "size": 1218,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/switch/Switch.cmake"
-      ],
-      "sha256": "c73bb5a328f33ff210228dd93d1257c88bc96722fd16b2dc0702aa57e962ebb0",
-      "size": 1218
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/cmake/switch/aarch64-none-elf-cmake",
+      "sha256": "c6e861e5d12da69638e1fae7eb8b48e9632371fe34c3c37920a6aa178fab53df",
+      "size": 103,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/cmake/switch/aarch64-none-elf-cmake"
-      ],
-      "sha256": "c6e861e5d12da69638e1fae7eb8b48e9632371fe34c3c37920a6aa178fab53df",
-      "size": 103
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/devkita64/devkitA64/PKGBUILD",
+      "sha256": "6485b30873b97f64e4311d187647d54bcd7fa6e6b4a7e9f976a9319efc1fb6ff",
+      "size": 292,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/3b26cdb595a1f5baa296e6dd34bc789f8011aa4f/devkita64/devkitA64/PKGBUILD"
-      ],
-      "sha256": "6485b30873b97f64e4311d187647d54bcd7fa6e6b4a7e9f976a9319efc1fb6ff",
-      "size": 292
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/devkita64/devkita64-rules/PKGBUILD",
+      "sha256": "c275ae40b4b1e8cd7fe9d5b19a802e540c88f0e88fbe93701b61b5f65eab5551",
+      "size": 549,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/devkita64/devkita64-rules/PKGBUILD"
-      ],
-      "sha256": "c275ae40b4b1e8cd7fe9d5b19a802e540c88f0e88fbe93701b61b5f65eab5551",
-      "size": 549
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/devkita64/newlib/PKGBUILD",
+      "sha256": "48119038215b4cb31d0c849210a45a49f867da932d6883216e7bdfd6172638e1",
+      "size": 1672,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/devkita64/newlib/PKGBUILD"
-      ],
-      "sha256": "48119038215b4cb31d0c849210a45a49f867da932d6883216e7bdfd6172638e1",
-      "size": 1672
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/dkp-meson-scripts/PKGBUILD",
+      "sha256": "6aea8f29611f0092bf940238cd4bb470b6a4f5b17556cc85cb7e5be10174bd21",
+      "size": 585,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/dkp-meson-scripts/PKGBUILD"
-      ],
-      "sha256": "6aea8f29611f0092bf940238cd4bb470b6a4f5b17556cc85cb7e5be10174bd21",
-      "size": 585
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/dkp-meson-scripts/meson-cross.sh",
+      "sha256": "039d51cebb15ab7695a436344cbb0617c9c94d4d9a12758744d36e95acc851d6",
+      "size": 508,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/dkp-meson-scripts/meson-cross.sh"
-      ],
-      "sha256": "039d51cebb15ab7695a436344cbb0617c9c94d4d9a12758744d36e95acc851d6",
-      "size": 508
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/dkp-meson-scripts/meson-toolchain.sh",
+      "sha256": "02f1929d9c10721b909c9959177a70233323af26a67b89f8d1d932eb3f6c89b7",
+      "size": 2067,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/dkp-meson-scripts/meson-toolchain.sh"
-      ],
-      "sha256": "02f1929d9c10721b909c9959177a70233323af26a67b89f8d1d932eb3f6c89b7",
-      "size": 2067
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/dkp-toolchain-vars/PKGBUILD",
+      "sha256": "7049f740b0723f11b4d2250d0524b65bf0cba2ecde5d45dc594db6c5d1791e67",
+      "size": 1792,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/dkp-toolchain-vars/PKGBUILD"
-      ],
-      "sha256": "7049f740b0723f11b4d2250d0524b65bf0cba2ecde5d45dc594db6c5d1791e67",
-      "size": 1792
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/dkp-toolchain-vars/devkita64.sh",
+      "sha256": "f3caba3a8864a31a50ff50131f39d160013b6d0b8a2e7e6ac90ca44b591fcb57",
+      "size": 327,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/dkp-toolchain-vars/devkita64.sh"
-      ],
-      "sha256": "f3caba3a8864a31a50ff50131f39d160013b6d0b8a2e7e6ac90ca44b591fcb57",
-      "size": 327
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/dkp-toolchain-vars/portlibs_prefix.sh",
+      "sha256": "7913cb3d38e78ede19673912f25970d678912404399e5c10c744726bbafd5f84",
+      "size": 169,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/dkp-toolchain-vars/portlibs_prefix.sh"
-      ],
-      "sha256": "7913cb3d38e78ede19673912f25970d678912404399e5c10c744726bbafd5f84",
-      "size": 169
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/dkp-toolchain-vars/switchvars.sh",
+      "sha256": "5ade1211e616a7eb540c3660839d17af050c41c7c9ee89242ce4fe7afac4df52",
+      "size": 500,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/dkp-toolchain-vars/switchvars.sh"
-      ],
-      "sha256": "5ade1211e616a7eb540c3660839d17af050c41c7c9ee89242ce4fe7afac4df52",
-      "size": 500
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/libnx/PKGBUILD",
+      "sha256": "dce0573ea685bf06177765adfef794b719ff97944af1f24a3c8eed4e12adb6e4",
+      "size": 616,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/libnx/PKGBUILD"
-      ],
-      "sha256": "dce0573ea685bf06177765adfef794b719ff97944af1f24a3c8eed4e12adb6e4",
-      "size": 616
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/SDL2/PKGBUILD",
+      "sha256": "685d981c0dadf4d6930620a4be6c8d08aa9e1734d4d60400f65f01ff1e3c4b8f",
+      "size": 1245,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/SDL2/PKGBUILD"
-      ],
-      "sha256": "685d981c0dadf4d6930620a4be6c8d08aa9e1734d4d60400f65f01ff1e3c4b8f",
-      "size": 1245
-    },
-    {
-      "path": "recipes/devkitpro-packages/switch/SDL2/SDL2-2.28.5.patch",
-      "urls": [
-        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/SDL2/SDL2-2.28.5.patch"
-      ],
-      "sha256": "eb2da665a014dc540ad3dfeb62b3f7c5e15ae090ebdd631fe8b78c1f272c7aa0",
-      "size": 900553
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/SDL2_ttf/PKGBUILD",
+      "sha256": "989c7f6754509f5849875d3f7e1ffe8e1bd05417f3ee0386e68166883ce7b313",
+      "size": 1222,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/SDL2_ttf/PKGBUILD"
-      ],
-      "sha256": "989c7f6754509f5849875d3f7e1ffe8e1bd05417f3ee0386e68166883ce7b313",
-      "size": 1222
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/bzip2/PKGBUILD",
+      "sha256": "f769f9f48065b02ded77b8704e123e759942d90246c71c4478c5f41e26335811",
+      "size": 1083,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/bzip2/PKGBUILD"
-      ],
-      "sha256": "f769f9f48065b02ded77b8704e123e759942d90246c71c4478c5f41e26335811",
-      "size": 1083
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/freetype/PKGBUILD",
+      "sha256": "9d69f28748d1efda0f112014c9e12458eb515c30cc0ed8293c191bd99dcdd341",
+      "size": 1425,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/freetype/PKGBUILD"
-      ],
-      "sha256": "9d69f28748d1efda0f112014c9e12458eb515c30cc0ed8293c191bd99dcdd341",
-      "size": 1425
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/harfbuzz/PKGBUILD",
+      "sha256": "e43c8103fc5c22fc9988fa50320c6500a6a2ffaadc3125006d92fd0ce9767b9d",
+      "size": 1098,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/harfbuzz/PKGBUILD"
-      ],
-      "sha256": "e43c8103fc5c22fc9988fa50320c6500a6a2ffaadc3125006d92fd0ce9767b9d",
-      "size": 1098
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/libdrm_nouveau/PKGBUILD",
+      "sha256": "16c8cd60b348f3a3f23ace8882bd569fbd2d5229f31e24d4b00e300753486aed",
+      "size": 682,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/libdrm_nouveau/PKGBUILD"
-      ],
-      "sha256": "16c8cd60b348f3a3f23ace8882bd569fbd2d5229f31e24d4b00e300753486aed",
-      "size": 682
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/libjpeg-turbo/PKGBUILD",
+      "sha256": "4755a2b3877a5bcdf61741369b4085dbf2e85492133b8b226f87833b57ddce32",
+      "size": 1328,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/libjpeg-turbo/PKGBUILD"
-      ],
-      "sha256": "4755a2b3877a5bcdf61741369b4085dbf2e85492133b8b226f87833b57ddce32",
-      "size": 1328
-    },
-    {
-      "path": "recipes/devkitpro-packages/switch/libjpeg-turbo/libjpeg-turbo.patch",
-      "urls": [
-        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/libjpeg-turbo/libjpeg-turbo.patch"
-      ],
-      "sha256": "79fb3d6acdc9b405a1695a7c6248c420b40e63c115e4a5cab913eb7c2b0c38e4",
-      "size": 3088
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/libpng/PKGBUILD",
+      "sha256": "a0957d7ef3f80b5a5906f19c2ff1a0dcc3a365cf0e2fa3b2f832d5958fe548e1",
+      "size": 1085,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/libpng/PKGBUILD"
-      ],
-      "sha256": "a0957d7ef3f80b5a5906f19c2ff1a0dcc3a365cf0e2fa3b2f832d5958fe548e1",
-      "size": 1085
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/mesa/OpenGLConfig.cmake",
+      "sha256": "016b39536fa560b38cbb456e3e9146439401c0ea29f26400ea065bb9d76f2518",
+      "size": 1563,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/mesa/OpenGLConfig.cmake"
-      ],
-      "sha256": "016b39536fa560b38cbb456e3e9146439401c0ea29f26400ea065bb9d76f2518",
-      "size": 1563
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/mesa/PKGBUILD",
+      "sha256": "8ae6fd876c26d527ec6f7a71045346b85635b2bd15695fb8487743d0b12bb509",
+      "size": 1586,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/mesa/PKGBUILD"
-      ],
-      "sha256": "8ae6fd876c26d527ec6f7a71045346b85635b2bd15695fb8487743d0b12bb509",
-      "size": 1586
-    },
-    {
-      "path": "recipes/devkitpro-packages/switch/mesa/glX_XML.py.patch",
-      "urls": [
-        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/mesa/glX_XML.py.patch"
-      ],
-      "sha256": "1475defcdf8600690eaddeee28d8f01310635c1273fb541f668e8789714d36ca",
-      "size": 717
-    },
-    {
-      "path": "recipes/devkitpro-packages/switch/mesa/gl_XML.py.patch",
-      "urls": [
-        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/mesa/gl_XML.py.patch"
-      ],
-      "sha256": "a9bc326195b3fe29709e079466a8b2162a2ac9409f694eaad5494490155e2dd4",
-      "size": 1373
-    },
-    {
-      "path": "recipes/devkitpro-packages/switch/mesa/switch-mesa-20.1.0-5.patch",
-      "urls": [
-        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/mesa/switch-mesa-20.1.0-5.patch"
-      ],
-      "sha256": "950f93d3e5b6ae9c5a42c2918623fe9a80d7ee398d92d2e73abec86b62d75916",
-      "size": 121216
+      ]
     },
     {
       "path": "recipes/devkitpro-packages/switch/zlib/PKGBUILD",
+      "sha256": "d081e7d1d4b4456989a4c78c90b41128654cf991e179e1384ab1aa46a4fd4c32",
+      "size": 1455,
       "urls": [
         "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/zlib/PKGBUILD"
-      ],
-      "sha256": "d081e7d1d4b4456989a4c78c90b41128654cf991e179e1384ab1aa46a4fd4c32",
-      "size": 1455
+      ]
+    }
+  ],
+  "format": 1,
+  "inputs": [
+    {
+      "path": "recipes/devkitpro-buildscripts/patches/binutils-2.45.1-2.patch",
+      "sha256": "eeb8d74bd74393f6e3a86ebef732fee2bb8f4d19b89aad6b7d3fd23439d2344a",
+      "size": 20196,
+      "urls": [
+        "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/patches/binutils-2.45.1-2.patch"
+      ]
+    },
+    {
+      "path": "recipes/devkitpro-buildscripts/patches/gcc-15.2.0-7.patch",
+      "sha256": "0e1897cb98948c40513a6288ce65adc6c201986c69535daf18bda91b7b726034",
+      "size": 45173,
+      "urls": [
+        "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/patches/gcc-15.2.0-7.patch"
+      ]
+    },
+    {
+      "path": "recipes/devkitpro-buildscripts/patches/newlib-4.6.0.20260123-4.patch",
+      "sha256": "6d5aba4356553c727765c98e7553d3784f31d361c856e220ef27cc26353fb88f",
+      "size": 538721,
+      "urls": [
+        "https://raw.githubusercontent.com/devkitPro/buildscripts/96819633754f9c99a4cb546fcdbc762e9451bac4/patches/newlib-4.6.0.20260123-4.patch"
+      ]
+    },
+    {
+      "path": "recipes/devkitpro-packages/switch/SDL2/SDL2-2.28.5.patch",
+      "sha256": "eb2da665a014dc540ad3dfeb62b3f7c5e15ae090ebdd631fe8b78c1f272c7aa0",
+      "size": 900553,
+      "urls": [
+        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/SDL2/SDL2-2.28.5.patch"
+      ]
+    },
+    {
+      "path": "recipes/devkitpro-packages/switch/libjpeg-turbo/libjpeg-turbo.patch",
+      "sha256": "79fb3d6acdc9b405a1695a7c6248c420b40e63c115e4a5cab913eb7c2b0c38e4",
+      "size": 3088,
+      "urls": [
+        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/libjpeg-turbo/libjpeg-turbo.patch"
+      ]
+    },
+    {
+      "path": "recipes/devkitpro-packages/switch/mesa/glX_XML.py.patch",
+      "sha256": "1475defcdf8600690eaddeee28d8f01310635c1273fb541f668e8789714d36ca",
+      "size": 717,
+      "urls": [
+        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/mesa/glX_XML.py.patch"
+      ]
+    },
+    {
+      "path": "recipes/devkitpro-packages/switch/mesa/gl_XML.py.patch",
+      "sha256": "a9bc326195b3fe29709e079466a8b2162a2ac9409f694eaad5494490155e2dd4",
+      "size": 1373,
+      "urls": [
+        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/mesa/gl_XML.py.patch"
+      ]
+    },
+    {
+      "path": "recipes/devkitpro-packages/switch/mesa/switch-mesa-20.1.0-5.patch",
+      "sha256": "950f93d3e5b6ae9c5a42c2918623fe9a80d7ee398d92d2e73abec86b62d75916",
+      "size": 121216,
+      "urls": [
+        "https://raw.githubusercontent.com/devkitPro/pacman-packages/5c46517a8a1a1f0939a90b8068655ea00fa125b9/switch/mesa/switch-mesa-20.1.0-5.patch"
+      ]
     },
     {
       "path": "source/SDL2-2.28.5.tar.gz",
+      "sha256": "332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4",
+      "size": 7345355,
       "urls": [
         "https://www.libsdl.org/release/SDL2-2.28.5.tar.gz"
-      ],
-      "sha256": "332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4",
-      "size": 7345355
+      ]
     },
     {
       "path": "source/SDL2_ttf-2.22.0.tar.gz",
+      "sha256": "d48cbd1ce475b9e178206bf3b72d56b66d84d44f64ac05803328396234d67723",
+      "size": 14314901,
       "urls": [
         "https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-2.22.0.tar.gz"
-      ],
-      "sha256": "d48cbd1ce475b9e178206bf3b72d56b66d84d44f64ac05803328396234d67723",
-      "size": 14314901
+      ]
     },
     {
       "path": "source/binutils-2.45.1.tar.xz",
+      "sha256": "5fe101e6fe9d18fdec95962d81ed670fdee5f37e3f48f0bef87bddf862513aa5",
+      "size": 27962312,
       "urls": [
         "https://downloads.devkitpro.org/binutils-2.45.1.tar.xz"
-      ],
-      "sha256": "5fe101e6fe9d18fdec95962d81ed670fdee5f37e3f48f0bef87bddf862513aa5",
-      "size": 27962312
+      ]
     },
     {
       "path": "source/bzip2-1.0.8.tar.gz",
+      "sha256": "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+      "size": 810029,
       "urls": [
         "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz"
-      ],
-      "sha256": "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
-      "size": 810029
+      ]
     },
     {
       "path": "source/freetype-2.13.3.tar.xz",
+      "sha256": "0550350666d427c74daeb85d5ac7bb353acba5f76956395995311a9c6f063289",
+      "size": 2617564,
       "urls": [
         "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.13.3.tar.xz"
-      ],
-      "sha256": "0550350666d427c74daeb85d5ac7bb353acba5f76956395995311a9c6f063289",
-      "size": 2617564
+      ]
     },
     {
       "path": "source/gcc-15.2.0.tar.xz",
+      "sha256": "438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e",
+      "size": 101056276,
       "urls": [
         "https://downloads.devkitpro.org/gcc-15.2.0.tar.xz"
-      ],
-      "sha256": "438fd996826b0c82485a29da03a72d71d6e3541a83ec702df4271f6fe025d24e",
-      "size": 101056276
+      ]
     },
     {
       "path": "source/harfbuzz-10.0.1.tar.xz",
+      "sha256": "b2cb13bd351904cb9038f907dc0dee0ae07127061242fe3556b2795c4e9748fc",
+      "size": 17914712,
       "urls": [
         "https://github.com/harfbuzz/harfbuzz/releases/download/10.0.1/harfbuzz-10.0.1.tar.xz"
-      ],
-      "sha256": "b2cb13bd351904cb9038f907dc0dee0ae07127061242fe3556b2795c4e9748fc",
-      "size": 17914712
+      ]
     },
     {
       "path": "source/libdrm_nouveau-1.0.1.tar.gz",
+      "sha256": "b069bf8029abb120294bd2dd988dc4d6ce2be3f1016c88c26c73c87b6f312136",
+      "size": 18928,
       "urls": [
         "https://codeload.github.com/devkitPro/libdrm_nouveau/tar.gz/refs/tags/v1.0.1"
-      ],
-      "sha256": "b069bf8029abb120294bd2dd988dc4d6ce2be3f1016c88c26c73c87b6f312136",
-      "size": 18928
+      ]
     },
     {
       "path": "source/libjpeg-turbo-2.1.2.tar.gz",
+      "sha256": "e7fdc8a255c45bc8fbd9aa11c1a49c23092fcd7379296aeaeb14d3343a3d1bed",
+      "size": 2257645,
       "urls": [
         "https://codeload.github.com/libjpeg-turbo/libjpeg-turbo/tar.gz/refs/tags/2.1.2"
-      ],
-      "sha256": "e7fdc8a255c45bc8fbd9aa11c1a49c23092fcd7379296aeaeb14d3343a3d1bed",
-      "size": 2257645
+      ]
     },
     {
       "path": "source/libnx-4.12.0.tar.gz",
+      "sha256": "1665209994d67b4b236d80fa200499853473a7e2bb502d5045d00fc0170f90ef",
+      "size": 711586,
       "urls": [
         "https://codeload.github.com/switchbrew/libnx/tar.gz/refs/tags/v4.12.0"
-      ],
-      "sha256": "1665209994d67b4b236d80fa200499853473a7e2bb502d5045d00fc0170f90ef",
-      "size": 711586
+      ]
     },
     {
       "path": "source/libpng-1.6.48.tar.xz",
+      "sha256": "46fd06ff37db1db64c0dc288d78a3f5efd23ad9ac41561193f983e20937ece03",
+      "size": 1054968,
       "urls": [
         "https://download.sourceforge.net/libpng/libpng-1.6.48.tar.xz"
-      ],
-      "sha256": "46fd06ff37db1db64c0dc288d78a3f5efd23ad9ac41561193f983e20937ece03",
-      "size": 1054968
+      ]
     },
     {
       "path": "source/mesa-20.1.0-rc3.tar.xz",
+      "sha256": "c90b75ea34302ebde9b81b87c5642fa864c40fe9c4ad34ce0793170c1413168d",
+      "size": 12585796,
       "urls": [
         "https://archive.mesa3d.org/older-versions/20.x/mesa-20.1.0-rc3.tar.xz"
-      ],
-      "sha256": "c90b75ea34302ebde9b81b87c5642fa864c40fe9c4ad34ce0793170c1413168d",
-      "size": 12585796
+      ]
     },
     {
       "path": "source/newlib-4.6.0.20260123.tar.gz",
+      "sha256": "6ff27e3bf022666f43f7802255be680eeff722ac181b1725d21e2e8318604ee3",
+      "size": 9208322,
       "urls": [
         "https://downloads.devkitpro.org/newlib-4.6.0.20260123.tar.gz"
-      ],
-      "sha256": "6ff27e3bf022666f43f7802255be680eeff722ac181b1725d21e2e8318604ee3",
-      "size": 9208322
+      ]
     },
     {
       "path": "source/nlohmann-json3_3.11.2-2.debian.tar.xz",
+      "sha256": "8c038cbbb09e719d856320006a6d16425c732a73574d03fe089e477c73022ab3",
+      "size": 4628,
       "urls": [
         "https://deb.debian.org/debian/pool/main/n/nlohmann-json3/nlohmann-json3_3.11.2-2.debian.tar.xz"
-      ],
-      "sha256": "8c038cbbb09e719d856320006a6d16425c732a73574d03fe089e477c73022ab3",
-      "size": 4628
+      ]
     },
     {
       "path": "source/nlohmann-json3_3.11.2-2.dsc",
+      "sha256": "70bec2cd47a992e0fcf5b92d820d264b871c15278cce68edcc05dbb579d795a0",
+      "size": 2061,
       "urls": [
         "https://deb.debian.org/debian/pool/main/n/nlohmann-json3/nlohmann-json3_3.11.2-2.dsc"
-      ],
-      "sha256": "70bec2cd47a992e0fcf5b92d820d264b871c15278cce68edcc05dbb579d795a0",
-      "size": 2061
+      ]
     },
     {
       "path": "source/nlohmann-json3_3.11.2.orig.tar.gz",
+      "sha256": "d69f9deb6a75e2580465c6c4c5111b89c4dc2fa94e3a85fcd2ffcd9a143d9273",
+      "size": 8097673,
       "urls": [
         "https://deb.debian.org/debian/pool/main/n/nlohmann-json3/nlohmann-json3_3.11.2.orig.tar.gz"
-      ],
-      "sha256": "d69f9deb6a75e2580465c6c4c5111b89c4dc2fa94e3a85fcd2ffcd9a143d9273",
-      "size": 8097673
+      ]
     },
     {
       "path": "source/switch-tools-1.13.1.tar.gz",
+      "sha256": "858d5c286309ca7add47ded473779e6c9a00b24febf83516df86c44d8b744eb2",
+      "size": 62091,
       "urls": [
         "https://codeload.github.com/switchbrew/switch-tools/tar.gz/refs/tags/v1.13.1"
-      ],
-      "sha256": "858d5c286309ca7add47ded473779e6c9a00b24febf83516df86c44d8b744eb2",
-      "size": 62091
+      ]
     },
     {
       "path": "source/zlib-1.3.1.tar.xz",
+      "sha256": "38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32",
+      "size": 1305740,
       "urls": [
         "https://distfiles.macports.org/zlib/zlib-1.3.1.tar.xz"
-      ],
-      "sha256": "38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32",
-      "size": 1305740
+      ]
+    }
+  ],
+  "native_image": "devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282",
+  "notices": [
+    {
+      "member": "binutils-2.45.1/COPYING",
+      "path": "licenses/devkita64-binutils/COPYING",
+      "sha256": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c",
+      "size": 18002,
+      "source": "source/binutils-2.45.1.tar.xz"
+    },
+    {
+      "member": "binutils-2.45.1/COPYING.LIB",
+      "path": "licenses/devkita64-binutils/COPYING.LIB",
+      "sha256": "56bdea73b6145ef6ac5259b3da390b981d840c24cb03b8e1cbc678de7ecfa18d",
+      "size": 25291,
+      "source": "source/binutils-2.45.1.tar.xz"
+    },
+    {
+      "member": "binutils-2.45.1/COPYING3",
+      "path": "licenses/devkita64-binutils/COPYING3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "size": 35147,
+      "source": "source/binutils-2.45.1.tar.xz"
+    },
+    {
+      "member": "gcc-15.2.0/COPYING.RUNTIME",
+      "path": "licenses/devkita64-gcc/COPYING.RUNTIME",
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "size": 3324,
+      "source": "source/gcc-15.2.0.tar.xz"
+    },
+    {
+      "member": "gcc-15.2.0/COPYING3",
+      "path": "licenses/devkita64-gcc/COPYING3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "size": 35147,
+      "source": "source/gcc-15.2.0.tar.xz"
+    },
+    {
+      "member": "gcc-15.2.0/COPYING3.LIB",
+      "path": "licenses/devkita64-gcc/COPYING3.LIB",
+      "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c",
+      "size": 7639,
+      "source": "source/gcc-15.2.0.tar.xz"
+    },
+    {
+      "member": "newlib-4.6.0.20260123/COPYING",
+      "path": "licenses/devkita64-newlib/COPYING",
+      "sha256": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c",
+      "size": 18002,
+      "source": "source/newlib-4.6.0.20260123.tar.gz"
+    },
+    {
+      "member": "newlib-4.6.0.20260123/COPYING.LIB",
+      "path": "licenses/devkita64-newlib/COPYING.LIB",
+      "sha256": "a9bdde5616ecdd1e980b44f360600ee8783b1f99b8cc83a2beb163a0a390e861",
+      "size": 26527,
+      "source": "source/newlib-4.6.0.20260123.tar.gz"
+    },
+    {
+      "member": "newlib-4.6.0.20260123/COPYING.LIBGLOSS",
+      "path": "licenses/devkita64-newlib/COPYING.LIBGLOSS",
+      "sha256": "4ef33c7bdd57f5fa8fbe3bdc0200245ab91c564c2ef530d95bbe7fd4070757cd",
+      "size": 24369,
+      "source": "source/newlib-4.6.0.20260123.tar.gz"
+    },
+    {
+      "member": "newlib-4.6.0.20260123/COPYING.NEWLIB",
+      "path": "licenses/devkita64-newlib/COPYING.NEWLIB",
+      "sha256": "f3afe48e4bc6ed8466a42e9dacb6be1d8f9cbf5aac15cb8e474a5ccde8b40ef6",
+      "size": 78388,
+      "source": "source/newlib-4.6.0.20260123.tar.gz"
+    },
+    {
+      "member": "newlib-4.6.0.20260123/COPYING3",
+      "path": "licenses/devkita64-newlib/COPYING3",
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "size": 35147,
+      "source": "source/newlib-4.6.0.20260123.tar.gz"
+    },
+    {
+      "member": "newlib-4.6.0.20260123/COPYING3.LIB",
+      "path": "licenses/devkita64-newlib/COPYING3.LIB",
+      "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c",
+      "size": 7639,
+      "source": "source/newlib-4.6.0.20260123.tar.gz"
+    },
+    {
+      "member": "newlib/libc/include/semaphore.h",
+      "patch_member": true,
+      "path": "licenses/devkita64-newlib/semaphore-BSD-2-Clause.txt",
+      "sha256": "21a13b75aa9aa1f313a7cac2f1916a6cc2ec22e693a7936f1a3abe2e7f756c1f",
+      "size": 1435,
+      "source": "recipes/devkitpro-buildscripts/patches/newlib-4.6.0.20260123-4.patch"
+    },
+    {
+      "member": "newlib/libc/stdlib/threads.c",
+      "patch_member": true,
+      "path": "licenses/devkita64-newlib/threads-BSD-2-Clause.txt",
+      "sha256": "f5875dc3969ee66c74e5f31442278706d9a42cc0644369526398adc858fa8eb1",
+      "size": 1369,
+      "source": "recipes/devkitpro-buildscripts/patches/newlib-4.6.0.20260123-4.patch"
+    },
+    {
+      "member": "libnx-4.12.0/LICENSE.md",
+      "path": "licenses/libnx/LICENSE.md",
+      "sha256": "5b6675f85016009624d29c9222201d3c0fc6a2d5c59253367f27d3e15011cdb2",
+      "size": 731,
+      "source": "source/libnx-4.12.0.tar.gz"
+    },
+    {
+      "member": "json-3.11.2/LICENSE.MIT",
+      "path": "licenses/nlohmann-json3-dev/LICENSE.MIT",
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
+      "size": 1076,
+      "source": "source/nlohmann-json3_3.11.2.orig.tar.gz"
+    },
+    {
+      "member": "debian/copyright",
+      "path": "licenses/nlohmann-json3-dev/copyright",
+      "sha256": "40b0722f5bc41248773330a2cb7993f87901902d3a56feeff0725208686a358e",
+      "size": 5464,
+      "source": "source/nlohmann-json3_3.11.2-2.debian.tar.xz"
+    },
+    {
+      "member": "bzip2-1.0.8/LICENSE",
+      "path": "licenses/switch-bzip2/LICENSE",
+      "sha256": "c6dbbf828498be844a89eaa3b84adbab3199e342eb5cb2ed2f0d4ba7ec0f38a3",
+      "size": 1896,
+      "source": "source/bzip2-1.0.8.tar.gz"
+    },
+    {
+      "member": "freetype-2.13.3/docs/FTL.TXT",
+      "path": "licenses/switch-freetype/FTL.TXT",
+      "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1",
+      "size": 6743,
+      "source": "source/freetype-2.13.3.tar.xz"
+    },
+    {
+      "member": "freetype-2.13.3/docs/GPLv2.TXT",
+      "path": "licenses/switch-freetype/GPLv2.TXT",
+      "sha256": "c4120c6752c910c299e3bd9cb3a46ff262c268303ca2069b61f92f10a5656c18",
+      "size": 17994,
+      "source": "source/freetype-2.13.3.tar.xz"
+    },
+    {
+      "member": "freetype-2.13.3/LICENSE.TXT",
+      "path": "licenses/switch-freetype/LICENSE.TXT",
+      "sha256": "2e3bbb7d7c5c396368dd0853a790ec29ce5b8647163dde42a0493fb0d6556b2b",
+      "size": 2074,
+      "source": "source/freetype-2.13.3.tar.xz"
+    },
+    {
+      "member": "harfbuzz-10.0.1/COPYING",
+      "path": "licenses/switch-harfbuzz/COPYING",
+      "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64",
+      "size": 1971,
+      "source": "source/harfbuzz-10.0.1.tar.xz"
+    },
+    {
+      "leading_comment": true,
+      "member": "libdrm_nouveau-1.0.1/source/nouveau.c",
+      "path": "licenses/switch-libdrm_nouveau/LICENSE.txt",
+      "sha256": "b237344ec35fe04ff38eabf1b5f576e5ab61749aaa17fef2d94cee4e56a2d584",
+      "size": 1144,
+      "source": "source/libdrm_nouveau-1.0.1.tar.gz"
+    },
+    {
+      "member": "libjpeg-turbo-2.1.2/LICENSE.md",
+      "path": "licenses/switch-libjpeg-turbo/LICENSE.md",
+      "sha256": "7d8683a7f048e715e08b4cada8b7f0d9a6ab8afad88ed09c1143ef764ecbc0f2",
+      "size": 5213,
+      "source": "source/libjpeg-turbo-2.1.2.tar.gz"
+    },
+    {
+      "member": "libjpeg-turbo-2.1.2/README.ijg",
+      "path": "licenses/switch-libjpeg-turbo/README.ijg",
+      "sha256": "4b7b9f8c03bb8d60270dfd12684e70ab21e4abfd27e73905cd1a7c4cae6f5cdb",
+      "size": 12732,
+      "source": "source/libjpeg-turbo-2.1.2.tar.gz"
+    },
+    {
+      "member": "libpng-1.6.48/LICENSE",
+      "path": "licenses/switch-libpng/LICENSE",
+      "sha256": "16d9daaafbf63a31a5bdc91d4600972548fef5aaa1244202393288dbd079c49a",
+      "size": 5345,
+      "source": "source/libpng-1.6.48.tar.xz"
+    },
+    {
+      "member": "src/egl/drivers/switch/egl_switch.c",
+      "patch_member": true,
+      "path": "licenses/switch-mesa/egl_switch-MIT.txt",
+      "sha256": "2747105aaa90fb129cea864b2b18ce0580c89a1a9d2bd1ee81304c2d5aec9e79",
+      "size": 1255,
+      "source": "recipes/devkitpro-packages/switch/mesa/switch-mesa-20.1.0-5.patch"
+    },
+    {
+      "member": "mesa-20.1.0-rc3/docs/license.html",
+      "path": "licenses/switch-mesa/license.html",
+      "sha256": "1ddae7da415352a5b5360ff3a9d7ecf23ba81408f62eeecce0011f32e3ef9da6",
+      "size": 3962,
+      "source": "source/mesa-20.1.0-rc3.tar.xz"
+    },
+    {
+      "member": "src/gallium/winsys/nouveau/switch/meson.build",
+      "patch_member": true,
+      "path": "licenses/switch-mesa/nouveau-switch-MIT.txt",
+      "sha256": "74fd66f3d20f05ae1be76cd2da5ae19aab85b74d6d4c255a7014f2c8f48cbcca",
+      "size": 1080,
+      "source": "recipes/devkitpro-packages/switch/mesa/switch-mesa-20.1.0-5.patch"
+    },
+    {
+      "member": "SDL2-2.28.5/LICENSE.txt",
+      "path": "licenses/switch-sdl2/LICENSE.txt",
+      "sha256": "9928507f684c1965d07f2b6ef4b4723d5efc2f6b4ab731f743a413c51c319927",
+      "size": 884,
+      "source": "source/SDL2-2.28.5.tar.gz"
+    },
+    {
+      "member": "SDL2_ttf-2.22.0/LICENSE.txt",
+      "path": "licenses/switch-sdl2_ttf/LICENSE.txt",
+      "sha256": "a0e8ce06504966e45088ee1cc7583cc8af9aac615d4cf56d47d847da9cb15139",
+      "size": 878,
+      "source": "source/SDL2_ttf-2.22.0.tar.gz"
+    },
+    {
+      "member": "switch-tools-1.13.1/COPYING",
+      "path": "licenses/switch-tools/COPYING",
+      "sha256": "40011c644ad951be334e57de47140087f13f0b0c1393c8f11f3dd7c2912e99fc",
+      "size": 726,
+      "source": "source/switch-tools-1.13.1.tar.gz"
+    },
+    {
+      "member": "zlib-1.3.1/LICENSE",
+      "path": "licenses/switch-zlib/LICENSE",
+      "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
+      "size": 1002,
+      "source": "source/zlib-1.3.1.tar.xz"
+    }
+  ],
+  "packages": [
+    {
+      "name": "devkita64-gcc",
+      "role": "libgcc, libstdc++ and GCC startup objects",
+      "version": "15.2.0-7"
+    },
+    {
+      "name": "devkita64-newlib",
+      "role": "libc, libm and libsysbase",
+      "version": "4.6.0.20260123-4"
+    },
+    {
+      "name": "libnx",
+      "role": "libnx, Switch linker inputs and interfaces",
+      "version": "4.12.0-1"
+    },
+    {
+      "name": "switch-bzip2",
+      "role": "libbz2",
+      "version": "1.0.8-1"
+    },
+    {
+      "name": "switch-freetype",
+      "role": "libfreetype, GPLv2 as the upstream license option",
+      "version": "2.13.3-1"
+    },
+    {
+      "name": "switch-harfbuzz",
+      "role": "libharfbuzz",
+      "version": "10.0.1-1"
+    },
+    {
+      "name": "switch-libdrm_nouveau",
+      "role": "libdrm_nouveau",
+      "version": "1.0.1-2"
+    },
+    {
+      "name": "switch-libjpeg-turbo",
+      "role": "libturbojpeg",
+      "version": "2.1.2-2"
+    },
+    {
+      "name": "switch-libpng",
+      "role": "libpng16",
+      "version": "1.6.48-1"
+    },
+    {
+      "name": "switch-mesa",
+      "role": "libEGL and libglapi, from the 20.1.0-rc3 archive",
+      "version": "20.1.0-5"
+    },
+    {
+      "name": "switch-sdl2",
+      "role": "libSDL2",
+      "version": "2.28.5-4"
+    },
+    {
+      "name": "switch-sdl2_ttf",
+      "role": "libSDL2_ttf",
+      "version": "2.22.0-2"
+    },
+    {
+      "name": "switch-zlib",
+      "role": "libz",
+      "version": "1.3.1-1"
+    },
+    {
+      "name": "nlohmann-json3-dev",
+      "role": "Debian C++ headers compiled into the shell",
+      "version": "3.11.2-2"
+    },
+    {
+      "name": "devkita64-binutils",
+      "role": "Host package build tooling",
+      "version": "2.45.1-2"
+    },
+    {
+      "name": "switch-tools",
+      "role": "Host NRO and NACP packaging tools",
+      "version": "1.13.1-1"
     }
   ],
   "source_variants": [
     {
-      "path": "source/libnx-4.12.0-no-default-icon.tar",
-      "source": "source/libnx-4.12.0.tar.gz",
       "omit": [
         "libnx-4.12.0/nx/default_icon.jpg"
       ],
+      "path": "source/libnx-4.12.0-no-default-icon.tar",
       "sha256": "67078b2358d11418f0abb9c24f8906854e128fceba7f131904c5814a77bdd972",
-      "size": 4331520
-    }
-  ],
-  "notices": [
-    {
-      "path": "licenses/devkita64-binutils/COPYING",
-      "source": "source/binutils-2.45.1.tar.xz",
-      "member": "binutils-2.45.1/COPYING",
-      "sha256": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c",
-      "size": 18002
-    },
-    {
-      "path": "licenses/devkita64-binutils/COPYING.LIB",
-      "source": "source/binutils-2.45.1.tar.xz",
-      "member": "binutils-2.45.1/COPYING.LIB",
-      "sha256": "56bdea73b6145ef6ac5259b3da390b981d840c24cb03b8e1cbc678de7ecfa18d",
-      "size": 25291
-    },
-    {
-      "path": "licenses/devkita64-binutils/COPYING3",
-      "source": "source/binutils-2.45.1.tar.xz",
-      "member": "binutils-2.45.1/COPYING3",
-      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
-      "size": 35147
-    },
-    {
-      "path": "licenses/devkita64-gcc/COPYING.RUNTIME",
-      "source": "source/gcc-15.2.0.tar.xz",
-      "member": "gcc-15.2.0/COPYING.RUNTIME",
-      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
-      "size": 3324
-    },
-    {
-      "path": "licenses/devkita64-gcc/COPYING3",
-      "source": "source/gcc-15.2.0.tar.xz",
-      "member": "gcc-15.2.0/COPYING3",
-      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
-      "size": 35147
-    },
-    {
-      "path": "licenses/devkita64-gcc/COPYING3.LIB",
-      "source": "source/gcc-15.2.0.tar.xz",
-      "member": "gcc-15.2.0/COPYING3.LIB",
-      "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c",
-      "size": 7639
-    },
-    {
-      "path": "licenses/devkita64-newlib/COPYING",
-      "source": "source/newlib-4.6.0.20260123.tar.gz",
-      "member": "newlib-4.6.0.20260123/COPYING",
-      "sha256": "231f7edcc7352d7734a96eef0b8030f77982678c516876fcb81e25b32d68564c",
-      "size": 18002
-    },
-    {
-      "path": "licenses/devkita64-newlib/COPYING.LIB",
-      "source": "source/newlib-4.6.0.20260123.tar.gz",
-      "member": "newlib-4.6.0.20260123/COPYING.LIB",
-      "sha256": "a9bdde5616ecdd1e980b44f360600ee8783b1f99b8cc83a2beb163a0a390e861",
-      "size": 26527
-    },
-    {
-      "path": "licenses/devkita64-newlib/COPYING.LIBGLOSS",
-      "source": "source/newlib-4.6.0.20260123.tar.gz",
-      "member": "newlib-4.6.0.20260123/COPYING.LIBGLOSS",
-      "sha256": "4ef33c7bdd57f5fa8fbe3bdc0200245ab91c564c2ef530d95bbe7fd4070757cd",
-      "size": 24369
-    },
-    {
-      "path": "licenses/devkita64-newlib/COPYING.NEWLIB",
-      "source": "source/newlib-4.6.0.20260123.tar.gz",
-      "member": "newlib-4.6.0.20260123/COPYING.NEWLIB",
-      "sha256": "f3afe48e4bc6ed8466a42e9dacb6be1d8f9cbf5aac15cb8e474a5ccde8b40ef6",
-      "size": 78388
-    },
-    {
-      "path": "licenses/devkita64-newlib/COPYING3",
-      "source": "source/newlib-4.6.0.20260123.tar.gz",
-      "member": "newlib-4.6.0.20260123/COPYING3",
-      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
-      "size": 35147
-    },
-    {
-      "path": "licenses/devkita64-newlib/COPYING3.LIB",
-      "source": "source/newlib-4.6.0.20260123.tar.gz",
-      "member": "newlib-4.6.0.20260123/COPYING3.LIB",
-      "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c",
-      "size": 7639
-    },
-    {
-      "path": "licenses/libnx/LICENSE.md",
-      "source": "source/libnx-4.12.0.tar.gz",
-      "member": "libnx-4.12.0/LICENSE.md",
-      "sha256": "5b6675f85016009624d29c9222201d3c0fc6a2d5c59253367f27d3e15011cdb2",
-      "size": 731
-    },
-    {
-      "path": "licenses/nlohmann-json3-dev/LICENSE.MIT",
-      "source": "source/nlohmann-json3_3.11.2.orig.tar.gz",
-      "member": "json-3.11.2/LICENSE.MIT",
-      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14",
-      "size": 1076
-    },
-    {
-      "path": "licenses/nlohmann-json3-dev/copyright",
-      "source": "source/nlohmann-json3_3.11.2-2.debian.tar.xz",
-      "member": "debian/copyright",
-      "sha256": "40b0722f5bc41248773330a2cb7993f87901902d3a56feeff0725208686a358e",
-      "size": 5464
-    },
-    {
-      "path": "licenses/switch-bzip2/LICENSE",
-      "source": "source/bzip2-1.0.8.tar.gz",
-      "member": "bzip2-1.0.8/LICENSE",
-      "sha256": "c6dbbf828498be844a89eaa3b84adbab3199e342eb5cb2ed2f0d4ba7ec0f38a3",
-      "size": 1896
-    },
-    {
-      "path": "licenses/switch-freetype/FTL.TXT",
-      "source": "source/freetype-2.13.3.tar.xz",
-      "member": "freetype-2.13.3/docs/FTL.TXT",
-      "sha256": "08c135755dd589039470f1fdbb400daaabaaa50d0b366d19cebff4d22986baa1",
-      "size": 6743
-    },
-    {
-      "path": "licenses/switch-freetype/GPLv2.TXT",
-      "source": "source/freetype-2.13.3.tar.xz",
-      "member": "freetype-2.13.3/docs/GPLv2.TXT",
-      "sha256": "c4120c6752c910c299e3bd9cb3a46ff262c268303ca2069b61f92f10a5656c18",
-      "size": 17994
-    },
-    {
-      "path": "licenses/switch-freetype/LICENSE.TXT",
-      "source": "source/freetype-2.13.3.tar.xz",
-      "member": "freetype-2.13.3/LICENSE.TXT",
-      "sha256": "2e3bbb7d7c5c396368dd0853a790ec29ce5b8647163dde42a0493fb0d6556b2b",
-      "size": 2074
-    },
-    {
-      "path": "licenses/switch-harfbuzz/COPYING",
-      "source": "source/harfbuzz-10.0.1.tar.xz",
-      "member": "harfbuzz-10.0.1/COPYING",
-      "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64",
-      "size": 1971
-    },
-    {
-      "path": "licenses/switch-libdrm_nouveau/LICENSE.txt",
-      "source": "source/libdrm_nouveau-1.0.1.tar.gz",
-      "member": "libdrm_nouveau-1.0.1/source/nouveau.c",
-      "leading_comment": true,
-      "sha256": "b237344ec35fe04ff38eabf1b5f576e5ab61749aaa17fef2d94cee4e56a2d584",
-      "size": 1144
-    },
-    {
-      "path": "licenses/switch-libjpeg-turbo/LICENSE.md",
-      "source": "source/libjpeg-turbo-2.1.2.tar.gz",
-      "member": "libjpeg-turbo-2.1.2/LICENSE.md",
-      "sha256": "7d8683a7f048e715e08b4cada8b7f0d9a6ab8afad88ed09c1143ef764ecbc0f2",
-      "size": 5213
-    },
-    {
-      "path": "licenses/switch-libjpeg-turbo/README.ijg",
-      "source": "source/libjpeg-turbo-2.1.2.tar.gz",
-      "member": "libjpeg-turbo-2.1.2/README.ijg",
-      "sha256": "4b7b9f8c03bb8d60270dfd12684e70ab21e4abfd27e73905cd1a7c4cae6f5cdb",
-      "size": 12732
-    },
-    {
-      "path": "licenses/switch-libpng/LICENSE",
-      "source": "source/libpng-1.6.48.tar.xz",
-      "member": "libpng-1.6.48/LICENSE",
-      "sha256": "16d9daaafbf63a31a5bdc91d4600972548fef5aaa1244202393288dbd079c49a",
-      "size": 5345
-    },
-    {
-      "path": "licenses/switch-mesa/license.html",
-      "source": "source/mesa-20.1.0-rc3.tar.xz",
-      "member": "mesa-20.1.0-rc3/docs/license.html",
-      "sha256": "1ddae7da415352a5b5360ff3a9d7ecf23ba81408f62eeecce0011f32e3ef9da6",
-      "size": 3962
-    },
-    {
-      "path": "licenses/switch-sdl2/LICENSE.txt",
-      "source": "source/SDL2-2.28.5.tar.gz",
-      "member": "SDL2-2.28.5/LICENSE.txt",
-      "sha256": "9928507f684c1965d07f2b6ef4b4723d5efc2f6b4ab731f743a413c51c319927",
-      "size": 884
-    },
-    {
-      "path": "licenses/switch-sdl2_ttf/LICENSE.txt",
-      "source": "source/SDL2_ttf-2.22.0.tar.gz",
-      "member": "SDL2_ttf-2.22.0/LICENSE.txt",
-      "sha256": "a0e8ce06504966e45088ee1cc7583cc8af9aac615d4cf56d47d847da9cb15139",
-      "size": 878
-    },
-    {
-      "path": "licenses/switch-tools/COPYING",
-      "source": "source/switch-tools-1.13.1.tar.gz",
-      "member": "switch-tools-1.13.1/COPYING",
-      "sha256": "40011c644ad951be334e57de47140087f13f0b0c1393c8f11f3dd7c2912e99fc",
-      "size": 726
-    },
-    {
-      "path": "licenses/switch-zlib/LICENSE",
-      "source": "source/zlib-1.3.1.tar.xz",
-      "member": "zlib-1.3.1/LICENSE",
-      "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
-      "size": 1002
+      "size": 4331520,
+      "source": "source/libnx-4.12.0.tar.gz"
     }
   ]
 }
