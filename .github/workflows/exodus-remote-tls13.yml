@@ -1,0 +1,33 @@
+name: EXODUS Remote TLS13 port experiment
+on:
+  pull_request:
+    paths: ['exodus/remote/build_tls13_port.sh', 'exodus/remote/native_tls13_smoke.c', '.github/workflows/exodus-remote-tls13.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container: devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends cmake curl ca-certificates python3 bzip2
+      - name: Build isolated TLS port and NRO
+        run: |
+          git rev-parse HEAD
+          dkp-pacman -Q
+          sh exodus/remote/build_tls13_port.sh /tmp/exr-tls13
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exodus-remote-tls13-experimental-smoke
+          path: |
+            /tmp/exr-tls13/exodus-tls13-smoke.nro
+            /tmp/exr-tls13/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
