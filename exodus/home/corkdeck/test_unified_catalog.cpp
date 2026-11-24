@@ -1,5 +1,7 @@
 #include "unified_catalog.hpp"
 #include <cassert>
+#include <unistd.h>
+#include <cstdlib>
 using namespace exodus::home;
 int main() {
     auto c=ParseCorkDeck("version=3\nnext-id=3\n[game 1]\npath=sdmc:/switch/wine/drive_c/game.exe\ntitle=Game%20One\nportrait-art=sdmc:/switch/wine/a.jpg\n");
@@ -16,4 +18,20 @@ int main() {
     assert(base.entries.size()==2);
     MergeProvider(base,{CatalogStatus::Ready,{}},Provider::CorkDeck);
     assert(base.entries.size()==1);
+    char temp[]="/tmp/exodus-steam-XXXXXX";
+    assert(mkdtemp(temp));
+    std::string dir=temp;
+    const std::string old=dir+"/steam-catalog-00000000000000000001.json";
+    const std::string newer=dir+"/steam-catalog-00000000000000000002.json";
+    const std::string unrelated=dir+"/.steam-catalog-00000000000000000003.json";
+    const char *valid=R"({"schema_version":1,"entries":[{"provider":"steam","provider_id":"123","name":"Steam title","artwork":null,"installation_state":"unknown","last_played":null,"compatibility_state":"unknown","launch_mode":null}]})";
+    { std::ofstream f(old); f<<valid; }
+    { std::ofstream f(newer); f<<"broken"; }
+    { std::ofstream f(unrelated); f<<valid; }
+    auto steam=ReadSteamLatest(temp,4096);
+    assert(steam.status==CatalogStatus::Ready&&steam.entries.size()==1&&steam.entries[0].id=="123");
+    assert(ReadSteamLatest(temp,0).status==CatalogStatus::Unavailable);
+    MergeProvider(base,std::move(steam),Provider::Steam);
+    assert(base.entries.size()==2&&base.entries[0].provider==Provider::Switch);
+    assert(!unlink(old.c_str())&&!unlink(newer.c_str())&&!unlink(unrelated.c_str())&&!rmdir(temp));
 }
