@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "runtime_handoff.h"
 #include <assert.h>
 int main(void)

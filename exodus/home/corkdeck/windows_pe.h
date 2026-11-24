@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #ifndef EXODUS_WINDOWS_PE_H
 #define EXODUS_WINDOWS_PE_H
 

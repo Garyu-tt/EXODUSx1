@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* CorkDeck's pinned runtime.c consumes argv[1] as a native executable path.
  * Never invoke a shell. The fixed NRO path is from EXODUS PR #11. */
 #ifndef EXODUS_RUNTIME_HANDOFF_H

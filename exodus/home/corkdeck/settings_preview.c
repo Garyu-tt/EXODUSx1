@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* Standalone EXODUS settings proof: uses the original CorkDeck drawing/input
  * engine, not the Wine launcher. No system settings writes; guarded launch requests. */
 #define SDL_MAIN_HANDLED

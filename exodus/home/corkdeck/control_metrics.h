@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* Read-only resource monitor, no privileged service writes. */
 #ifndef EXODUS_CONTROL_METRICS_H
 #define EXODUS_CONTROL_METRICS_H

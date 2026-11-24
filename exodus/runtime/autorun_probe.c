@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "autorun_probe.h"
 
 #include <errno.h>

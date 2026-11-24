@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* Fixed local entry points; no remote Nintendo account/store actions. */
 #ifndef EXODUS_SHELL_MENU_H
 #define EXODUS_SHELL_MENU_H
