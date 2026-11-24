@@ -18,6 +18,7 @@ struct exodus_library { Catalog catalog; const char *discovery = "Not requested"
     std::vector<evcs_content> graph{};
     std::vector<size_t> graph_indices{};
     bool graph_valid = true;
+    std::vector<size_t> representatives{};
 };
 struct evcs_catalog_pending {
     const Catalog &base;
@@ -86,6 +87,21 @@ static void evcs_catalog_merge(exodus_library &lib, const char *root)
     if (!lib.graph_valid) {
         lib.graph.clear(); lib.graph_indices.clear();
         lib.discovery="Games scan complete; metadata rejected";
+        return;
+    }
+    // Preserve raw indices. Only groups with a declared base are collapsed.
+    // Orphan updates/DLC and unclassified files remain individually visible.
+    lib.representatives.resize(entries.size());
+    for (size_t i=0; i<entries.size(); ++i) lib.representatives[i]=i;
+    for (size_t j=0; j<lib.graph.size(); ++j) {
+        const auto &item=lib.graph[j];
+        size_t best=SIZE_MAX;
+        for (size_t k=0; k<lib.graph.size(); ++k) {
+            const auto &candidate=lib.graph[k];
+            if (candidate.application_id != item.application_id || candidate.role != EVCS_BASE) continue;
+            if (best==SIZE_MAX || candidate.version>lib.graph[best].version) best=k;
+        }
+        if (best!=SIZE_MAX) lib.representatives[lib.graph_indices[j]]=lib.graph_indices[best];
     }
 }
 extern "C" {
@@ -157,6 +173,23 @@ int exodus_library_archive_detail(const struct exodus_library *library, size_t i
         }
     }
     return 1;
+}
+int exodus_library_is_group_card(const struct exodus_library *library, size_t index)
+{
+    if (!library || index>=library->catalog.entries.size()) return 0;
+    return library->representatives.empty() || library->representatives[index]==index;
+}
+int exodus_library_is_discovered(const struct exodus_library *library, size_t index)
+{
+    return library && index>=library->first_game && index<library->catalog.entries.size();
+}
+size_t exodus_library_group_size(const struct exodus_library *library, size_t index)
+{
+    if (!library || index>=library->catalog.entries.size()) return 0;
+    if (library->representatives.empty()) return 1;
+    size_t representative=library->representatives[index], count=0;
+    for (size_t r: library->representatives) if (r==representative) ++count;
+    return count;
 }
 void exodus_library_close(struct exodus_library *library) { delete library; }
 const char *exodus_library_status(const struct exodus_library *library)
