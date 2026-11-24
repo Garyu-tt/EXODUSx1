@@ -10,7 +10,7 @@ permissions:
 jobs:
   reference:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 85
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
         with:
@@ -19,15 +19,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
-      - name: Validate scripts and verify native OpenSSH and session intent on FreeBSD
+      - name: Validate scripts and verify FreeBSD ARM64 kernel boot and NoCloud startup
         run: |
-          sh -n exodus/frankenstein/guest-ssh.sh
+          sh -n exodus/frankenstein/guest-boot.sh
           sh -n exodus/frankenstein/run-reference.sh
-          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" ssh
+          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" boot
       - name: Publish boot and build evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frankenstein-session-r04-evidence
+          name: frankenstein-boot-r05-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn
