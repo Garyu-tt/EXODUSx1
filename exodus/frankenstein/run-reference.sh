@@ -109,6 +109,35 @@ fi
 grep -F "$gate" "$out/serial.log"
 grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
 
+# A fresh emulator process, same disk, no cloud-init seed or output drive.
+# A successful first-stage shutdown alone is not evidence of cold boot.
+if [ "$mode" = rcresident ]; then
+    tr -d '\r' < "$out/serial.log" | grep -Fx EXODUS_RC_COLD_BOOT_PREPARED
+    cold_log="$out/cold-serial.log"
+    : > "$cold_log"
+    tail -n +1 -F "$cold_log" &
+    log_pid=$!
+    rc=0
+    timeout 12m qemu-system-aarch64 \
+        -machine virt -cpu cortex-a57 -accel tcg,thread=multi -smp 4 -m 4096 \
+        -bios "$efi" -display none -monitor none -serial "file:$cold_log" -no-reboot \
+        -drive if=none,file=disk.raw,format=raw,id=system \
+        -device virtio-blk-device,drive=system \
+        -netdev user,id=net -device virtio-net-device,netdev=net || rc=$?
+    kill "$log_pid" 2>/dev/null || :
+    wait "$log_pid" 2>/dev/null || :
+    if [ "$rc" -ne 0 ]; then
+        echo "Cold boot QEMU exit=$rc" >&2
+        tail -n 80 "$cold_log" >&2
+        exit "$rc"
+    fi
+    # FreeBSD console output can use CRLF.
+    tr -d '\r' < "$cold_log" > "$out/cold-evidence.txt"
+    grep -Fx EXODUS_RC_COLD_BOOT_BEGIN "$out/cold-evidence.txt"
+    grep -Fx EXODUS_RC_COLD_BOOT_PASS "$out/cold-evidence.txt"
+    grep -Fx EXODUS_COLD_GUEST_RESULT=0 "$out/cold-evidence.txt"
+fi
+
 # Extract only known filenames after successful guest shutdown and validation.
 case "$mode" in
     graphics) files="wayland.pkg gamescope.pkg dependencies.txt" ;;
