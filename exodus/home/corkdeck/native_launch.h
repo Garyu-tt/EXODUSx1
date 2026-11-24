@@ -3,6 +3,7 @@
 #define EXODUS_NATIVE_LAUNCH_H
 #include "runtime_handoff.h"
 #ifdef __SWITCH__
+#include "windows_pe.h"
 #include <switch.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -86,11 +87,13 @@ static inline int exodus_launch(enum exodus_route route, const char *id, char me
                 return 0;
             }
             FILE *exe = fopen(id, "rb");
-            unsigned char mz[2];
             if (!exe) { snprintf(message, 256, "Cannot open executable."); return 0; }
-            int ok = fread(mz, 1, sizeof(mz), exe) == sizeof(mz) && !memcmp(mz, "MZ", 2);
+            bool valid = exodus_windows_pe_valid(exe);
             fclose(exe);
-            if (!ok) { snprintf(message, 256, "Invalid executable header."); return 0; }
+            if (!valid) {
+                snprintf(message, 256, "Invalid or unreadable Windows PE executable.");
+                return 0;
+            }
         }
         rc = envSetNextLoad(EXODUS_AUTORUN_PATH, args);
     } else {

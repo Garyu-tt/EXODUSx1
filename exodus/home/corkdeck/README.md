@@ -80,15 +80,17 @@ Actual HOS launch handoff, permissions, return-to-shell behavior and NRO argumen
 
 ## R06: installed Windows runtime and Steam library handoff
 
-The pinned CorkDeck runtime.c at adc0b52284e9e57d18808427a770a2a162c76bf0 accepts argv[1] as the selected executable. R06 uses the existing libnx next-load mechanism and fixed runtime path sdmc:/switch/wine/wine-nx-runtime.nro. It shares the exact NRO structural preflight sources from PR #11 (link exodus/runtime/autorun_probe.c in native builds). The caller confirms the target and must be in full application mode. Windows targets are bounded SD paths with .exe extension, no traversal, no embedded quotes or controls, and a readable MZ header. USB and other mounts are not supported yet. No shell or command interpreter is invoked. The MZ check is a preliminary file sanity check, not a full PE validation or compatibility guarantee.
+The pinned CorkDeck runtime.c at adc0b52284e9e57d18808427a770a2a162c76bf0 accepts argv[1] as the selected executable. R06 uses the existing libnx next-load mechanism and fixed runtime path sdmc:/switch/wine/wine-nx-runtime.nro. It shares the exact NRO structural preflight sources from PR #11 (link exodus/runtime/autorun_probe.c in native builds). The caller confirms the target and must be in full application mode. Windows targets are bounded SD paths with .exe extension and without traversal, embedded quotes or controls. The shell checks the PE32 or PE32+ executable headers and on-disk section ranges before handing off. An invalid target leaves the shell open and shows an error. Machine and application compatibility depend on the installed runtime. USB and other mounts are not supported yet. The handoff does not start a command interpreter.
 
 Steam entries validate the numeric AppID but open the installed CorkDeck library without passing an app ID: the user selects the game there. This is not direct Steam game launch or ownership verification. The Steam snapshot/sync work in #44 is separate. A pending run-next.txt blocks both routes, because the donor prioritizes queued jobs over CLI targets. The guard cannot eliminate races with another writer. NRO structural validation does not authenticate the installed runtime or identify its version; use a compatible CorkDeck build. Return to EXODUS, low-address requirements and actual game launch need device tests.
 
-Portable argument test:
+Run the portable argument and PE preflight tests.
 
 ```sh
 cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_runtime_handoff.c -o /tmp/exodus-runtime-check
 /tmp/exodus-runtime-check
+cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_windows_pe.c exodus/home/corkdeck/windows_pe.c -o /tmp/exodus-pe-check
+/tmp/exodus-pe-check
 ```
 
 Native compilation, loader buffer limits on the installed loader, and physical-device handoff remain unverified. No new runtime is installed and no system firmware or HOME changes are made.
