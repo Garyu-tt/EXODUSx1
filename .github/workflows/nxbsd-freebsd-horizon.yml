@@ -34,12 +34,14 @@ jobs:
           persist-credentials: false
       - name: Verify pinned donor and generate grammar on host
         run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out horizon-grammar
+      - name: Stage verified newlib portability fixes
+        run: python3 exodus/terminal/stage_freebsd_horizon.py --checkout donor-freebsd --out horizon-donor
       - name: Cross-compile original modules without host libc adapters
         run: |
           docker pull devkitpro/devkita64:latest
           mkdir -p horizon-shell
           docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > horizon-shell/sdk-image.json
-          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash exodus/terminal/probe_freebsd_horizon.sh donor-freebsd horizon-grammar horizon-shell
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash exodus/terminal/probe_freebsd_horizon.sh horizon-donor horizon-grammar horizon-shell
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
