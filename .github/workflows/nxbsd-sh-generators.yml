@@ -58,12 +58,15 @@ jobs:
           cc -std=gnu11 -Wall -Wextra -Werror -c exodus/terminal/freebsd_stdio_host.c -o "$RUNNER_TEMP/core/stdio-host.o"
           cc -std=gnu11 -Wall -Wextra -Werror exodus/terminal/test_freebsd_stdio.c "$RUNNER_TEMP/core/stdio-host.o" -o "$RUNNER_TEMP/test-fwopen"
           "$RUNNER_TEMP/test-fwopen"
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --out "$RUNNER_TEMP/expand-host.c"
           for module in memalloc mystring alias output var expand; do
+            source="donor-freebsd/bin/sh/$module.c"
+            if [ "$module" = expand ]; then source="$RUNNER_TEMP/expand-host.c"; fi
             cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
               -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
               -I "$RUNNER_TEMP/grammar-a" \
-              -c "donor-freebsd/bin/sh/$module.c" -o "$RUNNER_TEMP/core/$module.o"
+              -c "$source" -o "$RUNNER_TEMP/core/$module.o"
           done
           for module in nodes builtins; do
             cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
