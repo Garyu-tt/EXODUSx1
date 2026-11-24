@@ -11,8 +11,15 @@ import sys
 TOKEN = re.compile(r'\s+|//[^\n]*|"(?:\\.|[^"\\])*"|[{}]|[^\s{}"]+|.', re.DOTALL)
 MANIFEST = re.compile(r"appmanifest_([0-9]+)\.acf", re.IGNORECASE | re.ASCII)
 MAX_MANIFEST_BYTES = 16 * 1024 * 1024
+# Keep produced snapshots within the limits of the HOME catalog reader.
+MAX_CATALOG_BYTES = 2 * 1024 * 1024
+MAX_CATALOG_ENTRIES = 4096
 FULLY_INSTALLED = 4
 STATE_PRIORITY = {"unknown": 0, "not_fully_installed": 1, "reported_installed": 2}
+
+
+class CatalogLimitError(ValueError):
+    """A catalog cannot fit in the HOME reader's entry or byte budget."""
 
 
 def token_text(token):
@@ -24,7 +31,7 @@ def token_text(token):
 
 
 def parse_keyvalues(text):
-    """Parse key/value pairs, keeping nested objects separate from AppState."""
+    """Parse nested KeyValues with case-insensitive first-match lookup."""
     root = {}
     stack = [root]
     key = None
@@ -40,27 +47,71 @@ def parse_keyvalues(text):
             if key is None:
                 raise ValueError("object is missing a key")
             child = {}
-            stack[-1][key] = child
+            # Parse repeated blocks even after the first value has been retained.
+            stack[-1].setdefault(key, child)
             stack.append(child)
             key = None
         elif key is None:
             key = token_text(token).lower()
         else:
-            stack[-1][key] = token_text(token)
+            stack[-1].setdefault(key, token_text(token))
             key = None
     if len(stack) != 1 or key is not None:
         raise ValueError("incomplete key/value object")
     return root
 
 
-def read_manifest(manifest):
+def read_manifest(manifest, *, kind="manifest"):
     if not manifest.is_file():
-        raise ValueError("expected a regular manifest file")
+        raise ValueError(f"expected a regular {kind} file")
     with manifest.open("rb") as stream:
         data = stream.read(MAX_MANIFEST_BYTES + 1)
     if len(data) > MAX_MANIFEST_BYTES:
-        raise ValueError("manifest exceeds 16 MiB")
+        raise ValueError(f"{kind} exceeds 16 MiB")
     return parse_keyvalues(data.decode("utf-8-sig"))
+
+
+def discover_libraries(installations):
+    """Read library roots from explicitly selected Steam installations."""
+    libraries = []
+    errors = False
+    seen = set()
+    for installation in installations:
+        # Keep the installation's default library even when discovery fails.
+        libraries.append(installation / "steamapps")
+        configuration = installation / "steamapps" / "libraryfolders.vdf"
+        try:
+            canonical = installation.resolve()
+            if canonical in seen:
+                continue
+            seen.add(canonical)
+            try:
+                configuration.stat()
+            except FileNotFoundError:
+                configuration = installation / "config" / "libraryfolders.vdf"
+            folders = read_manifest(configuration, kind="library configuration").get("libraryfolders")
+            if not isinstance(folders, dict):
+                raise ValueError("missing LibraryFolders object")
+        except (ValueError, OSError, RuntimeError) as exc:
+            print(f"{configuration}: {exc}", file=sys.stderr)
+            errors = True
+            continue
+
+        # Numeric order is deterministic even if the VDF entries are reordered.
+        # Sort decimal strings without converting arbitrarily long keys to int.
+        indexes = [key for key in folders if re.fullmatch(r"[0-9]+", key)]
+        indexes.sort(key=lambda key: (len(key.lstrip("0")), key.lstrip("0"), key))
+        for index in indexes:
+            value = folders[index]
+            path = value.get("path") if isinstance(value, dict) else value
+            if (not isinstance(path, str) or not path or "\0" in path
+                    or not Path(path).is_absolute()):
+                print(f"{configuration}: library {index} requires an absolute path for this host",
+                      file=sys.stderr)
+                errors = True
+                continue
+            libraries.append(Path(path))
+    return libraries, errors
 
 
 def optional_uint32(state, key):
@@ -90,32 +141,45 @@ def catalog_entry(manifest, expected_id):
     flags = optional_uint32(state, "stateflags")
     if flags is not None:
         installation = "reported_installed" if flags & FULLY_INSTALLED else "not_fully_installed"
+    return steam_entry(app_id, name.strip(), installation, optional_uint32(state, "lastplayed") or None)
+
+
+def steam_entry(app_id, name, installation="unknown", last_played=None):
     return {
         "provider": "steam",
         "provider_id": app_id,
-        "name": name.strip(),
+        "name": name,
         "artwork": None,
         "installation_state": installation,
-        "last_played": optional_uint32(state, "lastplayed") or None,
+        "last_played": last_played,
         "compatibility_state": "unknown",
         "launch_mode": None,
     }
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Read local Steam app manifests and write an offline metadata catalog to stdout."
-    )
-    parser.add_argument("libraries", metavar="LIBRARY", type=Path, nargs="+",
-                        help="Steam library root containing steamapps, or the steamapps directory itself")
+def scan_libraries(libraries, *, steam_installs=()):
     entries = {}
-    errors = False
-    for library in parser.parse_args().libraries:
-        steamapps = library if library.name.lower() == "steamapps" else library / "steamapps"
+    discovered, errors = discover_libraries(steam_installs)
+    scanned = set()
+    for library in list(libraries) + discovered:
+        nested = library / "steamapps"
+        steamapps = library if library.name.lower() == "steamapps" else nested
         try:
+            if steamapps.resolve() in scanned:
+                continue
             manifests = sorted(steamapps.iterdir())
-        except OSError as exc:
-            print(f"{steamapps}: {exc.strerror}", file=sys.stderr)
+            # A library root can share the name of its manifest directory.
+            if (steamapps == library
+                    and not any(MANIFEST.fullmatch(path.name) for path in manifests)
+                    and nested.is_dir()):
+                steamapps = nested
+                manifests = sorted(steamapps.iterdir())
+            canonical = steamapps.resolve()
+            if canonical in scanned:
+                continue
+            scanned.add(canonical)
+        except (OSError, RuntimeError) as exc:
+            print(f"{steamapps}: {getattr(exc, 'strerror', None) or exc}", file=sys.stderr)
             errors = True
             continue
         for manifest in manifests:
@@ -134,9 +198,56 @@ def main():
             if previous is None or rank > STATE_PRIORITY[previous["installation_state"]]:
                 entries[app_id] = entry
 
-    catalog = {"schema_version": 1, "entries": [entries[k] for k in sorted(entries, key=int)]}
-    json.dump(catalog, sys.stdout, ensure_ascii=True, indent=2)
-    print()
+    return [entries[k] for k in sorted(entries, key=int)], errors
+
+
+def serialize_catalog(entries):
+    """Return bounded ASCII JSON with LF line endings, before touching output."""
+    if len(entries) > MAX_CATALOG_ENTRIES:
+        raise CatalogLimitError("Combined library exceeds the HOME catalog entry limit.")
+    catalog = {"schema_version": 1, "entries": entries}
+    chunks = []
+    size = 1  # The final LF is part of the serialized document.
+    for chunk in json.JSONEncoder(ensure_ascii=True, indent=2).iterencode(catalog):
+        # ASCII escaping makes the character and byte counts identical.
+        size += len(chunk)
+        if size > MAX_CATALOG_BYTES:
+            raise CatalogLimitError("Combined library exceeds the HOME catalog size limit.")
+        chunks.append(chunk)
+    return ("".join(chunks) + "\n").encode("ascii")
+
+
+def write_catalog(entries, stream=None):
+    data = serialize_catalog(entries)
+    if stream is None:
+        stream = sys.stdout
+        binary = getattr(stream, "buffer", None)
+        if binary is not None:
+            # Windows text-mode CRLF expansion must not exceed the checked budget.
+            stream.flush()
+            binary.write(data)
+            return
+    # Preserve text-stream callers, including redirected in-memory stdout.
+    stream.write(data.decode("ascii"))
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Read local Steam app manifests and write an offline metadata catalog to stdout."
+    )
+    parser.add_argument("libraries", metavar="LIBRARY", type=Path, nargs="*",
+                        help="Steam library root containing steamapps, or the steamapps directory itself")
+    parser.add_argument("--steam-install", metavar="ROOT", type=Path, action="append", default=[],
+                        help="Steam installation root whose libraryfolders.vdf lists libraries to scan. May be repeated.")
+    args = parser.parse_intermixed_args()
+    if not args.libraries and not args.steam_install:
+        parser.error("supply at least one LIBRARY or --steam-install")
+    entries, errors = scan_libraries(args.libraries, steam_installs=args.steam_install)
+    try:
+        write_catalog(entries)
+    except CatalogLimitError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     return int(errors)
 
 

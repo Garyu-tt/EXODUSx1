@@ -1,0 +1,79 @@
+name: EXODUS host validation
+
+on:
+  pull_request:
+    paths:
+      - 'exodus/**'
+      - 'tests/**'
+      - '.github/workflows/exodus-host-validation.yml'
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -B -m unittest discover -v
+      - name: Test the memory probe with MSVC
+        if: runner.os == 'Windows' && matrix.python == '3.12'
+        working-directory: exodus/memory
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installation) { throw 'The MSVC x64 build tools are unavailable' }
+          $devShell = Join-Path $installation 'Common7\Tools\Launch-VsDevShell.ps1'
+          & $devShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          cl /nologo /W4 /WX /TC /Fe:page_probe.exe page_probe.c page_probe_stats.c page_codec.c
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B test_probe.py ./page_probe.exe
+
+  memory:
+    name: Memory codec and probe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: make -C exodus/memory check
+
+  catalog:
+    name: Catalog C++ host checks
+    runs-on: ubuntu-latest
+    env:
+      JSON_INCLUDE: ${{ github.workspace }}/.ci-deps/json/single_include/nlohmann
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check out the JSON dependency pinned by uLaunch 1.2.6
+        uses: actions/checkout@v6
+        with:
+          repository: nlohmann/json
+          ref: 55f93686c01528224f448c19128836e7df245f72
+          path: .ci-deps/json
+          sparse-checkout: single_include/nlohmann
+          persist-credentials: false
+      - name: Test the HOME catalog and refresh
+        run: make -C exodus/home/ulaunch check CPPFLAGS="-I\"$JSON_INCLUDE\"" CXXFLAGS="-O2 -Werror"
+      - name: Test the Switch Steam Sync host code
+        run: make -C exodus/steam_switch check JSON_INCLUDE="$JSON_INCLUDE" HOST_FLAGS=-Werror
