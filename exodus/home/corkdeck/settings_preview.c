@@ -324,12 +324,16 @@ int main(int argc, char **argv)
     int library_mode = argc == 4 && strcmp(argv[2], "--library") == 0;
     int shell_mode = argc == 4 && strcmp(argv[2], "--shell") == 0;
     size_t size = 0;
-    if (argc != 2 && !smoke && !library_mode && !shell_mode) {
+    const char *font_path = argc >= 2 ? argv[1] : NULL;
+#ifdef __SWITCH__
+    if (argc <= 1) font_path = "sdmc:/switch/exodus-shell/font.ttf";
+#endif
+    if (!font_path || (argc > 2 && !smoke && !library_mode && !shell_mode)) {
         fprintf(stderr, "usage: %s FONT.ttf [--smoke | --library CATALOG.json | --shell CATALOG.json]\n", argv[0]);
         return 2;
     }
-    void *font = load_font(argv[1], &size);
-    if (!font) { fprintf(stderr, "Cannot read font\n"); return 1; }
+    void *font = load_font(font_path, &size);
+    if (!font) { fprintf(stderr, "Cannot read font: %s\n", font_path); return 1; }
     if (!ui_init(&ui, font, size, 0)) {
         fprintf(stderr, "CorkDeck UI: %s\n", ui_error());
         free(font);
