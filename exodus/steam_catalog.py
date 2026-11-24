@@ -102,15 +102,10 @@ def catalog_entry(manifest, expected_id):
     }
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Read local Steam app manifests and write an offline metadata catalog to stdout."
-    )
-    parser.add_argument("libraries", metavar="LIBRARY", type=Path, nargs="+",
-                        help="Steam library root containing steamapps, or the steamapps directory itself")
+def scan_libraries(libraries):
     entries = {}
     errors = False
-    for library in parser.parse_args().libraries:
+    for library in libraries:
         steamapps = library if library.name.lower() == "steamapps" else library / "steamapps"
         try:
             manifests = sorted(steamapps.iterdir())
@@ -134,9 +129,23 @@ def main():
             if previous is None or rank > STATE_PRIORITY[previous["installation_state"]]:
                 entries[app_id] = entry
 
-    catalog = {"schema_version": 1, "entries": [entries[k] for k in sorted(entries, key=int)]}
+    return [entries[k] for k in sorted(entries, key=int)], errors
+
+
+def write_catalog(entries):
+    catalog = {"schema_version": 1, "entries": entries}
     json.dump(catalog, sys.stdout, ensure_ascii=True, indent=2)
     print()
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Read local Steam app manifests and write an offline metadata catalog to stdout."
+    )
+    parser.add_argument("libraries", metavar="LIBRARY", type=Path, nargs="+",
+                        help="Steam library root containing steamapps, or the steamapps directory itself")
+    entries, errors = scan_libraries(parser.parse_args().libraries)
+    write_catalog(entries)
     return int(errors)
 
 
