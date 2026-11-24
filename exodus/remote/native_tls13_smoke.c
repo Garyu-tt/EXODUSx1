@@ -10,6 +10,18 @@
 #if !defined(MBEDTLS_SSL_PROTO_TLS1_3) || !defined(MBEDTLS_ENTROPY_HARDWARE_ALT) || !defined(MBEDTLS_NO_PLATFORM_ENTROPY)
 #error Required TLS 1.3 and entropy configuration missing
 #endif
+#if defined(MBEDTLS_SSL_SESSION_TICKETS) || defined(MBEDTLS_SSL_TICKET_C) || \
+    defined(MBEDTLS_SSL_CACHE_C) || defined(MBEDTLS_SSL_EARLY_DATA) || \
+    defined(MBEDTLS_SSL_CONTEXT_SERIALIZATION) || \
+    defined(MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_PSK_ENABLED) || \
+    defined(MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_PSK_EPHEMERAL_ENABLED) || \
+    defined(MBEDTLS_PSA_CRYPTO_STORAGE_C) || defined(MBEDTLS_PSA_ITS_FILE_C)
+#error Unexpected session resumption or persistent storage configuration
+#endif
+#if !defined(MBEDTLS_HAVE_TIME_DATE) || !defined(MBEDTLS_SSL_KEEP_PEER_CERTIFICATE) || \
+    !defined(MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_EPHEMERAL_ENABLED)
+#error Required certificate/time configuration missing
+#endif
 int mbedtls_hardware_poll(void *ctx,unsigned char *out,size_t len,size_t *olen){
     (void)ctx;
     if(!olen || (!out && len))return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
