@@ -61,6 +61,13 @@ def prepare(donor, out):
             b"#ifndef __SWITCH__\n\tif (rootpid == 1) {")
     replace("bin/sh/main.c", b"\t}\n\trootshell = 1;",
             b"\t}\n#endif\n\trootshell = 1;")
+    # Effective UID/GID and faccessat are unavailable at target link.
+    # Refuse permission predicates explicitly instead of forging credentials.
+    replace("bin/test/test.c",
+            b"\tcase FILRD:\n\t\treturn (eaccess(nm, R_OK) == 0);\n\tcase FILWR:\n\t\treturn (eaccess(nm, W_OK) == 0);\n\tcase FILEX:\n\t\t/* XXX work around eaccess(2) false positives for superuser */\n\t\tif (eaccess(nm, X_OK) != 0)\n\t\t\treturn 0;\n\t\tif (S_ISDIR(s.st_mode) || geteuid() != 0)\n\t\t\treturn 1;\n\t\treturn (s.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;\n\tcase FILEXIST:\n\t\treturn (eaccess(nm, F_OK) == 0);",
+            b"\tcase FILRD:\n\tcase FILWR:\n\tcase FILEX:\n\t\terror(\"effective access checks unavailable on Horizon\");\n\tcase FILEXIST:\n\t\treturn 1; /* stat above succeeded */")
+    replace("bin/sh/exec.c", b"if (eaccess(argv[i], X_OK) == 0) {",
+            b"if ((errno = ENOTSUP, 0)) { /* no effective access provider */")
     # Explicit virtual path policy; not a claim that PATH executables work.
     replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
     replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
