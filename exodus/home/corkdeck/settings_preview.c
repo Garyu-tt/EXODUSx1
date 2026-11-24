@@ -63,7 +63,11 @@ static void settings_snapshot(struct ui_row rows[9])
     else if (percentage >= 0 && percentage <= 100)
         snprintf(s.battery, sizeof(s.battery), "%d%%", percentage);
 #endif
+#ifdef __SWITCH__
+    set_row(&rows[0], 0, "Platform", "Nintendo Switch / Horizon", "Native libnx build.");
+#else
     set_row(&rows[0], 0, "Platform", SDL_GetPlatform(), "Reported by SDL.");
+#endif
     set_row(&rows[1], 0, "Firmware", s.firmware, "Horizon set:sys.");
     set_row(&rows[2], 0, "Battery", s.battery, "Horizon PSM, or SDL on host.");
     set_row(&rows[3], 0, "Runtime", "Standalone", "No Wine launcher linked.");
