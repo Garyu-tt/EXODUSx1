@@ -1,8 +1,8 @@
 TARGET := exodus-steam-sync
 BUILD := build
 HOME_CATALOG := ../home/ulaunch
-CORE := sync.cpp $(HOME_CATALOG)/catalog.cpp
-CORE_HEADERS := sync.hpp $(HOME_CATALOG)/catalog.hpp
+CORE := sync.cpp $(HOME_CATALOG)/catalog.cpp $(HOME_CATALOG)/catalog_refresh.cpp
+CORE_HEADERS := sync.hpp $(HOME_CATALOG)/catalog.hpp $(HOME_CATALOG)/catalog_refresh.hpp
 JSON_INCLUDE ?= $(DEVKITPRO)/portlibs/switch/include/nlohmann
 WARNINGS := -Wall -Wextra -Wpedantic
 CPP_FLAGS := -O2 $(WARNINGS) -fno-exceptions -fno-rtti -I"$(JSON_INCLUDE)"

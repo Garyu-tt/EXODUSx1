@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "catalog.hpp"
+#include "catalog_refresh.hpp"
 
 #include <algorithm>
 #include <ul/menu/ui/ui_MenuApplication.hpp>
@@ -51,7 +51,7 @@ namespace exodus::home {
     }
 
     void ShowCatalog() {
-        const auto catalog = ReadCatalog(CatalogPath);
+        const auto catalog = ReadRefreshedCatalog(CatalogPath, SteamSnapshotsPath);
         const auto title = CatalogLabel();
         if (catalog.status != CatalogStatus::Ready || catalog.entries.empty()) {
             g_MenuApplication->DisplayDialog(

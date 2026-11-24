@@ -96,6 +96,7 @@ namespace {
         };
         const auto success = redeem(200, snapshot);
         assert(success.status == SyncStatus::Ready && success.catalog == snapshot);
+        assert(redeem(200, Catalog({})).status == SyncStatus::Ready);
         assert(redeem(0, {}, false).status == SyncStatus::BrowserUnavailable);
         assert(redeem(404, {}).status == SyncStatus::SessionExpired);
         assert(redeem(409, {}).status == SyncStatus::SignInIncomplete);
@@ -114,51 +115,22 @@ namespace {
         assert(refused.status == SyncStatus::InvalidSession);
     }
 
-    void TestSnapshotPublication() {
-        const auto incoming = Catalog({Entry("steam", "7", "New Game")});
-        const auto homebrew = Entry("switch_homebrew", "app/bar.nro", "Local Homebrew");
-        const auto native = Entry("switch", "0100000000000500", "Native Title");
-        const auto existing = Catalog({Entry("steam", "5", "Old Game"), homebrew, native});
-        const auto merged = MergeSteamSnapshot(incoming, existing);
-        assert(merged);
-        const auto entries = JSON::parse(*merged)["entries"];
-        assert(entries.size() == 3 && entries[0]["provider_id"] == "7");
-        assert(entries[1] == homebrew && entries[2] == native);
-        std::string windows_base = "\xff\xfe";
-        for (const char byte : existing) {
-            windows_base.push_back(byte);
-            windows_base.push_back('\0');
-        }
-        assert(MergeSteamSnapshot(incoming, windows_base) == merged);
-        assert(MergeSteamSnapshot(incoming, std::nullopt) == incoming);
-        assert(!MergeSteamSnapshot(incoming, "{broken"));
-        assert(!MergeSteamSnapshot(existing, std::nullopt));
-
+    void TestGatewayFile() {
         char temporary[] = "build/exodus-steam-sync-test-XXXXXX";
         const auto directory_path = mkdtemp(temporary);
         assert(directory_path);
         const std::string directory(directory_path);
-        const auto working = directory + "/exodus-catalog.json";
-        FILE *base = std::fopen(working.c_str(), "wb");
-        assert(base);
-        assert(std::fwrite(existing.data(), 1, existing.size(), base) == existing.size());
-        assert(std::fclose(base) == 0);
-        assert(ReadTextFile(working.c_str(), 16).status == ReadStatus::Error);
+        const auto path = directory + "/gateway.txt";
+        constexpr std::string_view settings = "https://steam.example.test\n";
+        auto *file = std::fopen(path.c_str(), "wb");
+        assert(file);
+        assert(std::fwrite(settings.data(), 1, settings.size(), file) == settings.size());
+        assert(std::fclose(file) == 0);
+        assert(ReadTextFile(path.c_str(), 16).status == ReadStatus::Error);
         assert(ReadTextFile((directory + "/missing").c_str(), 512).status == ReadStatus::Missing);
-
-        const auto first = SaveNewSnapshot(directory, *merged);
-        const auto second = SaveNewSnapshot(directory, *merged);
-        assert(first && second && *first != *second);
-        for (const auto &file : {*first, *second}) {
-            const auto path = directory + "/" + file;
-            const auto published = ReadTextFile(path.c_str(), exodus::home::CatalogByteLimit);
-            assert(published.status == ReadStatus::Ready && published.text == *merged);
-            assert(std::remove(path.c_str()) == 0);
-        }
-        assert(!SaveNewSnapshot(directory, "{broken"));
-        assert(!SaveNewSnapshot(directory + "/not-a-directory", *merged));
-        assert(ReadTextFile(working.c_str(), exodus::home::CatalogByteLimit).text == existing);
-        assert(std::remove(working.c_str()) == 0);
+        const auto saved = ReadTextFile(path.c_str(), 512);
+        assert(saved.status == ReadStatus::Ready && saved.text == settings);
+        assert(std::remove(path.c_str()) == 0);
         assert(rmdir(directory.c_str()) == 0);
     }
 
@@ -168,6 +140,6 @@ int main() {
     TestOrigins();
     TestResponseHeaders();
     TestSignIn();
-    TestSnapshotPublication();
-    std::puts("Switch Steam client flow, response framing, and catalog publication checks passed.");
+    TestGatewayFile();
+    std::puts("Switch Steam client flow, response framing, and gateway configuration checks passed.");
 }

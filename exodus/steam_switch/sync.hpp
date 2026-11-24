@@ -56,10 +56,7 @@ namespace exodus::steam_switch {
     SyncResult FetchSteamSnapshot(const GatewayOrigin &origin, std::string_view challenge,
                                   std::string_view verifier, const PostRequest &post,
                                   const OpenLogin &open_login);
-    std::optional<std::string> MergeSteamSnapshot(std::string_view steam,
-                                                  std::optional<std::string_view> base);
     TextFile ReadTextFile(const char *path, std::size_t limit);
-    std::optional<std::string> SaveNewSnapshot(const std::string &directory, std::string_view catalog);
 
 #ifdef __SWITCH__
     HttpReply PostHttps(const GatewayOrigin &origin, std::string_view path,
