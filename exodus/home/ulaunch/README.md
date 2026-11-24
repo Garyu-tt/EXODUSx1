@@ -18,7 +18,9 @@ To restore the manual catalog view, close the NRO and move the `snapshots` direc
 
 On a page with Steam games that have a valid AppID, select **Steam status** and choose a game. The dialog shows its Steam AppID and whether the row came from the saved Steam Sync library or the manual catalog.
 
-uMenu sends the AppID to the matching uSystem through a read-only command. uSystem reports that Steam launch is unavailable while approval of a local Switch runtime is pending. Actual launch requires a local runtime, installation and an official Steam entitlement path. [EX-006 tracker](https://github.com/Garyu-tt/EXODUSx1/pull/3) · [Nintendo Safe Mode #55](https://github.com/Garyu-tt/EXODUSx1/issues/55)
+uMenu sends the AppID to the matching uSystem through read-only commands. uSystem checks `/switch/exodus-steam/steamapps/appmanifest_<AppID>.acf` on the SD card. It matches the manifest AppID and checks for the declared game folder under `steamapps/common/` when `StateFlags` has the FullyInstalled bit set. The dialog reports absent, invalid or incomplete manifests, missing game folders and matching manifest and folder evidence. It displays a separate launch status. [Steam library layout](https://help.steampowered.com/en/faqs/view/4BD4-4528-6B2E-8327)
+
+A matching manifest and folder establish local disk evidence only. Actual launch requires an approved local Switch runtime, verification of installed game files and an official Steam entitlement path. [Steamworks installation and entitlement](https://partner.steamgames.com/doc/api/ISteamApps#BIsAppInstalled) · [EX-006 tracker](https://github.com/Garyu-tt/EXODUSx1/pull/3) · [Nintendo Safe Mode #55](https://github.com/Garyu-tt/EXODUSx1/issues/55)
 
 ## Launch from an inserted game card
 
@@ -47,8 +49,10 @@ cp "$adapter"/catalog.hpp "$adapter"/catalog.cpp "$adapter"/catalog_view.cpp \
   "$adapter"/catalog_refresh.hpp "$adapter"/catalog_refresh.cpp \
   uLaunch/projects/uMenu/source/ul/menu/ui/
 cp "$adapter"/catalog_homebrew_policy.hpp uLaunch/libs/uCommon/include/ul/menu/
+cp "$adapter"/catalog_steam_install.hpp uLaunch/libs/uCommon/include/ul/menu/
 cp "$adapter"/catalog_gamecard_policy.hpp "$adapter"/catalog_homebrew_policy.hpp \
   "$adapter"/catalog_homebrew_provider.hpp "$adapter"/loader_nro_bounds.hpp uLaunch/projects/uSystem/source/
+cp "$adapter"/catalog_steam_install.hpp "$adapter"/catalog_steam_install.cpp uLaunch/projects/uSystem/source/
 cp "$adapter"/loader_nro_bounds.hpp uLaunch/projects/uLoader/source/ul/loader/
 
 git init libnx
@@ -74,4 +78,4 @@ Check that **Launch** appears for a ready title on an inserted card and opens it
 
 For homebrew, use an NRO registered in the root grid with spaces in its filename. Check the displayed path, cancellation and a confirmed applet launch, then remove the grid registration while keeping the catalog row and check that it disappears from the launch list. Try the same check with a missing NRO and verify that the normal grid still handles its own entries.
 
-For Steam, open **Steam status** on a page with both Steam and local entries, select a specific game and check its displayed AppID and saved-library source. Repeat with the manual catalog and check for that source. The launch list should contain eligible local entries only.
+For Steam, open **Steam status** on a page with both Steam and local entries, select a specific game and check its displayed AppID and saved-library source. Repeat with the manual catalog and check for that source. With a Steam-created manifest for that AppID and its matching game directory on the test SD, verify the matching evidence. Rename the game directory and check the missing-directory result. Check another Steam entry with no local manifest. In each case launch stays blocked. The launch list should contain eligible local entries only.
