@@ -38,6 +38,15 @@ static void native_merge_fixture()
     Catalog invalid{CatalogStatus::Invalid,{}};
     assert(MergeNativeCatalog(invalid,live)==NativeMergeResult::Invalid);
     assert(invalid.status==CatalogStatus::Invalid && invalid.entries.empty());
+    // Invalid absolute external path must not shadow a valid relative NRO.
+    Catalog collision{CatalogStatus::Ready,{{Provider::Homebrew,"Invalid external","sdmc:/switch/tools/demo.nro"}}};
+    const Catalog discovered{CatalogStatus::Ready,{{Provider::Homebrew,"Native tool","tools/demo.nro"}}};
+    assert(MergeNativeCatalog(collision,discovered)==NativeMergeResult::Ready);
+    assert(collision.entries.size()==2);
+    assert(exodus_route_for("Homebrew",collision.entries[0].id.c_str())==EXODUS_ROUTE_INVALID);
+    assert(exodus_route_for("Homebrew",collision.entries[1].id.c_str())==EXODUS_ROUTE_HOMEBREW);
+    assert(MergeNativeCatalog(collision,discovered)==NativeMergeResult::Ready);
+    assert(collision.entries.size()==2);
     Catalog absent{CatalogStatus::Unavailable,{}};
     assert(MergeNativeCatalog(absent,live)==NativeMergeResult::Ready);
     assert(absent.entries.size()==4);
