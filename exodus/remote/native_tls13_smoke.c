@@ -44,6 +44,7 @@ int mbedtls_hardware_poll(void *ctx,unsigned char *out,size_t len,size_t *olen){
     if(R_FAILED(rc)){mbedtls_platform_zeroize(out,len);return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;}
     *olen=len;return 0;
 }
+#include "local_mtls_smoke.h"
 static void run(void){
     mbedtls_ms_time_t before=mbedtls_ms_time(), after=mbedtls_ms_time();
     printf("Monotonic TLS clock: %s\n",after>=before?"PASS":"FAIL");
@@ -70,12 +71,12 @@ static void run(void){
     }
     printf("TLS 1.3 config only: %s\n",rc==0?"PASS":"FAIL");
     mbedtls_ssl_config_free(&c);
-    puts("No certificate, handshake or network test. Remote disabled.");
+    if(!rc)exm_run();
 }
 int main(void){
     consoleInit(NULL);
     char v[64];mbedtls_version_get_string_full(v);
-    printf("EXODUS R03.7 %s\nA: local test; Plus: exit\n",v);
+    printf("EXODUS R03.16 %s\nA: local test; Plus: exit\n",v);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);PadState pad;padInitializeDefault(&pad);
     while(appletMainLoop()){padUpdate(&pad);u64 down=padGetButtonsDown(&pad);
         if(down&HidNpadButton_Plus)break;

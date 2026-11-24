@@ -1,11 +1,20 @@
 name: EXODUS Remote TLS13 port experiment
 on:
   pull_request:
-    paths: ['exodus/remote/build_tls13_port.sh', 'exodus/remote/native_tls13_smoke.c', '.github/workflows/exodus-remote-tls13.yml']
+    paths: ['exodus/remote/build_tls13_port.sh', 'exodus/remote/native_tls13_smoke.c', 'exodus/remote/local_mtls_smoke.h', 'exodus/remote/host_mtls_smoke.c', 'exodus/remote/generate_tls_fixtures.sh', '.github/workflows/exodus-remote-tls13.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  host-mtls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake curl ca-certificates python3 bzip2 openssl build-essential
+      - run: sh exodus/remote/build_tls13_port.sh /tmp/exr-host-mtls host
   native:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -17,7 +26,7 @@ jobs:
       - name: Install prerequisites
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends cmake curl ca-certificates python3 bzip2
+          apt-get install -y --no-install-recommends cmake curl ca-certificates python3 bzip2 openssl
       - name: Build isolated TLS port and NRO
         run: |
           git -c safe.directory="$GITHUB_WORKSPACE" rev-parse HEAD
