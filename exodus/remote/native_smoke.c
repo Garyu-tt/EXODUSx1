@@ -2,7 +2,7 @@
 #include <switch.h>
 #include <stdio.h>
 #include <time.h>
-#include <mbedtls/entropy.h>
+#include <mbedtls/platform_util.h>
 #include <mbedtls/version.h>
 #include <mbedtls/ssl.h>
 #include "horizon_provider.h"
@@ -15,13 +15,13 @@ static int clock_smoke(void) {
         (b.tv_sec>a.tv_sec || (b.tv_sec==a.tv_sec && b.tv_nsec>=a.tv_nsec));
 }
 static int entropy_smoke(void) {
-    unsigned char random[32];
-    mbedtls_entropy_context entropy;
-    mbedtls_entropy_init(&entropy);
-    int rc=mbedtls_entropy_func(&entropy,random,sizeof(random));
-    mbedtls_entropy_free(&entropy);
-    /* Never display or persist entropy bytes. */
-    return rc==0;
+    unsigned char random[32]={0};
+    Result rc=csrngInitialize();
+    if(R_FAILED(rc))return 0;
+    rc=csrngGetRandomBytes(random,sizeof(random));
+    csrngExit();
+    mbedtls_platform_zeroize(random,sizeof(random));
+    return R_SUCCEEDED(rc);
 }
 static void local_probe(void) {
     char out[EXR_RESPONSE_CAP];
@@ -32,7 +32,7 @@ static void local_probe(void) {
         if(rc==EXR_OK)puts(out);
     }
     printf("Monotonic clock: %s\n",clock_smoke()?"PASS":"FAIL");
-    printf("Mbed TLS entropy source: %s\n",entropy_smoke()?"PASS":"FAIL");
+    printf("Horizon CSRNG IPC: %s\n",entropy_smoke()?"PASS":"FAIL");
 #if defined(MBEDTLS_SSL_PROTO_TLS1_3)
     puts("TLS 1.3 configured: yes (handshake not tested)");
 #else
