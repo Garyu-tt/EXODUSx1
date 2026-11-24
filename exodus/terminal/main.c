@@ -123,7 +123,10 @@ static int dispatch(char *line) {
 #ifdef __SWITCH__
 int main(void) {
     consoleInit(NULL);
-    if (chdir("sdmc:/")) { report_error("sdmc"); consoleUpdate(NULL); }
+    if (chdir("sdmc:/")) {
+        report_error("sdmc"); consoleUpdate(NULL);
+        svcSleepThread(2000000000LL); consoleExit(NULL); return 1;
+    }
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
