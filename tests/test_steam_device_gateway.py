@@ -29,11 +29,13 @@ class DeviceGatewayTests(unittest.TestCase):
         self.addCleanup(worker.join, 5)
         self.addCleanup(self.server.shutdown)
 
-    def request(self, method, target, body=None, *, content_type="application/json"):
+    def request(self, method, target, body=None, *, headers=None):
         with closing(HTTPConnection("127.0.0.1", self.server.server_port, timeout=4)) as connection:
             payload = json.dumps(body).encode("ascii") if type(body) is dict else body
-            headers = {"Content-Type": content_type} if payload is not None else {}
-            connection.request(method, target, body=payload, headers=headers)
+            request_headers = dict(headers or {})
+            if payload is not None:
+                request_headers.setdefault("Content-Type", "application/json")
+            connection.request(method, target, body=payload, headers=request_headers)
             response = connection.getresponse()
             return response.status, response.headers, response.read()
 
@@ -181,18 +183,25 @@ class DeviceGatewayTests(unittest.TestCase):
             {"challenge": 12},
             b"[]",
             b'{"challenge":"1","challenge":"2"}',
-            b"x" * (gateway.MAX_REQUEST_BODY + 1),
         ):
             with self.subTest(body=body[:20] if type(body) is bytes else body):
                 self.assert_device_error(
                     self.request("POST", gateway.SESSION_PATH, body), 400, "invalid_request",
                 )
-        self.assert_device_error(
-            self.request("POST", gateway.SESSION_PATH, {"challenge": CHALLENGE},
-                         content_type="text/plain"),
-            400, "invalid_request",
-        )
         self.assertEqual(self.request("GET", "/v1/steam/done?next=https://other.example.org")[0], 404)
+        self.assertEqual(self.provider.requests, [])
+
+    def test_invalid_device_headers_are_rejected_without_a_body(self):
+        # These cases must get a response before any body is sent.
+        for content_type, length in (
+            ("application/json", gateway.MAX_REQUEST_BODY + 1),
+            ("text/plain", 1),
+        ):
+            with self.subTest(content_type=content_type, content_length=length):
+                response = self.request("POST", gateway.SESSION_PATH, headers={
+                    "Content-Type": content_type, "Content-Length": str(length),
+                })
+                self.assert_device_error(response, 400, "invalid_request")
         self.assertEqual(self.provider.requests, [])
 
 
