@@ -18,6 +18,7 @@ void nxbsd_fd_init(struct nxbsd_fd_table *);
 /* dst must be initialized and empty; source table must remain stable. */
 int nxbsd_fd_clone(struct nxbsd_fd_table *dst, const struct nxbsd_fd_table *src);
 int nxbsd_fd_adopt(struct nxbsd_fd_table *, int native_fd);
+int nxbsd_fd_pipe_from(struct nxbsd_fd_table *, int minimum, int ends[2]);
 int nxbsd_fd_pipe(struct nxbsd_fd_table *, int ends[2]);
 int nxbsd_fd_dup2(struct nxbsd_fd_table *, int oldfd, int newfd);
 int nxbsd_fd_close(struct nxbsd_fd_table *, int fd);
