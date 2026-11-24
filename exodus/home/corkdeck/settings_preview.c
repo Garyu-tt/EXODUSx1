@@ -2,6 +2,7 @@
  * engine, not the Wine launcher. No system writes or executable dispatch. */
 #define SDL_MAIN_HANDLED
 #include "launcher_ui.h"
+#include "horizon_settings.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,31 +33,34 @@ static void set_row(struct ui_row *row, int group, const char *label,
     row->help = help;
 }
 
-static void settings_snapshot(struct ui_row rows[7])
+static void settings_snapshot(struct ui_row rows[9])
 {
-    char battery[64];
+    struct exodus_settings s;
+    exodus_read_settings(&s);
+#ifndef __SWITCH__
     int percentage = -1;
     SDL_PowerState state = SDL_GetPowerInfo(NULL, &percentage);
     if (state == SDL_POWERSTATE_NO_BATTERY)
-        snprintf(battery, sizeof(battery), "No battery");
+        snprintf(s.battery, sizeof(s.battery), "No battery");
     else if (percentage >= 0 && percentage <= 100)
-        snprintf(battery, sizeof(battery), "%d%%", percentage);
-    else
-        snprintf(battery, sizeof(battery), "Unavailable");
+        snprintf(s.battery, sizeof(s.battery), "%d%%", percentage);
+#endif
     set_row(&rows[0], 0, "Platform", SDL_GetPlatform(), "Reported by SDL.");
-    set_row(&rows[1], 0, "Battery", battery, "Read-only SDL power snapshot.");
-    set_row(&rows[2], 0, "Runtime", "Standalone", "No Wine launcher linked.");
-    set_row(&rows[3], 1, "Wi-Fi", "Not connected to provider", "Horizon service adapter pending.");
-    set_row(&rows[4], 1, "Bluetooth", "Not connected to provider", "Horizon service adapter pending.");
-    set_row(&rows[5], 2, "Brightness", "Unsupported", "Native read/write adapter pending.");
-    set_row(&rows[6], 2, "Performance", "Unsupported", "No clock or voltage writes.");
+    set_row(&rows[1], 0, "Firmware", s.firmware, "Horizon set:sys.");
+    set_row(&rows[2], 0, "Battery", s.battery, "Horizon PSM, or SDL on host.");
+    set_row(&rows[3], 0, "Runtime", "Standalone", "No Wine launcher linked.");
+    set_row(&rows[4], 1, "Network", s.network, "NIFM connection status.");
+    set_row(&rows[5], 1, "Wi-Fi", s.wifi, "NIFM wireless enable state.");
+    set_row(&rows[6], 1, "Bluetooth", s.bluetooth, "System Bluetooth enable flag.");
+    set_row(&rows[7], 2, "Brightness", s.brightness, "LBL brightness setting, not measured luminance.");
+    set_row(&rows[8], 2, "Performance", s.performance, "APM mode; no clock or voltage writes.");
 }
 
 int main(int argc, char **argv)
 {
     struct ui ui;
     struct ui_list list = {0};
-    struct ui_row rows[7];
+    struct ui_row rows[9];
     const char *groups[] = {"System", "Connectivity", "Hardware"};
     int group = 0;
     int smoke = argc == 3 && strcmp(argv[2], "--smoke") == 0;
@@ -92,7 +96,7 @@ int main(int argc, char **argv)
         do {
             settings_snapshot(rows);
             action = ui_settings_run(&ui, &list, "EXODUS Settings",
-                                     "Read-only preview", groups, 3, rows, 7, 0, &group);
+                                     "Read-only preview", groups, 3, rows, 9, 0, &group);
         } while (ui.running && action != UI_ACTION_BACK && action != UI_ACTION_QUIT);
     }
     ui_quit(&ui);

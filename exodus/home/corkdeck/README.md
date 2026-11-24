@@ -14,7 +14,7 @@ sh exodus/home/corkdeck/build-host.sh CorkDeck /tmp/exodus-settings
 SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /tmp/exodus-settings /path/to/font.ttf --smoke
 ```
 
-The smoke mode draws one frame and exits; it is not an input or hardware test. The normal mode uses donor focus navigation and grouped rows. Platform and battery are reported by SDL when available, not by a simulated Switch. Other settings are explicitly unavailable pending Horizon adapters; there are no writes.
+The smoke mode draws one frame and exits; it is not an input or hardware test. The normal mode uses donor focus navigation and grouped rows. Platform and battery are reported by SDL when available, not by a simulated Switch. On host, Horizon-only settings explicitly report unavailable. The native adapter is selected by __SWITCH__; there are no writes.
 
 The donor is pinned and referenced, not copied into EXODUS. Preserve CorkDeck/Wine LGPL notices and third-party notices; review per-file provenance (including the SVG and focus-border implementation) before shipping linked binaries. No distribution of donor assets or binaries is part of this change.
 
@@ -27,3 +27,16 @@ The donor is pinned and referenced, not copied into EXODUS. Preserve CorkDeck/Wi
 - Extract further actual CorkDeck shell screens incrementally; shell.inc currently relies on launcher state and is not standalone.
 
 No successful build or device run is claimed by this PR.
+
+## R03: Horizon status provider
+
+The adapter uses PSM (battery/charger), NIFM (wireless flag and connection status), set:sys (firmware version and Bluetooth flag), LBL (configured brightness) and APM (performance mode). API signatures were inspected at libnx commit b156b4774fb2df7b93402169509266da7547fc4c. Each service has an independent initialization/exit and errors are displayed as unavailable, including the Result code where applicable. NIFM user and set:sys permissions may differ by applet and firmware; an unavailable read does not imply a disabled feature. Bluetooth is an enable flag, not pairing state. The APM mode is not a clock measurement. Snapshot refresh occurs when the settings view is entered or re-entered, not continuously inside the donor widget.
+
+Host fallback check, requiring only a C compiler:
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_horizon_settings.c -o /tmp/exodus-settings-check
+/tmp/exodus-settings-check
+```
+
+Native compilation and hardware permission/firmware checks are still required. In particular, do not infer HOS 4.x compatibility from the version of the pinned headers. No settings setters or firmware changes are included.
