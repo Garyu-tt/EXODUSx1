@@ -33,6 +33,17 @@ def prepare(donor, out):
         dst = out / "bin/sh" / (module + ".c")
         dst.unlink()
         stage(donor, dst, module)
+    for module in ("input", "main"):
+        dst = out / "bin/sh" / (module + ".c")
+        data = dst.read_bytes()
+        if data.count(b"unavailable on host") != 1:
+            raise ValueError("unexpected verified-open refusal")
+        dst.write_bytes(data.replace(b"unavailable on host", b"unavailable on Horizon"))
+    # In SHELL builds the donor's bltin.h already supplies warning/error
+    # wrappers; the standalone err.h API is not required.
+    for path in ("usr.bin/printf/printf.c", "bin/test/test.c", "bin/kill/kill.c"):
+        replace(path, b"#include <err.h>",
+                b"#ifndef SHELL\n#include <err.h>\n#endif")
     # Explicit virtual path policy; not a claim that PATH executables work.
     replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
     replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
