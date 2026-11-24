@@ -366,6 +366,12 @@ def sync_library(output, key, *, base_catalog=None, timeout=180, open_browser=No
     if opener is None:
         opener = build_opener(NoSteamRedirect)
     previous = read_base_catalog(base_catalog) if base_catalog is not None else []
+    try:
+        output_parent_is_directory = output.parent.is_dir()
+    except OSError:
+        output_parent_is_directory = False
+    if not output_parent_is_directory:
+        raise SteamSyncError("Catalog output requires an accessible directory.")
     steam_id = sign_in(opener, open_browser or webbrowser.open, timeout)
     steam = fetch_library(opener, key, steam_id)
     save_catalog(output, steam + previous)
