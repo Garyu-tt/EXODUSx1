@@ -46,13 +46,14 @@ for archive in libmbedtls.a libmbedx509.a libmbedcrypto.a libeverest.a libp256m.
     test -f "$lib/$archive"
 done
 nx="$DEVKITPRO/libnx"
+sh "$src/generate_tls_fixtures.sh" "$work/tls_fixtures.h"
 "$cc" -std=gnu11 -Wall -Wextra -Werror $arch -D__SWITCH__ \
-  -I"$work/install/include" -I"$nx/include" -specs="$nx/switch.specs" \
+  -I"$work" -I"$work/install/include" -I"$nx/include" -specs="$nx/switch.specs" \
   "$src/native_tls13_smoke.c" -Wl,--start-group \
   "$lib/libmbedtls.a" "$lib/libmbedx509.a" "$lib/libmbedcrypto.a" \
   "$lib/libeverest.a" "$lib/libp256m.a" -Wl,--end-group \
   -L"$nx/lib" -lnx -o "$out/exodus-tls13-smoke.elf"
-nacptool --create "EXODUS TLS 1.3 Smoke" "EXODUSx1" "0.3.7" "$out/smoke.nacp"
+nacptool --create "EXODUS TLS 1.3 Smoke" "EXODUSx1" "0.3.16" "$out/smoke.nacp"
 elf2nro "$out/exodus-tls13-smoke.elf" "$out/exodus-tls13-smoke.nro" --icon="$nx/default_icon.jpg" --nacp="$out/smoke.nacp"
 "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-readelf" -h "$out/exodus-tls13-smoke.elf" | grep AArch64
 test "$(dd if="$out/exodus-tls13-smoke.nro" bs=1 skip=16 count=4 2>/dev/null)" = NRO0
