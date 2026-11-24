@@ -20,7 +20,7 @@ jobs:
           apt-get install -y --no-install-recommends cmake curl ca-certificates python3 bzip2
       - name: Build isolated TLS port and NRO
         run: |
-          git rev-parse HEAD
+          git -c safe.directory="$GITHUB_WORKSPACE" rev-parse HEAD
           dkp-pacman -Q
           sh exodus/remote/build_tls13_port.sh /tmp/exr-tls13
       - uses: actions/upload-artifact@v4
