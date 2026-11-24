@@ -109,3 +109,22 @@ cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_library_filter.c -o 
 ```
 
 Native build, interaction, rendering and performance acceptance remain pending.
+
+## R08: unified shell
+
+The default view is now Gaming Mode home. Up/down moves among Library, Settings, Terminal, SSH and Exit; A opens, B returns/exits. Library and settings are internal views. A successful launch handoff leaves the shell rather than returning to its menu. Missing tools report an error without scheduling a launch.
+
+Host: /tmp/exodus-settings FONT.ttf --shell CATALOG.json (or FONT.ttf alone with the default catalog path). The explicit --library mode remains available. --smoke draws the home screen. Native no-argument startup expects a user-supplied font at sdmc:/switch/exodus-shell/font.ttf and catalog at sdmc:/ulaunch/exodus-catalog.json. This branch does not yet produce a native NRO.
+
+The Terminal and SSH tools use fixed local paths sdmc:/switch/exodus-terminal/exodus-terminal.nro and sdmc:/switch/exodus-ssh/exodus-ssh.nro. These are packaging conventions, not autodiscovery. Install the corresponding independently built tools (#43 and #37). The UI requires full application mode, a compatible loader, successful NRO preflight and explicit confirmation. No terminal or SSH backend is duplicated. Tool return-to-shell is not implemented; Homebrew loader behavior determines the destination. No Nintendo eShop, account actions, or stock HOME replacement is exposed by this menu. This does not guarantee freedom from platform enforcement.
+
+Portable navigation test:
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_shell_menu.c -o /tmp/exodus-menu-check
+/tmp/exodus-menu-check
+clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined exodus/home/corkdeck/test_shell_menu.c -o /tmp/exodus-menu-sanitize
+/tmp/exodus-menu-sanitize
+```
+
+Both passed locally against files whose git blob hashes matched the branch: shell_menu.h 6996d43f37a57dfdf1a2ed44dbc2c1a550f7acfa and test_shell_menu.c 4f253eb757e46c6a5a6738cb20281d2e0b91857e. SDL and native compilation, actual screen navigation, tool handoff and device acceptance remain pending.

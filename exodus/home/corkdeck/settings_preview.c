@@ -6,6 +6,7 @@
 #include "library_catalog.h"
 #include "native_launch.h"
 #include "library_filter.h"
+#include "shell_menu.h"
 #include "launcher_image.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -101,15 +102,16 @@ static size_t filter_cards(const struct exodus_library *library, enum exodus_fil
     return count;
 }
 
-static void show_library(struct ui *ui, const char *path)
+static int show_library(struct ui *ui, const char *path)
 {
     struct exodus_library *library = exodus_library_open(path);
     size_t total = exodus_library_count(library), selection = 0, count = total;
+    int handoff = 0;
     if (!total) {
         const char *status = exodus_library_status(library);
         ui_message(ui, "EXODUS Library", strcmp(status, "Ready") == 0 ? "Empty catalog" : status);
         exodus_library_close(library);
-        return;
+        return 0;
     }
     unsigned char *favorites = calloc(total, 1);
     struct exodus_card_index *cards = calloc(total, sizeof(*cards));
@@ -170,7 +172,7 @@ static void show_library(struct ui *ui, const char *path)
                     snprintf(detail, sizeof(detail), "Target: %s\n%.500s", exodus_route_name(route), id);
                     if (ui_confirm(ui, exodus_library_title(library, index), detail,
                                    route == EXODUS_ROUTE_STEAM ? "Open library" : "Launch")) {
-                        if (exodus_launch(route, id, result)) goto done;
+                        if (exodus_launch(route, id, result)) { handoff = 1; goto done; }
                         ui_message(ui, "Launch unavailable", result);
                     }
                     break;
@@ -227,54 +229,131 @@ done:
     free(cards);
     free(favorites);
     exodus_library_close(library);
+    return handoff;
+}
+
+static void show_settings(struct ui *ui)
+{
+    struct ui_list list = {0};
+    struct ui_row rows[9];
+    const char *groups[] = {"System", "Connectivity", "Hardware"};
+    int group = 0;
+    enum ui_action action;
+    do {
+        settings_snapshot(rows);
+        action = ui_settings_run(ui, &list, "EXODUS Settings",
+                                 "Read-only preview", groups, 3, rows, 9, 0, &group);
+    } while (ui->running && action != UI_ACTION_BACK && action != UI_ACTION_QUIT);
+}
+
+static int open_tool(struct ui *ui, const struct exodus_page_info *page)
+{
+#ifdef __SWITCH__
+    if (appletGetAppletType() != AppletType_Application || !envHasNextLoad()) {
+        ui_message(ui, page->name, "Full application mode and a compatible loader are required.");
+        return 0;
+    }
+    if (exodus_autorun_probe(page->nro) != EXODUS_AUTORUN_READY) {
+        ui_message(ui, page->name, "Tool NRO missing or invalid. Install the corresponding EXODUS build.");
+        return 0;
+    }
+    if (!ui_confirm(ui, page->name, page->nro, "Open")) return 0;
+    Result rc = envSetNextLoad(page->nro, page->nro);
+    if (R_SUCCEEDED(rc)) return 1;
+    char detail[64];
+    snprintf(detail, sizeof(detail), "Handoff failed: 0x%08lx", (unsigned long)rc);
+    ui_message(ui, page->name, detail);
+#else
+    ui_message(ui, page->name, "Native Switch tool; unavailable on host.");
+#endif
+    return 0;
+}
+
+static void draw_home(struct ui *ui, size_t selection)
+{
+    ui_background(ui);
+    ui_header(ui, "EXODUS", "Gaming Mode");
+    for (size_t n = 0; n < PAGE_COUNT; ++n) {
+        int x = 84, y = 120 + (int)n * 94;
+        ui_panel(ui, x, y, 1112, 82);
+        if (n == selection) ui_outline(ui, x, y, 1112, 82, 6, 3, ui->selection);
+        ui_text(ui, ui->normal, x + 22, y + 9, exodus_pages[n].name, ui->text);
+        ui_text_fit(ui, ui->small, x + 22, y + 47, 1068,
+                    exodus_pages[n].description, ui->dim, 0);
+    }
+    const struct ui_hint hints[] = {{UI_A, "Open"}, {UI_B, "Exit"}};
+    ui_footer(ui, hints, 2);
+}
+
+static void show_home(struct ui *ui, const char *catalog)
+{
+    size_t selection = 0;
+    ui_start_screen(ui);
+    while (ui_begin_frame(ui)) {
+        struct ui_input input;
+        int changed_screen = 0;
+        while (ui_poll(ui, &input)) {
+            if (input.button == UI_B) return;
+            if (input.button == UI_UP) selection = exodus_page_move(selection, -1);
+            if (input.button == UI_DOWN) selection = exodus_page_move(selection, 1);
+            if (input.button != UI_A) continue;
+            if (selection == PAGE_EXIT) return;
+            if (selection == PAGE_LIBRARY) {
+                if (show_library(ui, catalog)) return;
+            } else if (selection == PAGE_SETTINGS) {
+                show_settings(ui);
+            } else if (open_tool(ui, &exodus_pages[selection])) return;
+            changed_screen = 1;
+            break;
+        }
+        if (!ui->running) break;
+        if (changed_screen) {
+            ui_start_screen(ui);
+            continue;
+        }
+        draw_home(ui, selection);
+        ui_present(ui);
+        ui_wait(ui);
+    }
 }
 
 int main(int argc, char **argv)
 {
     struct ui ui;
-    struct ui_list list = {0};
-    struct ui_row rows[9];
-    const char *groups[] = {"System", "Connectivity", "Hardware"};
-    int group = 0;
     int smoke = argc == 3 && strcmp(argv[2], "--smoke") == 0;
     int library_mode = argc == 4 && strcmp(argv[2], "--library") == 0;
+    int shell_mode = argc == 4 && strcmp(argv[2], "--shell") == 0;
     size_t size = 0;
-    if (argc != 2 && !smoke && !library_mode) {
-        fprintf(stderr, "usage: %s FONT.ttf [--smoke | --library CATALOG.json]\n", argv[0]);
+    const char *font_path = argc >= 2 ? argv[1] : NULL;
+#ifdef __SWITCH__
+    if (argc <= 1) font_path = "sdmc:/switch/exodus-shell/font.ttf";
+#endif
+    if (!font_path || (argc > 2 && !smoke && !library_mode && !shell_mode)) {
+        fprintf(stderr, "usage: %s FONT.ttf [--smoke | --library CATALOG.json | --shell CATALOG.json]\n", argv[0]);
         return 2;
     }
-    void *font = load_font(argv[1], &size);
-    if (!font) { fprintf(stderr, "Cannot read font\n"); return 1; }
+    void *font = load_font(font_path, &size);
+    if (!font) { fprintf(stderr, "Cannot read font: %s\n", font_path); return 1; }
     if (!ui_init(&ui, font, size, 0)) {
         fprintf(stderr, "CorkDeck UI: %s\n", ui_error());
         free(font);
         return 1;
     }
-    SDL_SetWindowTitle(ui.window, "EXODUS Settings");
-    settings_snapshot(rows);
+    SDL_SetWindowTitle(ui.window, "EXODUS");
     if (smoke) {
         if (!ui_begin_frame(&ui)) {
             ui_quit(&ui);
             free(font);
             return 1;
         }
-        ui_background(&ui);
-        ui_header(&ui, "EXODUS Settings", "Standalone UI");
-        ui_panel(&ui, 84, 140, 1112, 120);
-        ui_text(&ui, ui.normal, 110, 160, rows[0].label, ui.text);
-        ui_text(&ui, ui.normal, 110, 200, rows[0].value, ui.value);
+        draw_home(&ui, 0);
         ui_present(&ui);
         puts("EXODUS standalone donor UI frame rendered");
     } else if (library_mode) {
         SDL_SetWindowTitle(ui.window, "EXODUS Library");
         show_library(&ui, argv[3]);
     } else {
-        enum ui_action action;
-        do {
-            settings_snapshot(rows);
-            action = ui_settings_run(&ui, &list, "EXODUS Settings",
-                                     "Read-only preview", groups, 3, rows, 9, 0, &group);
-        } while (ui.running && action != UI_ACTION_BACK && action != UI_ACTION_QUIT);
+        show_home(&ui, shell_mode ? argv[3] : "sdmc:/ulaunch/exodus-catalog.json");
     }
     ui_quit(&ui);
     free(font);
