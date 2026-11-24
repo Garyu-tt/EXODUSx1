@@ -4,6 +4,8 @@ on:
     paths:
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/test_sessiond.py'
+      - 'exodus/frankenstein/sessiond-dbus.inc'
+      - 'exodus/frankenstein/test_sessiond_dbus.sh'
       - '.github/workflows/frankenstein-service.yml'
   workflow_dispatch:
 permissions:
@@ -21,3 +23,11 @@ jobs:
       - run: |
           cc -std=c11 -Wall -Wextra -Werror -O2 exodus/frankenstein/sessiond.c -o /tmp/exodus-sessiond
           python3 exodus/frankenstein/test_sessiond.py /tmp/exodus-sessiond
+      - name: Install native GLib and D-Bus test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglib2.0-dev libglib2.0-bin dbus-daemon
+      - name: Test upstream session interface subset on an isolated bus
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -O2 -DEXODUS_DBUS exodus/frankenstein/sessiond.c $(pkg-config --cflags --libs gio-2.0) -o /tmp/exodus-sessiond-dbus
+          dbus-run-session -- sh exodus/frankenstein/test_sessiond_dbus.sh /tmp/exodus-sessiond-dbus
