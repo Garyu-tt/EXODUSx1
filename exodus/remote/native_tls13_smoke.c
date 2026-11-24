@@ -5,7 +5,6 @@
 #include <time.h>
 #include <mbedtls/platform_time.h>
 #include <mbedtls/entropy.h>
-#include <mbedtls/entropy_poll.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/version.h>
 #include <mbedtls/platform_util.h>
