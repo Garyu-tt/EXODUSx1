@@ -2,16 +2,31 @@
 
 #include <string.h>
 
-bool exodus_probe_page(const uint8_t *page, struct exodus_probe_stats *stats)
+static bool probe_page(const uint8_t *page, struct exodus_probe_stats *stats, bool adaptive)
 {
     uint8_t encoded[EXODUS_PAGE_BYTES], decoded[EXODUS_PAGE_BYTES];
-    size_t size = exodus_page_encode(page, encoded);
+    size_t size = adaptive ? exodus_page_encode_adaptive(page, encoded) :
+                             exodus_page_encode(page, encoded);
     if (!exodus_page_decode(encoded, size, decoded) || memcmp(decoded, page, sizeof(decoded)) != 0)
         return false;
     ++stats->pages;
-    stats->sparse_pages += size < EXODUS_PAGE_BYTES;
+    /* Odd payload lengths identify word runs. */
+    if (size % 2 != 0)
+        ++stats->word_run_pages;
+    else if (size < EXODUS_PAGE_BYTES)
+        ++stats->sparse_pages;
     stats->payload_bytes += size;
     return true;
+}
+
+bool exodus_probe_page(const uint8_t *page, struct exodus_probe_stats *stats)
+{
+    return probe_page(page, stats, false);
+}
+
+bool exodus_probe_adaptive_page(const uint8_t *page, struct exodus_probe_stats *stats)
+{
+    return probe_page(page, stats, true);
 }
 
 enum exodus_probe_result exodus_probe_batch(FILE *input, size_t max_pages,
@@ -27,7 +42,7 @@ enum exodus_probe_result exodus_probe_batch(FILE *input, size_t max_pages,
             stats->payload_bytes += count;
             return EXODUS_PROBE_DONE;
         }
-        if (!exodus_probe_page(page, stats))
+        if (!exodus_probe_adaptive_page(page, stats))
             return EXODUS_PROBE_MISMATCH;
     }
     return EXODUS_PROBE_MORE;

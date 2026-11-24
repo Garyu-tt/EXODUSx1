@@ -7,7 +7,7 @@ import struct
 import sys
 import zlib
 
-from .steam_catalog import scan_libraries, write_catalog
+from .steam_catalog import CatalogLimitError, scan_libraries, write_catalog
 
 
 # Layouts from libnx's switch/nro.h and switch/nacp.h.
@@ -101,13 +101,19 @@ def scan_homebrew(sd_root):
             try:
                 if path.is_symlink():
                     continue
+                provider_id = path.relative_to(switch_dir).as_posix()
+                # Filesystem surrogate escapes cannot be read as text by HOME.
+                provider_id.encode("utf-8")
                 name = homebrew_name(path)
+            except UnicodeEncodeError:
+                report_error(f"{str(path)!r}: NRO path is not valid UTF-8")
+                continue
             except (ValueError, OSError, zlib.error) as exc:
                 report_error(f"{path}: {exc}")
                 continue
             entries.append({
                 "provider": "switch_homebrew",
-                "provider_id": path.relative_to(switch_dir).as_posix(),
+                "provider_id": provider_id,
                 "name": name,
                 "artwork": None,
                 "installation_state": "reported_installed",
@@ -125,15 +131,21 @@ def main():
     )
     parser.add_argument("--steam-library", metavar="LIBRARY", type=Path, action="append", default=[],
                         help="Steam library root or steamapps directory. May be repeated.")
+    parser.add_argument("--steam-install", metavar="ROOT", type=Path, action="append", default=[],
+                        help="Steam installation root whose libraryfolders.vdf lists libraries to scan. May be repeated.")
     parser.add_argument("--switch-sd", metavar="ROOT", type=Path,
                         help="Mounted Switch SD card root containing the switch directory.")
     args = parser.parse_args()
-    if not args.steam_library and args.switch_sd is None:
-        parser.error("supply at least one --steam-library or --switch-sd")
+    if not args.steam_library and not args.steam_install and args.switch_sd is None:
+        parser.error("supply at least one --steam-library, --steam-install or --switch-sd")
 
-    steam, steam_errors = scan_libraries(args.steam_library)
+    steam, steam_errors = scan_libraries(args.steam_library, steam_installs=args.steam_install)
     homebrew, homebrew_errors = scan_homebrew(args.switch_sd) if args.switch_sd else ([], False)
-    write_catalog(steam + homebrew)
+    try:
+        write_catalog(steam + homebrew)
+    except CatalogLimitError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     return int(steam_errors or homebrew_errors)
 
 

@@ -2,6 +2,8 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -29,6 +31,7 @@ namespace exodus::home {
     struct Entry {
         Provider provider;
         std::string title;
+        std::string id;
     };
 
     struct Catalog {
@@ -36,8 +39,9 @@ namespace exodus::home {
         std::vector<Entry> entries;
     };
 
-    Catalog ParseCatalog(std::string_view text);
+    Catalog ParseCatalog(std::string_view text, std::string *normalized_utf8 = nullptr);
     Catalog ReadCatalog(const char *path);
+    std::optional<std::uint64_t> SwitchApplicationId(const Entry &entry);
     std::string CatalogLabel();
     void ShowCatalog();
 

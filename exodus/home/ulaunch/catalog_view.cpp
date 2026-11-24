@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "catalog.hpp"
+#include "catalog_refresh.hpp"
 
 #include <algorithm>
 #include <ul/menu/ui/ui_MenuApplication.hpp>
@@ -44,6 +44,29 @@ namespace exodus::home {
             return "exodus_catalog_unavailable";
         }
 
+        bool SelectTitle(const std::vector<const Entry *> &launchable) {
+            std::string content;
+            std::vector<std::string> options;
+            for (const auto &choice : launchable) {
+                if (!content.empty())
+                    content += '\n';
+                const auto number = std::to_string(options.size() + 1);
+                content += number + ". [" + CatalogText(ProviderLabel(choice->provider)) + "] " + choice->title;
+                options.push_back(number);
+            }
+            options.push_back(CatalogText("cancel"));
+            const auto selected = g_MenuApplication->DisplayDialog(
+                CatalogText("exodus_catalog_select_title"), content, options, true);
+            if (selected < 0 || static_cast<std::size_t>(selected) >= launchable.size())
+                return false;
+            const auto &choice = *launchable[static_cast<std::size_t>(selected)];
+            const auto &menu = g_MenuApplication->GetLayout<ul::menu::ui::MainMenuLayout>();
+            if (choice.provider == Provider::Homebrew)
+                return menu->TryLaunchCatalogHomebrew(choice.id);
+            const auto id = SwitchApplicationId(choice);
+            return id && menu->TryLaunchCatalogApplication(*id);
+        }
+
     }
 
     std::string CatalogLabel() {
@@ -51,7 +74,7 @@ namespace exodus::home {
     }
 
     void ShowCatalog() {
-        const auto catalog = ReadCatalog(CatalogPath);
+        const auto catalog = ReadRefreshedCatalog(CatalogPath, SteamSnapshotsPath);
         const auto title = CatalogLabel();
         if (catalog.status != CatalogStatus::Ready || catalog.entries.empty()) {
             g_MenuApplication->DisplayDialog(
@@ -59,16 +82,24 @@ namespace exodus::home {
             return;
         }
 
+        const auto &main_menu = g_MenuApplication->GetLayout<ul::menu::ui::MainMenuLayout>();
         const auto page_count = (catalog.entries.size() + ItemsPerPage - 1) / ItemsPerPage;
         for (std::size_t page = 0; ; ) {
             const auto first = page * ItemsPerPage;
             const auto end = std::min(first + ItemsPerPage, catalog.entries.size());
             std::string content;
+            std::vector<const Entry *> launchable;
             for (auto index = first; index < end; ++index) {
                 if (index > first)
                     content += '\n';
                 const auto &entry = catalog.entries[index];
                 content += "[" + CatalogText(ProviderLabel(entry.provider)) + "] " + entry.title;
+                const auto id = SwitchApplicationId(entry);
+                if (id && main_menu->CanLaunchCatalogApplication(*id)) {
+                    launchable.push_back(&entry);
+                } else if (entry.provider == Provider::Homebrew && main_menu->CanLaunchCatalogHomebrew(entry.id)) {
+                    launchable.push_back(&entry);
+                }
             }
             const auto page_title = title + " " + std::to_string(page + 1) + "/" + std::to_string(page_count);
             const bool has_previous = page != 0;
@@ -77,15 +108,22 @@ namespace exodus::home {
                 options.push_back(CatalogText("exodus_catalog_previous"));
             if (page + 1 < page_count)
                 options.push_back(CatalogText("exodus_catalog_next"));
+            const auto launch_option = options.size();
+            if (!launchable.empty())
+                options.push_back(CatalogText("exodus_catalog_launch"));
             options.push_back(CatalogText("exodus_catalog_close"));
 
             const auto selected = g_MenuApplication->DisplayDialog(page_title, content, options, true);
             if (selected < 0 || static_cast<std::size_t>(selected) >= options.size() - 1)
                 return;
-            if (has_previous && selected == 0)
+            if (!launchable.empty() && static_cast<std::size_t>(selected) == launch_option) {
+                if (SelectTitle(launchable))
+                    return;
+            } else if (has_previous && selected == 0) {
                 --page;
-            else
+            } else {
                 ++page;
+            }
         }
     }
 

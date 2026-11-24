@@ -1,10 +1,10 @@
 """Sign in through Steam in a desktop browser and export a HOME catalog."""
 
 import argparse
+from concurrent.futures import Future
 from datetime import datetime, timezone
 from http.client import HTTPException
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from io import StringIO
 import json
 import os
 from pathlib import Path
@@ -12,13 +12,20 @@ import re
 import secrets
 import sys
 from tempfile import NamedTemporaryFile
+from threading import Thread
 import time
 from urllib.error import HTTPError
 from urllib.parse import parse_qsl, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import webbrowser
 
-from .steam_catalog import steam_entry, write_catalog
+from .steam_catalog import (
+    CatalogLimitError,
+    MAX_CATALOG_BYTES,
+    MAX_CATALOG_ENTRIES,
+    serialize_catalog,
+    steam_entry,
+)
 
 
 OPENID_PROVIDER = "https://steamcommunity.com/openid/login"
@@ -28,8 +35,6 @@ STEAM_ID = re.compile(r"https?://steamcommunity\.com/openid/id/([1-9][0-9]{0,19}
 KEY_ENV = "STEAM_WEB_API_KEY"
 MAX_CALLBACK_BYTES = 8192
 MAX_ASSERTION_AGE = 300
-MAX_CATALOG_BYTES = 2 * 1024 * 1024
-MAX_CATALOG_ENTRIES = 4096
 REQUIRED_SIGNATURE_FIELDS = {
     "op_endpoint", "claimed_id", "identity", "return_to", "response_nonce", "assoc_handle",
 }
@@ -192,14 +197,26 @@ def sign_in(opener, open_browser, timeout):
             "openid.claimed_id": identifier,
             "openid.identity": identifier,
         })
-        try:
-            if not open_browser(address):
-                raise SteamSyncError("Could not open the system browser for Steam sign-in.")
-        except (OSError, webbrowser.Error):
-            raise SteamSyncError("Could not open the system browser for Steam sign-in.") from None
+        launch = Future()
 
+        def launch_browser():
+            try:
+                opened = open_browser(address)
+            except BaseException as error:
+                launch.set_exception(error)
+            else:
+                launch.set_result(opened)
+
+        # A foreground launcher can wait for the browser to exit. Keep serving its callback.
         deadline = time.monotonic() + timeout
+        Thread(target=launch_browser, daemon=True).start()
         while server.outcome is None:
+            if launch.done():
+                try:
+                    if not launch.result():
+                        raise SteamSyncError("Could not open the system browser for Steam sign-in.")
+                except (OSError, webbrowser.Error):
+                    raise SteamSyncError("Could not open the system browser for Steam sign-in.") from None
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise SteamSyncError("Timed out waiting for Steam sign-in.")
@@ -217,9 +234,9 @@ def unique_json_object(pairs):
     return value
 
 
-def decode_json(data, source):
+def decode_json(data, source, *, encoding="utf-8-sig"):
     try:
-        return json.loads(data.decode("utf-8-sig"), object_pairs_hook=unique_json_object,
+        return json.loads(data.decode(encoding), object_pairs_hook=unique_json_object,
                           parse_int=json_integer, parse_constant=invalid_json_constant)
     except (ValueError, RecursionError):
         raise SteamSyncError(f"Invalid JSON in {source}.") from None
@@ -281,7 +298,10 @@ def read_base_catalog(path):
         raise SteamSyncError("Could not read the base catalog.") from None
     if len(data) > MAX_CATALOG_BYTES:
         raise SteamSyncError("Base catalog exceeds the HOME catalog size limit.")
-    catalog = decode_json(data, "the base catalog")
+    # Match HOME's support for output redirected by Windows PowerShell 5.1.
+    # Only local snapshots opt in; Steam responses continue to require UTF-8.
+    encoding = "utf-16" if data.startswith(b"\xff\xfe") else "utf-8-sig"
+    catalog = decode_json(data, "the base catalog", encoding=encoding)
     if (type(catalog) is not dict or catalog.keys() != {"schema_version", "entries"}
             or type(catalog["schema_version"]) is not int or catalog["schema_version"] != 1
             or type(catalog["entries"]) is not list):
@@ -304,6 +324,8 @@ def read_base_catalog(path):
         if any(isinstance(value, str) and any(0xD800 <= ord(ch) <= 0xDFFF for ch in value)
                for value in entry.values()):
             raise SteamSyncError("Base catalog contains invalid text.")
+        if "\0" in entry["provider_id"]:
+            raise SteamSyncError("Base catalog contains an invalid app identity.")
         identity = (entry["provider"], entry["provider_id"])
         if identity in identities:
             raise SteamSyncError("Base catalog contains duplicate app identities.")
@@ -314,13 +336,10 @@ def read_base_catalog(path):
 
 
 def save_catalog(path, entries):
-    if len(entries) > MAX_CATALOG_ENTRIES:
-        raise SteamSyncError("Combined library exceeds the HOME catalog entry limit.")
-    stream = StringIO()
-    write_catalog(entries, stream)
-    data = stream.getvalue().encode("ascii")
-    if len(data) > MAX_CATALOG_BYTES:
-        raise SteamSyncError("Combined library exceeds the HOME catalog size limit.")
+    try:
+        data = serialize_catalog(entries)
+    except CatalogLimitError as exc:
+        raise SteamSyncError(str(exc)) from None
 
     staged = None
     try:

@@ -2,6 +2,7 @@
 #include "catalog.hpp"
 
 #include <array>
+#include <charconv>
 #include <cstdint>
 #include <fstream>
 #include <set>
@@ -110,7 +111,7 @@ namespace exodus::home {
     }
 
     template <typename Character>
-    static Catalog ParseCatalogText(std::basic_string_view<Character> text) {
+    static Catalog ParseCatalogText(std::basic_string_view<Character> text, std::string *normalized_utf8) {
         const auto structure = CheckStructure(text);
         if (structure != CatalogStatus::Ready)
             return {structure, {}};
@@ -148,16 +149,20 @@ namespace exodus::home {
             if (!identities.emplace(provider, id).second)
                 return {CatalogStatus::Invalid, {}};
             const auto &name = entry["name"].get_ref<const std::string &>();
-            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name)});
+            if (id.find('\0') != std::string::npos)
+                return {CatalogStatus::Invalid, {}};
+            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name), id});
         }
+        if (normalized_utf8 != nullptr)
+            *normalized_utf8 = document.dump();
         return catalog;
     }
 
-    Catalog ParseCatalog(std::string_view text) {
+    Catalog ParseCatalog(std::string_view text, std::string *normalized_utf8) {
         if (text.size() > CatalogByteLimit)
             return {CatalogStatus::TooLarge, {}};
         if (text.substr(0, 2) != "\xff\xfe")
-            return ParseCatalogText(text);
+            return ParseCatalogText(text, normalized_utf8);
         if (text.size() % 2 != 0)
             return {CatalogStatus::Invalid, {}};
 
@@ -176,7 +181,7 @@ namespace exodus::home {
         }
         if (needs_low_surrogate)
             return {CatalogStatus::Invalid, {}};
-        return ParseCatalogText(std::u16string_view(decoded));
+        return ParseCatalogText(std::u16string_view(decoded), normalized_utf8);
     }
 
     Catalog ReadCatalog(const char *path) {
@@ -193,6 +198,18 @@ namespace exodus::home {
         if (!input.read(text.data(), text.size()) || input.peek() != std::istream::traits_type::eof() || input.bad())
             return {CatalogStatus::Unavailable, {}};
         return ParseCatalog(text);
+    }
+
+    std::optional<std::uint64_t> SwitchApplicationId(const Entry &entry) {
+        if (entry.provider != Provider::Switch || entry.id.size() != 16)
+            return std::nullopt;
+
+        std::uint64_t id = 0;
+        const auto end = entry.id.data() + entry.id.size();
+        const auto parsed = std::from_chars(entry.id.data(), end, id, 16);
+        if (parsed.ec != std::errc{} || parsed.ptr != end || id == 0)
+            return std::nullopt;
+        return id;
     }
 
 }
