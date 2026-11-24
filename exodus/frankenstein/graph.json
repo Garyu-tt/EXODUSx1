@@ -285,9 +285,10 @@
         "resident-ssh-dbus"
       ],
       "evidence": {
-        "run": 45503546422,
-        "job": 138832758492,
-        "scope": "Native FreeBSD rc.d stop/start of private D-Bus and unprivileged session daemon, persisted generation 4 desktop restored with new child PID 4071, same SSH daemon PID, subsequent generation 5 game, revoked key rejected, guest exit 0. Desired state only; no graphical mode, reboot persistence or physical hardware proven."
+        "run": 45504129268,
+        "job": 138834778370,
+        "artifact": 14973106465,
+        "scope": "Native FreeBSD ARM64 rc.d restart, persisted desired mode, independent SSH and revoked-key rejection; guest exit 0 and host SHA256 verification of exported reference archive and dependency manifest. Artifact is an opt-in test-account bundle, not a boot image or production installer. Internal archive validation, cold boot, graphics and physical hardware remain separate unproven gates."
       }
     }
   ],
