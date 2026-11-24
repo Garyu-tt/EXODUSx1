@@ -4,6 +4,13 @@
 #include <sys/cdefs.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <limits.h>
+#include <stdio.h>
+#include <string.h>
+#include <setjmp.h>
+FILE *nxbsd_fwopen(void *, int (*)(void *, const char *, int));
+char *nxbsd_strchrnul(const char *, int);
+#define strchrnul nxbsd_strchrnul
 #include <sys/types.h>
 #include <sys/param.h>
 #ifndef MAXLOGNAME
