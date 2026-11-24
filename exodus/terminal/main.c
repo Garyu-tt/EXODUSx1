@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <time.h>
+#include <fcntl.h>
 #include "bsd_path.h"
 #ifdef __SWITCH__
 #include <switch.h>
@@ -171,6 +173,44 @@ static int run_app(const char *name) {
     return 0;
 #endif
 }
+/* Read-only device smoke. No fork, exec, privileged services or SD writes. */
+static void abi_smoke(void) {
+    struct timespec a, b;
+    struct stat st;
+    int pass = 0, fail = 0;
+#ifdef __SWITCH__
+    u64 pid = 0;
+    Result rc = svcGetProcessId(&pid, CUR_PROCESS_HANDLE);
+    pid_t p = getpid();
+    if (R_SUCCEEDED(rc) && p > 0 && (uint64_t)p == pid) {
+        puts("PASS process identity agrees with Horizon"); ++pass;
+    } else {
+        printf("FAIL process identity: svc=0x%08" PRIx32 " native=%" PRIu64 " libc=%" PRIdMAX "\n", (uint32_t)rc, (uint64_t)pid, (intmax_t)p); ++fail;
+    }
+#else
+    if (getpid() > 0) { puts("PASS host process identity"); ++pass; }
+    else { puts("FAIL host process identity"); ++fail; }
+#endif
+    if (!clock_gettime(CLOCK_MONOTONIC, &a) &&
+        !clock_gettime(CLOCK_MONOTONIC, &b) &&
+        (b.tv_sec > a.tv_sec || (b.tv_sec == a.tv_sec && b.tv_nsec >= a.tv_nsec))) {
+        puts("PASS monotonic clock"); ++pass;
+    } else { puts("FAIL monotonic clock"); ++fail; }
+    if (!stat(".", &st) && S_ISDIR(st.st_mode)) {
+        puts("PASS cwd stat"); ++pass;
+    } else { puts("FAIL cwd stat"); ++fail; }
+    DIR *d = opendir(".");
+    if (d) {
+        errno = 0;
+        struct dirent *entry = readdir(d);
+        int ok = entry != NULL || errno == 0;
+        if (closedir(d)) ok = 0;
+        if (ok) { puts("PASS directory read"); ++pass; }
+        else { puts("FAIL directory read"); ++fail; }
+    } else { puts("FAIL directory open"); ++fail; }
+    printf("ABI smoke: %d passed, %d failed; process/pipe/signal semantics not tested\n", pass, fail);
+}
+
 static int dispatch(char *line) {
     size_t n = strlen(line);
     while (n && (line[n-1] == '\r' || line[n-1] == '\n')) line[--n] = 0;
@@ -181,7 +221,7 @@ static int dispatch(char *line) {
     if (!*cmd) return 0;
     if (!strcmp(cmd, "exit") && !*arg) return 1;
     if (!strcmp(cmd, "help") && !*arg)
-        puts("help | pwd | ls [path] | cd path | cat path | stat path | basename path | dirname path | echo text | id | mem | ps | svc | apps | nro path | run NAME | status | clear | exit");
+        puts("help | pwd | ls [path] | cd path | cat path | stat path | basename path | dirname path | echo text | id | mem | abi | ps | svc | apps | nro path | run NAME | status | clear | exit");
     else if (!strcmp(cmd, "pwd") && !*arg) pwd();
     else if (!strcmp(cmd, "ls")) {
         if (!*arg || valid_path(arg)) list(*arg ? arg : ".");
@@ -197,6 +237,7 @@ static int dispatch(char *line) {
         else file_info(arg);
     } else if (!strcmp(cmd, "id") && !*arg) identity();
     else if (!strcmp(cmd, "mem") && !*arg) memory_info();
+    else if (!strcmp(cmd, "abi") && !*arg) abi_smoke();
     else if (!strcmp(cmd, "ps") && !*arg) {
         puts("Current process only; managed process table unavailable.");
         identity();
