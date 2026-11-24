@@ -90,7 +90,7 @@ static void show_library(struct ui *ui, const char *path)
                 if (selection >= count) selection = count - 1;
             }
             if (input.button == UI_A) {
-                char detail[256];
+                char detail[640], result[256];
                 const char *provider = exodus_library_provider(library, selection);
                 const char *id = exodus_library_id(library, selection);
                 enum exodus_route route = exodus_route_for(provider, id);
@@ -98,8 +98,8 @@ static void show_library(struct ui *ui, const char *path)
                 if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW) {
                     snprintf(detail, sizeof(detail), "Target: %s\n%s", exodus_route_name(route), id);
                     if (ui_confirm(ui, exodus_library_title(library, selection), detail, "Launch")) {
-                        if (exodus_launch(route, id, detail)) goto done;
-                        ui_message(ui, "Launch unavailable", detail);
+                        if (exodus_launch(route, id, result)) goto done;
+                        ui_message(ui, "Launch unavailable", result);
                     }
                     break;
                 }
