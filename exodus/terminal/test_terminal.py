@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import subprocess
+import struct
 import tempfile
 import unittest
 
@@ -50,6 +51,27 @@ class TerminalTests(unittest.TestCase):
             self.assertRegex(result, r"process_id=[1-9][0-9]*")
             self.assertIn("process_memory_limit_bytes=unknown", result)
             self.assertIn("not system RAM or GPU VRAM", result)
+
+    def test_nro_and_handoff(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d)
+            image = bytearray(12288)
+            image[16:20] = b"NRO0"
+            struct.pack_into("<I", image, 24, len(image))
+            struct.pack_into("<IIIIII", image, 32, 0, 4096, 4096, 4096, 8192, 4096)
+            (p / "valid.nro").write_bytes(image)
+            (p / "short.nro").write_bytes(image[:128])
+            struct.pack_into("<I", image, 40, 0)
+            (p / "overlap.nro").write_bytes(image)
+            result = self.run_commands("nro valid.nro\nnro short.nro\nnro overlap.nro\nnro missing\napps\nrun ssh\nrun unknown\nps\nsvc\necho still-running\n", d)
+            self.assertEqual(result.count("NRO structural preflight passed"), 1)
+            self.assertEqual(result.count("NRO missing or invalid"), 3)
+            self.assertIn("native loader unavailable", result)
+            self.assertIn("sdmc:/switch/exodus-ssh.nro", result)
+            self.assertIn("unknown app", result)
+            self.assertIn("Current process only", result)
+            self.assertIn("service state unknown", result)
+            self.assertIn("still-running", result)
 
     def test_long_line_and_unknown(self):
         with tempfile.TemporaryDirectory() as d:
