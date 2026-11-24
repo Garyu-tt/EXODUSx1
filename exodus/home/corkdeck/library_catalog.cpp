@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "library_catalog.h"
 #include "evcs_discovery.h"
+#include "launch_route.h"
+extern "C" {
+#include "../../runtime/autorun_probe.h"
+}
 #include "../ulaunch/catalog.hpp"
 #include <new>
 #include <utility>
@@ -16,18 +20,25 @@ struct evcs_catalog_pending {
 };
 static int evcs_catalog_emit(const char *path, enum evcs_kind kind, uint64_t bytes, void *user)
 {
-    (void)kind; (void)bytes;
+    (void)bytes;
     auto &p = *static_cast<evcs_catalog_pending *>(user);
     try {
+        Provider provider = Provider::Other;
+        char resolved[512];
+        // Only the actual console namespace is eligible. Host paths stay inventory-only.
+        if (kind == EVCS_NRO && !strncmp(path, "sdmc:/Games/", 12) &&
+            exodus_nro_path(path, resolved) && !strcmp(path, resolved) &&
+            exodus_autorun_probe(path) == EXODUS_AUTORUN_READY)
+            provider = Provider::Homebrew;
         for (const auto &e : p.base.entries)
-            if (e.provider == Provider::Other && e.id == path) return 1;
+            if (e.provider == provider && e.id == path) return 1;
         const char *name = strrchr(path, '/');
         name = name ? name + 1 : path;
         size_t cost = strlen(path) + strlen(name);
         if (p.base.entries.size() + p.entries.size() >= CatalogEntryLimit ||
             cost > CatalogByteLimit - p.bytes) return 0;
-        // A suffix is discovery only, never a verified provider or launch target.
-        p.entries.push_back({Provider::Other, name, path});
+        // Archives remain inventory-only; NRO is checked again at handoff.
+        p.entries.push_back({provider, name, path});
         p.bytes += cost;
         return 1;
     } catch (...) { return 0; }
