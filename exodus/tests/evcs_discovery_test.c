@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "../home/corkdeck/evcs_discovery.h"
 #include "../home/corkdeck/evcs_pfs0.h"
+#include "../home/corkdeck/evcs_graph.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -55,9 +56,37 @@ static void pfs0_fixture(void)
     assert(evcs_pfs0_probe(f,sizeof(b),&info)==EVCS_PFS0_LIMIT);
     assert(fclose(f)==0);
 }
+static void graph_fixture(void)
+{
+    struct evcs_content items[]={
+        {1,1,0,EVCS_BASE}, {1,2,1,EVCS_UPDATE}, {1,2,3,EVCS_UPDATE},
+        {1,3,0,EVCS_DLC}, {1,3,1,EVCS_DLC}, {1,4,0,EVCS_DLC},
+        {10,11,2,EVCS_UPDATE}, {20,20,0,EVCS_BASE}
+    };
+    size_t n=sizeof(items)/sizeof(items[0]);
+    assert(evcs_graph_validate(items,n)==EVCS_GRAPH_OK);
+    struct evcs_group g=evcs_graph_group(items,n,1);
+    assert(g.base==0 && g.update==2 && g.dlc_count==2);
+    g=evcs_graph_group(items,n,10);
+    assert(g.base==SIZE_MAX && g.update==6 && g.dlc_count==0);
+    g=evcs_graph_group(items,n,20);
+    assert(g.base==7 && g.update==SIZE_MAX && g.dlc_count==0);
+    g=evcs_graph_group(items,n,99);
+    assert(g.base==SIZE_MAX && g.update==SIZE_MAX && g.dlc_count==0);
+    items[2].version=1;
+    assert(evcs_graph_validate(items,n)==EVCS_GRAPH_DUPLICATE);
+    items[2].version=3; items[2].application_id=10;
+    assert(evcs_graph_validate(items,n)==EVCS_GRAPH_INVALID);
+    items[2].application_id=1; items[2].role=EVCS_BASE;
+    assert(evcs_graph_validate(items,n)==EVCS_GRAPH_INVALID);
+    assert(evcs_graph_validate(NULL,EVCS_GRAPH_LIMIT+1)==EVCS_GRAPH_LIMIT_EXCEEDED);
+    assert(evcs_graph_validate(NULL,1)==EVCS_GRAPH_INVALID);
+    assert(evcs_graph_validate(NULL,0)==EVCS_GRAPH_OK);
+}
 int main(void)
 {
     pfs0_fixture();
+    graph_fixture();
     char dir[] = "/tmp/evcs-r01-XXXXXX";
     assert(mkdtemp(dir));
     char p[512], nested[512];
