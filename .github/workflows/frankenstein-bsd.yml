@@ -4,7 +4,6 @@ on:
     paths:
       - 'exodus/frankenstein/guest-*.sh'
       - 'exodus/frankenstein/linux-abi-probe.S'
-      - 'exodus/frankenstein/linux-abi-probe.S'
       - 'exodus/frankenstein/run-reference.sh'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/sessiond-dbus.inc'
@@ -21,6 +20,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - mode: native
+            minutes: 85
+          - mode: graphics
+            minutes: 165
+          - mode: manager
+            minutes: 165
           - mode: linuxabi
             minutes: 35
     timeout-minutes: ${{ matrix.minutes }}
