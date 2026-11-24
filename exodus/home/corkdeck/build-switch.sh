@@ -42,6 +42,10 @@ libs=$(pkg-config --static --libs $packages)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
+# nlohmann uses <nlohmann/...> internally. Stage only its header tree;
+# adding the host /usr/include would contaminate the ARM64 sysroot.
+mkdir -p "$tmp/json-headers/nlohmann"
+cp -R "$json_include/." "$tmp/json-headers/nlohmann/"
 arch="-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE"
 for file in "$here/settings_preview.c" "$here/../../runtime/autorun_probe.c" \
     "$src/launcher_ui.c" "$src/launcher_audio.c" "$src/launcher_svg.c" "$src/launcher_image.c"; do
@@ -51,7 +55,7 @@ for file in "$here/settings_preview.c" "$here/../../runtime/autorun_probe.c" \
 done
 for file in "$here/library_catalog.cpp" "$here/../ulaunch/catalog.cpp"; do
     "$cxx" $arch -D__SWITCH__ -std=c++17 -O2 -Wall -Wextra \
-        -ffunction-sections -fdata-sections -I"$json_include" -I"$nx/include" \
+        -ffunction-sections -fdata-sections -I"$tmp/json-headers" -I"$tmp/json-headers/nlohmann" -I"$nx/include" \
         -c "$file" -o "$tmp/$(basename "$file").o"
 done
 "$cxx" $arch -specs="$nx/switch.specs" -Wl,--gc-sections "$tmp"/*.o \
