@@ -434,6 +434,20 @@ class SteamSyncTests(unittest.TestCase):
         self.assertFalse(missing.exists())
         self.assertEqual(regular_file.read_bytes(), b"original")
 
+    def test_cli_rejects_output_directory_before_sign_in(self):
+        self.output.mkdir()
+        existing = self.output / "keep.txt"
+        existing.write_bytes(b"original")
+        provider = FakeSteam()
+        with patch.dict(os.environ, {sync.KEY_ENV: API_KEY}), redirect_stderr(StringIO()) as stderr:
+            with patch.object(sync, "build_opener", return_value=provider), patch.object(
+                    sync.webbrowser, "open", return_value=False) as browser:
+                self.assertEqual(sync.main(["--output", str(self.output), "--timeout", "2"]), 1)
+        self.assertEqual(stderr.getvalue(), "Catalog output must be a file path.\n")
+        browser.assert_not_called()
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(existing.read_bytes(), b"original")
+
     def test_failed_atomic_replace_preserves_output_and_cleans_stage(self):
         self.output.write_bytes(b"prior snapshot")
         with patch("exodus.steam_catalog.os.replace", side_effect=PermissionError), self.assertRaisesRegex(

@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+from stat import S_ISDIR
 import sys
 from threading import Thread
 import time
@@ -354,6 +355,13 @@ def sync_library(output, key, *, base_catalog=None, timeout=180, open_browser=No
         output_parent_is_directory = False
     if not output_parent_is_directory:
         raise SteamSyncError("Catalog output requires an accessible directory.")
+    # Inspect the directory entry itself because atomic replacement uses the supplied path.
+    try:
+        output_is_directory = S_ISDIR(output.lstat().st_mode)
+    except OSError:
+        output_is_directory = False
+    if output_is_directory:
+        raise SteamSyncError("Catalog output must be a file path.")
     steam_id = sign_in(opener, open_browser or webbrowser.open, timeout)
     steam = fetch_library(opener, key, steam_id)
     save_catalog(output, steam + previous)
