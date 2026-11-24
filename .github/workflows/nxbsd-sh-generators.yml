@@ -158,3 +158,18 @@ jobs:
           name: freebsd-sh-grammar
           path: ${{ runner.temp }}/grammar-a
           retention-days: 7
+  host-compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install real BSD compatibility library
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libbsd-dev
+      - name: Verify symbolic modes and clock compatibility
+        run: |
+          cc -std=gnu11 -Wall -Wextra -Werror exodus/terminal/test_freebsd_modes.c -lbsd -o "$RUNNER_TEMP/test-modes"
+          "$RUNNER_TEMP/test-modes"
