@@ -1,6 +1,9 @@
 /* Compile probe only; no target syscall or security emulation. */
 #ifndef EXODUS_FREEBSD_PARSER_HOST_H
 #define EXODUS_FREEBSD_PARSER_HOST_H
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <sys/cdefs.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -8,6 +11,25 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <time.h>
+/* Linux monotonic clock excludes suspend, like FreeBSD CLOCK_UPTIME. */
+#ifndef CLOCK_UPTIME
+#define CLOCK_UPTIME CLOCK_MONOTONIC
+#endif
+#ifndef timespecsub
+#define timespecsub(a,b,r) do { \
+    (r)->tv_sec = (a)->tv_sec - (b)->tv_sec; \
+    (r)->tv_nsec = (a)->tv_nsec - (b)->tv_nsec; \
+    if ((r)->tv_nsec < 0) { --(r)->tv_sec; (r)->tv_nsec += 1000000000L; } \
+} while (0)
+#endif
+#ifndef timespeccmp
+#define timespeccmp(a,b,op) (((a)->tv_sec == (b)->tv_sec) ? \
+    ((a)->tv_nsec op (b)->tv_nsec) : ((a)->tv_sec op (b)->tv_sec))
+#endif
+/* Real implementations to be supplied by host libbsd at final link. */
+void *setmode(const char *);
+mode_t getmode(const void *, mode_t);
 int tcsetsid(int, pid_t);
 /* Host-only implementations in freebsd_stdio_host.c. */
 int eaccess(const char *, int);
