@@ -219,4 +219,97 @@ cp "$bundle/dependencies.txt" "$export_dir/dependencies.txt"
 sync
 umount "$export_dir"
 rmdir "$export_dir"
+# Prepare a second, clean VM boot from this same installed disk.
+# This is test-only state; it is not part of the exported reference bundle.
+service tumor_reference_bus start
+service tumor_reference_session start
+su -m exodusref -c "HOME=$home DBUS_SESSION_BUS_ADDRESS=unix:path=$state/bus /usr/local/bin/gdbus wait --session --timeout 15 com.steampowered.SteamOSManager1"
+su -m exodusref -c "HOME=$home /usr/local/bin/exodus-session-select plasma" | grep -Fx 'requested=desktop'
+grep -Fx 'generation=6' "$state/config"
+grep -Fx 'mode=desktop' "$state/config"
+# Provision a different key; the previously revoked key must stay revoked.
+ssh-keygen -q -t ed25519 -N '' -f "$work/cold-client"
+install -m 600 -o exodusref -g exodusref "$work/cold-client.pub" "$home/.ssh/authorized_keys"
+install -d -m 700 /var/db/tumor-reference-coldboot
+printf '%s\n' "$work" > /var/db/tumor-reference-coldboot/work
+sysctl -n kern.boottime > /var/db/tumor-reference-coldboot/boot-before
+# Only the disposable reference image is changed.
+sed "s|^PidFile .*|PidFile /var/run/sshd.pid|" "$work/sshd_config" > /etc/ssh/sshd_config
+/usr/sbin/sshd -t -f /etc/ssh/sshd_config
+sysrc sshd_enable=YES
+cat > /usr/local/etc/rc.d/tumor_reference_coldboot <<'COLD'
+#!/bin/sh
+# PROVIDE: tumor_reference_coldboot
+# REQUIRE: LOGIN sshd tumor_reference_session
+. /etc/rc.subr
+name=tumor_reference_coldboot
+rcvar=tumor_reference_coldboot_enable
+start_cmd=coldboot_start
+stop_cmd=:
+coldboot_start() (
+    set -eu
+    export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+    exec >/dev/console 2>&1
+    finish_cold() {
+        result=$?
+        trap - EXIT
+        echo "EXODUS_COLD_GUEST_RESULT=$result"
+        /sbin/shutdown -p now
+        exit "$result"
+    }
+    trap finish_cold EXIT
+    echo EXODUS_RC_COLD_BOOT_BEGIN
+    proof=/var/db/tumor-reference-coldboot
+    work=$(cat "$proof/work")
+    before=$(cat "$proof/boot-before")
+    after=$(sysctl -n kern.boottime)
+    test "$before" != "$after"
+    printf 'boot_before=%s\nboot_after=%s\n' "$before" "$after"
+    # No service start/restart is allowed here.
+    service tumor_reference_bus status
+    service tumor_reference_session status
+    service sshd status
+    for child in /var/run/tumor-reference-bus.child.pid /var/run/tumor-reference-session.child.pid; do
+        pid=$(cat "$child")
+        kill -0 "$pid"
+        test "$(ps -o uid= -p "$pid" | tr -d '[:space:]')" = "$(id -u exodusref)"
+    done
+    state=/home/exodusref/.config/exodus
+    grep -Fx 'generation=6' "$state/config"
+    grep -Fx 'mode=desktop' "$state/config"
+    connect_cold() {
+        identity=$1
+        shift
+        ssh -F /dev/null -p 22222 -i "$identity" -o IdentitiesOnly=yes \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$work/known_hosts" -o GlobalKnownHostsFile=/dev/null \
+            -o ConnectTimeout=5 exodusref@127.0.0.1 "$@"
+    }
+    test "$(connect_cold "$work/cold-client" id -un)" = exodusref
+    if connect_cold "$work/client" id -un; then
+        echo 'ERROR revoked key accepted after cold boot'
+        exit 1
+    fi
+    connect_cold "$work/cold-client" exodus-session-select status | grep -Fx 'desired=desktop'
+    connect_cold "$work/cold-client" exodus-session-select gamescope | grep -Fx 'requested=game'
+    connect_cold "$work/cold-client" exodus-session-select status | grep -Fx 'desired=game'
+    grep -Fx 'generation=7' "$state/config"
+    grep -Fx 'mode=game' "$state/config"
+    echo EXODUS_RC_COLD_BOOT_PASS
+)
+load_rc_config "$name"
+run_rc_command "$1"
+COLD
+chmod 555 /usr/local/etc/rc.d/tumor_reference_coldboot
+sh -n /usr/local/etc/rc.d/tumor_reference_coldboot
+sysrc tumor_reference_coldboot_enable=YES
+rcorder /etc/rc.d/* /usr/local/etc/rc.d/* > "$src/cold-rcorder.txt"
+awk '
+/\/tumor_reference_session$/ { session=NR }
+/\/sshd$/ { ssh=NR }
+/\/tumor_reference_coldboot$/ { cold=NR }
+END { exit !(session && ssh && cold && session < cold && ssh < cold) }
+' "$src/cold-rcorder.txt"
+sync
+echo EXODUS_RC_COLD_BOOT_PREPARED
 echo EXODUS_RC_RESIDENT_PASS
