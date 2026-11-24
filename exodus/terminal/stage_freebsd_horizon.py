@@ -106,6 +106,34 @@ def prepare(donor, out):
          b"\t(void)argc; (void)argv;\n\terrorwithstatus(125, \"umask unavailable on Horizon\");")
     body(misc, b"ulimitcmd(int argc __unused, char **argv __unused)",
          b"\t(void)argc; (void)argv;\n\terrorwithstatus(125, \"ulimit unavailable on Horizon\");")
+    body(jobs, b"vforkexecshell(struct job *jp, char **argv, char **envp, const char *path, int idx, int pip[2])",
+         b"\t(void)jp; (void)argv; (void)envp; (void)path; (void)idx; (void)pip;\n\terrorwithstatus(125, \"native external executable unavailable on Horizon\");")
+    trap = "bin/sh/trap.c"
+    body(trap, b"sigstring_to_signum(char *sig)",
+         b"\tif (!strcasecmp(sig, \"EXIT\") || !strcmp(sig, \"0\")) return 0;\n\treturn -1;")
+    body(trap, b"printsignals(void)",
+         b"\tout1str(\"EXIT\\n\");")
+    replace(trap, b"for (signo = 0 ; signo < sys_nsig ; signo++) {",
+            b"for (signo = 0 ; signo < 1 ; signo++) {")
+    replace(trap, b"\t\t\t\t} else if (sys_signame[signo]) {\n\t\t\t\t\tout1fmt(\" %s\\n\", sys_signame[signo]);",
+            b"\t\t\t\t} else if (0) {\n\t\t\t\t\t/* only EXIT is supported */")
+    body(trap, b"setsignal(int signo)",
+         b"\t/* Internal startup hook only: no kernel signal handlers installed. */\n\t(void)signo;")
+    body(trap, b"getsigaction(int signo, sig_t *sigact)",
+         b"\t(void)signo; (void)sigact; errno = ENOTSUP; return 0;")
+    body(trap, b"ignoresig(int signo)",
+         b"\t(void)signo; /* no kernel signal manipulation */")
+    dst = out / trap
+    data = dst.read_bytes()
+    start = data.index(b"\tif (sig != 0 && sig != SIGSTOP")
+    end = data.index(b"\n\t_exit(exiting_exitstatus);", start)
+    dst.write_bytes(data[:start] + data[end:])
+    # Preserve explicit refusal instead of listing or delivering fake signals.
+    kill = "bin/kill/kill.c"
+    body(kill, b"main(int argc, char *argv[])",
+         b"\t(void)argc; (void)argv;\n\terrorwithstatus(125, \"kernel signal delivery unavailable on Horizon\");")
+    body(kill, b"printsignals(FILE *fp)",
+         b"\t(void)fp;")
     # Explicit virtual path policy; not a claim that PATH executables work.
     replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
     replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
