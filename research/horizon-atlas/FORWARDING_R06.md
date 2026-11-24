@@ -1,0 +1,5 @@
+# R06: reproducible IPC forwarding analysis
+
+The second eight-module batch adds BSD, DNS, USB host/device, HID, audio input/renderer and time. BSD overlaps R05; replace its earlier result rather than adding it twice. The batch records 407 candidate function definitions, 60 forwarding helpers, 95 direct and 119 forwarded literal call sites. The candidate counts are not distinct IPC commands. All candidates remain disabled pending admission review.
+
+The reusable scanner `scan_forwarding.js` is a heuristic parser, not a compiler AST. Run its synthetic checks with `node scan_forwarding.js --selftest`; run against a clean pinned libnx checkout with `node scan_forwarding.js /path/to/libnx /path/to/output.json`. Eight synthetic assertions passed in the authoring JS isolate. The repository CLI and a full checkout run have not been executed. The stored R05/R06 batches predate the final scanner's nested-definition guard; regenerate both before relying on comparisons. Strings, macros, conditional compilation, reassigned or shadowed variables and dynamic command IDs can still produce false positives or gaps. No permission or runtime admission is inferred.
