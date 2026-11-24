@@ -396,6 +396,24 @@
       "blob": "8d541ed1e138fe54f254339ab3c0c7c5df3bc48f",
       "capability": "shell.eval",
       "observed_calls": []
+    },
+    {
+      "path": "usr.bin/printf/printf.c",
+      "blob": "4d12caee154abb9d7af2a7165c80207f0be9f18b",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/test/test.c",
+      "blob": "5ba5df5d7e443d81e128c4ff125cb726a0e9b2da",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/kill/kill.c",
+      "blob": "606c6917bbcf80e1299784c98a00847fd5eddb7e",
+      "capability": "shell.eval",
+      "observed_calls": []
     }
   ],
   "providers": {
