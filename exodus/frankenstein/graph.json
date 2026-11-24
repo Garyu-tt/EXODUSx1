@@ -11,8 +11,12 @@
     {
       "id": "kernel",
       "origin": null,
-      "state": "reference-image",
-      "depends": []
+      "state": "qemu-boot-verified",
+      "depends": [],
+      "evidence": {
+        "run": 45495215979,
+        "scope": "QEMU virt Cortex-A57, not physical Switch"
+      }
     },
     {
       "id": "wayland",
@@ -141,7 +145,8 @@
       "state": "needs-port",
       "depends": [
         "gamescope",
-        "steam-client"
+        "steam-client",
+        "manager-dbus"
       ]
     },
     {
@@ -160,7 +165,40 @@
         "session",
         "horizon-bridge"
       ]
+    },
+    {
+      "id": "resident-service",
+      "origin": "exodus/frankenstein/sessiond.c",
+      "state": "linux-amd64-arm64-tested",
+      "depends": [
+        "kernel"
+      ],
+      "evidence": {
+        "run": 45495521234,
+        "scope": "Linux tests only"
+      }
+    },
+    {
+      "id": "manager-proxy",
+      "origin": "evlav/steamos-manager@a0d399defebd60db30ba38325d9cf47dbda49bee",
+      "state": "build-pending",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "manager-dbus",
+      "origin": "exodus/frankenstein/sessiond-dbus.inc",
+      "state": "linux-amd64-arm64-tested",
+      "depends": [
+        "resident-service"
+      ],
+      "evidence": {
+        "run": 45496077072,
+        "scope": "Linux private bus, no actual graphical switching"
+      }
     }
   ],
-  "evidence": "Port Makefiles inspected at the pinned commit; edges are functional integration dependencies, not the complete transitive Ports graph. No ARM64 compile or hardware support implied."
+  "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. No physical Switch execution or full SteamOS runtime proven.",
+  "name": "EXODUS Tumor"
 }
