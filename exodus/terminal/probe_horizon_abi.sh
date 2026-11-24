@@ -6,6 +6,8 @@ mkdir -p "$out"
 : "${DEVKITPRO:?devkitPro required}"
 cc="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc"
 libnx="$DEVKITPRO/libnx"
+nm="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-nm"
+objdump="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-objdump"
 flags=(-std=gnu11 -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE -D__SWITCH__ -I"$libnx/include")
 "$cc" --version > "$out/toolchain.txt"
 printf 'symbol\tcompile\tlink\truntime\n' > "$out/abi.tsv"
@@ -19,6 +21,11 @@ probe() {
         l=no
         if "$cc" "${flags[@]}" -specs="$libnx/switch.specs" "$obj" -L"$libnx/lib" -lnx -o "$out/$symbol.elf" > "$out/$symbol.link.log" 2>&1; then
             l=yes
+            "$nm" -n "$out/$symbol.elf" > "$out/$symbol.symbols.txt"
+            if [[ "$symbol" =~ ^(fork|execve|kill|getpid|dup2)$ ]]; then
+                "$objdump" -d --disassemble="$symbol" "$out/$symbol.elf" > "$out/$symbol.disassembly.txt"
+                "$objdump" -d --disassemble="_$symbol" "$out/$symbol.elf" >> "$out/$symbol.disassembly.txt"
+            fi
         fi
     fi
     printf '%s\t%s\t%s\tnot_tested\n' "$symbol" "$c" "$l" >> "$out/abi.tsv"
@@ -58,6 +65,22 @@ tcsetpgrp unistd.h
 tcsetsid termios.h
 isatty unistd.h
 fwopen stdio.h
+funopen stdio.h
+fopencookie stdio.h
+fdopen stdio.h
+fileno stdio.h
+fflush stdio.h
+fmemopen stdio.h
+socket sys/socket.h
+socketpair sys/socket.h
+select sys/select.h
+sigemptyset signal.h
+sigaddset signal.h
+sigsuspend signal.h
+raise signal.h
+getenv stdlib.h
+setenv stdlib.h
+unsetenv stdlib.h
 setmode unistd.h
 getmode unistd.h
 strlcpy string.h
