@@ -19,15 +19,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
-      - name: Validate scripts and build upstream Wayland and Gamescope on FreeBSD
+      - name: Validate scripts and build upstream SteamOS Manager protocol on FreeBSD
         run: |
-          sh -n exodus/frankenstein/guest-build.sh
+          sh -n exodus/frankenstein/guest-manager.sh
           sh -n exodus/frankenstein/run-reference.sh
-          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results"
+          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" manager
       - name: Publish boot and build evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frankenstein-bsd-r02-evidence
+          name: frankenstein-manager-r03-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn
