@@ -23,12 +23,14 @@ R01 GitHub Actions succeeded (run 45470486486). R02 CI pending at this update; n
 ## R03 application handoff
 - `apps`: lists known aliases, not an installed application inventory.
 - `nro path`: bounded structural preflight of NRO header, image and segment extents. Does not verify signatures, code safety or compatibility. Temporary adapter to be consolidated with #11.
-- `run ssh`: schedules handoff to `sdmc:/switch/exodus-ssh.nro`.
+- `run ssh`: schedules handoff to `sdmc:/switch/exodus-ssh/exodus-ssh.nro`, matching the SSH client's documented SD installation directory.
 - `run autorun`: schedules handoff to `sdmc:/switch/wine/wine-nx-runtime.nro`.
 - Only explicit user commands, application mode, compatible loader and successful preflight permit handoff. On successful scheduling the terminal exits. Return to terminal, app exit status, background processes and arbitrary argv are not supported yet. Host build never launches these apps.
 - `ps` reports only the current process; `svc` explicitly reports unavailable supervisor state. Integrate #32–35 after shared interfaces land rather than creating another process manager.
 
 R02 CI passed: https://github.com/Garyu-tt/EXODUSx1/actions/runs/45470950263. R03 host tests added; native build, HOS 4.9 compatibility and actual loader handoff remain unverified.
+
+The R05 return contract opts in only when the terminal receives exactly one argument, `--exodus-return-home`. An explicit `exit` command or Plus then attempts to return to the fixed `sdmc:/switch/exodus-shell/exodus-shell.nro` target. System shutdown and a scheduled application handoff do not trigger this return. Host tests verify marker admission and the known launch paths; they do not execute the native loader or establish device compatibility.
 
 ## R04 FreeBSD userland direction
 Use freebsd/freebsd-src as a source donor, not as a replacement kernel or binary ABI. Imported `lib/libc/gen/basename.c` and `dirname.c` into `bsd_path.h` with original Nuxi copyright and BSD license text, private symbols and portability-only linkage/cast changes; original blob IDs are in the header. The terminal exposes the single literal argument subset, not full utility flags or POSIX shell parsing. R03 host CI succeeded: https://github.com/Garyu-tt/EXODUSx1/actions/runs/45471144070. R04 host and native checks pending.
