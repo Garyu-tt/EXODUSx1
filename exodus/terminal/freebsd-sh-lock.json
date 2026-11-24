@@ -252,6 +252,24 @@
       "blob": "884586c438f718ea770f3946d2e2cf5f5aa2cf36",
       "capability": "tty.edit",
       "observed_calls": []
+    },
+    {
+      "path": "bin/sh/redir.h",
+      "blob": "de780f0c1bfc7ed3bdbe2f1c3333caf0e6e910fe",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/trap.h",
+      "blob": "c7da3032691113400bc5f55d1cc2e7f8e8280115",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "sys/sys/param.h",
+      "blob": "04fe7b87bb0f60968d1ecd592bd847739272a121",
+      "capability": "shell.parser",
+      "observed_calls": []
     }
   ],
   "providers": {
