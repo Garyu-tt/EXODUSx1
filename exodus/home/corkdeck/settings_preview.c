@@ -192,8 +192,13 @@ static int show_library(struct ui *ui, const char *path)
                 char result[256];
                 if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW ||
                     route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
-                    if (!exodus_library_native_detail(library, index, detail, sizeof(detail)))
-                        snprintf(detail, sizeof(detail), "Target: %s\n%.500s", exodus_route_name(route), id);
+                    snprintf(detail, sizeof(detail), "Target: %s\n%.500s", exodus_route_name(route), id);
+                    size_t used = strlen(detail);
+                    if (route == EXODUS_ROUTE_SWITCH && used + 2 < sizeof(detail)) {
+                        detail[used++] = '\n';
+                        detail[used] = 0;
+                        exodus_library_native_detail(library, index, detail + used, sizeof(detail) - used);
+                    }
                     if (ui_confirm(ui, exodus_library_title(library, index), detail,
                                    route == EXODUS_ROUTE_STEAM ? "Open library" : "Launch")) {
                         if (exodus_launch(route, id, result)) { handoff = 1; goto done; }
