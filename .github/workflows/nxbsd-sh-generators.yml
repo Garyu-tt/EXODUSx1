@@ -11,6 +11,16 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: full
+            history_flags: ""
+          - profile: headless
+            history_flags: "-DNO_HISTORY"
+    env:
+      NXBSD_HISTORY_FLAGS: ${{ matrix.history_flags }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,14 +49,14 @@ jobs:
           done
       - name: Compile original FreeBSD parser to a host object (no link)
         run: |
-          cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+          cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
             -include exodus/terminal/freebsd_parser_host.h \
             -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
             -I "$RUNNER_TEMP/grammar-a" \
             -c donor-freebsd/bin/sh/parser.c -o "$RUNNER_TEMP/parser.o"
       - name: Compile original FreeBSD evaluator to a host object (no link)
         run: |
-          cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+          cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
             -include exodus/terminal/freebsd_parser_host.h \
             -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
             -I "$RUNNER_TEMP/grammar-a" \
@@ -65,14 +75,14 @@ jobs:
           for module in memalloc mystring alias output var expand; do
             source="donor-freebsd/bin/sh/$module.c"
             if [ "$module" = expand ]; then source="$RUNNER_TEMP/expand-host.c"; fi
-            cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
               -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
               -I "$RUNNER_TEMP/grammar-a" \
               -c "$source" -o "$RUNNER_TEMP/core/$module.o"
           done
           for module in nodes builtins; do
-            cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
               -I donor-freebsd/bin/sh -I "$RUNNER_TEMP/grammar-a" \
               -c "$RUNNER_TEMP/grammar-a/$module.c" -o "$RUNNER_TEMP/core/$module.o"
@@ -88,7 +98,7 @@ jobs:
           for module in input redir error options; do
             source="donor-freebsd/bin/sh/$module.c"
             if [ "$module" = input ]; then source="$RUNNER_TEMP/input-host.c"; fi
-            cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
               -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
               -I "$RUNNER_TEMP/grammar-a" \
@@ -105,7 +115,7 @@ jobs:
           for module in jobs exec trap; do
             source="donor-freebsd/bin/sh/$module.c"
             if [ "$module" = trap ]; then source="$RUNNER_TEMP/trap-host.c"; fi
-            cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
               -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
               -I "$RUNNER_TEMP/grammar-a" \
@@ -123,7 +133,7 @@ jobs:
           for module in main cd miscbltin mail arith_yacc arith_yylex bltin/echo; do
             source="donor-freebsd/bin/sh/$module.c"
             if [ "$module" = main ]; then source="$RUNNER_TEMP/main-host.c"; fi
-            cc -std=gnu11 -funsigned-char -DSHELL -Werror=implicit-function-declaration \
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -DSHELL -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
               -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
               -I "$RUNNER_TEMP/grammar-a" \
@@ -143,7 +153,7 @@ jobs:
               test) source=donor-freebsd/bin/test/test.c ;;
               kill) source="$RUNNER_TEMP/kill-host.c" ;;
             esac
-            cc -std=gnu11 -funsigned-char -DSHELL -Werror=implicit-function-declaration \
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -DSHELL -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
               -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
               -I "$RUNNER_TEMP/grammar-a" \
@@ -159,21 +169,23 @@ jobs:
       - name: Compile original FreeBSD history and line editing
         run: |
           python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module histedit --out "$RUNNER_TEMP/histedit-host.c"
-          cc -std=gnu11 -funsigned-char -DSHELL -Werror=implicit-function-declaration \
+          cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -DSHELL -Werror=implicit-function-declaration \
             -include exodus/terminal/freebsd_parser_host.h \
             -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
             -I "$RUNNER_TEMP/grammar-a" \
             -c "$RUNNER_TEMP/histedit-host.c" -o "$RUNNER_TEMP/histedit.o"
       - name: Link host FreeBSD sh reference executable
         run: |
-          cc "$RUNNER_TEMP/shell-tools.o" "$RUNNER_TEMP/histedit.o" -ledit -lbsd -o "$RUNNER_TEMP/nxbsd-sh"
+          edit_lib=()
+          if [ "${{ matrix.profile }}" = full ]; then edit_lib=(-ledit); fi
+          cc "$RUNNER_TEMP/shell-tools.o" "$RUNNER_TEMP/histedit.o" "${edit_lib[@]}" -lbsd -o "$RUNNER_TEMP/nxbsd-sh"
           file "$RUNNER_TEMP/nxbsd-sh"
           ldd "$RUNNER_TEMP/nxbsd-sh"
           python3 exodus/terminal/test_freebsd_shell_host.py "$RUNNER_TEMP/nxbsd-sh"
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
-          name: freebsd-sh-grammar
+          name: freebsd-sh-grammar-${{ matrix.profile }}
           path: ${{ runner.temp }}/grammar-a
           retention-days: 7
   host-compat:
