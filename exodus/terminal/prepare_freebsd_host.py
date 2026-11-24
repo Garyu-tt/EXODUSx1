@@ -7,7 +7,7 @@ from audit_freebsd import LOCK, blob_id
 
 def stage(checkout, output, module="expand"):
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    if module not in ("expand", "input", "trap", "main", "kill"):
+    if module not in ("expand", "input", "trap", "main", "kill", "histedit"):
         raise ValueError("unsupported module")
     path = "bin/kill/kill.c" if module == "kill" else "bin/sh/" + module + ".c"
     expected = next(x["blob"] for x in lock["files"] if x["path"] == path)
@@ -26,6 +26,10 @@ def stage(checkout, output, module="expand"):
         # A verified profile must not be executed without verification.
         old = b"oflags |= O_VERIFY;"
         new = b'errorwithstatus(126, "verified profile open unavailable on host");'
+    elif module == "histedit":
+        # GNU qsort_r uses the same comparator signature and context position.
+        old = b"qsort_s(matches + 1, i, sizeof(matches[0]), comparator,"
+        new = b"qsort_r(matches + 1, i, sizeof(matches[0]), comparator,"
     elif module == "kill":
         old = b'\t\t(void)fprintf(fp, "%s", sys_signame[n]);'
         new = b'\t\tif (!nxbsd_signal_name(n)) continue;\n\t\t(void)fprintf(fp, "%s", nxbsd_signal_name(n));'
@@ -56,6 +60,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--checkout", required=True, type=Path)
     p.add_argument("--out", required=True, type=Path)
-    p.add_argument("--module", choices=("expand", "input", "trap", "main", "kill"), default="expand")
+    p.add_argument("--module", choices=("expand", "input", "trap", "main", "kill", "histedit"), default="expand")
     args = p.parse_args()
     stage(args.checkout, args.out, args.module)
