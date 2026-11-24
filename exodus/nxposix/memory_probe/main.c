@@ -64,7 +64,7 @@ int main(void)
         report_region("aligned heap page", page);
         if (R_SUCCEEDED(svcQueryMemory(&info, &page_info, (u64)page)) &&
             info.type == MemType_Heap && info.perm == Perm_Rw &&
-            !(info.attr & (MemAttr_IsBorrowed | MemAttr_IsUncached))) {
+            !(info.attr & (MemAttr_IsBorrowed | MemAttr_IsUncached | MemAttr_IsPermissionLocked))) {
             probe_heap_readonly(page);
         } else {
             puts("heap page does not meet safe RW heap probe preconditions");
