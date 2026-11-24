@@ -55,6 +55,36 @@ int main(int argc, char **argv)
     assert(!strcmp(exodus_library_discovery_status(lib), "Games folder unavailable"));
     exodus_library_close(lib);
     assert(std::filesystem::remove_all(root) == 4);
+    // Explicit sidecars attach informational graph records, not launch permission.
+    assert(std::filesystem::create_directory(root));
+    {
+        unsigned char pfs[60]={};
+        memcpy(pfs,"PFS0",4);
+        pfs[4]=1; pfs[8]=16; pfs[24]=4;
+        memcpy(pfs+40,"a.nca",6);
+        std::ofstream f(game,std::ios::binary);
+        f.write(reinterpret_cast<const char *>(pfs),sizeof(pfs));
+        assert(f.good());
+    }
+    const auto update=root+"/Update.nsp";
+    { std::ofstream f(update); f << "fixture"; }
+    { std::ofstream f(game+".evcs"); f << "EVCS1 0000000000000001 0000000000000001 0 base\n"; }
+    { std::ofstream f(update+".evcs"); f << "EVCS1 0000000000000001 0000000000000002 1 update\n"; }
+    lib=exodus_library_open_with_games(argv[1],root.c_str());
+    assert(lib && exodus_library_count(lib)==7);
+    char detail[512];
+    size_t game_index=5;
+    if (std::string(exodus_library_id(lib,5))!=game) game_index=6;
+    assert(!strcmp(exodus_library_provider(lib,game_index),"Other"));
+    assert(exodus_library_archive_detail(lib,game_index,detail,sizeof(detail)));
+    assert(strstr(detail,"Owner metadata (unverified): base listed, update listed, 0 DLC."));
+    exodus_library_close(lib);
+    { std::ofstream f(update+".evcs"); f << "EVCS1 0000000000000001 0000000000000001 0 base\n"; }
+    lib=exodus_library_open_with_games(argv[1],root.c_str());
+    assert(lib && exodus_library_count(lib)==7);
+    assert(strstr(exodus_library_discovery_status(lib),"metadata rejected"));
+    exodus_library_close(lib);
+    assert(std::filesystem::remove_all(root)==5);
     // Host mirror of the console namespace; no execution of fixture bytes.
     const auto base_path = std::filesystem::absolute(argv[1]);
     const auto original_cwd = std::filesystem::current_path();
