@@ -7,6 +7,7 @@
 #include <unistd.h>
 #ifdef __SWITCH__
 #include <switch.h>
+int nx_handle_smoke(void);
 #endif
 
 #define CHECK(expr) do { if (!(expr)) { \
@@ -74,6 +75,7 @@ int main(void)
     } else {
         printf("socketInitializeDefault failed: 0x%08x\n", (unsigned)rc);
     }
+    if (nx_handle_smoke() != 0) status = 1;
     puts("Press PLUS to exit");
     PadState pad;
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
