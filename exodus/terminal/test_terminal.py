@@ -73,6 +73,11 @@ class TerminalTests(unittest.TestCase):
             self.assertIn("service state unknown", result)
             self.assertIn("still-running", result)
 
+    def test_freebsd_path_atoms(self):
+        with tempfile.TemporaryDirectory() as d:
+            result = self.run_commands("basename /usr/bin/sh\ndirname /usr/bin/sh\nbasename ////\ndirname ////\nbasename file\ndirname file\nbasename /a/b///\ndirname /a/b///\nbasename\ndirname\n", d)
+            self.assertEqual(result.splitlines(), ["sh", "/usr/bin", "/", "/", "file", ".", "b", "/a", ".", "."])
+
     def test_long_line_and_unknown(self):
         with tempfile.TemporaryDirectory() as d:
             result = self.run_commands("echo " + "x"*700 + "\necho ok\nunknown\nstatus\n", d)
