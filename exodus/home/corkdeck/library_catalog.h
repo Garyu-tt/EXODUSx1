@@ -13,6 +13,10 @@ struct exodus_library *exodus_library_open_with_games(const char *path, const ch
 const char *exodus_library_discovery_status(const struct exodus_library *library);
 /* Probe selected discovered NSP directory; never authorizes launch. */
 int exodus_library_archive_detail(const struct exodus_library *library, size_t index, char *out, size_t cap);
+/* Grouped presentation only. Raw index space and launch policy are unchanged. */
+int exodus_library_is_group_card(const struct exodus_library *library, size_t index);
+int exodus_library_is_discovered(const struct exodus_library *library, size_t index);
+size_t exodus_library_group_size(const struct exodus_library *library, size_t index);
 void exodus_library_close(struct exodus_library *library);
 const char *exodus_library_status(const struct exodus_library *library);
 size_t exodus_library_count(const struct exodus_library *library);
