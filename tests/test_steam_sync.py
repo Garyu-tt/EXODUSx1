@@ -416,6 +416,24 @@ class SteamSyncTests(unittest.TestCase):
         with self.assertRaisesRegex(sync.SteamSyncError, "Invalid JSON"):
             sync.fetch_library(FakeSteam(data), API_KEY, ACCOUNT)
 
+    def test_rejects_unusable_output_parent_before_sign_in(self):
+        missing = self.output.parent / "missing"
+        regular_file = self.output.parent / "regular-file"
+        regular_file.write_bytes(b"original")
+        provider = FakeSteam()
+        with patch("exodus.steam_sync.webbrowser.open", return_value=False) as browser:
+            for parent in (missing, regular_file):
+                with self.subTest(parent=parent.name), self.assertRaisesRegex(
+                        sync.SteamSyncError, "Catalog output requires an accessible directory"):
+                    sync.sync_library(parent / self.output.name, API_KEY, opener=provider)
+            with patch.object(Path, "is_dir", side_effect=PermissionError), self.assertRaisesRegex(
+                    sync.SteamSyncError, "Catalog output requires an accessible directory"):
+                sync.sync_library(self.output, API_KEY, opener=provider)
+        browser.assert_not_called()
+        self.assertEqual(provider.requests, [])
+        self.assertFalse(missing.exists())
+        self.assertEqual(regular_file.read_bytes(), b"original")
+
     def test_failed_atomic_replace_preserves_output_and_cleans_stage(self):
         self.output.write_bytes(b"prior snapshot")
         with patch("exodus.steam_sync.os.replace", side_effect=PermissionError), self.assertRaisesRegex(
