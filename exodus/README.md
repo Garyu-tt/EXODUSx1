@@ -12,6 +12,21 @@ The JSON document has a `schema_version` and an `entries` array. Each entry cont
 
 The command reads local manifests without signing in or contacting Steam. Only catalog fields are exported. The output omits account data, library paths and launch commands. Exit code 0 indicates a complete scan, including an empty library. If an input is unreadable or a manifest is malformed, exceeds 16 MiB or is not a regular file, the command writes diagnostics to stderr, emits the entries it could read and exits with code 1.
 
+## Discover libraries from a Steam installation
+
+Pass `--steam-install` to read the libraries configured by an installed Steam client. Supply the installation root, such as `C:/Program Files (x86)/Steam`, rather than its `steamapps` directory. The option may be repeated and is available in both catalog commands:
+
+```shell
+python exodus/steam_catalog.py --steam-install "C:/Program Files (x86)/Steam" > steam.json
+python -m exodus.app_catalog --steam-install "C:/Program Files (x86)/Steam" --switch-sd F:/ > catalog.json
+```
+
+Discovery reads `steamapps/libraryfolders.vdf`, falling back to `config/libraryfolders.vdf` only when the first file is absent. It accepts numbered library objects with a `path` field and older numbered path strings. The installation's default `steamapps` library is always scanned. Additional libraries follow their numeric configuration indexes; unrelated configuration metadata is ignored. Duplicate library paths, including local symlink aliases, are scanned once. Explicit positional libraries or `--steam-library` sources precede discovered libraries when equally installed copies of an app appear in more than one location.
+
+Configured paths must be absolute paths for the host running the command. Empty, relative and foreign-platform paths are reported as errors; paths are not expanded from environment variables or translated between Windows and Linux. A missing, unreadable or invalid configuration, an invalid library path or an unavailable drive produces a partial catalog and exit code 1 while preserving readable entries from the default library and other sources. A malformed preferred configuration does not silently select an older fallback file. Configuration files have the same 16 MiB bound as manifests. An empty `LibraryFolders {}` object is valid.
+
+Discovery is opt-in: the existing positional and `--steam-library` inputs still scan only the specified libraries. It reads manifests without account access or Steam API calls, does not launch applications and does not export configuration paths or metadata.
+
 ## Combine Steam and Switch homebrew
 
 From the checkout root on a PC, pass the mounted Switch SD card root and any Steam libraries to scan.

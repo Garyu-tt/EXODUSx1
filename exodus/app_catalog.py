@@ -131,13 +131,15 @@ def main():
     )
     parser.add_argument("--steam-library", metavar="LIBRARY", type=Path, action="append", default=[],
                         help="Steam library root or steamapps directory. May be repeated.")
+    parser.add_argument("--steam-install", metavar="ROOT", type=Path, action="append", default=[],
+                        help="Steam installation root whose libraryfolders.vdf lists libraries to scan. May be repeated.")
     parser.add_argument("--switch-sd", metavar="ROOT", type=Path,
                         help="Mounted Switch SD card root containing the switch directory.")
     args = parser.parse_args()
-    if not args.steam_library and args.switch_sd is None:
-        parser.error("supply at least one --steam-library or --switch-sd")
+    if not args.steam_library and not args.steam_install and args.switch_sd is None:
+        parser.error("supply at least one --steam-library, --steam-install or --switch-sd")
 
-    steam, steam_errors = scan_libraries(args.steam_library)
+    steam, steam_errors = scan_libraries(args.steam_library, steam_installs=args.steam_install)
     homebrew, homebrew_errors = scan_homebrew(args.switch_sd) if args.switch_sd else ([], False)
     write_catalog(steam + homebrew)
     return int(steam_errors or homebrew_errors)
