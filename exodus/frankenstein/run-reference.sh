@@ -4,6 +4,12 @@ set -eu
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 out=$(realpath -m "${1:-frankenstein-results}")
 mkdir -p "$out"
+mode=${2:-graphics}
+case "$mode" in
+    graphics) guest=guest-build.sh; gate=EXODUS_GAMESCOPE_SOURCE_BUILD_PASS ;;
+    manager) guest=guest-manager.sh; gate=EXODUS_MANAGER_AUDIT_COMPLETE ;;
+    *) echo "Unknown reference mode" >&2; exit 2 ;;
+esac
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 cd "$work"
@@ -19,8 +25,8 @@ rm "$image"
 qemu-img resize -f raw disk.raw 32G
 truncate -s 4M seed.img
 mkfs.vfat -n CIDATA seed.img
-printf 'instance-id: exodus-frankenstein-r02\nlocal-hostname: exodus-reference\n' > meta-data
-cp "$here/guest-build.sh" user-data
+printf 'instance-id: exodus-frankenstein-%s\nlocal-hostname: exodus-reference\n' "$mode" > meta-data
+cp "$here/$guest" user-data
 mcopy -i seed.img meta-data user-data ::
 # Emulate the Tegra CPU ISA baseline; no KVM/host CPU assumption.
 efi=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
@@ -33,5 +39,5 @@ timeout 145m qemu-system-aarch64 \
     -drive if=none,file=seed.img,format=raw,readonly=on,id=seed \
     -device virtio-blk-device,drive=seed \
     -netdev user,id=net -device virtio-net-device,netdev=net
-grep -F 'EXODUS_GAMESCOPE_SOURCE_BUILD_PASS' "$out/serial.log"
+grep -F "$gate" "$out/serial.log"
 grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
