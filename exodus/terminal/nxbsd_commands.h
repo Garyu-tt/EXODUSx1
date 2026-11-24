@@ -13,4 +13,13 @@ const struct nxbsd_command *nxbsd_command_lookup(const char *name);
 int nxbsd_command_run(struct nxbsd_context *, int argc, const char *const *argv);
 int nxbsd_commands_pipeline(const struct nxbsd_context *,
                             const struct nxbsd_invocation *, size_t n, int *status);
+#define NXBSD_REDIR_MAX 8
+enum nxbsd_redir_kind { NXBSD_REDIR_IN, NXBSD_REDIR_OUT, NXBSD_REDIR_APPEND,
+                       NXBSD_REDIR_EXCLUSIVE, NXBSD_REDIR_DUP, NXBSD_REDIR_CLOSE };
+struct nxbsd_redir { enum nxbsd_redir_kind kind; int fd, source; const char *path; };
+struct nxbsd_redir_list { size_t count; struct nxbsd_redir items[NXBSD_REDIR_MAX]; };
+/* Apply in source order after pipeline wiring. File effects are not rollbackable.
+ * On redirection error the affected stage returns 1 without invoking its command. */
+int nxbsd_commands_pipeline_redirect(const struct nxbsd_context *,
+    const struct nxbsd_invocation *, const struct nxbsd_redir_list *, size_t n, int *status);
 #endif
