@@ -1,0 +1,3055 @@
+{
+  "schema": "exodus.horizon-ipc-candidates/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Literal source candidates only; no privilege or availability inference. Protected operations denied by default.",
+  "missing": [],
+  "counts": {
+    "requested": 8,
+    "fetched": 8,
+    "distinct_endpoint_tokens": 12,
+    "dispatch_occurrences": 130,
+    "version_check_occurrences": 395
+  },
+  "records": [
+    {
+      "module": "smm",
+      "path": "nx/source/services/smm.c",
+      "blob": "1e2641f196c425941cf1829400515c19c19a82db",
+      "line_count": 114,
+      "literal_endpoints": [
+        {
+          "name": "sm:m",
+          "line": 50
+        },
+        {
+          "name": "sm:m",
+          "line": 82
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_smManagerCmifSrv",
+          "command": 0,
+          "line": 62,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_smManagerCmifSrv",
+          "command": 1,
+          "line": 75,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchIn",
+          "receiver_expression": "&g_smManagerTipcSrv",
+          "command": 0,
+          "line": 100,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchIn",
+          "receiver_expression": "&g_smManagerTipcSrv",
+          "command": 1,
+          "line": 113,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "12.0.0",
+          "line": 13
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "fsldr",
+      "path": "nx/source/services/fsldr.c",
+      "blob": "c5965f912b36f430f15578faef992dcd86923126",
+      "line_count": 141,
+      "literal_endpoints": [
+        {
+          "name": "fsp-ldr",
+          "line": 14
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsldrSrv",
+          "command": 0,
+          "line": 50,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsldrSrv",
+          "command": 0,
+          "line": 67,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsldrSrv",
+          "command": 0,
+          "line": 86,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsldrSrv",
+          "command": 0,
+          "line": 100,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsldrSrv",
+          "command": 0,
+          "line": 114,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_fsldrSrv",
+          "command": 1,
+          "line": 131,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsldrSrv",
+          "command": 2,
+          "line": 139,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "4.0.0",
+          "line": 20
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "20.0.0",
+          "line": 39
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "20.0.0",
+          "line": 42
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 60
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "16.0.0",
+          "line": 79
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 98
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "fspr",
+      "path": "nx/source/services/fspr.c",
+      "blob": "38026bc7f6d121de0c24bdbf89e9da735d83b754",
+      "line_count": 89,
+      "literal_endpoints": [
+        {
+          "name": "fsp-pr",
+          "line": 10
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsprSrv",
+          "command": 0,
+          "line": 55,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsprSrv",
+          "command": 1,
+          "line": 69,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsprSrv",
+          "command": 2,
+          "line": 78,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fsprSrv",
+          "command": 256,
+          "line": 87,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "4.0.0",
+          "line": 16
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 73
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 82
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "aud",
+      "path": "nx/source/services/aud.c",
+      "blob": "a52c5cd0808d9a22bec889f2ba11cf5672ed7456",
+      "line_count": 119,
+      "literal_endpoints": [
+        {
+          "name": "aud:a",
+          "line": 16
+        },
+        {
+          "name": "aud:d",
+          "line": 27
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audaSrv",
+          "command": 2,
+          "line": 48,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audaSrv",
+          "command": 3,
+          "line": 57,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audaSrv",
+          "command": 4,
+          "line": 61,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audaSrv",
+          "command": 5,
+          "line": 71,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audaSrv",
+          "command": 6,
+          "line": 75,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audaSrv",
+          "command": 7,
+          "line": 85,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audaSrv",
+          "command": 8,
+          "line": 89,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audaSrv",
+          "command": 9,
+          "line": 99,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_auddSrv",
+          "command": 0,
+          "line": 108,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_auddSrv",
+          "command": 1,
+          "line": 117,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 13
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 24
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "hidsys",
+      "path": "nx/source/services/hidsys.c",
+      "blob": "682c6c7e58bb748f29af1ac5d233fa48219782cc",
+      "line_count": 1035,
+      "literal_endpoints": [
+        {
+          "name": "hid:sys",
+          "line": 15
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 310,
+          "line": 271,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 321,
+          "line": 326,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 500,
+          "line": 335,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 503,
+          "line": 344,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 702,
+          "line": 393,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 703,
+          "line": 404,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 805,
+          "line": 420,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 806,
+          "line": 427,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 807,
+          "line": 435,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 808,
+          "line": 445,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 809,
+          "line": 455,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 810,
+          "line": 462,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 830,
+          "line": 474,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 831,
+          "line": 487,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 1153,
+          "line": 515,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 1154,
+          "line": 532,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 1208,
+          "line": 634,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_hidsysSrv",
+          "command": 1212,
+          "line": 693,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 267
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 287
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 294
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 301
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 308
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 321
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 356
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 363
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 370
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 377
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "19.0.0",
+          "line": 384
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 417
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 424
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 431
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 441
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 452
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 459
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 466
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 478
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 491
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 498
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 505
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 512
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 519
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 742
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 749
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 756
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 763
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 770
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 777
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 784
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 791
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 798
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 861
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 868
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 875
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 882
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 889
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 896
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 903
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 910
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 917
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 924
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 931
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 938
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 945
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 952
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 959
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 966
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 973
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 980
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 987
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 994
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 1001
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 1008
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 1015
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 1022
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 1029
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "ns",
+      "path": "nx/source/services/ns.c",
+      "blob": "fc4ed73d67222c38f95c0e6467932de38058899e",
+      "line_count": 2787,
+      "literal_endpoints": [
+        {
+          "name": "ns:am",
+          "line": 25
+        },
+        {
+          "name": "ns:vm",
+          "line": 2315
+        },
+        {
+          "name": "ns:dev",
+          "line": 2348
+        },
+        {
+          "name": "ns:su",
+          "line": 2480
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv_ptr",
+          "command": 0,
+          "line": 696,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "srv_ptr",
+          "command": 3,
+          "line": 717,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv_ptr",
+          "command": 8,
+          "line": 759,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv_ptr",
+          "command": 56,
+          "line": 830,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 71,
+          "line": 902,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv_ptr",
+          "command": 201,
+          "line": 930,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv_ptr",
+          "command": 210,
+          "line": 952,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv_ptr",
+          "command": 503,
+          "line": 1105,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv_ptr",
+          "command": 504,
+          "line": 1141,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 509,
+          "line": 1190,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv_ptr",
+          "command": 906,
+          "line": 1223,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv_ptr",
+          "command": 1000,
+          "line": 1255,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&srv",
+          "command": 1003,
+          "line": 1284,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&srv",
+          "command": 1002,
+          "line": 1309,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv_ptr",
+          "command": 1300,
+          "line": 1351,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&srv",
+          "command": 1309,
+          "line": 1370,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 1311,
+          "line": 1390,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&srv",
+          "command": 1701,
+          "line": 1427,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&srv",
+          "command": 1703,
+          "line": 1449,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&srv",
+          "command": 1704,
+          "line": 1465,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&srv",
+          "command": 2000,
+          "line": 1497,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 2001,
+          "line": 1513,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&srv",
+          "command": 2002,
+          "line": 1537,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 2003,
+          "line": 1559,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 2004,
+          "line": 1576,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 2005,
+          "line": 1593,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 2006,
+          "line": 1616,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 2007,
+          "line": 1639,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 2008,
+          "line": 1662,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 2009,
+          "line": 1685,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&srv",
+          "command": 2010,
+          "line": 1712,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 2012,
+          "line": 1742,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&srv",
+          "command": 2013,
+          "line": 1764,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 2014,
+          "line": 1787,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 2015,
+          "line": 1800,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 2016,
+          "line": 1828,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv",
+          "command": 2018,
+          "line": 1845,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 2100,
+          "line": 1862,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv",
+          "command": 2050,
+          "line": 1882,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&srv",
+          "command": 2400,
+          "line": 1920,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "srv_ptr",
+          "command": 704,
+          "line": 2001,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv_ptr",
+          "command": 11,
+          "line": 2090,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv_ptr",
+          "command": 600,
+          "line": 2149,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv_ptr",
+          "command": 601,
+          "line": 2172,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&p->s",
+          "command": 10,
+          "line": 2240,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&a->s",
+          "command": 2,
+          "line": 2282,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&a->s",
+          "command": 4,
+          "line": 2301,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_nsvmSrv",
+          "command": 1202,
+          "line": 2340,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_nsdevSrv",
+          "command": 0,
+          "line": 2369,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_nsdevSrv",
+          "command": 5,
+          "line": 2399,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_nsdevSrv",
+          "command": 7,
+          "line": 2415,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_nsdevSrv",
+          "command": 8,
+          "line": 2430,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_nsdevSrv",
+          "command": 8,
+          "line": 2437,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_nsdevSrv",
+          "command": 9,
+          "line": 2454,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_nssuSrv",
+          "command": 5,
+          "line": 2515,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 24
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 28
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 37
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 52
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 59
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 66
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 73
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 80
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 87
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 94
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 101
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 108
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 115
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 122
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 151
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 180
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 204
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 233
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 261
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 290
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 308
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 397
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 427
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "5.1.0",
+          "line": 464
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 467
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "19.0.0",
+          "line": 492
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "5.1.0",
+          "line": 531
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 534
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 569
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 585
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 598
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 618
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 632
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 644
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 649
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.1.0",
+          "line": 661
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.1.0",
+          "line": 674
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 691
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 712
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 747
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 767
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 819
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 845
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 850
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 862
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 869
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 876
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 883
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 890
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 913
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 925
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 942
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 959
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 970
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "8.0.0",
+          "line": 1010
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "20.0.0",
+          "line": 1032
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "8.0.0",
+          "line": 1055
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1076
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1086
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1093
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1120
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1127
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 1156
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 1163
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 1170
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 1177
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1184
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1200
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1207
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1212
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1234
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1243
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1329
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1340
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1345
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 1359
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 1377
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1400
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1407
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1414
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 1421
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1443
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "8.0.0",
+          "line": 1459
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1481
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1491
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1507
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1531
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1547
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1569
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1587
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1609
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1633
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1655
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1679
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1695
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1729
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1736
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1749
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1781
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1794
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1816
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1838
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 1856
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 1869
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 1892
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 1902
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "8.0.0",
+          "line": 1912
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1940
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1945
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1957
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1962
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1974
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1979
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 1991
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 1996
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 2012
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 2017
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2029
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2042
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2055
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2068
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 2085
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 2099
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 2113
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 2127
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 2139
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 2144
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 2156
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 2161
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 2182
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2298
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 2312
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 2319
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 2331
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2337
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 2360
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 2377
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 2384
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 2391
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 2412
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "10.0.0",
+          "line": 2422
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 2434
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "18.0.0",
+          "line": 2434
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "18.0.0",
+          "line": 2444
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 2458
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "9.0.0",
+          "line": 2458
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 2464
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 2470
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 2531
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2538
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2545
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2552
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2709
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2718
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2727
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2736
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2745
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2754
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2763
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 2772
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 2781
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "btdrv",
+      "path": "nx/source/services/btdrv.c",
+      "blob": "53b981b589cac0945a5770e2156d8fe0c7e8de8a",
+      "line_count": 1506,
+      "literal_endpoints": [
+        {
+          "name": "btdrv",
+          "line": 23
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 5,
+          "line": 201,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 5,
+          "line": 211,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 6,
+          "line": 222,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 6,
+          "line": 233,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 7,
+          "line": 244,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 7,
+          "line": 255,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 8,
+          "line": 277,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 10,
+          "line": 286,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 13,
+          "line": 314,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 13,
+          "line": 326,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 14,
+          "line": 338,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 14,
+          "line": 348,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 16,
+          "line": 362,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 19,
+          "line": 381,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 20,
+          "line": 388,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 21,
+          "line": 403,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 22,
+          "line": 417,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 23,
+          "line": 428,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 25,
+          "line": 436,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 30,
+          "line": 462,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 51,
+          "line": 687,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 52,
+          "line": 701,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 54,
+          "line": 721,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 65,
+          "line": 805,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 66,
+          "line": 818,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 75,
+          "line": 930,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 77,
+          "line": 959,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 98,
+          "line": 1236,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 132,
+          "line": 1288,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 135,
+          "line": 1320,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 139,
+          "line": 1359,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btdrvSrv",
+          "command": 141,
+          "line": 1373,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "12.0.0",
+          "line": 198
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 208
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "12.0.0",
+          "line": 218
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 229
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "12.0.0",
+          "line": 240
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 251
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "12.0.0",
+          "line": 262
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 269
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 285
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "12.0.0",
+          "line": 304
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 318
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 330
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 380
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 395
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 421
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 489
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 499
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 520
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 526
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 542
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 544
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 549
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 552
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 557
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 560
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 569
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 580
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 581
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 587
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 589
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 595
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 597
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 603
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 605
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 611
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 613
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 619
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 621
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 627
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 629
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 635
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 642
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 649
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 656
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 663
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 670
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "9.0.0",
+          "line": 670
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 677
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 691
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "9.0.0",
+          "line": 691
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 698
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 705
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 712
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 725
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 732
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 739
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 746
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 753
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 760
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 767
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 774
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 781
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 788
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 795
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 809
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 822
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 824
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 830
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 832
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 834
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 846
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 848
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 859
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 861
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 873
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 875
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 881
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 883
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 889
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 891
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 903
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 905
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 907
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 919
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 934
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 936
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 948
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 963
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 965
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 979
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 981
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 987
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 989
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1014
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1016
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1042
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1044
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1059
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1061
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1077
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1084
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1091
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1098
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1105
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1112
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1114
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1120
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1122
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1137
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1139
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1155
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1157
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1176
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1178
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1197
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1204
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1206
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1212
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1214
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1220
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1222
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 1228
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 1240
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1247
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1254
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1261
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1271
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1278
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1285
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1292
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1299
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1306
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1329
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1336
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1346
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1356
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1363
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1370
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1380
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "12.0.0",
+          "line": 1387
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 1408
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 1415
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 1422
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 1429
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1436
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 1443
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 1451
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "btmsys",
+      "path": "nx/source/services/btmsys.c",
+      "blob": "3a85a4b5ea975d0c23b49567a9d58ebfd78944a8",
+      "line_count": 248,
+      "literal_endpoints": [
+        {
+          "name": "btm:sys",
+          "line": 29
+        }
+      ],
+      "literal_dispatches": [],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 131
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 138
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 145
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 152
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 159
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 166
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 173
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 180
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 187
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 194
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 201
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 208
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 215
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 222
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 229
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 236
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 243
+        }
+      ],
+      "status": "unreviewed_disabled"
+    }
+  ]
+}
