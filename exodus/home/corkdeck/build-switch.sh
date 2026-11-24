@@ -61,7 +61,7 @@ done
 "$cxx" $arch -specs="$nx/switch.specs" -Wl,--gc-sections "$tmp"/*.o \
     -L"$port/lib" -L"$nx/lib" -Wl,--start-group $libs ${SWITCH_EXTRA_LIBS:-} -lnx -lm -Wl,--end-group \
     -o "$tmp/exodus-shell.elf"
-"$nacp" --create "EXODUS Shell" "EXODUSx1" "0.13.0" "$tmp/exodus-shell.nacp"
+"$nacp" --create "EXODUS Shell" "EXODUSx1" "0.14.0" "$tmp/exodus-shell.nacp"
 "$nro" "$tmp/exodus-shell.elf" "$tmp/exodus-shell.nro" \
     --icon="$nx/default_icon.jpg" --nacp="$tmp/exodus-shell.nacp"
 mkdir -p "$2"
