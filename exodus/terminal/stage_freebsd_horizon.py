@@ -144,33 +144,7 @@ def prepare(donor, out):
     body(parser, b"getpwlogin(void)", b"\treturn NULL; /* no login database */")
     body(parser, b"getusername(char *name, size_t namelen)",
          b"\tif (namelen) strlcpy(name, \"unknown\", namelen);")
-    replace(parser, b"ps[i] = (geteuid() != 0) ? ' not a claim that PATH executables work.
-    replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
-    replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
-            b"nxbsd_fwopen(dest, doformat_wr)")
-    replace("bin/sh/output.c", b"fwopen(out1, doformat_wr)",
-            b"nxbsd_fwopen(out1, doformat_wr)")
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--checkout", required=True, type=Path)
-    p.add_argument("--out", required=True, type=Path)
-    a = p.parse_args()
-    prepare(a.checkout, a.out)
- : '#';", b"ps[i] = ' not a claim that PATH executables work.
-    replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
-    replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
-            b"nxbsd_fwopen(dest, doformat_wr)")
-    replace("bin/sh/output.c", b"fwopen(out1, doformat_wr)",
-            b"nxbsd_fwopen(out1, doformat_wr)")
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--checkout", required=True, type=Path)
-    p.add_argument("--out", required=True, type=Path)
-    a = p.parse_args()
-    prepare(a.checkout, a.out)
-;")
+    replace(parser, b"ps[i] = (geteuid() != 0) ? '$' : '#';", b"ps[i] = '$';")
     replace("bin/sh/var.c", b'geteuid() ? "PS1=$ " : "PS1=# "', b'"PS1=$ "')
     replace("bin/sh/var.c", b'\tfmtstr(ppid, sizeof(ppid), "%d", (int)getppid());\n\tsetvarsafe("PPID", ppid, 0);',
             b'\t/* PPID unavailable: do not invent a parent process. */')
