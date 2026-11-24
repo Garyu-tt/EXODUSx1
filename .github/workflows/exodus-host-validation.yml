@@ -77,3 +77,5 @@ jobs:
         run: make -C exodus/home/ulaunch check CPPFLAGS="-I\"$JSON_INCLUDE\"" CXXFLAGS="-O2 -Werror"
       - name: Test the Switch Steam Sync host code
         run: make -C exodus/steam_switch check JSON_INCLUDE="$JSON_INCLUDE" HOST_FLAGS=-Werror
+      - name: Test the Steam file verifier
+        run: make -C exodus/steam_integrity check HOST_FLAGS=-Werror

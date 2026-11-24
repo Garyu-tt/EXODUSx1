@@ -36,8 +36,12 @@ def token_text(token):
     return token
 
 
-def parse_keyvalues(text):
-    """Parse nested KeyValues with case-insensitive first-match lookup."""
+def parse_keyvalues(text, *, max_depth=None, unique_keys_by_depth=None):
+    """Parse KeyValues with case-insensitive first-match lookup by default.
+
+    Optional depth limits count opened blocks. Duplicate restrictions use depth
+    zero for document keys and depth one for keys in a top-level block.
+    """
     root = {}
     stack = [root]
     key = None
@@ -52,6 +56,8 @@ def parse_keyvalues(text):
         elif token == "{":
             if key is None:
                 raise ValueError("object is missing a key")
+            if max_depth is not None and len(stack) > max_depth:
+                raise ValueError(f"KeyValues nesting exceeds {max_depth} blocks")
             child = {}
             # Parse repeated blocks even after the first value has been retained.
             stack[-1].setdefault(key, child)
@@ -59,6 +65,9 @@ def parse_keyvalues(text):
             key = None
         elif key is None:
             key = token_text(token).lower()
+            if (unique_keys_by_depth is not None and key in stack[-1]
+                    and key in unique_keys_by_depth.get(len(stack) - 1, ())):
+                raise ValueError(f"duplicate {key} key")
         else:
             stack[-1].setdefault(key, token_text(token))
             key = None

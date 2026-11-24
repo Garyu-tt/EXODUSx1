@@ -349,7 +349,8 @@ namespace exodus::home {
 
     }
 
-    SteamInstallEvidence ProbeLocalSteamInstallation(std::string_view sd_mount, std::uint32_t app_id) {
+    static SteamInstallEvidence InspectLocalSteamInstallation(std::string_view sd_mount, std::uint32_t app_id,
+        std::string *game_directory) {
         constexpr std::array<const char *, 3> library_path{"switch", "exodus-steam", "steamapps"};
         std::array<Directory, library_path.size() + 1> directories;
         if (app_id == 0 || !OpenSdRoot(sd_mount, directories.front()))
@@ -390,12 +391,26 @@ namespace exodus::home {
         Directory game;
         const auto path = std::string(manifest->directory);
         switch (OpenSubdirectory(common, path.c_str(), game)) {
-            case DirectoryStatus::Found: return SteamInstallEvidence::ManifestAndDirectoryFound;
+            case DirectoryStatus::Found:
+                if (game_directory != nullptr)
+                    *game_directory = path;
+                return SteamInstallEvidence::ManifestAndDirectoryFound;
             case DirectoryStatus::Missing:
             case DirectoryStatus::NotDirectory: return SteamInstallEvidence::MissingGameDirectory;
             case DirectoryStatus::Unavailable: return SteamInstallEvidence::Unavailable;
         }
         return SteamInstallEvidence::Unavailable;
+    }
+
+    SteamInstallEvidence ProbeLocalSteamInstallation(std::string_view sd_mount, std::uint32_t app_id) {
+        return InspectLocalSteamInstallation(sd_mount, app_id, nullptr);
+    }
+
+    std::optional<std::string> FindLocalSteamGameDirectory(std::string_view sd_mount, std::uint32_t app_id) {
+        std::string directory;
+        if (InspectLocalSteamInstallation(sd_mount, app_id, &directory) != SteamInstallEvidence::ManifestAndDirectoryFound)
+            return std::nullopt;
+        return directory;
     }
 
 }

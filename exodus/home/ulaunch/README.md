@@ -22,6 +22,8 @@ uMenu sends the AppID to the matching uSystem through read-only commands. uSyste
 
 A matching manifest and folder establish local disk evidence only. Actual launch requires an approved local Switch runtime, verification of installed game files and an official Steam entitlement path. [Steamworks installation and entitlement](https://partner.steamgames.com/doc/api/ISteamApps#BIsAppInstalled) · [EX-006 tracker](https://github.com/Garyu-tt/EXODUSx1/pull/3) · [Nintendo Safe Mode #55](https://github.com/Garyu-tt/EXODUSx1/issues/55)
 
+The Steam File Check homebrew application compares the listed game files on SD with a retained reference. Its own README covers reference generation and on-device verification. [Steam File Check](../../steam_integrity/README.md)
+
 ## Launch from an inserted game card
 
 Nintendo Safe Mode admits one Switch catalog launch provider. With no application suspended, insert a game card and select **Launch** on the page containing a ready title from that card. Choose its number and confirm the name and hexadecimal ID read from local control data. uMenu asks the matching uSystem to discover and queue the catalog route. uSystem rechecks the provider and selected user when it consumes the queued action, immediately before starting the title.
