@@ -60,7 +60,7 @@ jobs:
         if: ${{ always() }}
         run: |
           if [ -f horizon-shell/summary.txt ]; then
-            { echo '### Horizon shell inventory (not a device test)'; echo '```'; cat horizon-shell/summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            { echo '### Horizon shell inventory (not a device test)'; echo '```'; cat horizon-shell/summary.txt; if [ -f horizon-shell/package-status.txt ]; then cat horizon-shell/package-status.txt; fi; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'No native inventory produced; inspect failed staging or SDK step.' >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -70,5 +70,17 @@ jobs:
         with:
           name: nxbsd-shell-unvalidated-elf
           path: horizon-shell/shell-probe.elf
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Archive structurally validated experimental NRO
+        if: ${{ success() && hashFiles('horizon-shell/nxbsd-shell.nro') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nxbsd-shell-experimental-nro
+          path: |
+            horizon-shell/nxbsd-shell.nro
+            horizon-shell/nro-validation.json
+            horizon-shell/nro-sha256.txt
           if-no-files-found: error
           retention-days: 7
