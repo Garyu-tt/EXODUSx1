@@ -23,3 +23,9 @@ Host test covers read/write readiness, level triggering, duplicate descriptors, 
 - Next: run the NRO on emuMMC and record HOS/Atmosphere/4IFIR versions, then add a separate adapter for Horizon waitable handles; do not mix handle IDs and socket FDs in one namespace.
 - Design timer/wakeup/cancellation semantics before any kqueue-like interface.
 - Memory mapping remains a separate investigation: libnx `virtmemFindAslr` only locates/reserves address ranges; SVC mapping/permissions and backing allocation need separate verified contracts.
+
+## Native handle wait atom
+
+`handle_wait.c` uses libnx `waitHandles` (pinned source: [wait.c](https://github.com/switchbrew/libnx/blob/b156b4774fb2df7b93402169509266da7547fc4c/nx/source/kernel/wait.c)). It returns a single token, never clears or closes a borrowed handle, rejects duplicate handles/tokens, and preserves raw Horizon Result codes. Finite milliseconds convert to nanoseconds, -1 to UINT64_MAX. Timeout is a separate outcome, invalid handle maps to EBADF, other native errors to EIO; cancellation can be retried internally by libnx. Not a cancellation API, not a mixed socket/handle wait, and not kqueue. No adapter heap allocations.
+
+Host CI now includes `test_handle_wait.c`, using an explicitly test-only stub of the libnx interface. It validates argument handling, timeout conversion, result propagation and index/token mapping, not kernel behavior. The existing NRO target additionally builds `handle_smoke.c`, which checks a current-thread timeout and a completed worker thread handle with repeated readiness. It does not require privileged event creation. Native compilation and real-device execution remain unverified. Next: device gate and a unified typed event/timer contract with explicit fairness and cancellation.
