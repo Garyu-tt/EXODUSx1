@@ -1,0 +1,193 @@
+{
+  "schema": "exodus.hardware-buffer-interop/v1",
+  "scope": "Source-level interoperability candidates, not validated zero-copy routes",
+  "parent_workload_blob": "4e549895491e16476a25a1b32728663a4d4eba54",
+  "sources": {
+    "map": {
+      "repo": "switchbrew/libnx",
+      "revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+      "path": "nx/source/nvidia/map.c",
+      "blob": "9ba23751e4a5109989555a166bd20deb8d55a618",
+      "lines": [
+        32,
+        69,
+        94,
+        112
+      ]
+    },
+    "fence": {
+      "repo": "switchbrew/libnx",
+      "revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+      "path": "nx/include/switch/nvidia/fence.h",
+      "blob": "46a36a21ed841b04e550b5b20a5dc44f89b6a83b"
+    },
+    "surface": {
+      "repo": "switchbrew/libnx",
+      "revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+      "path": "nx/include/switch/nvidia/graphic_buffer.h",
+      "blob": "f046278c276824242959c56ac4e8acdf3139ad3a"
+    },
+    "deko": {
+      "repo": "devkitPro/deko3d",
+      "path": "include/deko3d.h",
+      "blob": "a83874c9512eeb742ea3c26e946326760c0bc611",
+      "lines": [
+        187,
+        203,
+        558,
+        572,
+        1239,
+        1248
+      ]
+    },
+    "jpeg": {
+      "repo": "ITotalJustice/oss-nvjpg",
+      "ref": "45680e7",
+      "path": "lib/surface.cpp",
+      "blob": "5b8616bf2e2525587cd8ee7d338f1b1ec3c0f05a"
+    }
+  },
+  "contract": {
+    "required": [
+      "trusted_owner",
+      "allocation_id",
+      "generation",
+      "allocation_bytes",
+      "plane_offsets",
+      "plane_sizes",
+      "pitch_bytes",
+      "width",
+      "height",
+      "pixel_format",
+      "color_range",
+      "color_matrix",
+      "layout",
+      "alignment",
+      "memory_kind",
+      "cache_policy",
+      "producer_fence",
+      "consumer_completion",
+      "mapping_lifetime"
+    ],
+    "invariants": [
+      "all plane ranges checked for overflow and within allocation",
+      "no consumer access before producer completion",
+      "no release before all consumers finish",
+      "cache restoration and all unmaps checked",
+      "unknown result quarantines allocation",
+      "no foreign-process buffer imports"
+    ],
+    "zero_copy_claim": "requires evidence of same underlying allocation and absence of intermediate payload copies, not merely shared physical RAM or a fence import API"
+  },
+  "routes": [
+    {
+      "from": "hw:nvdec",
+      "to": "hw:vic",
+      "purpose": "video frame transform",
+      "status": "candidate_unverified",
+      "executable": false,
+      "device_test": "not_tested",
+      "required": [
+        "compatible allocation and plane layout",
+        "per-engine import rights",
+        "producer and consumer synchronization",
+        "cache coherency",
+        "cleanup fault injection",
+        "native output comparison",
+        "measured copy count"
+      ]
+    },
+    {
+      "from": "hw:vic",
+      "to": "hw:gpu",
+      "purpose": "texture sampling",
+      "status": "candidate_unverified",
+      "executable": false,
+      "device_test": "not_tested",
+      "required": [
+        "compatible allocation and plane layout",
+        "per-engine import rights",
+        "producer and consumer synchronization",
+        "cache coherency",
+        "cleanup fault injection",
+        "native output comparison",
+        "measured copy count"
+      ]
+    },
+    {
+      "from": "hw:nvjpg",
+      "to": "hw:gpu",
+      "purpose": "image texture",
+      "status": "candidate_unverified",
+      "executable": false,
+      "device_test": "not_tested",
+      "required": [
+        "compatible allocation and plane layout",
+        "per-engine import rights",
+        "producer and consumer synchronization",
+        "cache coherency",
+        "cleanup fault injection",
+        "native output comparison",
+        "measured copy count"
+      ]
+    },
+    {
+      "from": "hw:nvjpg",
+      "to": "hw:vic",
+      "purpose": "image transform",
+      "status": "candidate_unverified",
+      "executable": false,
+      "device_test": "not_tested",
+      "required": [
+        "compatible allocation and plane layout",
+        "per-engine import rights",
+        "producer and consumer synchronization",
+        "cache coherency",
+        "cleanup fault injection",
+        "native output comparison",
+        "measured copy count"
+      ]
+    },
+    {
+      "from": "hw:gpu",
+      "to": "hw:nvenc",
+      "purpose": "owned rendered frame encode",
+      "status": "candidate_unverified",
+      "executable": false,
+      "device_test": "not_tested",
+      "required": [
+        "compatible allocation and plane layout",
+        "per-engine import rights",
+        "producer and consumer synchronization",
+        "cache coherency",
+        "cleanup fault injection",
+        "native output comparison",
+        "measured copy count"
+      ]
+    },
+    {
+      "from": "hw:gpu",
+      "to": "hw:display",
+      "purpose": "owned presentation",
+      "status": "candidate_unverified",
+      "executable": false,
+      "device_test": "not_tested",
+      "required": [
+        "compatible allocation and plane layout",
+        "per-engine import rights",
+        "producer and consumer synchronization",
+        "cache coherency",
+        "cleanup fault injection",
+        "native output comparison",
+        "measured copy count"
+      ]
+    }
+  ],
+  "source_findings": [
+    "nvMapCreate requires page-aligned CPU address and size and power-of-two alignment; cache attribute call result not propagated at the inspected site",
+    "nvMapClose returns void and does not propagate nvmap free or cache restoration results",
+    "DkMemBlockMaker exposes storage pointer and dkFenceImport exists; these alone do not prove safe cross-engine memory sharing",
+    "NvGraphicBuffer describes up to three planes with layout, pitch, offset and size",
+    "oss-nvjpg surface allocator applies pitch and allocation alignment; exact constraints are donor-specific"
+  ]
+}
