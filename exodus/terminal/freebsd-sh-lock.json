@@ -324,6 +324,18 @@
       "blob": "09444bc4afcef344cd64a4b393c373fc7e0fa710",
       "capability": "shell.parser",
       "observed_calls": []
+    },
+    {
+      "path": "bin/sh/error.c",
+      "blob": "c634026befb5f3ea63850007276caec0172e4a33",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/options.c",
+      "blob": "92857027843ae75a8ed4ab9ce8d6b673ca91cfb5",
+      "capability": "shell.eval",
+      "observed_calls": []
     }
   ],
   "providers": {
