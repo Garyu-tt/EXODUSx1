@@ -1,4 +1,5 @@
 #include <switch.h>
+#include "tool_return.h"
 #include <libssh2.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -168,8 +169,9 @@ done:
     consoleUpdate(NULL);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
+    int return_home = exodus_return_requested(argc, argv), explicit_exit = 0;
     consoleInit(NULL);
     if (R_FAILED(socketInitializeDefault())) {
         puts("Horizon socket initialization failed.");
@@ -185,10 +187,11 @@ int main(void)
     PadState pad;
     padInitializeDefault(&pad);
     puts("EXODUS SSH / Horizon\nA: remote command   +: exit");
+    if (return_home) puts("Exit returns to EXODUS Home if available.");
     while (appletMainLoop()) {
         padUpdate(&pad);
         u64 buttons = padGetButtonsDown(&pad);
-        if (buttons & HidNpadButton_Plus) break;
+        if (buttons & HidNpadButton_Plus) { explicit_exit = 1; break; }
         if (buttons & HidNpadButton_A) {
             consoleClear();
             run_ssh();
@@ -198,6 +201,7 @@ int main(void)
     }
     libssh2_exit();
     socketExit();
+    if (return_home && explicit_exit) exodus_return_home();
     consoleExit(NULL);
     return EXIT_SUCCESS;
 }
