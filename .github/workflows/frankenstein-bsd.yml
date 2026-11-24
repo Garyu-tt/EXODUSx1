@@ -10,7 +10,19 @@ permissions:
 jobs:
   reference:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mode: native
+            minutes: 85
+          - mode: graphics
+            minutes: 165
+          - mode: manager
+            minutes: 165
+          - mode: ssh
+            minutes: 85
+    timeout-minutes: ${{ matrix.minutes }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -19,15 +31,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
-      - name: Validate scripts and verify FreeBSD ARM64 kernel boot and NoCloud startup
+      - name: Validate scripts and run FreeBSD ARM64 workload
         run: |
-          sh -n exodus/frankenstein/guest-boot.sh
+          for script in exodus/frankenstein/guest-*.sh; do sh -n "$script"; done
           sh -n exodus/frankenstein/run-reference.sh
-          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" boot
+          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" "${{ matrix.mode }}"
       - name: Publish boot and build evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frankenstein-boot-r05-evidence
+          name: frankenstein-native-r08-${{ matrix.mode }}-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn

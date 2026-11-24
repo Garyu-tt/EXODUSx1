@@ -10,6 +10,7 @@ case "$mode" in
     manager) guest=guest-manager.sh; gate=EXODUS_MANAGER_AUDIT_COMPLETE ;;
     ssh) guest=guest-ssh.sh; gate=EXODUS_SSH_REFERENCE_PASS ;;
     boot) guest=guest-boot.sh; gate=EXODUS_FREEBSD_BOOT_PASS ;;
+    native) guest=guest-native.sh; gate=EXODUS_NATIVE_DBUS_PASS ;;
     *) echo "Unknown reference mode" >&2; exit 2 ;;
 esac
 work=$(mktemp -d)
@@ -30,6 +31,11 @@ mkfs.vfat -n CIDATA seed.img
 printf 'instance-id: exodus-frankenstein-%s\nlocal-hostname: exodus-reference\n' "$mode" > meta-data
 cp "$here/$guest" user-data
 mcopy -i seed.img meta-data user-data ::
+if [ "$mode" = native ]; then
+    for f in sessiond.c sessiond-dbus.inc test_sessiond.py test_sessiond_dbus.sh; do
+        mcopy -i seed.img "$here/$f" ::
+    done
+fi
 # Emulate the Tegra CPU ISA baseline; no KVM/host CPU assumption.
 efi=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
 test -f "$efi"
@@ -37,6 +43,7 @@ test -f "$efi"
 # Use a disposable writable copy; no host files are exposed to the guest.
 limit=145m
 [ "$mode" != ssh ] || limit=65m
+[ "$mode" != native ] || limit=65m
 [ "$mode" != boot ] || limit=12m
 # Stream serial evidence even if the guest never reaches the build script.
 # Preserve QEMU/timeout status independently of log forwarding.
