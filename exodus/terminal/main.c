@@ -1,4 +1,4 @@
-/* EXODUS native terminal R03: local console and explicit NRO handoff. */
+/* EXODUS native terminal R04: local console and explicit NRO handoff. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include "bsd_path.h"
 #ifdef __SWITCH__
 #include <switch.h>
 #endif
@@ -180,7 +181,7 @@ static int dispatch(char *line) {
     if (!*cmd) return 0;
     if (!strcmp(cmd, "exit") && !*arg) return 1;
     if (!strcmp(cmd, "help") && !*arg)
-        puts("help | pwd | ls [path] | cd path | cat path | stat path | echo text | id | mem | ps | svc | apps | nro path | run NAME | status | clear | exit");
+        puts("help | pwd | ls [path] | cd path | cat path | stat path | basename path | dirname path | echo text | id | mem | ps | svc | apps | nro path | run NAME | status | clear | exit");
     else if (!strcmp(cmd, "pwd") && !*arg) pwd();
     else if (!strcmp(cmd, "ls")) {
         if (!*arg || valid_path(arg)) list(*arg ? arg : ".");
@@ -207,14 +208,18 @@ static int dispatch(char *line) {
         if (!valid_path(arg)) puts("invalid path");
         else puts(nro_valid(arg) ? "NRO structural preflight passed" : "NRO missing or invalid");
     } else if (!strcmp(cmd, "run")) return run_app(arg);
-    else if (!strcmp(cmd, "echo")) { safe_text(arg); putchar('\n'); }
+    else if (!strcmp(cmd, "basename") || !strcmp(cmd, "dirname")) {
+        /* The terminal passes one literal path, not the full BSD utility argv. */
+        safe_text(!strcmp(cmd, "basename") ? exbsd_basename(arg) : exbsd_dirname(arg));
+        putchar('\n');
+    } else if (!strcmp(cmd, "echo")) { safe_text(arg); putchar('\n'); }
     else if (!strcmp(cmd, "status") && !*arg) {
 #ifdef __SWITCH__
-        printf("EXODUS R03 | Horizon | HOS %u.%u.%u\n",
+        printf("EXODUS R04 | Horizon | HOS %u.%u.%u\n",
             (unsigned)HOSVER_MAJOR(hosversionGet()), (unsigned)HOSVER_MINOR(hosversionGet()),
             (unsigned)HOSVER_MICRO(hosversionGet()));
 #else
-        puts("EXODUS R03 | host reference");
+        puts("EXODUS R04 | host reference");
 #endif
         puts("Managed process/service provider and interactive SSH not connected. NRO handoff is not process spawn.");
     } else if (!strcmp(cmd, "clear") && !*arg) {
@@ -237,7 +242,7 @@ int main(void) {
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
-    puts("EXODUS Terminal R03\nA: enter command | +: exit | help: commands");
+    puts("EXODUS Terminal R04\nA: enter command | +: exit | help: commands");
     while (appletMainLoop()) {
         padUpdate(&pad);
         u64 buttons = padGetButtonsDown(&pad);
