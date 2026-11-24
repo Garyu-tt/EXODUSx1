@@ -1,7 +1,7 @@
 name: EXODUS Remote TLS13 port experiment
 on:
   pull_request:
-    paths: ['exodus/remote/build_tls13_port.sh', 'exodus/remote/native_tls13_smoke.c', 'exodus/remote/local_mtls_smoke.h', 'exodus/remote/tcp_mtls_bio.h', 'exodus/remote/host_mtls_smoke.c', 'exodus/remote/generate_tls_fixtures.sh', '.github/workflows/exodus-remote-tls13.yml']
+    paths: ['exodus/remote/build_tls13_port.sh', 'exodus/remote/native_tls13_smoke.c', 'exodus/remote/local_mtls_smoke.h', 'exodus/remote/tcp_mtls_bio.h', 'exodus/remote/test_tcp_faults.c', 'exodus/remote/host_mtls_smoke.c', 'exodus/remote/generate_tls_fixtures.sh', '.github/workflows/exodus-remote-tls13.yml']
   workflow_dispatch:
 permissions:
   contents: read
