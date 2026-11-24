@@ -2,6 +2,7 @@
 #include "library_catalog.h"
 #include "evcs_discovery.h"
 #include "evcs_pfs0.h"
+#include "evcs_manifest.h"
 #include "launch_route.h"
 extern "C" {
 #include "../../runtime/autorun_probe.h"
@@ -13,7 +14,11 @@ extern "C" {
 #include "live_inventory.hpp"
 #endif
 using namespace exodus::home;
-struct exodus_library { Catalog catalog; const char *discovery = "Not requested"; size_t first_game = SIZE_MAX; };
+struct exodus_library { Catalog catalog; const char *discovery = "Not requested"; size_t first_game = SIZE_MAX;
+    std::vector<evcs_content> graph{};
+    std::vector<size_t> graph_indices{};
+    bool graph_valid = true;
+};
 struct evcs_catalog_pending {
     const Catalog &base;
     std::vector<Entry> entries;
@@ -63,6 +68,25 @@ static void evcs_catalog_merge(exodus_library &lib, const char *root)
     for (auto &entry : pending.entries) entries.push_back(std::move(entry));
     if (!entries.empty()) lib.catalog.status = CatalogStatus::Ready;
     lib.discovery = "Games scan complete";
+    // Sidecars describe discovered files only. Never derive launch routes from them.
+    for (size_t i=lib.first_game; i<entries.size(); ++i) {
+        const auto &e=entries[i];
+        enum evcs_kind kind;
+        if (e.provider != Provider::Other || !evcs_kind_of(e.id.c_str(), &kind) ||
+            (kind != EVCS_NSP && kind != EVCS_XCI)) continue;
+        evcs_content item{};
+        const auto status=evcs_manifest_read(e.id.c_str(), &item);
+        if (status == EVCS_MANIFEST_MISSING) continue;
+        if (status != EVCS_MANIFEST_OK) { lib.graph_valid=false; break; }
+        lib.graph.push_back(item);
+        lib.graph_indices.push_back(i);
+    }
+    if (evcs_graph_validate(lib.graph.data(),lib.graph.size()) != EVCS_GRAPH_OK)
+        lib.graph_valid=false;
+    if (!lib.graph_valid) {
+        lib.graph.clear(); lib.graph_indices.clear();
+        lib.discovery="Games scan complete; metadata rejected";
+    }
 }
 extern "C" {
 struct exodus_library *exodus_library_open(const char *path)
@@ -118,6 +142,20 @@ int exodus_library_archive_detail(const struct exodus_library *library, size_t i
         snprintf(out, cap, "NSP directory %s. Not launchable.",
                  rc == EVCS_PFS0_LIMIT ? "exceeds scan limits" :
                  rc == EVCS_PFS0_IO ? "unreadable" : "invalid");
+    if (rc == EVCS_PFS0_OK && library->graph_valid) {
+        for (size_t j=0;j<library->graph_indices.size();++j) {
+            if (library->graph_indices[j]!=index) continue;
+            const auto &item=library->graph[j];
+            const auto group=evcs_graph_group(library->graph.data(),library->graph.size(),item.application_id);
+            size_t used=strlen(out);
+            if (used<cap)
+                snprintf(out+used,cap-used,"\nOwner metadata (unverified): base %s, update %s, %lu DLC.",
+                         group.base==SIZE_MAX ? "missing" : "listed",
+                         group.update==SIZE_MAX ? "none" : "listed",
+                         (unsigned long)group.dlc_count);
+            break;
+        }
+    }
     return 1;
 }
 void exodus_library_close(struct exodus_library *library) { delete library; }
