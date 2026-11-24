@@ -258,9 +258,9 @@
       "kind": "provider",
       "status": "implemented",
       "source": {
-        "path": "nx/include/switch/kernel/wait.h",
-        "line_start": 63,
-        "line_end": 75
+        "path": "nx/source/kernel/wait.c",
+        "line_start": 143,
+        "line_end": 151
       },
       "features": [
         "waitObjects",
@@ -268,7 +268,12 @@
       ],
       "limitations": [
         "kernel handles are a separate namespace from BSD socket FDs"
-      ]
+      ],
+      "declaration_source": {
+        "path": "nx/include/switch/kernel/wait.h",
+        "line_start": 63,
+        "line_end": 75
+      }
     },
     {
       "id": "provider:libnx:virtmem",
