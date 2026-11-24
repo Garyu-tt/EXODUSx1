@@ -1,3 +1,4 @@
+from codecs import BOM_UTF8, BOM_UTF16_BE, BOM_UTF16_LE
 from contextlib import redirect_stderr, redirect_stdout
 from datetime import datetime, timedelta, timezone
 from http.client import HTTPConnection
@@ -163,6 +164,20 @@ class SteamSyncTests(unittest.TestCase):
             steam_entry("10", "\u661f Test"), steam_entry("440", "Synthetic Team"), homebrew,
         ]})
 
+    def test_refresh_accepts_bom_encoded_base_catalogs(self):
+        homebrew = {**steam_entry("tools/\u661f.nro", "Local Homebrew \U0001f680"), "provider": "switch_homebrew"}
+        prior = json.dumps({
+            "schema_version": 1, "entries": [steam_entry("77", "Prior Steam account"), homebrew],
+        }, ensure_ascii=False)
+        expected = {"schema_version": 1, "entries": [
+            steam_entry("10", "\u661f Test"), steam_entry("440", "Synthetic Team"), homebrew,
+        ]}
+        for encoding, bom in (("utf-8", BOM_UTF8), ("utf-16-le", BOM_UTF16_LE)):
+            with self.subTest(encoding=encoding):
+                self.output.write_bytes(bom + prior.encode(encoding))
+                self.assertEqual(self.run_sync(FakeSteam(), LocalBrowser(), self.output), 2)
+                self.assertEqual(json.loads(self.output.read_text(encoding="utf-8")), expected)
+
     def test_unverified_sign_in_preserves_snapshot(self):
         self.output.write_bytes(b"prior snapshot")
         provider = FakeSteam(valid=False)
@@ -292,6 +307,7 @@ class SteamSyncTests(unittest.TestCase):
         inputs = [
             b'{"response":{"game_count":0,"game_count":1}}',
             b'{"response":{"game_count":0,"extra":NaN}}',
+            BOM_UTF16_LE + '{"response":{"game_count":0}}'.encode("utf-16-le"),
             {"response": {"game_count": False, "games": []}},
             {"response": {"game_count": 1}},
             {"response": {"game_count": 1, "games": [{"appid": True}]}},
@@ -312,6 +328,27 @@ class SteamSyncTests(unittest.TestCase):
                 sync.SteamSyncError, "invalid entry"):
             sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=FakeSteam())
         browser.assert_not_called()
+
+    def test_rejects_invalid_utf16_base_catalog_before_sign_in(self):
+        prior = json.dumps({"schema_version": 1, "entries": [steam_entry("77", "Local Game")]})
+        encoded = BOM_UTF16_LE + prior.encode("utf-16-le")
+        invalid = {
+            "truncated code unit": encoded[:-1],
+            "unpaired surrogate": encoded.replace("Local Game".encode("utf-16-le"), b"\x00\xd8"),
+            "big-endian BOM": BOM_UTF16_BE + prior.encode("utf-16-be"),
+            "duplicate key": BOM_UTF16_LE + '{"schema_version":1,"schema_version":1,"entries":[]}'.encode("utf-16-le"),
+            "nonfinite value": BOM_UTF16_LE + '{"schema_version":1,"entries":[NaN]}'.encode("utf-16-le"),
+        }
+        provider = FakeSteam()
+        with patch("exodus.steam_sync.webbrowser.open", return_value=False) as browser:
+            for case, data in invalid.items():
+                with self.subTest(case=case):
+                    self.output.write_bytes(data)
+                    with self.assertRaisesRegex(sync.SteamSyncError, "Invalid JSON in the base catalog"):
+                        sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=provider)
+                    self.assertEqual(self.output.read_bytes(), data)
+        browser.assert_not_called()
+        self.assertEqual(provider.requests, [])
 
     def test_failed_atomic_replace_preserves_output_and_cleans_stage(self):
         self.output.write_bytes(b"prior snapshot")
