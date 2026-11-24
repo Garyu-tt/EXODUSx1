@@ -31,10 +31,25 @@ static void show_measurement(const char *status, const struct exodus_probe_stats
     printf("%s\n\n", status);
     printf("Pages verified:       %" PRIu64 "\n", stats->pages);
     printf("Sparse pages:         %" PRIu64 "\n", stats->sparse_pages);
+    printf("Word-run pages:       %" PRIu64 "\n", stats->word_run_pages);
     printf("Input bytes counted:  %" PRIu64 "\n", stats->pages * EXODUS_PAGE_BYTES + stats->trailing_bytes);
     printf("Payload bytes:        %" PRIu64 "\n", stats->payload_bytes);
     printf("Length index bytes:   %" PRIu64 "\n", stats->pages * 2);
     printf("Trailing bytes (raw): %zu\n", stats->trailing_bytes);
+}
+
+static void show_word_run_demo(void)
+{
+    static const uint8_t pixel[] = {0x44, 0x77, 0xaa, 0xff};
+    uint8_t page[EXODUS_PAGE_BYTES];
+    for (size_t byte = 0; byte < sizeof(page); byte += sizeof(pixel))
+        memcpy(page + byte, pixel, sizeof(pixel));
+
+    struct exodus_probe_stats stats = {0};
+    if (exodus_probe_adaptive_page(page, &stats) && stats.payload_bytes == 41)
+        printf("Solid RGBA       %4" PRIu64 " payload bytes   byte check passed\n", stats.payload_bytes);
+    else
+        puts("Solid RGBA       payload size or round-trip verification FAILED");
 }
 
 int main(void)
@@ -87,11 +102,13 @@ int main(void)
 
         if (redraw) {
             consoleClear();
-            puts("EXODUS sparse page probe\n");
+            puts("EXODUS memory page probe\n");
             if (status)
                 show_measurement(status, &stats);
-            else
+            else {
                 show_demo();
+                show_word_run_demo();
+            }
             puts("\nOptional sample: " SAMPLE_PATH);
             puts(input ? "B  Cancel scan     +  Exit" : "A  Run demo     X  Scan sample     +  Exit");
             redraw = false;
