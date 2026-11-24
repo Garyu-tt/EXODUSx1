@@ -1,16 +1,18 @@
 #include "nxbsd_fd.h"
 #include "nxbsd_pipe.h"
 #include <errno.h>
+#include <stdatomic.h>
+#include <limits.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 enum kind { NATIVE, PIPE_READ, PIPE_WRITE };
-struct pipe_pair { struct nxbsd_pipe pipe; unsigned ends; };
+struct pipe_pair { struct nxbsd_pipe pipe; atomic_uint ends; };
 struct nxbsd_fd_object {
     enum kind kind;
-    unsigned refs;
+    atomic_uint refs;
     int native;
     struct pipe_pair *pair;
 };
@@ -32,6 +34,30 @@ void nxbsd_fd_init(struct nxbsd_fd_table *t)
 {
     memset(t, 0, sizeof(*t));
 }
+static int retain(struct nxbsd_fd_object *o)
+{
+    unsigned n = atomic_load(&o->refs);
+    do {
+        if (n == UINT_MAX) return bad(EOVERFLOW);
+    } while (!atomic_compare_exchange_weak(&o->refs, &n, n + 1));
+    return 0;
+}
+int nxbsd_fd_clone(struct nxbsd_fd_table *dst, const struct nxbsd_fd_table *src)
+{
+    if (!dst || !src || dst == src) return bad(EINVAL);
+    for (int i = 0; i < NXBSD_FD_MAX; ++i)
+        if (dst->slot[i]) return bad(EBUSY);
+    for (int i = 0; i < NXBSD_FD_MAX; ++i) {
+        if (!src->slot[i]) continue;
+        if (retain(src->slot[i])) {
+            int e = errno;
+            nxbsd_fd_clear(dst);
+            return bad(e);
+        }
+        dst->slot[i] = src->slot[i];
+    }
+    return 0;
+}
 int nxbsd_fd_adopt(struct nxbsd_fd_table *t, int fd)
 {
     if (!t || fd < 0) return bad(EINVAL);
@@ -43,7 +69,7 @@ int nxbsd_fd_adopt(struct nxbsd_fd_table *t, int fd)
     if (n < 0) return -1;
     struct nxbsd_fd_object *o = calloc(1, sizeof(*o));
     if (!o) return -1;
-    o->kind = NATIVE; o->refs = 1; o->native = fd;
+    o->kind = NATIVE; atomic_init(&o->refs, 1); o->native = fd;
     t->slot[n] = o;
     return n;
 }
@@ -63,9 +89,9 @@ int nxbsd_fd_pipe(struct nxbsd_fd_table *t, int ends[2])
     if (nxbsd_pipe_init(&p->pipe)) {
         int e = errno; free(p); free(a); free(b); return bad(e);
     }
-    p->ends = 2;
-    a->kind = PIPE_READ; a->refs = 1; a->pair = p;
-    b->kind = PIPE_WRITE; b->refs = 1; b->pair = p;
+    atomic_init(&p->ends, 2);
+    a->kind = PIPE_READ; atomic_init(&a->refs, 1); a->pair = p;
+    b->kind = PIPE_WRITE; atomic_init(&b->refs, 1); b->pair = p;
     t->slot[r] = a; t->slot[w] = b;
     ends[0] = r; ends[1] = w;
     return 0;
@@ -75,13 +101,13 @@ int nxbsd_fd_close(struct nxbsd_fd_table *t, int fd)
     struct nxbsd_fd_object *o = lookup(t, fd);
     if (!o) return -1;
     t->slot[fd] = NULL;
-    if (--o->refs) return 0;
+    if (atomic_fetch_sub(&o->refs, 1) != 1) return 0;
     int rc = 0;
     if (o->kind == NATIVE) rc = close(o->native);
     else {
         struct pipe_pair *p = o->pair;
         rc = nxbsd_pipe_close(&p->pipe, o->kind == PIPE_WRITE);
-        if (!--p->ends) {
+        if (atomic_fetch_sub(&p->ends, 1) == 1) {
             if (nxbsd_pipe_destroy(&p->pipe) == 0) free(p);
             else rc = -1;
         }
@@ -96,7 +122,7 @@ int nxbsd_fd_dup2(struct nxbsd_fd_table *t, int oldfd, int newfd)
     struct nxbsd_fd_object *o = lookup(t, oldfd);
     if (!o || !valid(newfd)) return bad(EBADF);
     if (oldfd == newfd) return newfd;
-    ++o->refs;
+    if (retain(o)) return -1;
     if (t->slot[newfd]) (void)nxbsd_fd_close(t, newfd);
     t->slot[newfd] = o;
     return newfd;
