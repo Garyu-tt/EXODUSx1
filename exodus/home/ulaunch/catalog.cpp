@@ -78,6 +78,8 @@ namespace exodus::home {
                 return Provider::Switch;
             if (id == "switch_homebrew")
                 return Provider::Homebrew;
+            if (id == "corkdeck")
+                return Provider::CorkDeck;
             return Provider::Other;
         }
 

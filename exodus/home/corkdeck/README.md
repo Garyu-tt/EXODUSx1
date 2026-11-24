@@ -40,3 +40,27 @@ cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_horizon_settings.c -
 ```
 
 Native compilation and hardware permission/firmware checks are still required. In particular, do not infer HOS 4.x compatibility from the version of the pinned headers. No settings setters or firmware changes are included.
+
+## R04: unified library preview
+
+The host build now additionally needs C++17 and nlohmann/json headers (set JSON_INCLUDE to the directory containing json.hpp if not /usr/include/nlohmann). The existing catalog parser is shared rather than reimplemented. Open a version 1 EXODUS catalog snapshot:
+
+```sh
+/tmp/exodus-settings /path/to/font.ttf --library /path/to/exodus-catalog.json
+```
+
+The library uses the original CorkDeck drawing/input primitives with a new eight-card paginated view. Directional controls select cards, L/R change pages, A shows metadata, B exits. It recognizes Switch, Homebrew, Steam, CorkDeck and Other. Covers, live scanning, touch-card selection, and provider-specific launch dispatch are not implemented in R04. No catalog input is executed.
+
+Bridge test (use a disposable file path):
+
+```sh
+c++ -std=c++17 -Wall -Wextra -Werror -I "${JSON_INCLUDE:-/usr/include/nlohmann}" \\
+  exodus/home/corkdeck/test_library_catalog.cpp \\
+  exodus/home/corkdeck/library_catalog.cpp exodus/home/ulaunch/catalog.cpp \\
+  -o /tmp/exodus-catalog-check
+scratch=$(mktemp)
+/tmp/exodus-catalog-check "$scratch"
+rm -f "$scratch"
+```
+
+The shared parser is GPL-2.0-only; verify combined donor licensing and notices before distribution. Build/tests and native execution have not been verified in this session.

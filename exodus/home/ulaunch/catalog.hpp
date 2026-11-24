@@ -23,6 +23,7 @@ namespace exodus::home {
         Steam,
         Switch,
         Homebrew,
+        CorkDeck,
         Other,
     };
 
