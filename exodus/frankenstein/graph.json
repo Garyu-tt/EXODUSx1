@@ -178,14 +178,15 @@
     {
       "id": "resident-service",
       "origin": "exodus/frankenstein/sessiond.c",
-      "state": "freebsd-compiled-runtime-test-failed",
+      "state": "freebsd-qemu-arm64-tested",
       "depends": [
         "kernel"
       ],
       "evidence": {
-        "run": 45498059941,
-        "job": 138813713487,
-        "scope": "Both native FreeBSD ELF executables compiled, but POSIX signal reload timed out; earlier Linux tests passed."
+        "run": 45500312919,
+        "job": 138821525995,
+        "artifact": 14970783442,
+        "scope": "Native FreeBSD 15.1 ARM64 compile and same-process live reload, rejected unsafe configs, clean shutdown; QEMU virt only."
       }
     },
     {
@@ -199,14 +200,15 @@
     {
       "id": "manager-dbus",
       "origin": "exodus/frankenstein/sessiond-dbus.inc",
-      "state": "freebsd-compiled-runtime-pending",
+      "state": "freebsd-qemu-arm64-tested",
       "depends": [
         "resident-service"
       ],
       "evidence": {
-        "run": 45498059941,
-        "job": 138813713487,
-        "scope": "FreeBSD native compilation verified; D-Bus runtime not reached; earlier Linux tests passed."
+        "run": 45500312919,
+        "job": 138821525995,
+        "artifact": 14970783442,
+        "scope": "Native FreeBSD 15.1 ARM64 D-Bus desired mode property, persisted configuration, reload and rejection on isolated session bus; no actual graphical session switching."
       }
     },
     {
@@ -236,14 +238,14 @@
     {
       "id": "linux-arm64-abi",
       "origin": "freebsd/freebsd-src@releng/15.1:sys/arm64/linux",
-      "state": "static-syscall-verified",
+      "state": "static-syscall-and-lse-boundary-verified",
       "depends": [
         "kernel"
       ],
       "evidence": {
-        "run": 45500312919,
-        "job": 138821525600,
-        "scope": "Static Linux AArch64 write/exit probe passed under Linuxulator 5.15.0; overall job failed due to inconclusive LSE status through su."
+        "run": 45500903377,
+        "job": 138823600784,
+        "scope": "Static AArch64 Linux syscall probe passed under Linuxulator 5.15.0; native waitpid observed SIGILL=4 for LSE instruction on emulated Cortex-A57; overall guest exit 0. Dynamic ABI and physical hardware unverified."
       }
     },
     {
