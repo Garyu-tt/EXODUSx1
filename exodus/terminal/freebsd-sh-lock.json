@@ -336,6 +336,66 @@
       "blob": "92857027843ae75a8ed4ab9ce8d6b673ca91cfb5",
       "capability": "shell.eval",
       "observed_calls": []
+    },
+    {
+      "path": "bin/sh/cd.c",
+      "blob": "c47e39b920556a248fdd9e80d2fa80fc8975619a",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/main.c",
+      "blob": "0ca2d4942426c5e1b0ecaceb13b0c85ec969e9a6",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/miscbltin.c",
+      "blob": "d75d3390245864269f32e33838ee9323d837958e",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mail.c",
+      "blob": "f4469399eb7ed4d12fa8cda657c428ca02c100de",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/arith_yacc.c",
+      "blob": "5c42ce0054e55d804aedf73cd5f0e262c1b89c93",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/arith_yylex.c",
+      "blob": "e6c5f39d4da43175fdab0a94dbd7696745137aea",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/cd.h",
+      "blob": "6aa046913398ac2e6af118e745195dac53280013",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/arith_yacc.h",
+      "blob": "b0e51f19c466cd57a0c0eb31b009b646b160bb27",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/bltin/echo.c",
+      "blob": "648965ba78fafaf7647f292800bde2bf9a74f928",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/bltin/bltin.h",
+      "blob": "8d541ed1e138fe54f254339ab3c0c7c5df3bc48f",
+      "capability": "shell.eval",
+      "observed_calls": []
     }
   ],
   "providers": {
