@@ -1,0 +1,39 @@
+name: NX-BSD FreeBSD sh generators
+on:
+  pull_request:
+    paths:
+      - 'exodus/terminal/**'
+      - '.github/workflows/nxbsd-sh-generators.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: freebsd/freebsd-src
+          ref: e5477acb8a8b7f69ae9143f4fd7270ede7174884
+          path: donor-freebsd
+          sparse-checkout: |
+            bin/sh
+            lib/libedit
+          persist-credentials: false
+      - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-a"
+      - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-b"
+      - run: diff -r "$RUNNER_TEMP/grammar-a" "$RUNNER_TEMP/grammar-b"
+      - name: Compile generated syntax tables for both char signedness modes
+        run: |
+          for mode in -fsigned-char -funsigned-char; do
+            cc -std=gnu11 "$mode" -I donor-freebsd/bin/sh -I "$RUNNER_TEMP/grammar-a" -c "$RUNNER_TEMP/grammar-a/syntax.c" -o "$RUNNER_TEMP/syntax.o"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-sh-grammar
+          path: ${{ runner.temp }}/grammar-a
+          retention-days: 7
