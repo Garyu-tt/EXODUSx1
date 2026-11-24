@@ -323,7 +323,7 @@ index 075eb97..80ca142 100755
 +        catalog_menu_item->AddOnKey(&exodus::home::ShowCatalog);
 +        this->options_menu->AddItem(catalog_menu_item);
 diff --git a/projects/uSystem/source/main.cpp b/projects/uSystem/source/main.cpp
-index 2d6aca3..65a2d11 100644
+index 2d6aca3..b32c54a 100644
 --- a/projects/uSystem/source/main.cpp
 +++ b/projects/uSystem/source/main.cpp
 @@ -16,0 +17,4 @@
@@ -433,7 +433,7 @@ index 2d6aca3..65a2d11 100644
 +                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication: {
 +                            return writer.Push(catalog_gamecard);
 +                        }
-@@ -1038,0 +1139,20 @@ namespace {
+@@ -1038,0 +1139,22 @@ namespace {
 +            case ActionType::LaunchCatalogGameCardApplication: {
 +                if(!la::IsActive()) {
 +                    const auto &request = action.launch_catalog_gamecard;
@@ -446,7 +446,9 @@ index 2d6aca3..65a2d11 100644
 +                    if(R_FAILED(rc)) {
 +                        UL_LOG_WARN("Catalog game card launch stopped with %s", ul::util::FormatResultDisplay(rc).c_str());
 +                        if(!app::IsActive()) {
-+                            UL_RC_ASSERT(LaunchMenu(ul::smi::MenuStartMode::MainMenu));
++                            const auto mode = accountUidIsValid(&g_SelectedUser)
++                                ? ul::smi::MenuStartMode::MainMenu : ul::smi::MenuStartMode::StartupMenu;
++                            UL_RC_ASSERT(LaunchMenu(mode));
 +                            PushSimpleMenuMessage(ul::smi::MenuMessage::PreviousLaunchFailure);
 +                        }
 +                    }
