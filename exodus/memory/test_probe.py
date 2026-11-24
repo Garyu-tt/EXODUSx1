@@ -36,6 +36,22 @@ class ProbeTests(unittest.TestCase):
                 })
                 self.assertEqual(path.read_bytes(), sample)
 
+    def test_unicode_sample_path(self):
+        sample = bytes(PAGE) + b"end"
+        with tempfile.TemporaryDirectory() as tmp:
+            plain_path = Path(tmp) / "sample.bin"
+            plain_path.write_bytes(sample)
+            baseline = subprocess.run([PROBE, plain_path], capture_output=True, check=True)
+
+            unicode_path = Path(tmp) / "測試" / "sample 🧪.bin"
+            unicode_path.parent.mkdir()
+            plain_path.rename(unicode_path)
+            result = subprocess.run([PROBE, unicode_path], capture_output=True)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout), json.loads(baseline.stdout))
+            self.assertEqual(unicode_path.read_bytes(), sample)
+
     def test_bad_invocations(self):
         with tempfile.TemporaryDirectory() as tmp:
             for args in [[], [Path(tmp) / "missing"]]:
