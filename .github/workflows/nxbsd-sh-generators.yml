@@ -152,6 +152,23 @@ jobs:
           cc -r "$RUNNER_TEMP/shell-builtins.o" "$RUNNER_TEMP/tools/"*.o -o "$RUNNER_TEMP/shell-tools.o"
           nm -u "$RUNNER_TEMP/shell-tools.o" > "$RUNNER_TEMP/grammar-a/tools-undefined.txt"
           cat "$RUNNER_TEMP/grammar-a/tools-undefined.txt"
+      - name: Install host link dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libbsd-dev libedit-dev
+      - name: Compile original FreeBSD history and line editing
+        run: |
+          cc -std=gnu11 -funsigned-char -DSHELL -Werror=implicit-function-declaration \
+            -include exodus/terminal/freebsd_parser_host.h \
+            -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+            -I "$RUNNER_TEMP/grammar-a" \
+            -c donor-freebsd/bin/sh/histedit.c -o "$RUNNER_TEMP/histedit.o"
+      - name: Link host FreeBSD sh reference executable
+        run: |
+          cc "$RUNNER_TEMP/shell-tools.o" "$RUNNER_TEMP/histedit.o" -ledit -lbsd -o "$RUNNER_TEMP/nxbsd-sh"
+          file "$RUNNER_TEMP/nxbsd-sh"
+          ldd "$RUNNER_TEMP/nxbsd-sh"
+          python3 exodus/terminal/test_freebsd_shell_host.py "$RUNNER_TEMP/nxbsd-sh"
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
