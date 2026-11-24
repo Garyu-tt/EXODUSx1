@@ -72,3 +72,11 @@ the selected inter-kernel transport needs them.
 The machine-readable graph.json is the dependency DAG; this contract explains
 its hardware gates. #55 applies to all interfaces. Feature freeze: these
 nodes elaborate existing #103/#105 requirements, not new product features.
+
+## R19 candidate assessment and heartbeat contract
+
+- [Jailhouse upstream](https://github.com/siemens/jailhouse) and [Jetson TX1/TX2 port](https://github.com/evidence/linux-jailhouse-jetson) establish a related Tegra partitioning precedent, not Switch support. Jailhouse requires a Linux control OS; use as an architectural donor only, not a third production OS.
+- [FreeBSD 15.1 vmm(4)](https://man.freebsd.org/cgi/man.cgi?format=html&query=vmm&sektion=4) documents EL2 at boot and GICv3 on arm64. [Upstream Tegra210 device tree](https://code.googlesource.com/linux/torvalds/linux/%2B/6f771ce6c3bb2c4dc9d348b578871c7adb8b285b/arch/arm64/boot/dts/nvidia/tegra210.dtsi) describes GIC-400 (GICv2). Do not assume stock bhyve can host this physical platform. Actual Switch revision and virtual interrupt support remain to be established.
+- [seL4 TX1 documentation](https://docs.sel4.systems/Hardware/jetsontx1.html) explicitly excludes SMP, SMMU and Hyp-mode in that kernel port; not a turnkey mediator for this target.
+- `ipc_contract.py`: 24-byte fixed-size, big-endian reference heartbeat with version, role, generation and strict sequence; reject malformed/replayed/stale messages and close on local 3s timeout or clock rollback. Locally established generation and authenticated endpoint identity are assumptions of the reference model, not authentication provided by the frame itself. Two fresh heartbeats are necessary but not sufficient to prove independent kernel execution. No actual shared-memory driver, kernel, hardware mapping or privileged transport is implemented.
+- Local Python tests: 7/7 groups PASS, including nine malformed-frame variants; exact Git blob 4a89d74f6ad97d0764e213b67498ab02f77e3791. CI matrix pending. Timeout is a test parameter, not a measured hardware budget.
