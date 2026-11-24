@@ -20,7 +20,7 @@ Pass `--steam-install` to read the libraries configured by an installed Steam cl
 
 ```shell
 python exodus/steam_catalog.py --steam-install "C:/Program Files (x86)/Steam" --output steam.json
-python -m exodus.app_catalog --steam-install "C:/Program Files (x86)/Steam" --switch-sd F:/ > catalog.json
+python -m exodus.app_catalog --steam-install "C:/Program Files (x86)/Steam" --switch-sd F:/ --output catalog.json
 ```
 
 Discovery reads `steamapps/libraryfolders.vdf`, falling back to `config/libraryfolders.vdf` only when the first file is absent. It accepts numbered library objects with a `path` field and older numbered path strings. The installation's default `steamapps` library is always scanned. Additional libraries follow their numeric configuration indexes; unrelated configuration metadata is ignored. Duplicate library paths, including local symlink aliases, are scanned once. Explicit positional libraries or `--steam-library` sources precede discovered libraries when equally installed copies of an app appear in more than one location.
@@ -34,7 +34,7 @@ Discovery is opt-in: the existing positional and `--steam-library` inputs still 
 From the checkout root on a PC, pass the mounted Switch SD card root and any Steam libraries to scan.
 
 ```shell
-python -m exodus.app_catalog --switch-sd F:/ --steam-library "D:/SteamLibrary" > catalog.json
+python -m exodus.app_catalog --switch-sd F:/ --steam-library "D:/SteamLibrary" --output catalog.json
 ```
 
 Supply either source on its own or repeat `--steam-library` for additional Steam libraries. The catalog keeps both providers in the same `entries` array. It lists Steam entries by numeric App ID, followed by `switch_homebrew` entries sorted by their paths relative to the SD card's `switch` directory. That relative path uses forward slashes and is the provider ID.
@@ -45,7 +45,7 @@ The homebrew scan reads `.nro` metadata under `switch` and uses the first nonemp
 
 Both offline commands check the complete combined catalog against HOME's limits of 4,096 entries and 2 MiB before writing any output. The byte budget includes JSON formatting, Unicode escapes and the final newline. The commands emit ASCII JSON with LF line endings on both Windows and Linux, so Windows text-mode newline expansion cannot push an otherwise valid document over the limit.
 
-An oversized catalog produces a diagnostic on stderr, exits with code 1 and writes no JSON to stdout. No entries are silently dropped. Select fewer source libraries or correct oversized source metadata before exporting again. Ordinary partial scans still emit their readable entries with exit code 1 when the resulting catalog fits these limits. Steam sign-in refreshes and the standalone importer's `--output` option use the same checks and atomic file replacement to preserve any existing snapshot on a size or write error.
+An oversized catalog produces a diagnostic on stderr, exits with code 1 and writes no JSON to stdout. No entries are silently dropped. Select fewer source libraries or correct oversized source metadata before exporting again. Ordinary partial scans still emit their readable entries with exit code 1 when the resulting catalog fits these limits. Steam sign-in refreshes and both offline importers' `--output` options use the same checks and atomic file replacement to preserve any existing snapshot on a size or write error.
 
 ## Refresh Steam titles after browser sign-in
 
