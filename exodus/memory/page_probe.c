@@ -31,10 +31,14 @@ int main(int argc, char **argv)
     if (result != EXODUS_PROBE_DONE)
         return EXIT_FAILURE;
 
-    printf("{\"pages\":%" PRIu64 ",\"sparse_pages\":%" PRIu64
-           ",\"input_bytes\":%" PRIu64 ",\"payload_bytes\":%" PRIu64
-           ",\"length_index_bytes\":%" PRIu64 ",\"trailing_bytes\":%zu}\n",
-           stats.pages, stats.sparse_pages, stats.pages * EXODUS_PAGE_BYTES + stats.trailing_bytes,
-           stats.payload_bytes, stats.pages * 2, stats.trailing_bytes);
+    if (printf("{\"pages\":%" PRIu64 ",\"sparse_pages\":%" PRIu64
+               ",\"input_bytes\":%" PRIu64 ",\"payload_bytes\":%" PRIu64
+               ",\"length_index_bytes\":%" PRIu64 ",\"trailing_bytes\":%zu}\n",
+               stats.pages, stats.sparse_pages, stats.pages * EXODUS_PAGE_BYTES + stats.trailing_bytes,
+               stats.payload_bytes, stats.pages * 2, stats.trailing_bytes) < 0 ||
+        fflush(stdout) == EOF) {
+        perror("Could not write probe results");
+        return EXIT_FAILURE;
+    }
     return EXIT_SUCCESS;
 }

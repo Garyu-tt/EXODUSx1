@@ -43,6 +43,19 @@ class ProbeTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
+    @unittest.skipUnless(sys.platform.startswith("linux") and Path("/dev/full").exists(),
+                         "Requires Linux /dev/full")
+    def test_output_flush_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sample.bin"
+            sample = bytes(PAGE) + b"tail"
+            path.write_bytes(sample)
+            with open("/dev/full", "wb") as output:
+                result = subprocess.run([PROBE, path], stdout=output, stderr=subprocess.PIPE)
+            self.assertEqual(path.read_bytes(), sample)
+            self.assertGreater(result.returncode, 0)
+            self.assertIn(b"Could not write probe results", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
