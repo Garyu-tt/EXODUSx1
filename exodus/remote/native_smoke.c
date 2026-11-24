@@ -7,6 +7,7 @@
 #include <mbedtls/ssl.h>
 #include "horizon_provider.h"
 #include "remote_wire.h"
+#include "horizon_socket_smoke.h"
 
 static int clock_smoke(void) {
     struct timespec a,b;
@@ -46,11 +47,13 @@ static void local_probe(void) {
         exr_dispatch(&denied,&p,0,"system.status",13,out,sizeof(out))==EXR_DENIED &&
         exw_tick(&wire,&denied,0)==EXW_CLOSE;
     printf("Remote disabled gate: %s\n",fail_closed?"PASS":"FAIL");
-    puts("No TLS handshake, socket, or hardware acceptance inferred.");
+    int net=exn_loopback_smoke();
+    printf("Native TCP loopback: %s (stage=%d)\n",net==0?"PASS":"FAIL",net);
+    puts("Loopback only; no TLS handshake or remote access.");
 }
 int main(void){
     consoleInit(NULL);
-    puts("EXODUS Remote R03.5 - local native smoke");
+    puts("EXODUS Remote R03.14 - local native smoke");
     char version[64]; mbedtls_version_get_string_full(version);
     printf("Crypto diagnostic: %s\n",version);
     puts("Press A to run local read-only diagnostics; Plus to exit.");
