@@ -110,7 +110,7 @@ namespace exodus::home {
     }
 
     template <typename Character>
-    static Catalog ParseCatalogText(std::basic_string_view<Character> text) {
+    static Catalog ParseCatalogText(std::basic_string_view<Character> text, std::string *normalized_utf8) {
         const auto structure = CheckStructure(text);
         if (structure != CatalogStatus::Ready)
             return {structure, {}};
@@ -150,14 +150,16 @@ namespace exodus::home {
             const auto &name = entry["name"].get_ref<const std::string &>();
             catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name)});
         }
+        if (normalized_utf8 != nullptr)
+            *normalized_utf8 = document.dump();
         return catalog;
     }
 
-    Catalog ParseCatalog(std::string_view text) {
+    Catalog ParseCatalog(std::string_view text, std::string *normalized_utf8) {
         if (text.size() > CatalogByteLimit)
             return {CatalogStatus::TooLarge, {}};
         if (text.substr(0, 2) != "\xff\xfe")
-            return ParseCatalogText(text);
+            return ParseCatalogText(text, normalized_utf8);
         if (text.size() % 2 != 0)
             return {CatalogStatus::Invalid, {}};
 
@@ -176,7 +178,7 @@ namespace exodus::home {
         }
         if (needs_low_surrogate)
             return {CatalogStatus::Invalid, {}};
-        return ParseCatalogText(std::u16string_view(decoded));
+        return ParseCatalogText(std::u16string_view(decoded), normalized_utf8);
     }
 
     Catalog ReadCatalog(const char *path) {

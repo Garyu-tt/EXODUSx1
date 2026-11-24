@@ -36,7 +36,7 @@ namespace exodus::home {
         std::vector<Entry> entries;
     };
 
-    Catalog ParseCatalog(std::string_view text);
+    Catalog ParseCatalog(std::string_view text, std::string *normalized_utf8 = nullptr);
     Catalog ReadCatalog(const char *path);
     std::string CatalogLabel();
     void ShowCatalog();
