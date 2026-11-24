@@ -1,0 +1,27 @@
+name: Kernel Bridge admission host tests
+on:
+  pull_request:
+    paths:
+      - 'tools/kernel_bridge/admission.c'
+      - '.github/workflows/kernel-bridge-admission.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/kernel_bridge/admission.c'
+      - '.github/workflows/kernel-bridge-admission.yml'
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          "$CC" -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -fno-sanitize-recover=all tools/kernel_bridge/admission.c -o "$RUNNER_TEMP/exodus-admission"
+          "$RUNNER_TEMP/exodus-admission"
