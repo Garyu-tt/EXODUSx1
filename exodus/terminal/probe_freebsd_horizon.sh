@@ -42,12 +42,19 @@ cat "$out/modules.tsv"
 if ((${#objects[@]})); then
     "$cc" -r "${objects[@]}" -o "$out/shell-partial.o"
     "$nm" -u "$out/shell-partial.o" > "$out/shell-partial.undefined.txt"
+    cat "$out/shell-partial.undefined.txt"
     "$readelf" -h "$out/shell-partial.o" > "$out/elf-header.txt"
 fi
 link=not_attempted
 if ((failed==0)); then
     link=no
-    if "$cc" -specs="$libnx/switch.specs" "$out/shell-partial.o" -L"$libnx/lib" -lnx -o "$out/shell-probe.elf" > "$out/final-link.log" 2>&1; then link=yes; fi
+    if "$cc" -specs="$libnx/switch.specs" "$out/shell-partial.o" -L"$libnx/lib" -lnx -o "$out/shell-probe.elf" > "$out/final-link.log" 2>&1; then
+        link=yes
+        "$readelf" -h "$out/shell-probe.elf" > "$out/final-elf-header.txt"
+        "$nm" -u "$out/shell-probe.elf" > "$out/final-undefined.txt"
+    else
+        cat "$out/final-link.log"
+    fi
 fi
 printf 'donor_compiled=%s\ndonor_failed=%s\ncompiled=%s\nfailed=%s\nfinal_link=%s\nruntime=not_tested\n' "$donor_compiled" "$donor_failed" "${#objects[@]}" "$failed" "$link" | tee "$out/summary.txt"
 # A successful inventory does not mean the shell builds. Require a real target object.
