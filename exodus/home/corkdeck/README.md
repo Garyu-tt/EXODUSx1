@@ -165,3 +165,12 @@ The kernel memory charge is not a measurement of live EXODUS allocations. libnx 
 
 R11 also replaces the visible donor product label on the shell-owned headers and prefixes footer action labels with ASCII controller names. This is a fallback for blank glyphs seen on hardware, not a fix to the donor glyph renderer or internal settings/dialog headers. Touch hitboxes remain managed by the original UI. Donor source and licensing are retained. Native compilation and on-device acceptance of R11 are pending. R10 is not a HOME replacement. Library, launch handoffs, settings, exit and suspend/resume still require separate tests.
 
+
+
+## R12: physical acceptance follow-up and local inventory
+
+Operator photos confirm R10 on Switch Lite running firmware reported as 20.5.0: Settings System, Connectivity and Hardware panels rendered; Library reports Catalog unavailable; Terminal and SSH display the expected missing/invalid NRO dialog. Native platform text is now explicit rather than SDL's unknown string.
+
+When the default SD catalog is unavailable, the native shell attempts a read-only live inventory of registered application IDs and localized names via NS (adapted from #15) and scans /switch plus one subdirectory level for structurally valid NRO files. The scan caps records at 4096 and directory entries visited at 4096. It skips the shell's own standard path. A failed NS scan discards partial NS records; discovered homebrew may still be shown. A valid existing catalog remains authoritative; an invalid catalog is not silently replaced. No export, network request, file deletion, or automatic launch occurs. The live list does not yet include artwork, Steam sync, or CorkDeck Windows catalog import. On-device service permissions, scan completeness, latency, and launch handoffs remain to be tested.
+
+The workflow also builds two independent optional NRO tools from fixed revisions of #43 (terminal) and #37 (SSH), packages them under the shell's expected SD paths, and publishes each artifact only after structural validation. These are the current terminal and one-shot SSH implementations, not a complete FreeBSD userspace or an interactive SSH PTY. Build results and hardware execution must be checked separately. Do not install unverified artifacts.
