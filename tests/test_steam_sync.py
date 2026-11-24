@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
-from threading import Thread
+from threading import Event, Thread
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -210,7 +210,60 @@ class SteamSyncTests(unittest.TestCase):
             sync.sign_in(provider, lambda address: True, timeout=0.01)
         with self.assertRaisesRegex(sync.SteamSyncError, "Could not open"):
             sync.sign_in(provider, lambda address: False, timeout=1)
+        with patch("exodus.steam_sync.webbrowser.open", side_effect=OSError("synthetic launch error")) as failed:
+            with self.assertRaisesRegex(sync.SteamSyncError, "Could not open"):
+                sync.sign_in(provider, failed, timeout=1)
         self.assertFalse(self.output.exists())
+        self.assertEqual(provider.requests, [])
+
+    def test_callback_can_finish_while_foreground_launcher_waits(self):
+        provider = FakeSteam()
+        browser = LocalBrowser()
+        release = Event()
+        launch_finished = Event()
+        self.addCleanup(browser.join)
+
+        def foreground_browser(address):
+            try:
+                opened = browser.open(address)
+                browser.join()
+                release.wait(timeout=5)
+                return opened
+            finally:
+                launch_finished.set()
+
+        try:
+            count = sync.sync_library(self.output, API_KEY, timeout=2, opener=provider,
+                                      open_browser=foreground_browser)
+            self.assertEqual(count, 2)
+            browser.join()
+            self.assertFalse(launch_finished.is_set())
+            self.assertEqual(browser.replies[0][0], 200)
+            self.assertTrue(self.output.is_file())
+        finally:
+            release.set()
+        self.assertTrue(launch_finished.wait(timeout=2))
+
+    def test_foreground_launcher_does_not_delay_timeout(self):
+        provider = FakeSteam()
+        launch_started = Event()
+        launch_finished = Event()
+        release = Event()
+
+        def slow_browser(address):
+            launch_started.set()
+            release.wait(timeout=2)
+            launch_finished.set()
+            return True
+
+        try:
+            with self.assertRaisesRegex(sync.SteamSyncError, "Timed out"):
+                sync.sign_in(provider, slow_browser, timeout=0.05)
+            self.assertTrue(launch_started.wait(timeout=1))
+            self.assertFalse(launch_finished.is_set())
+        finally:
+            release.set()
+        self.assertTrue(launch_finished.wait(timeout=1))
         self.assertEqual(provider.requests, [])
 
     def test_rejects_duplicate_callback_fields(self):

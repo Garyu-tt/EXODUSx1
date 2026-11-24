@@ -1,6 +1,7 @@
 """Sign in through Steam in a desktop browser and export a HOME catalog."""
 
 import argparse
+from concurrent.futures import Future
 from datetime import datetime, timezone
 from http.client import HTTPException
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -12,6 +13,7 @@ import re
 import secrets
 import sys
 from tempfile import NamedTemporaryFile
+from threading import Thread
 import time
 from urllib.error import HTTPError
 from urllib.parse import parse_qsl, urlencode, urlsplit
@@ -192,14 +194,26 @@ def sign_in(opener, open_browser, timeout):
             "openid.claimed_id": identifier,
             "openid.identity": identifier,
         })
-        try:
-            if not open_browser(address):
-                raise SteamSyncError("Could not open the system browser for Steam sign-in.")
-        except (OSError, webbrowser.Error):
-            raise SteamSyncError("Could not open the system browser for Steam sign-in.") from None
+        launch = Future()
 
+        def launch_browser():
+            try:
+                opened = open_browser(address)
+            except BaseException as error:
+                launch.set_exception(error)
+            else:
+                launch.set_result(opened)
+
+        # A foreground launcher can wait for the browser to exit. Keep serving its callback.
         deadline = time.monotonic() + timeout
+        Thread(target=launch_browser, daemon=True).start()
         while server.outcome is None:
+            if launch.done():
+                try:
+                    if not launch.result():
+                        raise SteamSyncError("Could not open the system browser for Steam sign-in.")
+                except (OSError, webbrowser.Error):
+                    raise SteamSyncError("Could not open the system browser for Steam sign-in.") from None
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise SteamSyncError("Timed out waiting for Steam sign-in.")
