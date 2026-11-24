@@ -39,6 +39,7 @@ probe target-stdio exodus/terminal/freebsd_stdio_horizon.c
 for m in ast_bridge pipe fd context task pipeline commands; do
     probe "target-$m" "exodus/terminal/nxbsd_$m.c"
 done
+probe target-console exodus/terminal/nxbsd_horizon_console.c
 cat "$out/modules.tsv"
 if ((${#objects[@]})); then
     "$cc" -r "${objects[@]}" -o "$out/shell-partial.o"
@@ -67,6 +68,19 @@ if ((failed==0)); then
         cat "$out/final-link.log"
     fi
 fi
+package=not_attempted
+if [ "$link" = yes ]; then
+    package=no
+    if nacptool --create "NX-BSD FreeBSD sh (experimental)" "EXODUSx1" "0.1.0" "$out/nxbsd-shell.nacp" &&
+       elf2nro "$out/shell-probe.elf" "$out/nxbsd-shell.nro" --icon="$libnx/default_icon.jpg" --nacp="$out/nxbsd-shell.nacp" &&
+       python3 exodus/terminal/verify_nxbsd_nro.py "$out/nxbsd-shell.nro" > "$out/nro-validation.json"; then
+        package=yes
+        sha256sum "$out/nxbsd-shell.nro" > "$out/nro-sha256.txt"
+    else
+        rm -f "$out/nxbsd-shell.nro"
+    fi
+fi
+printf 'nro_package=%s\n' "$package" > "$out/package-status.txt"
 printf 'donor_compiled=%s\ndonor_failed=%s\ncompiled=%s\nfailed=%s\nfinal_link=%s\nruntime=not_tested\n' "$donor_compiled" "$donor_failed" "${#objects[@]}" "$failed" "$link" | tee "$out/summary.txt"
 # A successful inventory does not mean the shell builds. Require a real target object.
 test -s "$out/objects/generated-syntax.o"
