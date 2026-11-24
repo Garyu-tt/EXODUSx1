@@ -14,6 +14,12 @@ The viewer skips incomplete, malformed and oversized Steam snapshots, as well as
 
 To restore the manual catalog view, close the NRO and move the `snapshots` directory to a backup location. Both apps leave `/ulaunch/exodus-catalog.json` and earlier manually exported catalogs intact. A later successful sync creates a new snapshot directory.
 
+## Check a Steam game's launch status
+
+On a page with Steam games that have a valid AppID, select **Steam status** and choose a game. The dialog shows its Steam AppID and whether the row came from the saved Steam Sync library or the manual catalog.
+
+uMenu sends the AppID to the matching uSystem through a read-only command. uSystem reports that Steam launch is unavailable while approval of a local Switch runtime is pending. Actual launch requires a local runtime, installation and an official Steam entitlement path. [EX-006 tracker](https://github.com/Garyu-tt/EXODUSx1/pull/3) · [Nintendo Safe Mode #55](https://github.com/Garyu-tt/EXODUSx1/issues/55)
+
 ## Launch from an inserted game card
 
 Nintendo Safe Mode admits one Switch catalog launch provider. With no application suspended, insert a game card and select **Launch** on the page containing a ready title from that card. Choose its number and confirm the name and hexadecimal ID read from local control data. uMenu asks the matching uSystem to discover and queue the catalog route. uSystem rechecks the provider and selected user when it consumes the queued action, immediately before starting the title.
@@ -67,3 +73,5 @@ On a Switch running the matching uLaunch release, start with a manual catalog co
 Check that **Launch** appears for a ready title on an inserted card and opens it after confirmation. Check cancellation, a stale ID, an ejected card, an installed digital title and a suspended application. Check that the normal HOME grid still opens a title. For rollback, power off and restore the saved uMenu and uLoader applet directories and both uSystem files.
 
 For homebrew, use an NRO registered in the root grid with spaces in its filename. Check the displayed path, cancellation and a confirmed applet launch, then remove the grid registration while keeping the catalog row and check that it disappears from the launch list. Try the same check with a missing NRO and verify that the normal grid still handles its own entries.
+
+For Steam, open **Steam status** on a page with both Steam and local entries, select a specific game and check its displayed AppID and saved-library source. Repeat with the manual catalog and check for that source. The launch list should contain eligible local entries only.
