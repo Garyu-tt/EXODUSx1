@@ -8,6 +8,9 @@ extern "C" {
 #endif
 struct exodus_library;
 struct exodus_library *exodus_library_open(const char *path);
+/* Optional read-only Games inventory, entries remain nonlaunchable Other. */
+struct exodus_library *exodus_library_open_with_games(const char *path, const char *root);
+const char *exodus_library_discovery_status(const struct exodus_library *library);
 void exodus_library_close(struct exodus_library *library);
 const char *exodus_library_status(const struct exodus_library *library);
 size_t exodus_library_count(const struct exodus_library *library);
