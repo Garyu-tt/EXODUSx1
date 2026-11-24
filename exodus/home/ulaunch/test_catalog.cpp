@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <utility>
 
 using namespace exodus::home;
@@ -61,6 +62,27 @@ namespace {
         assert(ParseCatalog(EncodeUtf16Le(raw_null)).status == CatalogStatus::Invalid);
         assert(ParseCatalog(EncodeUtf16Le(uR"({"schema_version":2,"entries":[]})")).status == CatalogStatus::Invalid);
         assert(ParseCatalog(EncodeUtf16Le(std::u16string(CatalogByteLimit / 2, u' '))).status == CatalogStatus::TooLarge);
+    }
+
+    void CheckSteamApplicationIds() {
+        const auto text = MakeCatalog(MakeEntry("steam", "42", "Steam")
+            + "," + MakeEntry("switch", "42", "Native")
+            + "," + MakeEntry("switch_homebrew", "42", "Homebrew")
+            + "," + MakeEntry("another_provider", "42", "Other"));
+        const auto catalog = ParseCatalog(text);
+        assert(catalog.status == CatalogStatus::Ready && catalog.entries.size() == 4);
+        assert(SteamApplicationId(catalog.entries[0]) == 42);
+        for (std::size_t index = 1; index < catalog.entries.size(); ++index)
+            assert(!SteamApplicationId(catalog.entries[index]));
+
+        assert(SteamApplicationId({Provider::Steam, "", "1"}) == 1);
+        assert(SteamApplicationId({Provider::Steam, "", "4294967295"}) ==
+               std::numeric_limits<std::uint32_t>::max());
+        for (const auto *invalid : {"", "0", "01", "4294967296", "+42", "-42",
+                                    " 42", "42 ", "0x2a", "42.0", "42e0", "４２", "42/nro"}) {
+            assert(!SteamApplicationId({Provider::Steam, "", invalid}));
+        }
+        assert(!SteamApplicationId({Provider::Steam, "", std::string("42\0ignored", 10)}));
     }
 
     void CheckSwitchApplicationIds() {
@@ -241,6 +263,7 @@ namespace {
 
 int main(int argc, char **argv) {
     CheckUtf16Le();
+    CheckSteamApplicationIds();
     CheckSwitchApplicationIds();
     CheckCanonicalHomebrewAppletIds();
     CheckHomebrewProvider();

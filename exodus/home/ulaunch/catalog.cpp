@@ -200,6 +200,18 @@ namespace exodus::home {
         return ParseCatalog(text);
     }
 
+    std::optional<std::uint32_t> SteamApplicationId(const Entry &entry) {
+        if (entry.provider != Provider::Steam || entry.id.empty() || entry.id.front() == '0')
+            return std::nullopt;
+
+        std::uint32_t id = 0;
+        const auto end = entry.id.data() + entry.id.size();
+        const auto parsed = std::from_chars(entry.id.data(), end, id);
+        if (parsed.ec != std::errc{} || parsed.ptr != end)
+            return std::nullopt;
+        return id;
+    }
+
     std::optional<std::uint64_t> SwitchApplicationId(const Entry &entry) {
         if (entry.provider != Provider::Switch || entry.id.size() != 16)
             return std::nullopt;
