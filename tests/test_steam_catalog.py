@@ -175,6 +175,36 @@ class SteamCatalogTests(unittest.TestCase):
         )
         self.assertEqual((combined.returncode, json.loads(combined.stdout), combined.stderr), expected)
 
+    def test_overlapping_sources_keep_nested_library_in_both_commands(self):
+        nested = self.first / "steamapps"
+        nested.mkdir()
+        self.manifest(nested, 42, "Nested library", 4)
+        self.manifest(self.second, 10, "Default library", 4)
+        self.library_config(
+            f'LibraryFolders {{ 1 {{ path {self.quoted(self.first)} }} }}',
+            installation=self.second.parent,
+        )
+        cases = [
+            ((self.first.parent, self.first), (), ["42"]),
+            ((self.first, self.first.parent), (), ["42"]),
+            ((self.first.parent,), ("--steam-install", self.second.parent), ["10", "42"]),
+        ]
+        for libraries, discovery, ids in cases:
+            with self.subTest(libraries=libraries, discovery=discovery):
+                direct = self.scan(*libraries, *discovery)
+                self.assertEqual((direct[0], direct[2]), (0, ""))
+                self.assertEqual([entry["provider_id"] for entry in direct[1]["entries"]], ids)
+
+                combined_args = []
+                for library in libraries:
+                    combined_args.extend(("--steam-library", str(library)))
+                combined = subprocess.run(
+                    [sys.executable, "-B", "-X", "utf8", "-m", "exodus.app_catalog",
+                     *combined_args, *map(str, discovery)],
+                    cwd=SCRIPT.parent.parent, capture_output=True, text=True, encoding="utf-8",
+                )
+                self.assertEqual((combined.returncode, json.loads(combined.stdout), combined.stderr), direct)
+
     def test_direct_manifest_candidates_keep_precedence_over_nested_directory(self):
         nested = self.first / "steamapps"
         nested.mkdir()
