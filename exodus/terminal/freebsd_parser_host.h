@@ -7,6 +7,8 @@
 #include <limits.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/types.h>
+int tcsetsid(int, pid_t);
 /* Host-only implementations in freebsd_stdio_host.c. */
 int eaccess(const char *, int);
 const char *nxbsd_signal_name(int);
