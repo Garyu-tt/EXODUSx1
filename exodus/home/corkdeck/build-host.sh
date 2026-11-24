@@ -17,10 +17,19 @@ git -C "$donor" diff --quiet HEAD -- horizon-wine/source || {
     exit 1
 }
 src="$donor/horizon-wine/source"
-# pkg-config supplies host SDL2 and SDL2_ttf; no runtime or Wine sources.
+# Compile donor C as C, catalog parser as C++17, then link together.
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+trap 'exit 1' HUP INT TERM
+json_include="${JSON_INCLUDE:-/usr/include/nlohmann}"
 # shellcheck disable=SC2046
-"${CC:-cc}" -std=gnu11 -O2 -Wall -Wextra -I "$src" \
-    $(pkg-config --cflags sdl2 SDL2_ttf) \
-    "$here/settings_preview.c" "$src/launcher_ui.c" \
-    "$src/launcher_audio.c" "$src/launcher_svg.c" \
-    $(pkg-config --libs sdl2 SDL2_ttf) -lm -o "$2"
+for file in "$here/settings_preview.c" "$src/launcher_ui.c" "$src/launcher_audio.c" "$src/launcher_svg.c"; do
+    "${CC:-cc}" -std=gnu11 -O2 -Wall -Wextra -I "$src" \
+        $(pkg-config --cflags sdl2 SDL2_ttf) -c "$file" -o "$tmp/$(basename "$file").o"
+done
+for file in "$here/library_catalog.cpp" "$here/../ulaunch/catalog.cpp"; do
+    "${CXX:-c++}" -std=c++17 -O2 -Wall -Wextra -I "$json_include" \
+        -c "$file" -o "$tmp/$(basename "$file").o"
+done
+# shellcheck disable=SC2046
+"${CXX:-c++}" "$tmp"/*.o $(pkg-config --libs sdl2 SDL2_ttf) -lm -o "$2"
