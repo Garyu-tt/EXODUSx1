@@ -1,6 +1,8 @@
 #!/bin/sh
 # Runs only inside the disposable FreeBSD ARM64 VM.
 set -eu
+# nuageinit inherits the base-system rc PATH, not a login shell PATH.
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 exec >/dev/console 2>&1
 finish() {
     rc=$?
@@ -28,6 +30,7 @@ pkg -vv
 pkg info
 # A real source build (not merely installation of a precompiled Wayland).
 pkg install -y git-lite meson ninja pkgconf expat libffi libxml2
+command -v git meson ninja pkgconf
 git init /usr/ports
 git -C /usr/ports remote add origin https://github.com/freebsd/freebsd-ports.git
 git -C /usr/ports fetch --depth=1 origin 98796bd539ea8f03adb7c9d6f9f3a3d54dcca553
