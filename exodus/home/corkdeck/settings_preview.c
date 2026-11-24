@@ -7,6 +7,7 @@
 #include "native_launch.h"
 #include "library_filter.h"
 #include "shell_menu.h"
+#include "control_metrics.h"
 #include "launcher_image.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -269,6 +270,45 @@ static int open_tool(struct ui *ui, const struct exodus_page_info *page)
     return 0;
 }
 
+static void show_control_center(struct ui *ui)
+{
+    struct exodus_metrics metrics;
+    struct exodus_settings settings;
+    const struct ui_hint hints[] = {{UI_X, "Refresh"}, {UI_B, "Back"}};
+    int refresh = 1;
+    ui_start_screen(ui);
+    while (ui_begin_frame(ui)) {
+        struct ui_input input;
+        while (ui_poll(ui, &input)) {
+            if (input.button == UI_B || input.button == UI_PLUS) return;
+            if (input.button == UI_X) refresh = 1;
+        }
+        if (!ui->running) return;
+        if (refresh) {
+            exodus_read_settings(&settings);
+            exodus_read_metrics(&metrics);
+            refresh = 0;
+        }
+        const char *labels[] = {"Battery", "Network", "Wi-Fi", "Bluetooth",
+                                "Brightness", "Performance", "Process memory",
+                                "SD used / capacity", "SoC temperature", "Board temperature"};
+        const char *values[] = {settings.battery, settings.network, settings.wifi,
+                                settings.bluetooth, settings.brightness, settings.performance,
+                                metrics.memory, metrics.storage, metrics.soc, metrics.board};
+        ui_background(ui);
+        ui_header(ui, "Control Center", "Read-only snapshot");
+        for (int n = 0; n < 10; ++n) {
+            int x = 84 + (n % 2) * 568, y = 116 + (n / 2) * 98;
+            ui_panel(ui, x, y, 548, 88);
+            ui_text(ui, ui->small, x + 18, y + 8, labels[n], ui->dim);
+            ui_text_fit(ui, ui->normal, x + 18, y + 42, 512, values[n], ui->text, 0);
+        }
+        ui_footer(ui, hints, 2);
+        ui_present(ui);
+        ui_wait(ui);
+    }
+}
+
 static void draw_home(struct ui *ui, size_t selection)
 {
     ui_background(ui);
@@ -281,8 +321,8 @@ static void draw_home(struct ui *ui, size_t selection)
         ui_text_fit(ui, ui->small, x + 22, y + 47, 1068,
                     exodus_pages[n].description, ui->dim, 0);
     }
-    const struct ui_hint hints[] = {{UI_A, "Open"}, {UI_B, "Exit"}};
-    ui_footer(ui, hints, 2);
+    const struct ui_hint hints[] = {{UI_A, "Open"}, {UI_PLUS, "Control Center"}, {UI_B, "Exit"}};
+    ui_footer(ui, hints, 3);
 }
 
 static void show_home(struct ui *ui, const char *catalog)
@@ -294,6 +334,11 @@ static void show_home(struct ui *ui, const char *catalog)
         int changed_screen = 0;
         while (ui_poll(ui, &input)) {
             if (input.button == UI_B) return;
+            if (input.button == UI_PLUS) {
+                show_control_center(ui);
+                changed_screen = 1;
+                break;
+            }
             if (input.button == UI_UP) selection = exodus_page_move(selection, -1);
             if (input.button == UI_DOWN) selection = exodus_page_move(selection, 1);
             if (input.button != UI_A) continue;
