@@ -1,17 +1,23 @@
 diff --git a/libs/uCommon/include/ul/smi/smi_Protocol.hpp b/libs/uCommon/include/ul/smi/smi_Protocol.hpp
-index 7dd331d..a0d0d6d 100755
+index 7dd331d..efe7b9a 100755
 --- a/libs/uCommon/include/ul/smi/smi_Protocol.hpp
 +++ b/libs/uCommon/include/ul/smi/smi_Protocol.hpp
-@@ -82 +82,8 @@ namespace ul::smi {
+@@ -82 +82,14 @@ namespace ul::smi {
 -        OpenControllerKeyRemapping
 +        OpenControllerKeyRemapping,
 +        QueryCatalogGameCardApplication,
 +        LaunchCatalogGameCardApplication,
++        QueryCatalogHomebrewApplet,
++        LaunchCatalogHomebrewApplet,
 +    };
 +
 +    struct CatalogGameCardInfo {
 +        u64 application_id;
 +        char name[0x200];
++    };
++
++    struct CatalogHomebrewAppletInfo {
++        char path[loader::NroPathSize];
 diff --git a/libs/uCommon/include/ul/ul_Results.rc.hpp b/libs/uCommon/include/ul/ul_Results.rc.hpp
 index abd7983..14336ad 100644
 --- a/libs/uCommon/include/ul/ul_Results.rc.hpp
@@ -19,10 +25,14 @@ index abd7983..14336ad 100644
 @@ -34,0 +35 @@ namespace ulaunch {
 +    R_DEFINE_ERROR_RESULT(CatalogLaunchDenied, 407);
 diff --git a/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp b/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
-index 4c5a30d..c51db63 100755
+index 4c5a30d..d6ef254 100755
 --- a/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
 +++ b/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
-@@ -45,0 +46,25 @@ namespace ul::menu::smi {
+@@ -3,0 +4,3 @@
++#include <ul/menu/catalog_homebrew_policy.hpp>
++#include <array>
++#include <string_view>
+@@ -45,0 +49,52 @@ namespace ul::menu::smi {
 +    inline Result QueryCatalogGameCardApplication(const u64 app_id, CatalogGameCardInfo &info) {
 +        return SendCommand(SystemMessage::QueryCatalogGameCardApplication,
 +            [&](ScopedStorageWriter &writer) {
@@ -48,21 +58,50 @@ index 4c5a30d..c51db63 100755
 +        );
 +    }
 +
++    inline Result CatalogHomebrewAppletRequest(const std::string_view id, CatalogHomebrewAppletInfo *info = nullptr) {
++        std::array<char, loader::NroPathSize> payload{};
++        if(!exodus::home::IsCanonicalHomebrewAppletId(id, payload.size())) {
++            return ResultCatalogLaunchDenied;
++        }
++        memcpy(payload.data(), id.data(), id.size());
++        const auto command = info == nullptr ? SystemMessage::LaunchCatalogHomebrewApplet
++            : SystemMessage::QueryCatalogHomebrewApplet;
++        return SendCommand(command,
++            [&](ScopedStorageWriter &writer) {
++                return writer.Push(payload);
++            },
++            [&](ScopedStorageReader &reader) -> Result {
++                if(info == nullptr) {
++                    return ResultSuccess;
++                }
++                UL_RC_TRY(reader.Pop(*info));
++                if(info->path[sizeof(info->path) - 1] != '\0') {
++                    return ResultCatalogLaunchDenied;
++                }
++                const std::string_view path(info->path);
++                return exodus::home::HomebrewAppletPathMatches(id, path)
++                    ? ResultSuccess : ResultCatalogLaunchDenied;
++            }
++        );
++    }
++
 diff --git a/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp b/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
-index 933d011..449012b 100755
+index 933d011..6320efa 100755
 --- a/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
 +++ b/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
 @@ -125,0 +126,2 @@ namespace ul::menu::ui {
 +            bool HandleLaunchEntry(const Entry &entry);
-+            bool CompleteNativeApplicationLaunch(const Result rc);
-@@ -200,0 +203,2 @@ namespace ul::menu::ui {
++            bool CompleteLaunch(const Result rc);
+@@ -200,0 +203,4 @@ namespace ul::menu::ui {
 +            bool CanLaunchCatalogApplication(const u64 app_id);
 +            bool TryLaunchCatalogApplication(const u64 app_id);
++            bool CanLaunchCatalogHomebrew(const std::string_view id);
++            bool TryLaunchCatalogHomebrew(const std::string_view id);
 diff --git a/projects/uMenu/romfs/lang/en.json b/projects/uMenu/romfs/lang/en.json
-index 6014634..1b6a674 100755
+index 6014634..c2f3f48 100755
 --- a/projects/uMenu/romfs/lang/en.json
 +++ b/projects/uMenu/romfs/lang/en.json
-@@ -5,0 +6,15 @@
+@@ -5,0 +6,17 @@
 +    "exodus_catalog": "EXODUS library",
 +    "exodus_catalog_unavailable": "Copy a catalog snapshot to /ulaunch/exodus-catalog.json.",
 +    "exodus_catalog_invalid": "The snapshot must use the EXODUS v1 catalog format.",
@@ -76,15 +115,17 @@ index 6014634..1b6a674 100755
 +    "exodus_catalog_next": "Next",
 +    "exodus_catalog_close": "Close",
 +    "exodus_catalog_launch": "Launch",
-+    "exodus_catalog_select_title": "Select a title from the inserted game card",
++    "exodus_catalog_select_title": "Select a local application",
++    "exodus_catalog_homebrew_launch": "Launch homebrew as an applet",
++    "exodus_catalog_homebrew_unavailable": "The registered homebrew applet is no longer available.",
 +    "exodus_catalog_title_unavailable": "Launch requires a ready game card title and no suspended application.",
 diff --git a/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp b/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
-index 19a6a26..3dd232b 100755
+index 19a6a26..ac74cc6 100755
 --- a/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
 +++ b/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
 @@ -10,0 +11 @@
 +#include <cstdio>
-@@ -64,0 +66,127 @@ namespace ul::menu::ui {
+@@ -64,0 +66,149 @@ namespace ul::menu::ui {
 +    bool MainMenuLayout::HandleLaunchEntry(const Entry &entry) {
 +        auto do_launch_entry = true;
 +
@@ -170,13 +211,13 @@ index 19a6a26..3dd232b 100755
 +                pu::audio::PlaySfx(this->launch_app_sfx);
 +
 +                g_MenuApplication->FadeOutToNonLibraryApplet();
-+                return this->CompleteNativeApplicationLaunch(smi::LaunchApplication(entry.app_info.app_id));
++                return this->CompleteLaunch(smi::LaunchApplication(entry.app_info.app_id));
 +            }
 +        }
 +        return false;
 +    }
 +
-+    bool MainMenuLayout::CompleteNativeApplicationLaunch(const Result rc) {
++    bool MainMenuLayout::CompleteLaunch(const Result rc) {
 +        if(R_SUCCEEDED(rc)) {
 +            g_MenuApplication->Finalize();
 +            return true;
@@ -209,10 +250,32 @@ index 19a6a26..3dd232b 100755
 +        }
 +        pu::audio::PlaySfx(this->launch_app_sfx);
 +        g_MenuApplication->FadeOutToNonLibraryApplet();
-+        return this->CompleteNativeApplicationLaunch(smi::LaunchCatalogGameCardApplication(app_id));
++        return this->CompleteLaunch(smi::LaunchCatalogGameCardApplication(app_id));
 +    }
 +
-@@ -156,95 +284,2 @@ namespace ul::menu::ui {
++    bool MainMenuLayout::CanLaunchCatalogHomebrew(const std::string_view id) {
++        smi::CatalogHomebrewAppletInfo info{};
++        return R_SUCCEEDED(smi::CatalogHomebrewAppletRequest(id, &info));
++    }
++
++    bool MainMenuLayout::TryLaunchCatalogHomebrew(const std::string_view id) {
++        smi::CatalogHomebrewAppletInfo info{};
++        if(R_FAILED(smi::CatalogHomebrewAppletRequest(id, &info))) {
++            g_MenuApplication->ShowNotification(GetLanguageString("exodus_catalog_homebrew_unavailable"));
++            return false;
++        }
++        const auto confirmed = g_MenuApplication->DisplayDialog(
++            GetLanguageString("exodus_catalog_homebrew_launch"), info.path,
++            { GetLanguageString("exodus_catalog_launch"), GetLanguageString("cancel") }, true);
++        if(confirmed != 0) {
++            return false;
++        }
++        pu::audio::PlaySfx(this->launch_hb_sfx);
++        g_MenuApplication->FadeOutToNonLibraryApplet();
++        return this->CompleteLaunch(smi::CatalogHomebrewAppletRequest(id));
++    }
++
+@@ -156,95 +306,2 @@ namespace ul::menu::ui {
 -                        auto do_launch_entry = true;
 -
 -                        if(g_GlobalSettings.IsSuspended()) {
@@ -323,22 +386,29 @@ index 075eb97..80ca142 100755
 +        catalog_menu_item->AddOnKey(&exodus::home::ShowCatalog);
 +        this->options_menu->AddItem(catalog_menu_item);
 diff --git a/projects/uSystem/source/main.cpp b/projects/uSystem/source/main.cpp
-index 2d6aca3..c9956ca 100644
+index 2d6aca3..516ccfd 100644
 --- a/projects/uSystem/source/main.cpp
 +++ b/projects/uSystem/source/main.cpp
-@@ -16,0 +17,4 @@
+@@ -16,0 +17,6 @@
 +#include "catalog_gamecard_policy.hpp"
++#include "catalog_homebrew_provider.hpp"
 +#include <algorithm>
 +#include <array>
 +#include <memory>
-@@ -77,0 +82 @@ namespace {
++#include <optional>
+@@ -77,0 +84,2 @@ namespace {
 +        LaunchCatalogGameCardApplication,
-@@ -85,0 +91,4 @@ namespace {
++        LaunchCatalogHomebrewApplet,
+@@ -85,0 +94,8 @@ namespace {
 +            struct {
 +                u64 app_id;
 +                AccountUid user;
 +            } launch_catalog_gamecard;
-@@ -736,0 +746,67 @@ namespace {
++            struct {
++                std::array<char, ul::loader::NroPathSize> id;
++                AccountUid user;
++            } launch_catalog_homebrew;
+@@ -736,0 +753,84 @@ namespace {
 +    bool CheckLocalCatalogGameCard(const u64 app_id, ul::smi::CatalogGameCardInfo *info = nullptr) {
 +        using namespace exodus::home;
 +        if(!IsApplicationProgramId(app_id) || app::IsActive()) {
@@ -406,9 +476,27 @@ index 2d6aca3..c9956ca 100644
 +        return true;
 +    }
 +
-@@ -739,0 +816 @@ namespace {
++    std::optional<std::string> ResolveCatalogHomebrew(const std::string_view id) {
++        if(!accountUidIsValid(&g_SelectedUser)) {
++            return std::nullopt;
++        }
++        {
++            ul::ScopedLock lk(g_ConfigLock);
++            u64 configured_applet = 0;
++            if(!g_Config.GetEntry(ul::cfg::ConfigEntryId::HomebrewAppletTakeoverProgramId, configured_applet) ||
++                configured_applet != ul::la::LibraryAppletPhotoViewer) {
++                return std::nullopt;
++            }
++        }
++        return exodus::home::ResolveRegisteredHomebrewApplet(
++            ul::menu::MakeMenuPath(g_AmsIsEmuMMC, g_SelectedUser), id, ul::loader::NroPathSize,
++            static_cast<u32>(ul::menu::EntryType::Homebrew));
++    }
++
+@@ -739,0 +840,2 @@ namespace {
 +            ul::smi::CatalogGameCardInfo catalog_gamecard{};
-@@ -768,0 +846,20 @@ namespace {
++            ul::smi::CatalogHomebrewAppletInfo catalog_homebrew{};
+@@ -768,0 +871,49 @@ namespace {
 +                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication:
 +                        case ul::smi::SystemMessage::LaunchCatalogGameCardApplication: {
 +                            u64 app_id;
@@ -429,11 +517,43 @@ index 2d6aca3..c9956ca 100644
 +                            }
 +                            break;
 +                        }
-@@ -979,0 +1077,3 @@ namespace {
++                        case ul::smi::SystemMessage::QueryCatalogHomebrewApplet:
++                        case ul::smi::SystemMessage::LaunchCatalogHomebrewApplet: {
++                            std::array<char, ul::loader::NroPathSize> payload{};
++                            UL_RC_TRY(reader.Pop(payload));
++                            const auto end = std::find(payload.begin(), payload.end(), '\0');
++                            if(end == payload.end() || std::any_of(end, payload.end(), [](char value) { return value != '\0'; })) {
++                                return ul::ResultCatalogLaunchDenied;
++                            }
++                            const std::string_view id(payload.data(), static_cast<size_t>(end - payload.begin()));
++                            const auto path = ResolveCatalogHomebrew(id);
++                            if(!path || path->size() >= sizeof(catalog_homebrew.path)) {
++                                return ul::ResultCatalogLaunchDenied;
++                            }
++                            if(msg == ul::smi::SystemMessage::LaunchCatalogHomebrewApplet) {
++                                if(std::any_of(g_ActionQueue.begin(), g_ActionQueue.end(), [](const Action &item) {
++                                        return item.type == ActionType::LaunchCatalogHomebrewApplet;
++                                    })) {
++                                    return ul::ResultAlreadyQueued;
++                                }
++                                g_ActionQueue.push_back({
++                                    .type = ActionType::LaunchCatalogHomebrewApplet,
++                                    .launch_catalog_homebrew = { payload, g_SelectedUser }
++                                });
++                            }
++                            else {
++                                memcpy(catalog_homebrew.path, path->data(), path->size());
++                            }
++                            break;
++                        }
+@@ -979,0 +1131,6 @@ namespace {
 +                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication: {
 +                            return writer.Push(catalog_gamecard);
 +                        }
-@@ -1038,0 +1139,22 @@ namespace {
++                        case ul::smi::SystemMessage::QueryCatalogHomebrewApplet: {
++                            return writer.Push(catalog_homebrew);
++                        }
+@@ -1038,0 +1196,53 @@ namespace {
 +            case ActionType::LaunchCatalogGameCardApplication: {
 +                if(!la::IsActive()) {
 +                    const auto &request = action.launch_catalog_gamecard;
@@ -451,6 +571,37 @@ index 2d6aca3..c9956ca 100644
 +                            UL_RC_ASSERT(LaunchMenu(mode));
 +                            PushSimpleMenuMessage(ul::smi::MenuMessage::PreviousLaunchFailure);
 +                        }
++                    }
++                    return true;
++                }
++                break;
++            }
++            case ActionType::LaunchCatalogHomebrewApplet: {
++                if(!la::IsActive()) {
++                    const auto &request = action.launch_catalog_homebrew;
++                    Result rc = ul::ResultCatalogLaunchDenied;
++                    if(memcmp(&request.user, &g_SelectedUser, sizeof(g_SelectedUser)) == 0) {
++                        const auto path = ResolveCatalogHomebrew(request.id.data());
++                        if(path) {
++                            const auto argv = "\"" + *path + "\"";
++                            if(argv.size() < ul::loader::NroArgvSize) {
++                                // uLoader exits after this target even if the app writes a next-load path.
++                                const auto target = ul::loader::TargetInput::Create(*path, argv, true, "");
++                                rc = ecs::RegisterLaunchAsApplet(ul::la::LibraryAppletPhotoViewer, 0,
++                                    "/ulaunch/bin/uLoader/applet", &target, sizeof(target));
++                            }
++                        }
++                    }
++                    if(R_SUCCEEDED(rc)) {
++                        g_LastLibraryAppletLaunchedNotMenu = true;
++                        g_ExpectsLoaderChooseOutput = false;
++                    }
++                    else {
++                        UL_LOG_WARN("Catalog homebrew applet launch stopped with %s", ul::util::FormatResultDisplay(rc).c_str());
++                        const auto mode = accountUidIsValid(&g_SelectedUser)
++                            ? ul::smi::MenuStartMode::MainMenu : ul::smi::MenuStartMode::StartupMenu;
++                        UL_RC_ASSERT(LaunchMenu(mode));
++                        PushSimpleMenuMessage(ul::smi::MenuMessage::PreviousLaunchFailure);
 +                    }
 +                    return true;
 +                }
