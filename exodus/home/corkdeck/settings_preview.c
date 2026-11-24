@@ -10,6 +10,7 @@
 #include "control_metrics.h"
 #include "launcher_image.h"
 #include "native_artwork.h"
+#include "nro_artwork.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,6 +98,19 @@ static void load_cover(struct ui *ui, const char *path, const char *provider,
     int loaded = exodus_artwork_path(path) && launcher_image_load(path, &icon);
     if (!loaded && !strcmp(provider, "Switch"))
         loaded = exodus_title_artwork(id, &icon);
+#ifdef __SWITCH__
+    if (!loaded && !strcmp(provider, "Homebrew")) {
+        char nro_path[512];
+        if (exodus_nro_path(id, nro_path)) {
+            size_t bytes;
+            unsigned char *data = exodus_read_nro_icon(nro_path, &bytes);
+            if (data) {
+                loaded = launcher_image_decode(data, bytes, &icon);
+                free(data);
+            }
+        }
+    }
+#endif
     if (!loaded) return;
     if (launcher_icon_fit(&icon, 256)) {
         slot->texture = SDL_CreateTexture(ui->renderer, SDL_PIXELFORMAT_RGBA32,
