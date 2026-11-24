@@ -58,10 +58,43 @@ namespace {
         assert(ParseCatalog(EncodeUtf16Le(std::u16string(CatalogByteLimit / 2, u' '))).status == CatalogStatus::TooLarge);
     }
 
+    void CheckSwitchApplicationIds() {
+        const std::string id = "0100aBcDeF123456";
+        constexpr std::uint64_t expected = 0x0100abcdef123456ULL;
+        const auto text = MakeCatalog(MakeEntry("switch", id, "Native")
+            + "," + MakeEntry("steam", id, "Steam"));
+        const auto catalog = ParseCatalog(text);
+        assert(catalog.status == CatalogStatus::Ready && catalog.entries.size() == 2);
+        assert(catalog.entries[0].id == id && catalog.entries[1].id == id);
+        assert(SwitchApplicationId(catalog.entries[0]) == expected);
+        assert(!SwitchApplicationId(catalog.entries[1]));
+
+        const auto utf16 = ParseCatalog(EncodeUtf16Le(std::u16string(text.begin(), text.end())));
+        assert(utf16.status == CatalogStatus::Ready && utf16.entries.size() == 2);
+        assert(utf16.entries[0].id == id && SwitchApplicationId(utf16.entries[0]) == expected);
+        assert(!SwitchApplicationId(utf16.entries[1]));
+
+        assert(SwitchApplicationId({Provider::Switch, "", "FFFFFFFFFFFFFFFF"}) == 0xffffffffffffffffULL);
+        assert(SwitchApplicationId({Provider::Switch, "", "0000000000000001"}) == 1);
+        assert(!SwitchApplicationId({Provider::Homebrew, "", id}));
+        for (const auto *invalid : {"", "0000000000000000", "0100abcdef12345", "0100abcdef1234567",
+                                    "0100abcdef12345g", " 100abcdef123456", "+100abcdef123456",
+                                    "-100abcdef123456", "0x00abcdef123456", "0000000000000１"}) {
+            assert(!SwitchApplicationId({Provider::Switch, "", invalid}));
+        }
+
+        const auto nul_id = MakeCatalog(MakeEntry("switch", "0100abcdef12345\\u0000", "Game"));
+        assert(ParseCatalog(nul_id).status == CatalogStatus::Invalid);
+        const auto missing_id = MakeCatalog(R"({"provider":"switch","name":"Game","artwork":null,
+            "installation_state":"unknown","last_played":null,"compatibility_state":"unknown","launch_mode":null})");
+        assert(ParseCatalog(missing_id).status == CatalogStatus::Invalid);
+    }
+
 }
 
 int main(int argc, char **argv) {
     CheckUtf16Le();
+    CheckSwitchApplicationIds();
     const auto steam = MakeEntry("steam", "42", "Portal");
     const auto native = MakeEntry("switch", "42", "Caf\\u00e9\\n[deluxe]");
     const auto homebrew = MakeEntry("switch_homebrew", "tools/example.nro", "Tool \\\\ \\\"A\\\"");

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <ul/menu/ui/ui_MenuApplication.hpp>
+#include <ul/os/os_Applications.hpp>
 
 extern ul::menu::ui::GlobalSettings g_GlobalSettings;
 extern ul::menu::ui::MenuApplication::Ref g_MenuApplication;
@@ -44,6 +45,31 @@ namespace exodus::home {
             return "exodus_catalog_unavailable";
         }
 
+        struct LaunchChoice {
+            std::uint64_t id;
+            std::string title;
+        };
+
+        bool SelectTitle(const std::vector<LaunchChoice> &launchable) {
+            std::string content;
+            std::vector<std::string> options;
+            for (const auto &choice : launchable) {
+                if (!content.empty())
+                    content += '\n';
+                const auto number = std::to_string(options.size() + 1);
+                content += number + ". " + choice.title;
+                options.push_back(number);
+            }
+            options.push_back(CatalogText("cancel"));
+            const auto selected = g_MenuApplication->DisplayDialog(
+                CatalogText("exodus_catalog_select_title"), content, options, true);
+            if (selected < 0 || static_cast<std::size_t>(selected) >= launchable.size())
+                return false;
+            const auto &choice = launchable[static_cast<std::size_t>(selected)];
+            return g_MenuApplication->GetLayout<ul::menu::ui::MainMenuLayout>()
+                ->TryLaunchCatalogApplication(choice.id);
+        }
+
     }
 
     std::string CatalogLabel() {
@@ -59,16 +85,24 @@ namespace exodus::home {
             return;
         }
 
+        const auto registered = ul::os::ListApplicationRecords();
         const auto page_count = (catalog.entries.size() + ItemsPerPage - 1) / ItemsPerPage;
         for (std::size_t page = 0; ; ) {
             const auto first = page * ItemsPerPage;
             const auto end = std::min(first + ItemsPerPage, catalog.entries.size());
             std::string content;
+            std::vector<LaunchChoice> launchable;
             for (auto index = first; index < end; ++index) {
                 if (index > first)
                     content += '\n';
                 const auto &entry = catalog.entries[index];
                 content += "[" + CatalogText(ProviderLabel(entry.provider)) + "] " + entry.title;
+                const auto id = SwitchApplicationId(entry);
+                if (id && std::any_of(registered.begin(), registered.end(), [id](const auto &record) {
+                        return record.id == *id;
+                    })) {
+                    launchable.push_back({*id, entry.title});
+                }
             }
             const auto page_title = title + " " + std::to_string(page + 1) + "/" + std::to_string(page_count);
             const bool has_previous = page != 0;
@@ -77,15 +111,22 @@ namespace exodus::home {
                 options.push_back(CatalogText("exodus_catalog_previous"));
             if (page + 1 < page_count)
                 options.push_back(CatalogText("exodus_catalog_next"));
+            const auto launch_option = options.size();
+            if (!launchable.empty())
+                options.push_back(CatalogText("exodus_catalog_launch"));
             options.push_back(CatalogText("exodus_catalog_close"));
 
             const auto selected = g_MenuApplication->DisplayDialog(page_title, content, options, true);
             if (selected < 0 || static_cast<std::size_t>(selected) >= options.size() - 1)
                 return;
-            if (has_previous && selected == 0)
+            if (!launchable.empty() && static_cast<std::size_t>(selected) == launch_option) {
+                if (SelectTitle(launchable))
+                    return;
+            } else if (has_previous && selected == 0) {
                 --page;
-            else
+            } else {
                 ++page;
+            }
         }
     }
 

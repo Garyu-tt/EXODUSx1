@@ -1,6 +1,6 @@
 # EXODUS library in uLaunch HOME
 
-The adapter adds **EXODUS library** to the Quick Menu in uLaunch's `uMenu` HOME interface. From the main uMenu screen, open Quick Menu with **ZL** or **ZR** and select **EXODUS library**. The dialog displays application names and providers in pages of six. **Previous**, **Next** and **Close** use uMenu's controller dialog. Native titles use uMenu's existing HOME grid launch path.
+The adapter adds **EXODUS library** to the Quick Menu in uLaunch's `uMenu` HOME interface. From the main uMenu screen, open Quick Menu with **ZL** or **ZR** and select **EXODUS library**. The dialog displays application names and providers in pages of six. **Previous**, **Next** and **Close** use uMenu's controller dialog.
 
 The viewer opens `/ulaunch/exodus-catalog.json` on the SD card when selected. Use a version 1 snapshot from the EXODUS Steam importer, or combine it with system and homebrew inventory snapshots using the EXODUS catalog merger. The viewer accepts up to 2 MiB and 4,096 entries. It requires the eight version 1 entry fields, preserves order, rejects duplicate identities and opens an error dialog for unreadable or malformed snapshots. Display names are shortened to fit. The catalog carries snapshot metadata on the console. Live ownership, downloads and launch routing are separate work. [Catalog merger and Switch exporter](https://github.com/Garyu-tt/EXODUSx1/pull/15) · [Homebrew inventory](https://github.com/Garyu-tt/EXODUSx1/pull/13) · [EX-006](https://github.com/Garyu-tt/EXODUSx1/pull/3)
 
@@ -13,6 +13,12 @@ Use the patched `uMenu` together with the current EXODUS Steam Sync NRO. Each su
 The viewer skips incomplete, malformed and oversized Steam snapshots, as well as snapshots that would exceed the 4,096-entry combined limit. With no usable Steam snapshot it displays the manual catalog. With no manual catalog it can display the Steam snapshot by itself. An existing invalid manual catalog still shows its catalog error. The NRO publishes into its own directory and keeps the latest eight valid generations when cleanup succeeds.
 
 To restore the manual catalog view, close the NRO and move the `snapshots` directory to a backup location. Both apps leave `/ulaunch/exodus-catalog.json` and earlier manually exported catalogs intact. A later successful sync creates a new snapshot directory.
+
+## Launch installed Switch titles
+
+Choose **Launch** on a page with registered Switch titles, then choose its number. The confirmation dialog displays the title from uLaunch's local application metadata and its hexadecimal application ID. After confirmation, uMenu checks the live Horizon application record and view again and reuses the HOME grid's launch checks for content, game cards, updates and suspended applications.
+
+Launch candidates come from catalog rows with provider `switch` and a nonzero 16-digit hexadecimal `provider_id` present in Horizon's application registry. The catalog page also displays Steam, homebrew and other providers. Their rows have no launch action in this adapter. [EX-006 tracker](https://github.com/Garyu-tt/EXODUSx1/pull/3) · [Nintendo Safe Mode provider review](https://github.com/Garyu-tt/EXODUSx1/issues/55)
 
 ## Build the patched uMenu
 
@@ -45,4 +51,6 @@ The target produces `uLaunch/SdOut/ulaunch/bin/uMenu/` for the matching uLaunch 
 make -C "$adapter" check CPPFLAGS="-I$PWD/uLaunch/libs/json/single_include/nlohmann"
 ```
 
-On a Switch running the matching uLaunch release, start with a manual catalog containing Steam and Switch or homebrew entries. Open **EXODUS library** to check the baseline, sync from the NRO, then reopen the library to confirm the Steam rows update and the local entries remain. Repeat with an authorized Steam account whose shared library is empty to check Steam row removal. On a test SD card, add an invalid file with a newer snapshot number and verify that the last valid library still opens. Check page navigation and normal HOME title launch, then restore the backed-up uMenu directory.
+On a Switch running the matching uLaunch release, start with a manual catalog containing Steam and Switch or homebrew entries. Open **EXODUS library** to check the baseline, sync from the NRO, then reopen the library to confirm the Steam rows update and the local entries remain. Repeat with an authorized Steam account whose shared library is empty to check Steam row removal. On a test SD card, add an invalid file with a newer snapshot number and verify that the last valid library still opens.
+
+Check that **Launch** can select a registered title from the catalog, that cancelling the confirmation returns to the same page, and that the confirmed title opens. Exercise a stale title ID and an ejected game card. Check that the normal HOME grid still opens a title, then restore the backed-up uMenu directory.
