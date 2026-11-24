@@ -20,11 +20,24 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $vendor, $product = $env:EXODUS_MTP_USB_ID.Split(':')
 $prefix = 'USB\VID_{0}&PID_{1}' -f $vendor, $product
-$devices = @(Get-CimInstance -ClassName Win32_PnPEntity `
+$interfacePattern = "$prefix&MI_*\*"
+$matchingDevices = @(Get-CimInstance -ClassName Win32_PnPEntity `
     -Filter 'Present = TRUE' `
     -Property PNPDeviceID,PNPClass,CompatibleID,ConfigManagerErrorCode |
-    Where-Object { $_.PNPDeviceID -like "$prefix\*" -or $_.PNPDeviceID -like "$prefix&MI_*\*" } |
-    Select-Object PNPDeviceID,PNPClass,CompatibleID,ConfigManagerErrorCode)
+    Where-Object { $_.PNPDeviceID -like "$prefix\*" -or $_.PNPDeviceID -like $interfacePattern })
+$parents = @{}
+foreach ($device in $matchingDevices) {
+    if ($device.PNPDeviceID -notlike $interfacePattern) { continue }
+    # A device can vanish between enumeration and the property lookup.
+    $result = Invoke-CimMethod -InputObject $device -MethodName GetDeviceProperties `
+        -Arguments @{ devicePropertyKeys = [string[]]@('DEVPKEY_Device_Parent') } `
+        -ErrorAction SilentlyContinue
+    if ($result.ReturnValue -eq 0 -and $result.deviceProperties) {
+        $parents[$device.PNPDeviceID] = $result.deviceProperties[0].Data
+    }
+}
+$devices = @($matchingDevices | Select-Object PNPDeviceID,PNPClass,CompatibleID,ConfigManagerErrorCode,
+    @{Name = 'ParentInstanceId'; Expression = { $parents[$_.PNPDeviceID] }})
 ConvertTo-Json -InputObject $devices -Compress
 """
 
@@ -63,13 +76,7 @@ def classify(devices, usb_id):
         re.IGNORECASE,
     )
     parents = {}
-    usb_nodes = 0
-    wpd_nodes = 0
-    mtp_advertised = False
-    healthy_wpd = False
-    healthy_mtp = False
-    problem_codes = set()
-
+    matching_nodes = []
     if not isinstance(devices, list):
         raise ProbeError("Windows returned an invalid device list.")
     for device in devices:
@@ -81,20 +88,35 @@ def classify(devices, usb_id):
             continue
         device_class = device.get("PNPClass")
         problem = device.get("ConfigManagerErrorCode")
+        usb_parent = device.get("ParentInstanceId")
         compatible = device.get("CompatibleID")
         if compatible is None:
             compatible = []
         if (
             (device_class is not None and not isinstance(device_class, str))
             or (problem is not None and (type(problem) is not int or not 0 <= problem <= 0xFFFFFFFF))
+            or (usb_parent is not None and not isinstance(usb_parent, str))
             or not isinstance(compatible, list)
             or not all(isinstance(value, str) for value in compatible)
         ):
             raise ProbeError("Windows returned invalid USB driver data.")
 
-        usb_nodes += 1
         if match.group("interface") is None:
-            parents[instance_id.casefold()] = problem
+            owner_id = instance_id.casefold()
+            parents[owner_id] = problem
+        else:
+            owner_id = usb_parent.casefold() if usb_parent else None
+        matching_nodes.append((owner_id, device_class, problem, compatible))
+
+    wpd_nodes = 0
+    mtp_advertised = False
+    healthy_wpd = False
+    healthy_mtp = False
+    problem_codes = set()
+    for owner_id, device_class, problem, compatible in matching_nodes:
+        # Preserve diagnostics when Windows sees only interface rows.
+        if parents and owner_id not in parents:
+            continue
         if problem:
             problem_codes.add(problem)
 
@@ -107,7 +129,7 @@ def classify(devices, usb_id):
 
     parent_id = next(iter(parents)) if len(parents) == 1 else None
     healthy_endpoint = healthy_mtp if mtp_advertised else healthy_wpd
-    if usb_nodes == 0:
+    if not matching_nodes:
         state = "not_present"
     elif len(parents) > 1:
         state = "ambiguous"
@@ -117,7 +139,7 @@ def classify(devices, usb_id):
         state = "driver_problem"
     else:
         state = "usb_only"
-    return Snapshot(state, usb_nodes, wpd_nodes, mtp_advertised, tuple(sorted(problem_codes)), parent_id)
+    return Snapshot(state, len(matching_nodes), wpd_nodes, mtp_advertised, tuple(sorted(problem_codes)), parent_id)
 
 
 def read_windows(usb_id, timeout=QUERY_TIMEOUT):
@@ -172,18 +194,57 @@ def check_reconnect(usb_id, initial, seconds, sample):
     return "timed_out", last, disconnected
 
 
+def observe(usb_id, initial, seconds, sample):
+    """Observe state transitions even when the USB target starts absent.
+
+    Do not require the same instance ID: changing ports may legitimately change
+    it. Report only whether it changed, never the ID itself.
+    """
+    start = time.monotonic()
+    deadline = start + seconds
+    events = [{"elapsed_ms": 0, **initial.report(), "parent_changed": False}]
+    previous = initial
+    last_parent = initial.parent_id
+    while deadline - time.monotonic() > POLL_INTERVAL:
+        time.sleep(POLL_INTERVAL)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            current = sample(usb_id, timeout=min(remaining, QUERY_TIMEOUT))
+        except ProbeTimeout:
+            if remaining > QUERY_TIMEOUT:
+                raise
+            return {"events": events, "complete": False, "reason": "query_timeout"}
+        changed = (current.parent_id is not None and last_parent is not None
+                   and current.parent_id != last_parent)
+        if current.parent_id is not None:
+            last_parent = current.parent_id
+        if current.report() != previous.report() or changed:
+            events.append({"elapsed_ms": int((time.monotonic() - start) * 1000),
+                           **current.report(), "parent_changed": changed})
+        previous = current
+    return {"events": events, "complete": True, "reason": "window_finished"}
+
+
 def main(argv=None, sample=read_windows):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--usb-id", required=True, metavar="VID:PID", help="four hexadecimal digits per field")
-    parser.add_argument("--reconnect", type=int, metavar="SECONDS", help="observe a disconnect and reconnect in 5–300 seconds")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--reconnect", type=int, metavar="SECONDS", help="observe a disconnect and reconnect in 5–300 seconds")
+    mode.add_argument("--observe", type=int, metavar="SECONDS", help="record state transitions from any baseline for 5–300 seconds")
     args = parser.parse_args(argv)
     if USB_ID.fullmatch(args.usb_id) is None:
         parser.error("--usb-id must have the form VID:PID using four hexadecimal digits per field")
     if args.reconnect is not None and not 5 <= args.reconnect <= 300:
         parser.error("--reconnect must be between 5 and 300 seconds")
 
+    if args.observe is not None and not 5 <= args.observe <= 300:
+        parser.error("--observe must be between 5 and 300 seconds")
+
     usb_id = args.usb_id.lower()
     reconnect = None
+    observation = None
     try:
         initial = sample(usb_id)
         success = initial.state == "wpd_ready"
@@ -191,11 +252,17 @@ def main(argv=None, sample=read_windows):
             state, last, disconnected = check_reconnect(usb_id, initial, args.reconnect, sample)
             reconnect = {"state": state, "disconnect_seen": disconnected, "last": last.report()}
             success = state == "reconnected"
+        elif args.observe is not None:
+            observation = observe(usb_id, initial, args.observe, sample)
+            success = observation["complete"]
     except ProbeError as exc:
         print(f"MTP probe: {exc}", file=sys.stderr)
         return 2
 
-    print(json.dumps({"schema_version": 1, "usb_id": usb_id, "initial": initial.report(), "reconnect": reconnect}))
+    report = {"schema_version": 1, "usb_id": usb_id, "initial": initial.report(), "reconnect": reconnect}
+    if observation is not None:
+        report["observation"] = observation
+    print(json.dumps(report))
     return 0 if success else 1
 
 
