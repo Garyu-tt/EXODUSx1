@@ -1,6 +1,7 @@
 """Exercise the combined catalog command with offline Steam and NRO fixtures."""
 
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -156,6 +157,25 @@ class AppCatalogTests(unittest.TestCase):
         for path in invalid:
             self.assertIn(path, result.stderr)
         self.assertNotIn("Traceback", result.stderr)
+
+    @unittest.skipUnless(sys.platform.startswith("linux") and sys.getfilesystemencoding() == "utf-8",
+                         "requires Linux byte filenames with UTF-8 filesystem decoding")
+    def test_non_utf8_paths_leave_a_readable_partial_catalog(self):
+        self.add_steam_manifest()
+        self.add_nro("tools/Игры.nro", nro_image("Readable"))
+        self.add_nro(os.fsdecode(b"invalid-\xfe.nro"), nro_image("Embedded title"))
+        self.add_nro(os.fsdecode(b"bad-\xff/Fine.nro"), nro_image("Another title"))
+
+        result = self.run_catalog("--switch-sd", self.sd, "--steam-library", self.steam)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(
+            [(item["provider"], item["provider_id"], item["name"])
+             for item in json.loads(result.stdout)["entries"]],
+            [("steam", "42", "Example"), ("switch_homebrew", "tools/Игры.nro", "Readable")],
+        )
+        self.assertEqual(result.stderr.count("NRO path is not valid UTF-8"), 2)
+        self.assertIn(r"invalid-\udcfe.nro", result.stderr)
+        self.assertIn(r"bad-\udcff/Fine.nro", result.stderr)
 
     def test_missing_switch_directory_preserves_readable_steam_entries(self):
         self.add_steam_manifest()

@@ -101,13 +101,19 @@ def scan_homebrew(sd_root):
             try:
                 if path.is_symlink():
                     continue
+                provider_id = path.relative_to(switch_dir).as_posix()
+                # Filesystem surrogate escapes cannot be read as text by HOME.
+                provider_id.encode("utf-8")
                 name = homebrew_name(path)
+            except UnicodeEncodeError:
+                report_error(f"{str(path)!r}: NRO path is not valid UTF-8")
+                continue
             except (ValueError, OSError, zlib.error) as exc:
                 report_error(f"{path}: {exc}")
                 continue
             entries.append({
                 "provider": "switch_homebrew",
-                "provider_id": path.relative_to(switch_dir).as_posix(),
+                "provider_id": provider_id,
                 "name": name,
                 "artwork": None,
                 "installation_state": "reported_installed",
