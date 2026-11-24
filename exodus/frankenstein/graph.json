@@ -280,10 +280,15 @@
     {
       "id": "resident-rc",
       "origin": "exodus/frankenstein/tumor_reference_session",
-      "state": "integration-test-pending",
+      "state": "freebsd-qemu-arm64-tested",
       "depends": [
         "resident-ssh-dbus"
-      ]
+      ],
+      "evidence": {
+        "run": 45503546422,
+        "job": 138832758492,
+        "scope": "Native FreeBSD rc.d stop/start of private D-Bus and unprivileged session daemon, persisted generation 4 desktop restored with new child PID 4071, same SSH daemon PID, subsequent generation 5 game, revoked key rejected, guest exit 0. Desired state only; no graphical mode, reboot persistence or physical hardware proven."
+      }
     }
   ],
   "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. No physical Switch execution or full SteamOS runtime proven.",
