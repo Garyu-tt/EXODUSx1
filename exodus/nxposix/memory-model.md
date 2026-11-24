@@ -44,3 +44,41 @@ Windows `VirtualAlloc` reserve/commit and POSIX `mmap` must be modeled as state 
 - No kernel patch or SVC permission changes are part of this PR.
 
 The source was inspected; the target NRO has not been built or run in this environment. No device access or memory changes performed.
+
+## Existing Autorun provider audit (pinned commit 1ac9b6cf37b90f2d5783dd7ef389bebbe1c68877)
+
+The runtime already has a substantial Horizon memory provider; do not duplicate it in EXODUS.
+
+| Capability | Existing implementation | Important qualification |
+|---|---|---|
+| mmap / munmap / mprotect | `dlls/ntdll/unix/horizon.c`, declarations in `horizon_mman.h` | Wine/NTDLL-specific provider, not a reusable POSIX library yet |
+| Anonymous PROT_NONE | Reservation nodes in the mapping tree | Reserves address space, does not allocate backing pages |
+| Large anonymous mappings | Demand-backed reservation from 256 MiB; faults commit chunks | Lazy fault handler and kernel block budget are part of the contract |
+| File-backed mappings | Backing pages populated from fd | Ordinary path copies data into backing; it is not a kernel file mapping |
+| MAP_SHARED file writes | Duplicated fd and writeback when final backing reference is released | Writeback semantics, not coherent cross-process shared pages |
+| Lazy read-only file view | Optional for files >=1 MiB, read-only/non-executable, in 512 KiB chunks | Opt-in; private copy on demand; never writes through to the file |
+| Shared section views | `horizon_mmap_section` and `horizon_memfile_map` | True alias needs code-memory syscalls plus section syscalls 0x74/0x75; otherwise runtime explicitly falls back to copies |
+| Executable memory | `svcMapProcessCodeMemory` + `svcSetProcessMemoryPermission` | Requires syscall hints 0x73/0x77/0x78 and own process handle |
+| W^X | `get_effective_horizon_prot` strips EXEC from simultaneous WRITE+EXEC | No RWX; executable transitions use cache flush/invalidate |
+| Fixed mappings | MAP_FIXED, MAP_FIXED_NOREPLACE and try-fixed fallback | Must preserve replacement/rollback semantics |
+| madvise | `horizon_madvise` | Currently logs and returns success without applying advice: a known semantic gap |
+
+The default file-backed path copies bytes into Horizon backing pages. For writable MAP_SHARED mappings, the duplicated fd is written back on final backing release. Section-backed mappings are different: true shared aliases are only available when the loader grants both code-memory and section mapping SVCs; otherwise the runtime warns that section views are copies.
+
+### Existing Box64 JIT provider
+
+- `dlls/ntdll/unix/horizon_code_memory.h` and `horizon.c` provide a custom code-memory mapper.
+- `wine_nx_code_memory_map` creates one CodeMemory object and maps a writable owner alias plus an executable slave alias in separate address ranges. It uses the process code-memory SVCs, not ordinary `svcSetMemoryPermission`.
+- `horizon-wine/source/box64_code_arena.h` reuses and coalesces translated-code allocations inside those aliases. The dynarec documents the system-wide limit of ten kernel CodeMemory objects; per-function objects are not viable.
+- `wow64_box64_dynarec.c` uses the custom Horizon mapper when available and a libnx `jitCreate` CodeMemory fallback otherwise.
+- This is why the generic JIT probe in this PR is a capability diagnostic, not a replacement for the existing Box64 arena/provider.
+
+### Known provider gaps to carry into the capability graph
+
+1. `madvise` is a success-returning no-op. Consumers expecting DONTNEED reclamation or WILLNEED prefetch receive no effect.
+2. Ordinary file-backed mappings are copy-backed; MAP_SHARED visibility is writeback-at-final-release rather than live coherent sharing.
+3. Section views degrade from aliases to copies when 0x74/0x75 are not granted.
+4. JIT depends on privileged loader hints and a finite global CodeMemory object budget.
+5. The current Box64 code arena relies on guest memory lifecycle notifications to invalidate translations; writes not followed by the expected flush/protection/unmap notification can leave stale translated code.
+
+EXODUS should wrap these existing providers as explicit capability nodes, preserve their limitations in provider metadata, and only replace a provider after differential tests. The JIT reservation-allocation rollback is being addressed separately in [Autorun PR #3](https://github.com/Garyu-tt/autorun/pull/3).
