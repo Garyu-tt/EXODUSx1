@@ -1,14 +1,16 @@
 from contextlib import redirect_stderr, redirect_stdout
 from email.message import Message
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from io import BytesIO, StringIO
 import json
 import os
 from ssl import SSLError
+from threading import Thread
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit
-from urllib.request import HTTPSHandler
+from urllib.request import HTTPSHandler, ProxyHandler, Request, build_opener
 from urllib.response import addinfourl
 
 from exodus import steam_entitlement as entitlement
@@ -26,8 +28,10 @@ KEY_ENV = "STEAMWORKS_PUBLISHER_KEY"
 Status = entitlement.LicenseStatus
 
 
-def http_reply(request, body, code=200, fields=()):
+def http_reply(request, body, code=200, fields=None):
     headers = Message()
+    if fields is None:
+        fields = (("Content-Length", str(len(body))),)
     for name, value in fields:
         headers[name] = value
     response = addinfourl(BytesIO(body), headers, request.full_url, code)
@@ -36,7 +40,7 @@ def http_reply(request, body, code=200, fields=()):
 
 
 class FakeSteam:
-    def __init__(self, license_response=None, *, verified=True, response_code=200, response_headers=()):
+    def __init__(self, license_response=None, *, verified=True, response_code=200, response_headers=None):
         self.license_response = {"ownsapp": True} if license_response is None else license_response
         self.verified = verified
         self.response_code = response_code
@@ -200,21 +204,51 @@ class SteamEntitlementTests(unittest.TestCase):
         body = b'{"ownsapp": true}'
         size = str(len(body))
         cases = (
+            (),
             (("Content-Length", str(len(body) + 1)),),
             (("Content-Length", str(len(body) - 1)),),
             (("Content-Length", size), ("content-length", size)),
             (("Content-Length", "-1"),),
             (("Content-Length", "invalid"),),
             (("Content-Length", size + ", " + size),),
+            (("Content-Length", str(entitlement.MAX_OWNERSHIP_BYTES + 1)),),
             (("Content-Length", size), ("Transfer-Encoding", "chunked")),
+            (("Transfer-Encoding", "chunked"),),
+            (("Transfer-Encoding", "gzip"),),
+            (("Transfer-Encoding", "chunked"), ("transfer-encoding", "gzip")),
         )
         for fields in cases:
             with self.subTest(fields=fields):
                 self.assertEqual(self.check(FakeSteam(body, response_headers=fields)), Status.OWNERSHIP_UNAVAILABLE)
 
-        for fields in ((), (("Content-Length", size),)):
-            with self.subTest(valid_fields=fields):
-                self.assertEqual(self.check(FakeSteam(body, response_headers=fields)), Status.ACTIVE_LICENSE)
+        valid = FakeSteam(body, response_headers=(("Content-Length", size),))
+        self.assertEqual(self.check(valid), Status.ACTIVE_LICENSE)
+
+    def test_loopback_response_rejects_premature_connection_close(self):
+        body = b'{"ownsapp": true}'
+
+        class OwnershipHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                length = len(body) + (1 if self.path == "/truncated" else 0)
+                self.send_header("Content-Length", str(length))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        with HTTPServer(("127.0.0.1", 0), OwnershipHandler) as server:
+            worker = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True)
+            worker.start()
+            try:
+                url = f"http://127.0.0.1:{server.server_port}"
+                opener = build_opener(ProxyHandler({}))
+                self.assertEqual(entitlement._read_ownership_reply(opener, Request(url + "/complete")), body)
+                self.assertIsNone(entitlement._read_ownership_reply(opener, Request(url + "/truncated")))
+            finally:
+                server.shutdown()
+                worker.join()
 
     def test_default_steam_opener_ignores_ambient_proxies_and_rejects_redirects(self):
         proxy_env = {

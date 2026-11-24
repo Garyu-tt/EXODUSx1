@@ -83,25 +83,21 @@ def _read_ownership_reply(opener, request):
             if response.getcode() != 200:
                 return None
             declared = response.headers.get_all("Content-Length", [])
-            expected_bytes = None
-            if declared:
-                if len(declared) != 1 or "Transfer-Encoding" in response.headers:
-                    return None
-                value = declared[0].strip(" \t")
-                if re.fullmatch(r"[0-9]{1,10}", value, re.ASCII) is None:
-                    return None
-                expected_bytes = int(value)
-                if expected_bytes > MAX_OWNERSHIP_BYTES:
-                    return None
+            if len(declared) != 1 or "Transfer-Encoding" in response.headers:
+                return None
+            value = declared[0].strip(" \t")
+            if re.fullmatch(r"[0-9]{1,10}", value, re.ASCII) is None:
+                return None
+            expected_bytes = int(value)
+            if expected_bytes > MAX_OWNERSHIP_BYTES:
+                return None
             body = response.read(MAX_OWNERSHIP_BYTES + 1)
     except HTTPError as error:
         error.close()
         return None
     except (OSError, HTTPException, ValueError):
         return None
-    if len(body) > MAX_OWNERSHIP_BYTES or (expected_bytes is not None and len(body) != expected_bytes):
-        return None
-    return body
+    return body if len(body) == expected_bytes else None
 
 
 def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, opener=None, open_browser=None):

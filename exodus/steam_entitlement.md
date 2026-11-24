@@ -10,6 +10,8 @@ python -m exodus.steam_entitlement --app-id <publisher-app-id>
 
 The command writes one JSON object with `appid` and `status`. It exits with status code 0 when Steam provides a definitive license result, 1 when the result is unavailable, and 2 for invalid command-line usage.
 
+A definitive result requires one explicit `Content-Length` matching the complete HTTP 200 body and a Boolean `ownsapp`. The check reports `ownership_unavailable` for transfer-coded, close-delimited or truncated replies.
+
 | Status | Meaning |
 | --- | --- |
 | `active_license` | Steamworks reports an active license for the verified account and requested AppID. This can include temporary access and Steam sharing. |
