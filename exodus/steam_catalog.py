@@ -90,13 +90,17 @@ def catalog_entry(manifest, expected_id):
     flags = optional_uint32(state, "stateflags")
     if flags is not None:
         installation = "reported_installed" if flags & FULLY_INSTALLED else "not_fully_installed"
+    return steam_entry(app_id, name.strip(), installation, optional_uint32(state, "lastplayed") or None)
+
+
+def steam_entry(app_id, name, installation="unknown", last_played=None):
     return {
         "provider": "steam",
         "provider_id": app_id,
-        "name": name.strip(),
+        "name": name,
         "artwork": None,
         "installation_state": installation,
-        "last_played": optional_uint32(state, "lastplayed") or None,
+        "last_played": last_played,
         "compatibility_state": "unknown",
         "launch_mode": None,
     }
@@ -132,10 +136,11 @@ def scan_libraries(libraries):
     return [entries[k] for k in sorted(entries, key=int)], errors
 
 
-def write_catalog(entries):
+def write_catalog(entries, stream=None):
+    stream = sys.stdout if stream is None else stream
     catalog = {"schema_version": 1, "entries": entries}
-    json.dump(catalog, sys.stdout, ensure_ascii=True, indent=2)
-    print()
+    json.dump(catalog, stream, ensure_ascii=True, indent=2)
+    stream.write("\n")
 
 
 def main():
