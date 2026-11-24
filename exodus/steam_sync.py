@@ -231,9 +231,9 @@ def unique_json_object(pairs):
     return value
 
 
-def decode_json(data, source):
+def decode_json(data, source, *, encoding="utf-8-sig"):
     try:
-        return json.loads(data.decode("utf-8-sig"), object_pairs_hook=unique_json_object,
+        return json.loads(data.decode(encoding), object_pairs_hook=unique_json_object,
                           parse_int=json_integer, parse_constant=invalid_json_constant)
     except (ValueError, RecursionError):
         raise SteamSyncError(f"Invalid JSON in {source}.") from None
@@ -295,7 +295,10 @@ def read_base_catalog(path):
         raise SteamSyncError("Could not read the base catalog.") from None
     if len(data) > MAX_CATALOG_BYTES:
         raise SteamSyncError("Base catalog exceeds the HOME catalog size limit.")
-    catalog = decode_json(data, "the base catalog")
+    # Match HOME's BOM-marked UTF-16LE support for PowerShell 5.1 redirects.
+    # Network JSON keeps the UTF-8 default; do not auto-detect UTF-32 or bare UTF-16.
+    encoding = "utf-16" if data.startswith(b"\xff\xfe") else "utf-8-sig"
+    catalog = decode_json(data, "the base catalog", encoding=encoding)
     if (type(catalog) is not dict or catalog.keys() != {"schema_version", "entries"}
             or type(catalog["schema_version"]) is not int or catalog["schema_version"] != 1
             or type(catalog["entries"]) is not list):

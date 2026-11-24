@@ -172,6 +172,27 @@ class SteamSyncTests(unittest.TestCase):
         self.assertEqual(len(provider.requests), 1)
         self.assertEqual(self.output.read_bytes(), b"prior snapshot")
 
+    def test_refreshes_bom_marked_home_catalogs_and_preserves_unicode(self):
+        homebrew = {
+            **steam_entry("tools/Игры.nro", "拡張ゲーム 🎮"), "provider": "switch_homebrew",
+        }
+        catalog = {"schema_version": 1, "entries": [steam_entry("77", "Old Steam"), homebrew]}
+        text = json.dumps(catalog, ensure_ascii=False)
+        for encoding, bom in (("utf-8", b"\xef\xbb\xbf"), ("utf-16-le", b"\xff\xfe")):
+            with self.subTest(encoding=encoding):
+                self.output.write_bytes(bom + text.encode(encoding))
+                provider = FakeSteam()
+                browser = LocalBrowser()
+                self.assertEqual(self.run_sync(provider, browser, self.output), 2)
+                self.assertEqual(browser.replies[0][0], 200)
+                refreshed = self.output.read_bytes()
+                self.assertFalse(refreshed.startswith(bom))
+                self.assertEqual(json.loads(refreshed.decode("utf-8")), {
+                    "schema_version": 1,
+                    "entries": [steam_entry("10", "\u661f Test"),
+                                steam_entry("440", "Synthetic Team"), homebrew],
+                })
+
     def test_requires_matching_signed_identity_and_fresh_nonce(self):
         return_to = "http://127.0.0.1:32187/steam/callback/synthetic"
         bad_values = {
@@ -292,6 +313,7 @@ class SteamSyncTests(unittest.TestCase):
         inputs = [
             b'{"response":{"game_count":0,"game_count":1}}',
             b'{"response":{"game_count":0,"extra":NaN}}',
+            b"\xff\xfe" + json.dumps(APP_INFO).encode("utf-16-le"),
             {"response": {"game_count": False, "games": []}},
             {"response": {"game_count": 1}},
             {"response": {"game_count": 1, "games": [{"appid": True}]}},
@@ -312,6 +334,36 @@ class SteamSyncTests(unittest.TestCase):
                 sync.SteamSyncError, "invalid entry"):
             sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=FakeSteam())
         browser.assert_not_called()
+
+    def test_invalid_utf16_base_catalogs_preserve_output_before_sign_in(self):
+        text = '{"schema_version":1,"entries":[]}'
+        bad_name = json.dumps({"schema_version": 1, "entries": [steam_entry("10", "\ud800")]},
+                              ensure_ascii=False)
+        invalid = [
+            b"\xff\xfe" + text.encode("utf-16-le")[:-1],
+            b"\xff\xfe" + bad_name.encode("utf-16-le", errors="surrogatepass"),
+            b"\xff\xfe" + '{"schema_version":1,"entries":[],"entries":[]}'.encode("utf-16-le"),
+            text.encode("utf-16-le"),
+            b"\xfe\xff" + text.encode("utf-16-be"),
+            b"\xff\xfe\x00\x00" + text.encode("utf-32-le"),
+        ]
+        for data in invalid:
+            with self.subTest(data=data):
+                self.output.write_bytes(data)
+                with patch("exodus.steam_sync.webbrowser.open") as browser, self.assertRaisesRegex(
+                        sync.SteamSyncError, "Invalid JSON"):
+                    sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=FakeSteam())
+                browser.assert_not_called()
+                self.assertEqual(self.output.read_bytes(), data)
+
+    def test_utf16_base_catalog_limit_counts_encoded_bytes(self):
+        data = b"\xff\xfe" + '{"schema_version":1,"entries":[]}'.encode("utf-16-le")
+        self.output.write_bytes(data)
+        with patch("exodus.steam_sync.MAX_CATALOG_BYTES", len(data)):
+            self.assertEqual(sync.read_base_catalog(self.output), [])
+        with patch("exodus.steam_sync.MAX_CATALOG_BYTES", len(data) - 1), self.assertRaisesRegex(
+                sync.SteamSyncError, "size limit"):
+            sync.read_base_catalog(self.output)
 
     def test_failed_atomic_replace_preserves_output_and_cleans_stage(self):
         self.output.write_bytes(b"prior snapshot")
