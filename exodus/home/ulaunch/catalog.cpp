@@ -16,12 +16,13 @@ namespace exodus::home {
         constexpr std::size_t CatalogDepth = 3;
         constexpr std::size_t EntryFields = 8;
 
-        CatalogStatus CheckStructure(std::string_view text) {
+        template <typename Character>
+        CatalogStatus CheckStructure(std::basic_string_view<Character> text) {
             bool quoted = false;
             bool escaped = false;
             std::size_t depth = 0;
             std::size_t separators = 0;
-            for (const char ch : text) {
+            for (const Character ch : text) {
                 if (ch == '\0')
                     return CatalogStatus::Invalid;
                 if (quoted) {
@@ -108,16 +109,15 @@ namespace exodus::home {
 
     }
 
-    Catalog ParseCatalog(std::string_view text) {
-        if (text.size() > CatalogByteLimit)
-            return {CatalogStatus::TooLarge, {}};
+    template <typename Character>
+    static Catalog ParseCatalogText(std::basic_string_view<Character> text) {
         const auto structure = CheckStructure(text);
         if (structure != CatalogStatus::Ready)
             return {structure, {}};
 
         std::array<std::set<std::string>, CatalogDepth> fields;
         bool duplicate_field = false;
-        const auto document = JSON::parse(text, [&](int depth, JSON::parse_event_t event, JSON &value) {
+        const JSON document = JSON::parse(text, [&](int depth, JSON::parse_event_t event, JSON &value) {
             if (event == JSON::parse_event_t::object_start)
                 fields[depth].clear();
             if (event == JSON::parse_event_t::key) {
@@ -151,6 +151,32 @@ namespace exodus::home {
             catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name)});
         }
         return catalog;
+    }
+
+    Catalog ParseCatalog(std::string_view text) {
+        if (text.size() > CatalogByteLimit)
+            return {CatalogStatus::TooLarge, {}};
+        if (text.substr(0, 2) != "\xff\xfe")
+            return ParseCatalogText(text);
+        if (text.size() % 2 != 0)
+            return {CatalogStatus::Invalid, {}};
+
+        // Windows PowerShell 5.1 writes UTF-16LE with a BOM for redirected output.
+        std::u16string decoded;
+        decoded.reserve((text.size() - 2) / 2);
+        bool needs_low_surrogate = false;
+        for (std::size_t offset = 2; offset < text.size(); offset += 2) {
+            const auto unit = static_cast<char16_t>(static_cast<unsigned char>(text[offset])
+                | (static_cast<unsigned char>(text[offset + 1]) << 8));
+            const bool low_surrogate = unit >= 0xdc00 && unit <= 0xdfff;
+            if (low_surrogate != needs_low_surrogate)
+                return {CatalogStatus::Invalid, {}};
+            needs_low_surrogate = unit >= 0xd800 && unit <= 0xdbff;
+            decoded.push_back(unit);
+        }
+        if (needs_low_surrogate)
+            return {CatalogStatus::Invalid, {}};
+        return ParseCatalogText(std::u16string_view(decoded));
     }
 
     Catalog ReadCatalog(const char *path) {

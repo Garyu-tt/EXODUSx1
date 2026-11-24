@@ -19,9 +19,49 @@ namespace {
         return "{\"schema_version\":1,\"entries\":[" + entries + "]}";
     }
 
+    std::string EncodeUtf16Le(std::u16string_view text) {
+        std::string bytes = "\xff\xfe";
+        for (const auto unit : text) {
+            bytes.push_back(static_cast<char>(unit & 0xff));
+            bytes.push_back(static_cast<char>(unit >> 8));
+        }
+        return bytes;
+    }
+
+    void CheckUtf16Le() {
+        const std::u16string source = uR"({"schema_version":1,"entries":[{
+            "provider":"steam","provider_id":"42","name":"Café 東京 🕹",
+            "artwork":null,"installation_state":"unknown","last_played":null,
+            "compatibility_state":"unknown","launch_mode":null}]})";
+        const auto bytes = EncodeUtf16Le(source);
+        const auto catalog = ParseCatalog(bytes);
+        assert(catalog.status == CatalogStatus::Ready && catalog.entries.size() == 1);
+        assert(catalog.entries[0].provider == Provider::Steam
+            && catalog.entries[0].title == "Café 東京 🕹");
+
+        assert(ParseCatalog(bytes.substr(0, bytes.size() - 1)).status == CatalogStatus::Invalid);
+        const auto icon = source.find(u"🕹");
+        assert(icon != std::u16string::npos);
+        auto unpaired_high = source;
+        unpaired_high.erase(icon + 1, 1);
+        assert(ParseCatalog(EncodeUtf16Le(unpaired_high)).status == CatalogStatus::Invalid);
+        auto unpaired_low = source;
+        unpaired_low.erase(icon, 1);
+        assert(ParseCatalog(EncodeUtf16Le(unpaired_low)).status == CatalogStatus::Invalid);
+        assert(ParseCatalog(EncodeUtf16Le(std::u16string(1, 0xd800))).status == CatalogStatus::Invalid);
+
+        auto raw_null = source;
+        raw_null[icon] = u'\0';
+        raw_null[icon + 1] = u' ';
+        assert(ParseCatalog(EncodeUtf16Le(raw_null)).status == CatalogStatus::Invalid);
+        assert(ParseCatalog(EncodeUtf16Le(uR"({"schema_version":2,"entries":[]})")).status == CatalogStatus::Invalid);
+        assert(ParseCatalog(EncodeUtf16Le(std::u16string(CatalogByteLimit / 2, u' '))).status == CatalogStatus::TooLarge);
+    }
+
 }
 
 int main(int argc, char **argv) {
+    CheckUtf16Le();
     const auto steam = MakeEntry("steam", "42", "Portal");
     const auto native = MakeEntry("switch", "42", "Caf\\u00e9\\n[deluxe]");
     const auto homebrew = MakeEntry("switch_homebrew", "tools/example.nro", "Tool \\\\ \\\"A\\\"");
