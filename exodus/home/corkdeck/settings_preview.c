@@ -34,7 +34,9 @@ static void exodus_header(struct ui *ui, const char *title, const char *context)
 {
     ui_header(ui, title, context);
     const int band = UI_HEADER_HEIGHT - 4;
-    ui_fill(ui, 0, 0, 250, band, ui->panel);
+    SDL_Color opaque = ui->panel;
+    opaque.a = 255;
+    ui_fill(ui, 0, 0, 250, band, opaque);
     ui_text(ui, ui->normal, 28, (band - TTF_FontHeight(ui->normal)) / 2, "EXODUS", ui->value);
 }
 
