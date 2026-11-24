@@ -198,7 +198,7 @@ static int show_library(struct ui *ui, const char *path)
                  count, count ? selection / 8 + 1 : 0, (count + 7) / 8);
         ui_background(ui);
         ui_header(ui, "EXODUS Library", page);
-        if (!count) ui_text(ui, ui.normal, 84, 180, "No matching entries. Press Y to change filter.", ui->text);
+        if (!count) ui_text(ui, ui->normal, 84, 180, "No matching entries. Press Y to change filter.", ui->text);
         for (size_t n = first; n < count && n < first + 8; ++n) {
             size_t index = cards[n].index;
             int col = (int)((n - first) % 4), row = (int)((n - first) / 4);
@@ -207,7 +207,7 @@ static int show_library(struct ui *ui, const char *path)
             if (n == selection) ui_outline(ui, x, y, 264, 220, 6, 3, ui->selection);
             ui_text_fit(ui, ui->small, x + 12, y + 12, 200,
                         exodus_library_provider(library, index), ui->dim, 0);
-            if (favorites[index]) ui_text(ui, ui.small, x + 230, y + 12, "*", ui->text);
+            if (favorites[index]) ui_text(ui, ui->small, x + 230, y + 12, "*", ui->text);
             struct cover_slot *cover = &covers[n - first];
             if (cover->texture) {
                 float scale = 116.0f / cover->height;
