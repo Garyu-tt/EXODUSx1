@@ -11,11 +11,15 @@ page_probe$(EXEEXT): page_codec.c page_codec.h page_probe_stats.c page_probe_sta
 test_codec$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h test_codec.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c test_codec.c $(LDLIBS)
 
-check: test_codec$(EXEEXT) page_probe$(EXEEXT)
+test_page_dedup_store$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h page_dedup_store.c page_dedup_store.h test_page_dedup_store.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c test_page_dedup_store.c $(LDLIBS)
+
+check: test_codec$(EXEEXT) test_page_dedup_store$(EXEEXT) page_probe$(EXEEXT)
 	./test_codec$(EXEEXT)
+	./test_page_dedup_store$(EXEEXT)
 	$(PYTHON) test_probe.py ./page_probe$(EXEEXT)
 
 clean:
-	$(RM) test_codec$(EXEEXT) page_probe$(EXEEXT)
+	$(RM) test_codec$(EXEEXT) test_page_dedup_store$(EXEEXT) page_probe$(EXEEXT)
 
 .PHONY: all check clean

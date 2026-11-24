@@ -2,3 +2,5 @@
 /page_probe.exe
 /test_codec
 /test_codec.exe
+/test_page_dedup_store
+/test_page_dedup_store.exe
