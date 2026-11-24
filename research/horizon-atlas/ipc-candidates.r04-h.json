@@ -1,0 +1,345 @@
+{
+  "schema": "exodus.horizon-ipc-candidates/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Literal source candidates only; Nintendo-linked families inventory only.",
+  "missing": [],
+  "counts": {
+    "requested": 3,
+    "fetched": 3,
+    "distinct_endpoint_tokens": 7,
+    "dispatch_occurrences": 31,
+    "version_check_occurrences": 10
+  },
+  "records": [
+    {
+      "module": "friends",
+      "path": "nx/source/services/friends.c",
+      "blob": "7d558c3e3864058f98713f8d373052cee516c6ff",
+      "line_count": 152,
+      "literal_endpoints": [
+        {
+          "name": "friend:u",
+          "line": 73
+        },
+        {
+          "name": "friend:a",
+          "line": 76
+        },
+        {
+          "name": "friend:m",
+          "line": 79
+        },
+        {
+          "name": "friend:v",
+          "line": 82
+        },
+        {
+          "name": "friend:s",
+          "line": 85
+        }
+      ],
+      "literal_dispatches": [],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "news",
+      "path": "nx/source/services/news.c",
+      "blob": "f64014593f5b23154a2ec66b95fbc960c2ac8dfa",
+      "line_count": 309,
+      "literal_endpoints": [],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_newsSrv",
+          "command": 10100,
+          "line": 109,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_newsSrv",
+          "command": 20100,
+          "line": 116,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_newsSrv",
+          "command": 30100,
+          "line": 123,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_newsSrv",
+          "command": 30101,
+          "line": 133,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_newsSrv",
+          "command": 30110,
+          "line": 148,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_newsSrv",
+          "command": 30200,
+          "line": 160,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_newsSrv",
+          "command": 30210,
+          "line": 169,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_newsSrv",
+          "command": 30300,
+          "line": 173,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_newsSrv",
+          "command": 40100,
+          "line": 180,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_newsSrv",
+          "command": 40200,
+          "line": 187,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_newsSrv",
+          "command": 40201,
+          "line": 191,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_newsSrv",
+          "command": 90100,
+          "line": 195,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&srv->s",
+          "command": 0,
+          "line": 209,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&srv->s",
+          "command": 0,
+          "line": 222,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&srv->s",
+          "command": 1,
+          "line": 229,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv->s",
+          "command": 2,
+          "line": 233,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv->s",
+          "command": 3,
+          "line": 240,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&srv->s",
+          "command": 1001,
+          "line": 247,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv->s",
+          "command": 0,
+          "line": 255,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&srv->s",
+          "command": 1,
+          "line": 270,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&srv->s",
+          "command": 1000,
+          "line": 280,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&srv->s",
+          "command": 0,
+          "line": 302,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 31
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 65
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 78
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 91
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 102
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 130
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 140
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 166
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 244
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 277
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "ovln",
+      "path": "nx/source/services/ovln.c",
+      "blob": "6964e2a6fb4ecc04c3e24445b221cd4dbf2653ce",
+      "line_count": 112,
+      "literal_endpoints": [
+        {
+          "name": "ovln:rcv",
+          "line": 12
+        },
+        {
+          "name": "ovln:snd",
+          "line": 20
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_ovlnrcvSrv",
+          "command": 0,
+          "line": 36,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&r->s",
+          "command": 0,
+          "line": 47,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&r->s",
+          "command": 1,
+          "line": 51,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&r->s",
+          "command": 2,
+          "line": 57,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&r->s",
+          "command": 3,
+          "line": 66,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&r->s",
+          "command": 4,
+          "line": 75,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_ovlnsndSrv",
+          "command": 0,
+          "line": 90,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&s->s",
+          "command": 0,
+          "line": 106,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&s->s",
+          "command": 1,
+          "line": 110,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    }
+  ]
+}
