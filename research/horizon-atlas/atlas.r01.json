@@ -1,0 +1,3815 @@
+{
+  "schema": "exodus.horizon-atlas/v1",
+  "target": "Nintendo Switch 1 (Erista/Mariko); do not infer Switch 2 support",
+  "sources": {
+    "libnx": {
+      "revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+      "umbrella_blob": "f865e152ec29215229637464673f8f2ede239fa3",
+      "svc_blob": "144adcc4ce2a3e97fe8d8abd2d4cb8d2cc4fd964"
+    },
+    "historical_service_registry": {
+      "url": "https://github.com/backupbrew/switchbrew/blob/master/Services%20API.md",
+      "blob": "cd6490d27b0e383a6fac90273611d791f6926320",
+      "warning": "Historical, not authoritative for current firmware; token candidates may contain prose; not enabled."
+    },
+    "current_reference": "https://switchbrew.org/wiki/Services_API"
+  },
+  "admission": "All nodes evidence only. No runtime enablement. Review command, permissions, firmware, device tests and Safe Mode.",
+  "counts": {
+    "headers": 170,
+    "service_headers": 91,
+    "svc_wrappers": 128,
+    "svc_inline_helpers": 1,
+    "historical_service_families": 56,
+    "historical_endpoint_candidates": 292
+  },
+  "domains": [
+    "ipc",
+    "filesystem",
+    "accounts",
+    "power",
+    "lifecycle",
+    "audio",
+    "crypto",
+    "bus",
+    "network",
+    "official",
+    "diagnostics",
+    "clock",
+    "usb",
+    "input",
+    "display",
+    "settings",
+    "bluetooth",
+    "capture",
+    "local_data"
+  ],
+  "headers": [
+    {
+      "id": "header:switch/types.h",
+      "path": "nx/include/switch/types.h",
+      "layer": "types.h",
+      "domain": "formats",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/result.h",
+      "path": "nx/include/switch/result.h",
+      "layer": "result.h",
+      "domain": "formats",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nro.h",
+      "path": "nx/include/switch/nro.h",
+      "layer": "nro.h",
+      "domain": "formats",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nacp.h",
+      "path": "nx/include/switch/nacp.h",
+      "layer": "nacp.h",
+      "domain": "formats",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/arm/tls.h",
+      "path": "nx/include/switch/arm/tls.h",
+      "layer": "arm",
+      "domain": "cpu",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/arm/cache.h",
+      "path": "nx/include/switch/arm/cache.h",
+      "layer": "arm",
+      "domain": "cpu",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/arm/counter.h",
+      "path": "nx/include/switch/arm/counter.h",
+      "layer": "arm",
+      "domain": "cpu",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/svc.h",
+      "path": "nx/include/switch/kernel/svc.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/wait.h",
+      "path": "nx/include/switch/kernel/wait.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/tmem.h",
+      "path": "nx/include/switch/kernel/tmem.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/shmem.h",
+      "path": "nx/include/switch/kernel/shmem.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/mutex.h",
+      "path": "nx/include/switch/kernel/mutex.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/event.h",
+      "path": "nx/include/switch/kernel/event.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/levent.h",
+      "path": "nx/include/switch/kernel/levent.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/uevent.h",
+      "path": "nx/include/switch/kernel/uevent.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/utimer.h",
+      "path": "nx/include/switch/kernel/utimer.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/rwlock.h",
+      "path": "nx/include/switch/kernel/rwlock.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/condvar.h",
+      "path": "nx/include/switch/kernel/condvar.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/thread.h",
+      "path": "nx/include/switch/kernel/thread.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/semaphore.h",
+      "path": "nx/include/switch/kernel/semaphore.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/virtmem.h",
+      "path": "nx/include/switch/kernel/virtmem.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/detect.h",
+      "path": "nx/include/switch/kernel/detect.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/random.h",
+      "path": "nx/include/switch/kernel/random.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/jit.h",
+      "path": "nx/include/switch/kernel/jit.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/kernel/barrier.h",
+      "path": "nx/include/switch/kernel/barrier.h",
+      "layer": "kernel",
+      "domain": "kernel",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/sf/hipc.h",
+      "path": "nx/include/switch/sf/hipc.h",
+      "layer": "sf",
+      "domain": "ipc",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/sf/cmif.h",
+      "path": "nx/include/switch/sf/cmif.h",
+      "layer": "sf",
+      "domain": "ipc",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/sf/service.h",
+      "path": "nx/include/switch/sf/service.h",
+      "layer": "sf",
+      "domain": "ipc",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/sf/sessionmgr.h",
+      "path": "nx/include/switch/sf/sessionmgr.h",
+      "layer": "sf",
+      "domain": "ipc",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/sf/tipc.h",
+      "path": "nx/include/switch/sf/tipc.h",
+      "layer": "sf",
+      "domain": "ipc",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/sm.h",
+      "path": "nx/include/switch/services/sm.h",
+      "layer": "services",
+      "domain": "ipc",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/smm.h",
+      "path": "nx/include/switch/services/smm.h",
+      "layer": "services",
+      "domain": "ipc",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/fs.h",
+      "path": "nx/include/switch/services/fs.h",
+      "layer": "services",
+      "domain": "filesystem",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/fsldr.h",
+      "path": "nx/include/switch/services/fsldr.h",
+      "layer": "services",
+      "domain": "filesystem",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/fspr.h",
+      "path": "nx/include/switch/services/fspr.h",
+      "layer": "services",
+      "domain": "filesystem",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/acc.h",
+      "path": "nx/include/switch/services/acc.h",
+      "layer": "services",
+      "domain": "accounts",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/apm.h",
+      "path": "nx/include/switch/services/apm.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/applet.h",
+      "path": "nx/include/switch/services/applet.h",
+      "layer": "services",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/async.h",
+      "path": "nx/include/switch/services/async.h",
+      "layer": "services",
+      "domain": "ipc",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/aud.h",
+      "path": "nx/include/switch/services/aud.h",
+      "layer": "services",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/audctl.h",
+      "path": "nx/include/switch/services/audctl.h",
+      "layer": "services",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/audin.h",
+      "path": "nx/include/switch/services/audin.h",
+      "layer": "services",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/audout.h",
+      "path": "nx/include/switch/services/audout.h",
+      "layer": "services",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/audrec.h",
+      "path": "nx/include/switch/services/audrec.h",
+      "layer": "services",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/audren.h",
+      "path": "nx/include/switch/services/audren.h",
+      "layer": "services",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/auddev.h",
+      "path": "nx/include/switch/services/auddev.h",
+      "layer": "services",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/hwopus.h",
+      "path": "nx/include/switch/services/hwopus.h",
+      "layer": "services",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/csrng.h",
+      "path": "nx/include/switch/services/csrng.h",
+      "layer": "services",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/lbl.h",
+      "path": "nx/include/switch/services/lbl.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/i2c.h",
+      "path": "nx/include/switch/services/i2c.h",
+      "layer": "services",
+      "domain": "bus",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/gpio.h",
+      "path": "nx/include/switch/services/gpio.h",
+      "layer": "services",
+      "domain": "bus",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/uart.h",
+      "path": "nx/include/switch/services/uart.h",
+      "layer": "services",
+      "domain": "bus",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/bpc.h",
+      "path": "nx/include/switch/services/bpc.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/pcv.h",
+      "path": "nx/include/switch/services/pcv.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/clkrst.h",
+      "path": "nx/include/switch/services/clkrst.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/fan.h",
+      "path": "nx/include/switch/services/fan.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/pgl.h",
+      "path": "nx/include/switch/services/pgl.h",
+      "layer": "services",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/psm.h",
+      "path": "nx/include/switch/services/psm.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/spsm.h",
+      "path": "nx/include/switch/services/spsm.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/bsd.h",
+      "path": "nx/include/switch/services/bsd.h",
+      "layer": "services",
+      "domain": "network",
+      "umbrella_included": false,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/sfdnsres.h",
+      "path": "nx/include/switch/services/sfdnsres.h",
+      "layer": "services",
+      "domain": "network",
+      "umbrella_included": false,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/htcs.h",
+      "path": "nx/include/switch/services/htcs.h",
+      "layer": "services",
+      "domain": "network",
+      "umbrella_included": false,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/fatal.h",
+      "path": "nx/include/switch/services/fatal.h",
+      "layer": "services",
+      "domain": "diagnostics",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/time.h",
+      "path": "nx/include/switch/services/time.h",
+      "layer": "services",
+      "domain": "clock",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/usb.h",
+      "path": "nx/include/switch/services/usb.h",
+      "layer": "services",
+      "domain": "usb",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/usbds.h",
+      "path": "nx/include/switch/services/usbds.h",
+      "layer": "services",
+      "domain": "usb",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/usbhs.h",
+      "path": "nx/include/switch/services/usbhs.h",
+      "layer": "services",
+      "domain": "usb",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/hid.h",
+      "path": "nx/include/switch/services/hid.h",
+      "layer": "services",
+      "domain": "input",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/hidbus.h",
+      "path": "nx/include/switch/services/hidbus.h",
+      "layer": "services",
+      "domain": "input",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/hiddbg.h",
+      "path": "nx/include/switch/services/hiddbg.h",
+      "layer": "services",
+      "domain": "input",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/hidsys.h",
+      "path": "nx/include/switch/services/hidsys.h",
+      "layer": "services",
+      "domain": "input",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/irs.h",
+      "path": "nx/include/switch/services/irs.h",
+      "layer": "services",
+      "domain": "input",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/pl.h",
+      "path": "nx/include/switch/services/pl.h",
+      "layer": "services",
+      "domain": "settings",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/vi.h",
+      "path": "nx/include/switch/services/vi.h",
+      "layer": "services",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/nv.h",
+      "path": "nx/include/switch/services/nv.h",
+      "layer": "services",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/nifm.h",
+      "path": "nx/include/switch/services/nifm.h",
+      "layer": "services",
+      "domain": "network",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/nim.h",
+      "path": "nx/include/switch/services/nim.h",
+      "layer": "services",
+      "domain": "official",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ns.h",
+      "path": "nx/include/switch/services/ns.h",
+      "layer": "services",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ldr.h",
+      "path": "nx/include/switch/services/ldr.h",
+      "layer": "services",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ro.h",
+      "path": "nx/include/switch/services/ro.h",
+      "layer": "services",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/tc.h",
+      "path": "nx/include/switch/services/tc.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ts.h",
+      "path": "nx/include/switch/services/ts.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/pm.h",
+      "path": "nx/include/switch/services/pm.h",
+      "layer": "services",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/set.h",
+      "path": "nx/include/switch/services/set.h",
+      "layer": "services",
+      "domain": "settings",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ssl.h",
+      "path": "nx/include/switch/services/ssl.h",
+      "layer": "services",
+      "domain": "network",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/lr.h",
+      "path": "nx/include/switch/services/lr.h",
+      "layer": "services",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/bt.h",
+      "path": "nx/include/switch/services/bt.h",
+      "layer": "services",
+      "domain": "bluetooth",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/btdrv.h",
+      "path": "nx/include/switch/services/btdrv.h",
+      "layer": "services",
+      "domain": "bluetooth",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/btm.h",
+      "path": "nx/include/switch/services/btm.h",
+      "layer": "services",
+      "domain": "bluetooth",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/btmu.h",
+      "path": "nx/include/switch/services/btmu.h",
+      "layer": "services",
+      "domain": "bluetooth",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/btmsys.h",
+      "path": "nx/include/switch/services/btmsys.h",
+      "layer": "services",
+      "domain": "bluetooth",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/spl.h",
+      "path": "nx/include/switch/services/spl.h",
+      "layer": "services",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ncm.h",
+      "path": "nx/include/switch/services/ncm.h",
+      "layer": "services",
+      "domain": "official",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/psc.h",
+      "path": "nx/include/switch/services/psc.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/caps.h",
+      "path": "nx/include/switch/services/caps.h",
+      "layer": "services",
+      "domain": "capture",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/capsa.h",
+      "path": "nx/include/switch/services/capsa.h",
+      "layer": "services",
+      "domain": "capture",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/capsc.h",
+      "path": "nx/include/switch/services/capsc.h",
+      "layer": "services",
+      "domain": "capture",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/capsdc.h",
+      "path": "nx/include/switch/services/capsdc.h",
+      "layer": "services",
+      "domain": "capture",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/capsu.h",
+      "path": "nx/include/switch/services/capsu.h",
+      "layer": "services",
+      "domain": "capture",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/capssc.h",
+      "path": "nx/include/switch/services/capssc.h",
+      "layer": "services",
+      "domain": "capture",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/capssu.h",
+      "path": "nx/include/switch/services/capssu.h",
+      "layer": "services",
+      "domain": "capture",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/capmtp.h",
+      "path": "nx/include/switch/services/capmtp.h",
+      "layer": "services",
+      "domain": "usb",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/nfc.h",
+      "path": "nx/include/switch/services/nfc.h",
+      "layer": "services",
+      "domain": "input",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/wlaninf.h",
+      "path": "nx/include/switch/services/wlaninf.h",
+      "layer": "services",
+      "domain": "network",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/pctl.h",
+      "path": "nx/include/switch/services/pctl.h",
+      "layer": "services",
+      "domain": "settings",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/pdm.h",
+      "path": "nx/include/switch/services/pdm.h",
+      "layer": "services",
+      "domain": "local_data",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/grc.h",
+      "path": "nx/include/switch/services/grc.h",
+      "layer": "services",
+      "domain": "capture",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/friends.h",
+      "path": "nx/include/switch/services/friends.h",
+      "layer": "services",
+      "domain": "accounts",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/notif.h",
+      "path": "nx/include/switch/services/notif.h",
+      "layer": "services",
+      "domain": "local_data",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/mii.h",
+      "path": "nx/include/switch/services/mii.h",
+      "layer": "services",
+      "domain": "local_data",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/miiimg.h",
+      "path": "nx/include/switch/services/miiimg.h",
+      "layer": "services",
+      "domain": "local_data",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ldn.h",
+      "path": "nx/include/switch/services/ldn.h",
+      "layer": "services",
+      "domain": "network",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/lp2p.h",
+      "path": "nx/include/switch/services/lp2p.h",
+      "layer": "services",
+      "domain": "network",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/news.h",
+      "path": "nx/include/switch/services/news.h",
+      "layer": "services",
+      "domain": "accounts",
+      "umbrella_included": true,
+      "policy": "restricted_family",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ins.h",
+      "path": "nx/include/switch/services/ins.h",
+      "layer": "services",
+      "domain": "diagnostics",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ectx.h",
+      "path": "nx/include/switch/services/ectx.h",
+      "layer": "services",
+      "domain": "diagnostics",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/avm.h",
+      "path": "nx/include/switch/services/avm.h",
+      "layer": "services",
+      "domain": "local_data",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/mm.h",
+      "path": "nx/include/switch/services/mm.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/omm.h",
+      "path": "nx/include/switch/services/omm.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/idlesys.h",
+      "path": "nx/include/switch/services/idlesys.h",
+      "layer": "services",
+      "domain": "power",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/services/ovln.h",
+      "path": "nx/include/switch/services/ovln.h",
+      "layer": "services",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/display/binder.h",
+      "path": "nx/include/switch/display/binder.h",
+      "layer": "display",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/display/parcel.h",
+      "path": "nx/include/switch/display/parcel.h",
+      "layer": "display",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/display/buffer_producer.h",
+      "path": "nx/include/switch/display/buffer_producer.h",
+      "layer": "display",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/display/native_window.h",
+      "path": "nx/include/switch/display/native_window.h",
+      "layer": "display",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/display/framebuffer.h",
+      "path": "nx/include/switch/display/framebuffer.h",
+      "layer": "display",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nvidia/ioctl.h",
+      "path": "nx/include/switch/nvidia/ioctl.h",
+      "layer": "nvidia",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nvidia/graphic_buffer.h",
+      "path": "nx/include/switch/nvidia/graphic_buffer.h",
+      "layer": "nvidia",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nvidia/fence.h",
+      "path": "nx/include/switch/nvidia/fence.h",
+      "layer": "nvidia",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nvidia/map.h",
+      "path": "nx/include/switch/nvidia/map.h",
+      "layer": "nvidia",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nvidia/address_space.h",
+      "path": "nx/include/switch/nvidia/address_space.h",
+      "layer": "nvidia",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nvidia/channel.h",
+      "path": "nx/include/switch/nvidia/channel.h",
+      "layer": "nvidia",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nvidia/gpu.h",
+      "path": "nx/include/switch/nvidia/gpu.h",
+      "layer": "nvidia",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/nvidia/gpu_channel.h",
+      "path": "nx/include/switch/nvidia/gpu_channel.h",
+      "layer": "nvidia",
+      "domain": "display",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/audio/driver.h",
+      "path": "nx/include/switch/audio/driver.h",
+      "layer": "audio",
+      "domain": "audio",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/libapplet.h",
+      "path": "nx/include/switch/applets/libapplet.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/album_la.h",
+      "path": "nx/include/switch/applets/album_la.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/friends_la.h",
+      "path": "nx/include/switch/applets/friends_la.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/hid_la.h",
+      "path": "nx/include/switch/applets/hid_la.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/mii_la.h",
+      "path": "nx/include/switch/applets/mii_la.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/nfp_la.h",
+      "path": "nx/include/switch/applets/nfp_la.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/nifm_la.h",
+      "path": "nx/include/switch/applets/nifm_la.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/pctlauth.h",
+      "path": "nx/include/switch/applets/pctlauth.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/psel.h",
+      "path": "nx/include/switch/applets/psel.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/error.h",
+      "path": "nx/include/switch/applets/error.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/swkbd.h",
+      "path": "nx/include/switch/applets/swkbd.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/applets/web.h",
+      "path": "nx/include/switch/applets/web.h",
+      "layer": "applets",
+      "domain": "lifecycle",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/env.h",
+      "path": "nx/include/switch/runtime/env.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/hosversion.h",
+      "path": "nx/include/switch/runtime/hosversion.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/diag.h",
+      "path": "nx/include/switch/runtime/diag.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/nxlink.h",
+      "path": "nx/include/switch/runtime/nxlink.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/resolver.h",
+      "path": "nx/include/switch/runtime/resolver.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/pad.h",
+      "path": "nx/include/switch/runtime/pad.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/ringcon.h",
+      "path": "nx/include/switch/runtime/ringcon.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/btdev.h",
+      "path": "nx/include/switch/runtime/btdev.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/util/utf.h",
+      "path": "nx/include/switch/runtime/util/utf.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/devices/console.h",
+      "path": "nx/include/switch/runtime/devices/console.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/devices/usb_comms.h",
+      "path": "nx/include/switch/runtime/devices/usb_comms.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/devices/fs_dev.h",
+      "path": "nx/include/switch/runtime/devices/fs_dev.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/devices/romfs_dev.h",
+      "path": "nx/include/switch/runtime/devices/romfs_dev.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/runtime/devices/socket.h",
+      "path": "nx/include/switch/runtime/devices/socket.h",
+      "layer": "runtime",
+      "domain": "runtime",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/aes.h",
+      "path": "nx/include/switch/crypto/aes.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/aes_cbc.h",
+      "path": "nx/include/switch/crypto/aes_cbc.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/aes_ctr.h",
+      "path": "nx/include/switch/crypto/aes_ctr.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/aes_xts.h",
+      "path": "nx/include/switch/crypto/aes_xts.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/cmac.h",
+      "path": "nx/include/switch/crypto/cmac.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/sha256.h",
+      "path": "nx/include/switch/crypto/sha256.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/sha1.h",
+      "path": "nx/include/switch/crypto/sha1.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/hmac.h",
+      "path": "nx/include/switch/crypto/hmac.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "id": "header:switch/crypto/crc.h",
+      "path": "nx/include/switch/crypto/crc.h",
+      "layer": "crypto",
+      "domain": "crypto",
+      "umbrella_included": true,
+      "policy": "review_required",
+      "firmware": "per-operation unresolved",
+      "access": "unverified",
+      "device": "not_tested"
+    }
+  ],
+  "svc_wrappers": [
+    {
+      "id": "svc:svcAcceptSession",
+      "name": "svcAcceptSession",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcArbitrateLock",
+      "name": "svcArbitrateLock",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcArbitrateUnlock",
+      "name": "svcArbitrateUnlock",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcAttachDeviceAddressSpace",
+      "name": "svcAttachDeviceAddressSpace",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcBreak",
+      "name": "svcBreak",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcBreakDebugProcess",
+      "name": "svcBreakDebugProcess",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCallSecureMonitor",
+      "name": "svcCallSecureMonitor",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCancelSynchronization",
+      "name": "svcCancelSynchronization",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcChangeKernelTraceState",
+      "name": "svcChangeKernelTraceState",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcClearEvent",
+      "name": "svcClearEvent",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCloseHandle",
+      "name": "svcCloseHandle",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcConnectToNamedPort",
+      "name": "svcConnectToNamedPort",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcConnectToPort",
+      "name": "svcConnectToPort",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcContinueDebugEvent",
+      "name": "svcContinueDebugEvent",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcControlCodeMemory",
+      "name": "svcControlCodeMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateCodeMemory",
+      "name": "svcCreateCodeMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateDeviceAddressSpace",
+      "name": "svcCreateDeviceAddressSpace",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateEvent",
+      "name": "svcCreateEvent",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateInterruptEvent",
+      "name": "svcCreateInterruptEvent",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateIoPool",
+      "name": "svcCreateIoPool",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateIoRegion",
+      "name": "svcCreateIoRegion",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreatePort",
+      "name": "svcCreatePort",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateProcess",
+      "name": "svcCreateProcess",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateResourceLimit",
+      "name": "svcCreateResourceLimit",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateSession",
+      "name": "svcCreateSession",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateSharedMemory",
+      "name": "svcCreateSharedMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateThread",
+      "name": "svcCreateThread",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcCreateTransferMemory",
+      "name": "svcCreateTransferMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcDebugActiveProcess",
+      "name": "svcDebugActiveProcess",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcDetachDeviceAddressSpace",
+      "name": "svcDetachDeviceAddressSpace",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcDumpInfo",
+      "name": "svcDumpInfo",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcExitProcess",
+      "name": "svcExitProcess",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcExitThread",
+      "name": "svcExitThread",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcFlushDataCache",
+      "name": "svcFlushDataCache",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcFlushEntireDataCache",
+      "name": "svcFlushEntireDataCache",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcFlushProcessDataCache",
+      "name": "svcFlushProcessDataCache",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetCurrentProcessorNumber",
+      "name": "svcGetCurrentProcessorNumber",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetDebugEvent",
+      "name": "svcGetDebugEvent",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetDebugFutureThreadInfo",
+      "name": "svcGetDebugFutureThreadInfo",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetDebugThreadContext",
+      "name": "svcGetDebugThreadContext",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetDebugThreadParam",
+      "name": "svcGetDebugThreadParam",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetInfo",
+      "name": "svcGetInfo",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetLastThreadInfo",
+      "name": "svcGetLastThreadInfo",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetProcessId",
+      "name": "svcGetProcessId",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetProcessInfo",
+      "name": "svcGetProcessInfo",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetProcessList",
+      "name": "svcGetProcessList",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetResourceLimitCurrentValue",
+      "name": "svcGetResourceLimitCurrentValue",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetResourceLimitLimitValue",
+      "name": "svcGetResourceLimitLimitValue",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetResourceLimitPeakValue",
+      "name": "svcGetResourceLimitPeakValue",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetSystemInfo",
+      "name": "svcGetSystemInfo",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetSystemTick",
+      "name": "svcGetSystemTick",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetThreadContext3",
+      "name": "svcGetThreadContext3",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetThreadCoreMask",
+      "name": "svcGetThreadCoreMask",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetThreadId",
+      "name": "svcGetThreadId",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetThreadList",
+      "name": "svcGetThreadList",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcGetThreadPriority",
+      "name": "svcGetThreadPriority",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcInvalidateProcessDataCache",
+      "name": "svcInvalidateProcessDataCache",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcKernelDebug",
+      "name": "svcKernelDebug",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcLegacyContinueDebugEvent",
+      "name": "svcLegacyContinueDebugEvent",
+      "kind": "legacy_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcLegacyQueryIoMapping",
+      "name": "svcLegacyQueryIoMapping",
+      "kind": "legacy_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcManageNamedPort",
+      "name": "svcManageNamedPort",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapDeviceAddressSpace",
+      "name": "svcMapDeviceAddressSpace",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapDeviceAddressSpaceAligned",
+      "name": "svcMapDeviceAddressSpaceAligned",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapDeviceAddressSpaceByForce",
+      "name": "svcMapDeviceAddressSpaceByForce",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapInsecurePhysicalMemory",
+      "name": "svcMapInsecurePhysicalMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapIoRegion",
+      "name": "svcMapIoRegion",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapMemory",
+      "name": "svcMapMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapPhysicalMemory",
+      "name": "svcMapPhysicalMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapPhysicalMemoryUnsafe",
+      "name": "svcMapPhysicalMemoryUnsafe",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapProcessCodeMemory",
+      "name": "svcMapProcessCodeMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapProcessMemory",
+      "name": "svcMapProcessMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapSharedMemory",
+      "name": "svcMapSharedMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcMapTransferMemory",
+      "name": "svcMapTransferMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcOutputDebugString",
+      "name": "svcOutputDebugString",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcQueryDebugProcessMemory",
+      "name": "svcQueryDebugProcessMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcQueryMemory",
+      "name": "svcQueryMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcQueryMemoryMapping",
+      "name": "svcQueryMemoryMapping",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcQueryPhysicalAddress",
+      "name": "svcQueryPhysicalAddress",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcQueryProcessMemory",
+      "name": "svcQueryProcessMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcReadDebugProcessMemory",
+      "name": "svcReadDebugProcessMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcReadWriteRegister",
+      "name": "svcReadWriteRegister",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcReplyAndReceive",
+      "name": "svcReplyAndReceive",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcReplyAndReceiveLight",
+      "name": "svcReplyAndReceiveLight",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcReplyAndReceiveWithUserBuffer",
+      "name": "svcReplyAndReceiveWithUserBuffer",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcResetSignal",
+      "name": "svcResetSignal",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcReturnFromException",
+      "name": "svcReturnFromException",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSendAsyncRequestWithUserBuffer",
+      "name": "svcSendAsyncRequestWithUserBuffer",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSendSyncRequest",
+      "name": "svcSendSyncRequest",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSendSyncRequestLight",
+      "name": "svcSendSyncRequestLight",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSendSyncRequestWithUserBuffer",
+      "name": "svcSendSyncRequestWithUserBuffer",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetDebugThreadContext",
+      "name": "svcSetDebugThreadContext",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetHardwareBreakPoint",
+      "name": "svcSetHardwareBreakPoint",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetHeapSize",
+      "name": "svcSetHeapSize",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetMemoryAttribute",
+      "name": "svcSetMemoryAttribute",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetMemoryPermission",
+      "name": "svcSetMemoryPermission",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetProcessActivity",
+      "name": "svcSetProcessActivity",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetProcessMemoryPermission",
+      "name": "svcSetProcessMemoryPermission",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetResourceLimitLimitValue",
+      "name": "svcSetResourceLimitLimitValue",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetThreadActivity",
+      "name": "svcSetThreadActivity",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetThreadCoreMask",
+      "name": "svcSetThreadCoreMask",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetThreadPriority",
+      "name": "svcSetThreadPriority",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSetUnsafeLimit",
+      "name": "svcSetUnsafeLimit",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSignalEvent",
+      "name": "svcSignalEvent",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSignalProcessWideKey",
+      "name": "svcSignalProcessWideKey",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSignalToAddress",
+      "name": "svcSignalToAddress",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSleepSystem",
+      "name": "svcSleepSystem",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSleepThread",
+      "name": "svcSleepThread",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcStartProcess",
+      "name": "svcStartProcess",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcStartThread",
+      "name": "svcStartThread",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcStoreProcessDataCache",
+      "name": "svcStoreProcessDataCache",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcSynchronizePreemptionState",
+      "name": "svcSynchronizePreemptionState",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcTerminateDebugProcess",
+      "name": "svcTerminateDebugProcess",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcTerminateProcess",
+      "name": "svcTerminateProcess",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapDeviceAddressSpace",
+      "name": "svcUnmapDeviceAddressSpace",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapInsecurePhysicalMemory",
+      "name": "svcUnmapInsecurePhysicalMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapIoRegion",
+      "name": "svcUnmapIoRegion",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapMemory",
+      "name": "svcUnmapMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapPhysicalMemory",
+      "name": "svcUnmapPhysicalMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapPhysicalMemoryUnsafe",
+      "name": "svcUnmapPhysicalMemoryUnsafe",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapProcessCodeMemory",
+      "name": "svcUnmapProcessCodeMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapProcessMemory",
+      "name": "svcUnmapProcessMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapSharedMemory",
+      "name": "svcUnmapSharedMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcUnmapTransferMemory",
+      "name": "svcUnmapTransferMemory",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcWaitForAddress",
+      "name": "svcWaitForAddress",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcWaitProcessWideKeyAtomic",
+      "name": "svcWaitProcessWideKeyAtomic",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcWaitSynchronization",
+      "name": "svcWaitSynchronization",
+      "kind": "declared_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcWaitSynchronizationSingle",
+      "name": "svcWaitSynchronizationSingle",
+      "kind": "inline_wrapper",
+      "policy": "review_required",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    },
+    {
+      "id": "svc:svcWriteDebugProcessMemory",
+      "name": "svcWriteDebugProcessMemory",
+      "kind": "declared_wrapper",
+      "policy": "restricted_or_privileged",
+      "access": "unverified",
+      "firmware": "unresolved",
+      "device": "not_tested"
+    }
+  ],
+  "historical_service_families": [
+    {
+      "family": "Account services",
+      "endpoint_candidates": [
+        "acc:u0",
+        "acc:u1",
+        "acc:aa",
+        "acc:su",
+        "dauth:0"
+      ],
+      "source_version_expression": "acc:u0, acc:u1, acc:aa, acc:su, [5.0.0+] dauth:0",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "HID services",
+      "endpoint_candidates": [
+        "ahid:cd",
+        "ahid:hdr",
+        "hid",
+        "hid:dbg",
+        "hid:sys",
+        "irs",
+        "irs:sys",
+        "xcd:sys",
+        "hid:tmp",
+        "hidbus"
+      ],
+      "source_version_expression": "[1.0.0-8.1.0] ahid:cd, [1.0.0-8.1.0] ahid:hdr, hid, hid:dbg, hid:sys, irs, irs:sys, xcd:sys, [3.0.0-7.0.1] hid:tmp, [5.0.0+] hidbus",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Applet Manager services",
+      "endpoint_candidates": [
+        "appletAE",
+        "appletOE",
+        "idle:sys",
+        "omm",
+        "spsm",
+        "tcap",
+        "caps:su",
+        "apm"
+      ],
+      "source_version_expression": "appletAE, appletOE, idle:sys, omm, spsm, [5.0.0+] tcap, [6.0.0+] caps:su, [8.0.0+] apm",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "NS Services",
+      "endpoint_candidates": [
+        "aoc:u",
+        "mii:u",
+        "mii:e",
+        "ns:am",
+        "ns:su",
+        "ns:dev",
+        "pl:u",
+        "ovln:rcv",
+        "ovln:snd",
+        "pdm:ntfy",
+        "pdm:qry",
+        "ns:am2",
+        "ns:ec",
+        "ns:rid",
+        "ns:rt",
+        "ns:vm",
+        "ns:web"
+      ],
+      "source_version_expression": "[1.0.0-2.3.0] aoc:u, mii:u, mii:e, ns:am, ns:su, ns:dev, pl:u, ovln:rcv, ovln:snd, pdm:ntfy, pdm:qry [3.0.0+] aoc:u, ns:am2, ns:dev, ns:ec, ns:rid, ns:rt, ns:su, ns:vm, ns:web, [1.0.0-7.0.1] ovln:rcv, [1.0.0-7.0.1] ovln:snd",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "PPC services",
+      "endpoint_candidates": [
+        "apm:dbg",
+        "apm:sys",
+        "fgm",
+        "fgm:0",
+        "fgm:9",
+        "fgm:dbg",
+        "apm",
+        "apm:p",
+        "apm:am"
+      ],
+      "source_version_expression": "[1.0.0-8.1.0] apm:dbg, [1.0.0-8.1.0] apm:sys, [1.0.0-8.1.0] fgm, [1.0.0-8.1.0] fgm:0, [1.0.0-8.1.0] fgm:9, [1.0.0-8.1.0] fgm:dbg, [1.0.0-7.0.1] apm, [1.0.0-7.0.1] apm:p, [8.0.0-8.1.0] apm:am",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Glue services",
+      "endpoint_candidates": [
+        "arp:r",
+        "arp:w",
+        "bgtc:t",
+        "bgtc:sc",
+        "time:a",
+        "time:r",
+        "time:u",
+        "notif:a",
+        "notif:s"
+      ],
+      "source_version_expression": "arp:r, arp:w, [2.0.0+] bgtc:t, [2.0.0+] bgtc:sc, [9.0.0+] time:a, [9.0.0+] time:r, [9.0.0+] time:u, [9.0.0+] notif:a, [9.0.0+] notif:s",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Audio services",
+      "endpoint_candidates": [
+        "audin:a",
+        "audin:d",
+        "audin:u",
+        "audout:a",
+        "audout:d",
+        "audout:u",
+        "audren:a",
+        "audren:d",
+        "audren:u",
+        "audrec:a",
+        "audrec:d",
+        "audrec:u",
+        "audctl",
+        "codecctl",
+        "hwopus",
+        "auddebug",
+        "auddev"
+      ],
+      "source_version_expression": "audin:a, audin:d, audin:u, audout:a, audout:d, audout:u, audren:a, audren:d, audren:u, audrec:a, audrec:d, audrec:u, audctl, [1.0.0-2.3.0] codecctl, hwopus, auddebug, [6.0.0+] auddev",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Profiler services",
+      "endpoint_candidates": [
+        "banana"
+      ],
+      "source_version_expression": "banana",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "BCAT services",
+      "endpoint_candidates": [
+        "bcat:a",
+        "bcat:u",
+        "bcat:m",
+        "bcat:s",
+        "news:a",
+        "news:c",
+        "news:m",
+        "news:p",
+        "news:v",
+        "prepo:u",
+        "prepo:s",
+        "prepo:m",
+        "prepo:a",
+        "prepo:d",
+        "prepo:a2"
+      ],
+      "source_version_expression": "[2.0.0+] bcat:a, [2.0.0+] bcat:u, [2.0.0+] bcat:m, [2.0.0+] bcat:s, news:a, news:c, news:m, news:p, news:v, prepo:u, prepo:s, prepo:m, [1.0.0-5.1.0] prepo:a, [1.0.0] prepo:d, [6.0.0+] prepo:a2",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "PCV services",
+      "endpoint_candidates": [
+        "bpc:c",
+        "bpc:b",
+        "bpc:r",
+        "bpc:w",
+        "pcv",
+        "pcv:arb",
+        "pcv:imm",
+        "time:u",
+        "time:a",
+        "time:s",
+        "bpc",
+        "clkrst",
+        "clkrst:a",
+        "clkrst:i",
+        "rgltr",
+        "rtc"
+      ],
+      "source_version_expression": "[1.0.0] bpc:c, bpc:b, bpc:r, bpc:w, pcv, pcv:arb, pcv:imm, time:u, time:a, time:s [2.0.0+] bpc, bpc:r, pcv, [2.0.0-8.1.0] time:u, [2.0.0-8.1.0] time:a, [2.0.0-8.1.0] time:s, [1.0.0-7.0.1] pcv:arb, [1.0.0-7.0.1] pcv:imm, [8.0.0+] clkrst, [8.0.0+] clkrst:a, [8.0.0+] clkrst:i, [8.0.0+] rgltr, [8.0.0+] rtc",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Sockets services",
+      "endpoint_candidates": [
+        "bsd:u",
+        "bsd:s",
+        "bsdcfg",
+        "ethc:c",
+        "ethc:i",
+        "nsd:u",
+        "nsd:a",
+        "sfdnsres"
+      ],
+      "source_version_expression": "bsd:u, bsd:s, bsdcfg, ethc:c, ethc:i, nsd:u, nsd:a, sfdnsres",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Bluetooth Driver services",
+      "endpoint_candidates": [
+        "btdrv",
+        "bt"
+      ],
+      "source_version_expression": "btdrv, [5.0.0+] bt",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "BTM services",
+      "endpoint_candidates": [
+        "btm",
+        "btm:dbg",
+        "btm:sys",
+        "btm:u"
+      ],
+      "source_version_expression": "btm, btm:dbg, btm:sys, [5.0.0+] btm:u",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Capture services",
+      "endpoint_candidates": [
+        "caps:a",
+        "caps:c",
+        "mm:u",
+        "caps:u"
+      ],
+      "source_version_expression": "caps:a, caps:c, [1.0.0] mm:u, [5.0.0+] caps:u",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Display services",
+      "endpoint_candidates": [
+        "caps:sc",
+        "caps:ss",
+        "vi:m",
+        "vi:s",
+        "vi:u",
+        "cec-mgr",
+        "mm:u",
+        "caps:su"
+      ],
+      "source_version_expression": "[2.0.0+] caps:sc, [2.0.0+] caps:ss, vi:m, vi:s, vi:u, cec-mgr, [2.0.0+] mm:u, [3.0.0-5.1.0] caps:su",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Nvnflinger services",
+      "endpoint_candidates": [
+        "dispdrv"
+      ],
+      "source_version_expression": "dispdrv",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Debug Monitor services",
+      "endpoint_candidates": [
+        "dmnt:-"
+      ],
+      "source_version_expression": "dmnt:-",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Error Report services",
+      "endpoint_candidates": [
+        "erpt:c",
+        "erpt:r"
+      ],
+      "source_version_expression": "erpt:c, erpt:r",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Error Upload services",
+      "endpoint_candidates": [
+        "eupld:c",
+        "eupld:r"
+      ],
+      "source_version_expression": "eupld:c, eupld:r",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "ETicket services",
+      "endpoint_candidates": [
+        "es"
+      ],
+      "source_version_expression": "es",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "PTM services",
+      "endpoint_candidates": [
+        "fan",
+        "psm",
+        "tc",
+        "ts",
+        "pcm",
+        "apm:sys",
+        "fgm",
+        "fgm:0",
+        "fgm:9",
+        "fgm:dbg",
+        "apm:am"
+      ],
+      "source_version_expression": "fan, psm, tc, ts, pcm, [9.0.0+] apm:sys, [9.0.0+] fgm, [9.0.0+] fgm:0, [9.0.0+] fgm:9, [9.0.0+] fgm:dbg, [9.0.0+] apm:am",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Fatal services",
+      "endpoint_candidates": [
+        "fatal:u",
+        "fatal:p"
+      ],
+      "source_version_expression": "fatal:u, fatal:p",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Friend services",
+      "endpoint_candidates": [
+        "friend:u",
+        "friend:v",
+        "friend:m",
+        "friend:s",
+        "friend:a",
+        "nd:app",
+        "nd:sys"
+      ],
+      "source_version_expression": "friend:u, friend:v, friend:m, friend:s, friend:a, [5.0.0-6.0.0] nd:app, [5.0.0-6.0.0] nd:sys",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Filesystem services",
+      "endpoint_candidates": [
+        "fsp-srv",
+        "fsp-ldr",
+        "fsp-pr"
+      ],
+      "source_version_expression": "fsp-srv, fsp-ldr, fsp-pr",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Bus services",
+      "endpoint_candidates": [
+        "gpio",
+        "i2c",
+        "i2c:pcv",
+        "pinmux",
+        "pwm",
+        "uart",
+        "sasbus",
+        "led"
+      ],
+      "source_version_expression": "gpio, i2c, i2c:pcv, pinmux, pwm, uart, [3.0.0+] sasbus, [9.0.0+] led",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "TMA services",
+      "endpoint_candidates": [
+        "htc",
+        "htcs",
+        "htc:tenv",
+        "file_io",
+        "gds",
+        "tma_log",
+        "tmagent"
+      ],
+      "source_version_expression": "htc, htcs, htc:tenv, file_io, gds, tma_log, tmagent",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "JIT services",
+      "endpoint_candidates": [
+        "jit:u"
+      ],
+      "source_version_expression": "jit:u",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Backlight services",
+      "endpoint_candidates": [
+        "lbl"
+      ],
+      "source_version_expression": "lbl",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "LDN services",
+      "endpoint_candidates": [
+        "ldn:m",
+        "ldn:s",
+        "ldn:u",
+        "ndd",
+        "lp2p:app",
+        "lp2p:sys"
+      ],
+      "source_version_expression": "ldn:m, ldn:s, ldn:u, [5.0.0-6.0.0] ndd, [9.0.0+] lp2p:app, [9.0.0+] lp2p:sys",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Loader services",
+      "endpoint_candidates": [
+        "ldr:pm",
+        "ldr:ro",
+        "ldr:shel",
+        "ldr:dmnt"
+      ],
+      "source_version_expression": "[1.0.0+] ldr:pm, ldr:ro, ldr:shel, ldr:dmnt [3.0.0+] ldr:pm, ldr:shel, ldr:dmnt",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Log services",
+      "endpoint_candidates": [
+        "lm",
+        "lm:get"
+      ],
+      "source_version_expression": "lm, lm:get",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Manu Services",
+      "endpoint_candidates": [
+        "manu"
+      ],
+      "source_version_expression": "manu",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "NCM services",
+      "endpoint_candidates": [
+        "lr",
+        "ncm",
+        "ncm:v"
+      ],
+      "source_version_expression": "lr, ncm, ncm:v",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "NFC services",
+      "endpoint_candidates": [
+        "nfc:am",
+        "nfc:mf:u",
+        "nfc:user",
+        "nfc:sys",
+        "nfp:user",
+        "nfp:dbg",
+        "nfp:sys"
+      ],
+      "source_version_expression": "nfc:am, nfc:mf:u, nfc:user, nfc:sys, nfp:user, nfp:dbg, nfp:sys",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Network Interface services",
+      "endpoint_candidates": [
+        "nifm:u",
+        "nifm:a",
+        "nifm:s"
+      ],
+      "source_version_expression": "nifm:u, nifm:a, nifm:s",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "NIM services",
+      "endpoint_candidates": [
+        "nim",
+        "nim:shp",
+        "ntc",
+        "nim:eca",
+        "nim:ecas"
+      ],
+      "source_version_expression": "nim, nim:shp, ntc, [5.0.0+] nim:eca, [7.0.0+] nim:ecas",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "NPNS services",
+      "endpoint_candidates": [
+        "npns:u",
+        "npns:s"
+      ],
+      "source_version_expression": "npns:u, npns:s",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "NV services",
+      "endpoint_candidates": [
+        "nvdrv:a",
+        "nvdrv:s",
+        "nvdrv:t",
+        "nvdrv",
+        "nvdrvdbg",
+        "nvgem:c",
+        "nvgem:cd",
+        "nvmemp"
+      ],
+      "source_version_expression": "nvdrv:a, nvdrv:s, nvdrv:t, nvdrv, nvdrvdbg, nvgem:c, nvgem:cd, nvmemp",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "PCIe services",
+      "endpoint_candidates": [
+        "pcie",
+        "pcie:log"
+      ],
+      "source_version_expression": "pcie, [6.0.0+] pcie:log",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Parental Control services",
+      "endpoint_candidates": [
+        "pctl",
+        "pctl:a",
+        "pctl:s",
+        "pctl:r"
+      ],
+      "source_version_expression": "pctl, pctl:a, pctl:s, pctl:r",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Process Manager services",
+      "endpoint_candidates": [
+        "pm:bm",
+        "pm:info",
+        "pm:shell"
+      ],
+      "source_version_expression": "pm:bm, pm:info, pm:shell",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "PSC services",
+      "endpoint_candidates": [
+        "psc:c",
+        "psc:m",
+        "srepo:u",
+        "srepo:a",
+        "ovln:rcv",
+        "ovln:snd",
+        "psc:l",
+        "time:su",
+        "time:s",
+        "time:al",
+        "time:m",
+        "time:p",
+        "ins:r",
+        "ins:s"
+      ],
+      "source_version_expression": "psc:c, psc:m, [5.0.0+] srepo:u, [5.0.0+] srepo:a, [8.0.0+] ovln:rcv, [8.0.0+] ovln:snd, [9.0.0+] psc:l, [9.0.0+] time:su, [9.0.0+] time:s, [9.0.0+] time:al, [9.0.0+] time:m, [9.0.0+] time:p, [9.0.0+] ins:r, [9.0.0+] ins:s",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "RO services",
+      "endpoint_candidates": [
+        "ldr:ro",
+        "ro:dmnt",
+        "ro:1"
+      ],
+      "source_version_expression": "[3.0.0+] ldr:ro, ro:dmnt, [7.0.0+] ro:1",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Settings services",
+      "endpoint_candidates": [
+        "set",
+        "set:fd",
+        "set:cal",
+        "set:sys"
+      ],
+      "source_version_expression": "set, set:fd, set:cal, set:sys",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Shared Database services",
+      "endpoint_candidates": [
+        "mii:u",
+        "mii:e",
+        "pdm:ntfy",
+        "pdm:qry",
+        "pl:u",
+        "miiimg",
+        "avm",
+        "pl:s"
+      ],
+      "source_version_expression": "[3.0.0+] mii:u, [3.0.0+] mii:e, [3.0.0+] pdm:ntfy, [3.0.0+] pdm:qry, [3.0.0+] pl:u, [5.0.0+] miiimg, [6.0.0+] avm, [9.0.0+] pl:s",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "SSL services",
+      "endpoint_candidates": [
+        "ssl"
+      ],
+      "source_version_expression": "ssl",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "SPL services",
+      "endpoint_candidates": [
+        "csrng",
+        "spl:",
+        "spl:mig",
+        "spl:fs",
+        "spl:ssl",
+        "spl:es",
+        "spl:manu"
+      ],
+      "source_version_expression": "csrng, spl:, [4.0.0+] spl:mig, [4.0.0+] spl:fs, [4.0.0+] spl:ssl, [4.0.0+] spl:es, [5.0.0+] spl:manu",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "?",
+      "endpoint_candidates": [
+        "sf-uds"
+      ],
+      "source_version_expression": "sf-uds",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "?",
+      "endpoint_candidates": [
+        "tspm"
+      ],
+      "source_version_expression": "tspm",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "USB services",
+      "endpoint_candidates": [
+        "usb:ds",
+        "usb:hs",
+        "usb:pd",
+        "usb:pd:c",
+        "usb:pd:m",
+        "usb:pm",
+        "usb:hs:a",
+        "usb:qdb",
+        "usb:obsv"
+      ],
+      "source_version_expression": "usb:ds, usb:hs, usb:pd, usb:pd:c, [1.0.0] usb:pd:m, usb:pm, [7.0.0+] usb:hs:a, [7.0.0+] usb:qdb, [8.0.0+] usb:obsv",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "WLAN services",
+      "endpoint_candidates": [
+        "wlan:inf",
+        "wlan:lcl",
+        "wlan:lg",
+        "wlan:lga",
+        "wlan:sg",
+        "wlan:soc",
+        "wlan:dtc"
+      ],
+      "source_version_expression": "wlan:inf, wlan:lcl, wlan:lg, wlan:lga, wlan:sg, wlan:soc, [6.0.0+] wlan:dtc",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "GRC services",
+      "endpoint_candidates": [
+        "grc:c",
+        "grc:d"
+      ],
+      "source_version_expression": "[4.0.0+] grc:c, [6.0.0+] grc:d",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Migration services",
+      "endpoint_candidates": [
+        "mig:usr"
+      ],
+      "source_version_expression": "[4.0.0+] mig:usr",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "Jpegdec services",
+      "endpoint_candidates": [
+        "caps:dc"
+      ],
+      "source_version_expression": "[4.0.0+] caps:dc",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "OLSC services",
+      "endpoint_candidates": [
+        "olsc:s"
+      ],
+      "source_version_expression": "[6.0.0+] olsc:s",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    },
+    {
+      "family": "NGCT services",
+      "endpoint_candidates": [
+        "ngct:s",
+        "ngct:u"
+      ],
+      "source_version_expression": "[9.0.0+] ngct:s, [9.0.0+] ngct:u",
+      "policy": "unclassified_disabled",
+      "status": "historical_snapshot_requires_current_crosscheck"
+    }
+  ]
+}
