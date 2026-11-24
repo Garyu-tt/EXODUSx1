@@ -155,3 +155,13 @@ After successful compilation and preflight, copy only exodus-shell.nro into a ne
 Rollback: exit the NRO and use the original menu. Removing the dedicated NRO directory removes this optional shell; do not delete the shared catalog, runtime or existing HOME files. Before considering HOME replacement, require on-device checks for startup, failure reporting, controls, handheld/dock, suspend/resume, memory budget, all handoffs, and return/exit. Only then implement a separately reviewed HOME adapter with an independently tested recovery path. HOS 4.9/older firmware support is not established.
 
 Local verification: sh -n passed on the exact build-switch.sh blob 2936478c2e1cd883296aa0c07bf658c0cbdb1f8a. Missing arguments and missing DEVKITPRO fail with exit 2 and no output. Local environment lacks devkitA64 and SDL2 and cannot resolve github.com. No native binary has been produced here; no console was changed.
+
+
+## R11: first physical hardware checkpoint (2026-11-24)
+
+Operator photos of Switch Lite running the R10 binary (SHA256 29696de61b56067a463ba8f651e6480ff62f7ba5c576fe30eebea9ae5c40fca3) show the home screen and Control Center. Confirmed visually: startup, SDL rendering, TTF text, transition via Plus, and ten populated telemetry fields. Observed snapshot: battery 90% external power, Wi-Fi enabled and connected, Bluetooth enabled, brightness 68%, APM Normal, kernel memory charge 3089 / 3189 MiB, SD used 12845 / 59668 MiB, SoC 28.2 C, board 27.8 C. Photos are operator evidence, not automated instrumentation or a formal benchmark. Firmware version is not established by these photos.
+
+The kernel memory charge is not a measurement of live EXODUS allocations. libnx heap reservation may contribute; do not infer a memory leak or claim allocator usage from these numbers. R11 relabels the field; separate live allocation measurements are pending.
+
+R11 also replaces the visible donor product label on the shell-owned headers and prefixes footer action labels with ASCII controller names. This is a fallback for blank glyphs seen on hardware, not a fix to the donor glyph renderer or internal settings/dialog headers. Touch hitboxes remain managed by the original UI. Donor source and licensing are retained. Native compilation and on-device acceptance of R11 are pending. R10 is not a HOME replacement. Library, launch handoffs, settings, exit and suspend/resume still require separate tests.
+
