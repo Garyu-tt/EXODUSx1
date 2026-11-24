@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#include "evcs_split.h"
 
 #define EVCS_PATH_CAP 512
 #define EVCS_MAX_DEPTH 8
@@ -66,6 +67,16 @@ static inline enum evcs_result evcs_walk(const char *root, unsigned depth, struc
         struct stat st;
         if (lstat(path,&st)) { rc = EVCS_IO; break; }
         if (S_ISDIR(st.st_mode)) {
+            enum evcs_kind kind;
+            if (evcs_kind_of(e->d_name,&kind) && (kind==EVCS_NSP || kind==EVCS_XCI)) {
+                struct evcs_split_info info;
+                enum evcs_split_result split=evcs_split_probe(path,&s->visited,EVCS_MAX_VISITED,&info);
+                if (split==EVCS_SPLIT_INVALID) continue;
+                if (split!=EVCS_SPLIT_OK) { rc=split==EVCS_SPLIT_LIMIT ? EVCS_LIMIT : EVCS_IO; break; }
+                if (++s->files > EVCS_MAX_FILES) { rc=EVCS_LIMIT; break; }
+                if (!s->emit(path,kind,info.bytes,s->user)) { rc=EVCS_STOP; break; }
+                continue;
+            }
             if (depth >= EVCS_MAX_DEPTH) { rc = EVCS_LIMIT; break; }
             rc = evcs_walk(path,depth+1,s);
             if (rc != EVCS_OK) break;
