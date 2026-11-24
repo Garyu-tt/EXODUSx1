@@ -1,0 +1,1569 @@
+{
+  "schema": "exodus.horizon-svc-map/v1",
+  "source": {
+    "revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+    "path": "nx/source/kernel/svc.s",
+    "blob": "5b5eac9096a537ea829965a4833fc057460befd8"
+  },
+  "scope": "AArch64 libnx assembly wrappers only, not an exhaustive kernel dispatch table or permission map",
+  "counts": {
+    "assembly_wrappers": 127,
+    "distinct_instruction_numbers": 124,
+    "unmapped_header_wrappers": 1
+  },
+  "records": [
+    {
+      "wrapper": "svcSetHeapSize",
+      "instruction_numbers": [
+        "0x01"
+      ],
+      "line": 14,
+      "header_record": "svc:svcSetHeapSize",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetMemoryPermission",
+      "instruction_numbers": [
+        "0x02"
+      ],
+      "line": 22,
+      "header_record": "svc:svcSetMemoryPermission",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetMemoryAttribute",
+      "instruction_numbers": [
+        "0x03"
+      ],
+      "line": 27,
+      "header_record": "svc:svcSetMemoryAttribute",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapMemory",
+      "instruction_numbers": [
+        "0x04"
+      ],
+      "line": 32,
+      "header_record": "svc:svcMapMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapMemory",
+      "instruction_numbers": [
+        "0x05"
+      ],
+      "line": 37,
+      "header_record": "svc:svcUnmapMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcQueryMemory",
+      "instruction_numbers": [
+        "0x06"
+      ],
+      "line": 42,
+      "header_record": "svc:svcQueryMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcExitProcess",
+      "instruction_numbers": [
+        "0x07"
+      ],
+      "line": 50,
+      "header_record": "svc:svcExitProcess",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateThread",
+      "instruction_numbers": [
+        "0x08"
+      ],
+      "line": 55,
+      "header_record": "svc:svcCreateThread",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcStartThread",
+      "instruction_numbers": [
+        "0x09"
+      ],
+      "line": 63,
+      "header_record": "svc:svcStartThread",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcExitThread",
+      "instruction_numbers": [
+        "0x0A"
+      ],
+      "line": 68,
+      "header_record": "svc:svcExitThread",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSleepThread",
+      "instruction_numbers": [
+        "0x0B"
+      ],
+      "line": 73,
+      "header_record": "svc:svcSleepThread",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetThreadPriority",
+      "instruction_numbers": [
+        "0x0C"
+      ],
+      "line": 78,
+      "header_record": "svc:svcGetThreadPriority",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetThreadPriority",
+      "instruction_numbers": [
+        "0x0D"
+      ],
+      "line": 86,
+      "header_record": "svc:svcSetThreadPriority",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetThreadCoreMask",
+      "instruction_numbers": [
+        "0x0E"
+      ],
+      "line": 91,
+      "header_record": "svc:svcGetThreadCoreMask",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetThreadCoreMask",
+      "instruction_numbers": [
+        "0x0F"
+      ],
+      "line": 100,
+      "header_record": "svc:svcSetThreadCoreMask",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetCurrentProcessorNumber",
+      "instruction_numbers": [
+        "0x10"
+      ],
+      "line": 105,
+      "header_record": "svc:svcGetCurrentProcessorNumber",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSignalEvent",
+      "instruction_numbers": [
+        "0x11"
+      ],
+      "line": 110,
+      "header_record": "svc:svcSignalEvent",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcClearEvent",
+      "instruction_numbers": [
+        "0x12"
+      ],
+      "line": 115,
+      "header_record": "svc:svcClearEvent",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapSharedMemory",
+      "instruction_numbers": [
+        "0x13"
+      ],
+      "line": 120,
+      "header_record": "svc:svcMapSharedMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapSharedMemory",
+      "instruction_numbers": [
+        "0x14"
+      ],
+      "line": 125,
+      "header_record": "svc:svcUnmapSharedMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateTransferMemory",
+      "instruction_numbers": [
+        "0x15"
+      ],
+      "line": 130,
+      "header_record": "svc:svcCreateTransferMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCloseHandle",
+      "instruction_numbers": [
+        "0x16"
+      ],
+      "line": 138,
+      "header_record": "svc:svcCloseHandle",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcResetSignal",
+      "instruction_numbers": [
+        "0x17"
+      ],
+      "line": 143,
+      "header_record": "svc:svcResetSignal",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcWaitSynchronization",
+      "instruction_numbers": [
+        "0x18"
+      ],
+      "line": 148,
+      "header_record": "svc:svcWaitSynchronization",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCancelSynchronization",
+      "instruction_numbers": [
+        "0x19"
+      ],
+      "line": 156,
+      "header_record": "svc:svcCancelSynchronization",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcArbitrateLock",
+      "instruction_numbers": [
+        "0x1A"
+      ],
+      "line": 161,
+      "header_record": "svc:svcArbitrateLock",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcArbitrateUnlock",
+      "instruction_numbers": [
+        "0x1B"
+      ],
+      "line": 166,
+      "header_record": "svc:svcArbitrateUnlock",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcWaitProcessWideKeyAtomic",
+      "instruction_numbers": [
+        "0x1C"
+      ],
+      "line": 171,
+      "header_record": "svc:svcWaitProcessWideKeyAtomic",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSignalProcessWideKey",
+      "instruction_numbers": [
+        "0x1D"
+      ],
+      "line": 176,
+      "header_record": "svc:svcSignalProcessWideKey",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetSystemTick",
+      "instruction_numbers": [
+        "0x1E"
+      ],
+      "line": 181,
+      "header_record": "svc:svcGetSystemTick",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcConnectToNamedPort",
+      "instruction_numbers": [
+        "0x1F"
+      ],
+      "line": 186,
+      "header_record": "svc:svcConnectToNamedPort",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSendSyncRequestLight",
+      "instruction_numbers": [
+        "0x20"
+      ],
+      "line": 194,
+      "header_record": "svc:svcSendSyncRequestLight",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSendSyncRequest",
+      "instruction_numbers": [
+        "0x21"
+      ],
+      "line": 199,
+      "header_record": "svc:svcSendSyncRequest",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSendSyncRequestWithUserBuffer",
+      "instruction_numbers": [
+        "0x22"
+      ],
+      "line": 204,
+      "header_record": "svc:svcSendSyncRequestWithUserBuffer",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSendAsyncRequestWithUserBuffer",
+      "instruction_numbers": [
+        "0x23"
+      ],
+      "line": 209,
+      "header_record": "svc:svcSendAsyncRequestWithUserBuffer",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetProcessId",
+      "instruction_numbers": [
+        "0x24"
+      ],
+      "line": 217,
+      "header_record": "svc:svcGetProcessId",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetThreadId",
+      "instruction_numbers": [
+        "0x25"
+      ],
+      "line": 225,
+      "header_record": "svc:svcGetThreadId",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcBreak",
+      "instruction_numbers": [
+        "0x26"
+      ],
+      "line": 233,
+      "header_record": "svc:svcBreak",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcOutputDebugString",
+      "instruction_numbers": [
+        "0x27"
+      ],
+      "line": 238,
+      "header_record": "svc:svcOutputDebugString",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcReturnFromException",
+      "instruction_numbers": [
+        "0x28"
+      ],
+      "line": 243,
+      "header_record": "svc:svcReturnFromException",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetInfo",
+      "instruction_numbers": [
+        "0x29"
+      ],
+      "line": 248,
+      "header_record": "svc:svcGetInfo",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcFlushEntireDataCache",
+      "instruction_numbers": [
+        "0x2A"
+      ],
+      "line": 256,
+      "header_record": "svc:svcFlushEntireDataCache",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcFlushDataCache",
+      "instruction_numbers": [
+        "0x2B"
+      ],
+      "line": 261,
+      "header_record": "svc:svcFlushDataCache",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapPhysicalMemory",
+      "instruction_numbers": [
+        "0x2C"
+      ],
+      "line": 266,
+      "header_record": "svc:svcMapPhysicalMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapPhysicalMemory",
+      "instruction_numbers": [
+        "0x2D"
+      ],
+      "line": 271,
+      "header_record": "svc:svcUnmapPhysicalMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetDebugFutureThreadInfo",
+      "instruction_numbers": [
+        "0x2E"
+      ],
+      "line": 276,
+      "header_record": "svc:svcGetDebugFutureThreadInfo",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetLastThreadInfo",
+      "instruction_numbers": [
+        "0x2F"
+      ],
+      "line": 286,
+      "header_record": "svc:svcGetLastThreadInfo",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetResourceLimitLimitValue",
+      "instruction_numbers": [
+        "0x30"
+      ],
+      "line": 299,
+      "header_record": "svc:svcGetResourceLimitLimitValue",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetResourceLimitCurrentValue",
+      "instruction_numbers": [
+        "0x31"
+      ],
+      "line": 307,
+      "header_record": "svc:svcGetResourceLimitCurrentValue",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetThreadActivity",
+      "instruction_numbers": [
+        "0x32"
+      ],
+      "line": 315,
+      "header_record": "svc:svcSetThreadActivity",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetThreadContext3",
+      "instruction_numbers": [
+        "0x33"
+      ],
+      "line": 320,
+      "header_record": "svc:svcGetThreadContext3",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcWaitForAddress",
+      "instruction_numbers": [
+        "0x34"
+      ],
+      "line": 325,
+      "header_record": "svc:svcWaitForAddress",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSignalToAddress",
+      "instruction_numbers": [
+        "0x35"
+      ],
+      "line": 330,
+      "header_record": "svc:svcSignalToAddress",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSynchronizePreemptionState",
+      "instruction_numbers": [
+        "0x36"
+      ],
+      "line": 335,
+      "header_record": "svc:svcSynchronizePreemptionState",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetResourceLimitPeakValue",
+      "instruction_numbers": [
+        "0x37"
+      ],
+      "line": 340,
+      "header_record": "svc:svcGetResourceLimitPeakValue",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateIoPool",
+      "instruction_numbers": [
+        "0x39"
+      ],
+      "line": 348,
+      "header_record": "svc:svcCreateIoPool",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateIoRegion",
+      "instruction_numbers": [
+        "0x3A"
+      ],
+      "line": 356,
+      "header_record": "svc:svcCreateIoRegion",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcDumpInfo",
+      "instruction_numbers": [
+        "0x3C"
+      ],
+      "line": 364,
+      "header_record": "svc:svcDumpInfo",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcKernelDebug",
+      "instruction_numbers": [
+        "0x3C"
+      ],
+      "line": 369,
+      "header_record": "svc:svcKernelDebug",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcChangeKernelTraceState",
+      "instruction_numbers": [
+        "0x3D"
+      ],
+      "line": 374,
+      "header_record": "svc:svcChangeKernelTraceState",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateSession",
+      "instruction_numbers": [
+        "0x40"
+      ],
+      "line": 379,
+      "header_record": "svc:svcCreateSession",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcAcceptSession",
+      "instruction_numbers": [
+        "0x41"
+      ],
+      "line": 388,
+      "header_record": "svc:svcAcceptSession",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcReplyAndReceiveLight",
+      "instruction_numbers": [
+        "0x42"
+      ],
+      "line": 396,
+      "header_record": "svc:svcReplyAndReceiveLight",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcReplyAndReceive",
+      "instruction_numbers": [
+        "0x43"
+      ],
+      "line": 401,
+      "header_record": "svc:svcReplyAndReceive",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcReplyAndReceiveWithUserBuffer",
+      "instruction_numbers": [
+        "0x44"
+      ],
+      "line": 409,
+      "header_record": "svc:svcReplyAndReceiveWithUserBuffer",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateEvent",
+      "instruction_numbers": [
+        "0x45"
+      ],
+      "line": 417,
+      "header_record": "svc:svcCreateEvent",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapIoRegion",
+      "instruction_numbers": [
+        "0x46"
+      ],
+      "line": 426,
+      "header_record": "svc:svcMapIoRegion",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapIoRegion",
+      "instruction_numbers": [
+        "0x47"
+      ],
+      "line": 431,
+      "header_record": "svc:svcUnmapIoRegion",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapPhysicalMemoryUnsafe",
+      "instruction_numbers": [
+        "0x48"
+      ],
+      "line": 436,
+      "header_record": "svc:svcMapPhysicalMemoryUnsafe",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapPhysicalMemoryUnsafe",
+      "instruction_numbers": [
+        "0x49"
+      ],
+      "line": 441,
+      "header_record": "svc:svcUnmapPhysicalMemoryUnsafe",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetUnsafeLimit",
+      "instruction_numbers": [
+        "0x4A"
+      ],
+      "line": 446,
+      "header_record": "svc:svcSetUnsafeLimit",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateCodeMemory",
+      "instruction_numbers": [
+        "0x4B"
+      ],
+      "line": 451,
+      "header_record": "svc:svcCreateCodeMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcControlCodeMemory",
+      "instruction_numbers": [
+        "0x4C"
+      ],
+      "line": 459,
+      "header_record": "svc:svcControlCodeMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSleepSystem",
+      "instruction_numbers": [
+        "0x4D"
+      ],
+      "line": 464,
+      "header_record": "svc:svcSleepSystem",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcReadWriteRegister",
+      "instruction_numbers": [
+        "0x4E"
+      ],
+      "line": 469,
+      "header_record": "svc:svcReadWriteRegister",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetProcessActivity",
+      "instruction_numbers": [
+        "0x4F"
+      ],
+      "line": 477,
+      "header_record": "svc:svcSetProcessActivity",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateSharedMemory",
+      "instruction_numbers": [
+        "0x50"
+      ],
+      "line": 482,
+      "header_record": "svc:svcCreateSharedMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapTransferMemory",
+      "instruction_numbers": [
+        "0x51"
+      ],
+      "line": 490,
+      "header_record": "svc:svcMapTransferMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapTransferMemory",
+      "instruction_numbers": [
+        "0x52"
+      ],
+      "line": 495,
+      "header_record": "svc:svcUnmapTransferMemory",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateInterruptEvent",
+      "instruction_numbers": [
+        "0x53"
+      ],
+      "line": 500,
+      "header_record": "svc:svcCreateInterruptEvent",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcQueryPhysicalAddress",
+      "instruction_numbers": [
+        "0x54"
+      ],
+      "line": 508,
+      "header_record": "svc:svcQueryPhysicalAddress",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcQueryMemoryMapping",
+      "instruction_numbers": [
+        "0x55"
+      ],
+      "line": 517,
+      "header_record": "svc:svcQueryMemoryMapping",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcLegacyQueryIoMapping",
+      "instruction_numbers": [
+        "0x55"
+      ],
+      "line": 526,
+      "header_record": "svc:svcLegacyQueryIoMapping",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateDeviceAddressSpace",
+      "instruction_numbers": [
+        "0x56"
+      ],
+      "line": 534,
+      "header_record": "svc:svcCreateDeviceAddressSpace",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcAttachDeviceAddressSpace",
+      "instruction_numbers": [
+        "0x57"
+      ],
+      "line": 542,
+      "header_record": "svc:svcAttachDeviceAddressSpace",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcDetachDeviceAddressSpace",
+      "instruction_numbers": [
+        "0x58"
+      ],
+      "line": 547,
+      "header_record": "svc:svcDetachDeviceAddressSpace",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapDeviceAddressSpaceByForce",
+      "instruction_numbers": [
+        "0x59"
+      ],
+      "line": 552,
+      "header_record": "svc:svcMapDeviceAddressSpaceByForce",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapDeviceAddressSpaceAligned",
+      "instruction_numbers": [
+        "0x5A"
+      ],
+      "line": 557,
+      "header_record": "svc:svcMapDeviceAddressSpaceAligned",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapDeviceAddressSpace",
+      "instruction_numbers": [
+        "0x5B"
+      ],
+      "line": 562,
+      "header_record": "svc:svcMapDeviceAddressSpace",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapDeviceAddressSpace",
+      "instruction_numbers": [
+        "0x5C"
+      ],
+      "line": 570,
+      "header_record": "svc:svcUnmapDeviceAddressSpace",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcInvalidateProcessDataCache",
+      "instruction_numbers": [
+        "0x5D"
+      ],
+      "line": 575,
+      "header_record": "svc:svcInvalidateProcessDataCache",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcStoreProcessDataCache",
+      "instruction_numbers": [
+        "0x5E"
+      ],
+      "line": 580,
+      "header_record": "svc:svcStoreProcessDataCache",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcFlushProcessDataCache",
+      "instruction_numbers": [
+        "0x5F"
+      ],
+      "line": 585,
+      "header_record": "svc:svcFlushProcessDataCache",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcDebugActiveProcess",
+      "instruction_numbers": [
+        "0x60"
+      ],
+      "line": 590,
+      "header_record": "svc:svcDebugActiveProcess",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcBreakDebugProcess",
+      "instruction_numbers": [
+        "0x61"
+      ],
+      "line": 598,
+      "header_record": "svc:svcBreakDebugProcess",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcTerminateDebugProcess",
+      "instruction_numbers": [
+        "0x62"
+      ],
+      "line": 603,
+      "header_record": "svc:svcTerminateDebugProcess",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetDebugEvent",
+      "instruction_numbers": [
+        "0x63"
+      ],
+      "line": 608,
+      "header_record": "svc:svcGetDebugEvent",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcLegacyContinueDebugEvent",
+      "instruction_numbers": [
+        "0x64"
+      ],
+      "line": 613,
+      "header_record": "svc:svcLegacyContinueDebugEvent",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcContinueDebugEvent",
+      "instruction_numbers": [
+        "0x64"
+      ],
+      "line": 618,
+      "header_record": "svc:svcContinueDebugEvent",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetProcessList",
+      "instruction_numbers": [
+        "0x65"
+      ],
+      "line": 623,
+      "header_record": "svc:svcGetProcessList",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetThreadList",
+      "instruction_numbers": [
+        "0x66"
+      ],
+      "line": 631,
+      "header_record": "svc:svcGetThreadList",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetDebugThreadContext",
+      "instruction_numbers": [
+        "0x67"
+      ],
+      "line": 639,
+      "header_record": "svc:svcGetDebugThreadContext",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetDebugThreadContext",
+      "instruction_numbers": [
+        "0x68"
+      ],
+      "line": 644,
+      "header_record": "svc:svcSetDebugThreadContext",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcQueryDebugProcessMemory",
+      "instruction_numbers": [
+        "0x69"
+      ],
+      "line": 649,
+      "header_record": "svc:svcQueryDebugProcessMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcReadDebugProcessMemory",
+      "instruction_numbers": [
+        "0x6A"
+      ],
+      "line": 657,
+      "header_record": "svc:svcReadDebugProcessMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcWriteDebugProcessMemory",
+      "instruction_numbers": [
+        "0x6B"
+      ],
+      "line": 662,
+      "header_record": "svc:svcWriteDebugProcessMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetHardwareBreakPoint",
+      "instruction_numbers": [
+        "0x6C"
+      ],
+      "line": 667,
+      "header_record": "svc:svcSetHardwareBreakPoint",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetDebugThreadParam",
+      "instruction_numbers": [
+        "0x6D"
+      ],
+      "line": 672,
+      "header_record": "svc:svcGetDebugThreadParam",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetSystemInfo",
+      "instruction_numbers": [
+        "0x6F"
+      ],
+      "line": 681,
+      "header_record": "svc:svcGetSystemInfo",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreatePort",
+      "instruction_numbers": [
+        "0x70"
+      ],
+      "line": 689,
+      "header_record": "svc:svcCreatePort",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcManageNamedPort",
+      "instruction_numbers": [
+        "0x71"
+      ],
+      "line": 698,
+      "header_record": "svc:svcManageNamedPort",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcConnectToPort",
+      "instruction_numbers": [
+        "0x72"
+      ],
+      "line": 706,
+      "header_record": "svc:svcConnectToPort",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetProcessMemoryPermission",
+      "instruction_numbers": [
+        "0x73"
+      ],
+      "line": 714,
+      "header_record": "svc:svcSetProcessMemoryPermission",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapProcessMemory",
+      "instruction_numbers": [
+        "0x74"
+      ],
+      "line": 719,
+      "header_record": "svc:svcMapProcessMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapProcessMemory",
+      "instruction_numbers": [
+        "0x75"
+      ],
+      "line": 724,
+      "header_record": "svc:svcUnmapProcessMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcQueryProcessMemory",
+      "instruction_numbers": [
+        "0x76"
+      ],
+      "line": 729,
+      "header_record": "svc:svcQueryProcessMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapProcessCodeMemory",
+      "instruction_numbers": [
+        "0x77"
+      ],
+      "line": 737,
+      "header_record": "svc:svcMapProcessCodeMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapProcessCodeMemory",
+      "instruction_numbers": [
+        "0x78"
+      ],
+      "line": 742,
+      "header_record": "svc:svcUnmapProcessCodeMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateProcess",
+      "instruction_numbers": [
+        "0x79"
+      ],
+      "line": 747,
+      "header_record": "svc:svcCreateProcess",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcStartProcess",
+      "instruction_numbers": [
+        "0x7A"
+      ],
+      "line": 755,
+      "header_record": "svc:svcStartProcess",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcTerminateProcess",
+      "instruction_numbers": [
+        "0x7B"
+      ],
+      "line": 760,
+      "header_record": "svc:svcTerminateProcess",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcGetProcessInfo",
+      "instruction_numbers": [
+        "0x7C"
+      ],
+      "line": 765,
+      "header_record": "svc:svcGetProcessInfo",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCreateResourceLimit",
+      "instruction_numbers": [
+        "0x7D"
+      ],
+      "line": 773,
+      "header_record": "svc:svcCreateResourceLimit",
+      "policy": "review_required",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcSetResourceLimitLimitValue",
+      "instruction_numbers": [
+        "0x7E"
+      ],
+      "line": 781,
+      "header_record": "svc:svcSetResourceLimitLimitValue",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcCallSecureMonitor",
+      "instruction_numbers": [
+        "0x7F"
+      ],
+      "line": 786,
+      "header_record": "svc:svcCallSecureMonitor",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcMapInsecurePhysicalMemory",
+      "instruction_numbers": [
+        "0x90"
+      ],
+      "line": 802,
+      "header_record": "svc:svcMapInsecurePhysicalMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    },
+    {
+      "wrapper": "svcUnmapInsecurePhysicalMemory",
+      "instruction_numbers": [
+        "0x91"
+      ],
+      "line": 807,
+      "header_record": "svc:svcUnmapInsecurePhysicalMemory",
+      "policy": "restricted_or_privileged",
+      "permission": "unverified",
+      "firmware": "unverified",
+      "device": "not_tested"
+    }
+  ],
+  "unmapped_header_wrappers": [
+    {
+      "wrapper": "svcWaitSynchronizationSingle",
+      "kind": "inline_wrapper"
+    }
+  ],
+  "shared_numbers": [
+    {
+      "number": "0x3C",
+      "wrappers": [
+        "svcDumpInfo",
+        "svcKernelDebug"
+      ]
+    },
+    {
+      "number": "0x55",
+      "wrappers": [
+        "svcQueryMemoryMapping",
+        "svcLegacyQueryIoMapping"
+      ]
+    },
+    {
+      "number": "0x64",
+      "wrappers": [
+        "svcLegacyContinueDebugEvent",
+        "svcContinueDebugEvent"
+      ]
+    }
+  ]
+}
