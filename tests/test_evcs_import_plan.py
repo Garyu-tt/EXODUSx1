@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from collections import namedtuple
+from types import SimpleNamespace
 from exodus.evcs_import_plan import plan, FAT32_MAX
 
 Usage = namedtuple('Usage', 'total used free')
@@ -45,9 +46,10 @@ class ImportPlanTest(unittest.TestCase):
             self.assertEqual(plan(self.src, self.games)['status'], 'insufficient_copy_space')
 
     def test_fat32(self):
-        with self.src.open('wb') as f:
-            f.truncate(FAT32_MAX + 1)
-        self.assertEqual(plan(self.src, self.games, True)['status'], 'fat32_file_too_large')
+        # Avoid allocating 4 GiB on CI filesystems without sparse-file support.
+        item = SimpleNamespace(st_size=FAT32_MAX + 1, st_dev=self.src.stat().st_dev)
+        with patch('exodus.evcs_import_plan.inventory', return_value=[item]):
+            self.assertEqual(plan(self.src, self.games, True)['status'], 'fat32_file_too_large')
 
     def test_split(self):
         self.src.unlink()
