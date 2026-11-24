@@ -59,7 +59,7 @@ def main():
         check=True,
     )
     shutil.copyfile(args.output / SHELL / "release-source.md", args.output / "BUILD_SOURCE.md")
-    (args.output / "EXODUS-SHELL-COMMIT").write_text(revision + "\n", encoding="ascii")
+    (args.output / "EXODUS-SHELL-COMMIT").write_bytes((revision + "\n").encode("ascii"))
 
 
 if __name__ == "__main__":
