@@ -56,6 +56,7 @@ static inline enum evcs_pfs0_result evcs_pfs0_probe(FILE *f, uint64_t file_bytes
         const char *end=(const char *)memchr(s,0,strings-name);
         if (!end || end==s) goto finish;
         size_t len=(size_t)(end-s);
+        if (len > 255) goto finish;
         if ((len==1 && s[0]=='.') || (len==2 && s[0]=='.' && s[1]=='.')) goto finish;
         for (size_t j=0;j<len;++j) {
             unsigned char ch=(unsigned char)s[j];
