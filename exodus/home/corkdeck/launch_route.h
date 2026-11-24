@@ -29,8 +29,16 @@ static inline int exodus_title_id(const char *s, uint64_t *out)
 static inline int exodus_nro_path(const char *id, char out[512])
 {
     if (!id) return 0;
+    const char *prefix = "sdmc:/switch/";
+    if (!strncmp(id, "sdmc:/Games/", 12)) {
+        prefix = "sdmc:/Games/";
+        id += 12;
+    }
     size_t len = strlen(id);
-    if (len <= 4 || len >= 499 || id[0] == '/' || strcmp(id + len - 4, ".nro")) return 0;
+    if (len <= 4 || len >= 512 - strlen(prefix) || id[0] == '/') return 0;
+    const char *ext = id + len - 4;
+    if (ext[0] != '.' || (ext[1] != 'n' && ext[1] != 'N') ||
+        (ext[2] != 'r' && ext[2] != 'R') || (ext[3] != 'o' && ext[3] != 'O')) return 0;
     const char *segment = id;
     for (const char *p = id; ; ++p) {
         unsigned char c = (unsigned char)*p;
@@ -42,7 +50,7 @@ static inline int exodus_nro_path(const char *id, char out[512])
             segment = p + 1;
         } else if (c < 32 || c == 127 || c == '\\' || c == ':' || c == '"') return 0;
     }
-    snprintf(out, 512, "sdmc:/switch/%s", id);
+    snprintf(out, 512, "%s%s", prefix, id);
     return 1;
 }
 
