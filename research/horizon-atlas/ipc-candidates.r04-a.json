@@ -1,0 +1,627 @@
+{
+  "schema": "exodus.horizon-ipc-candidates/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Literal source candidates only, not complete interfaces or permissions. Dynamic IDs and helpers unresolved.",
+  "missing": [],
+  "counts": {
+    "requested": 8,
+    "fetched": 8,
+    "distinct_endpoint_tokens": 8,
+    "dispatch_occurrences": 52,
+    "version_check_occurrences": 22
+  },
+  "records": [
+    {
+      "module": "audctl",
+      "path": "nx/source/services/audctl.c",
+      "blob": "0c436577e6440f7f5af35550b322b9db232231af",
+      "line_count": 368,
+      "literal_endpoints": [
+        {
+          "name": "audctl",
+          "line": 12
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 0,
+          "line": 32,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 1,
+          "line": 46,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 2,
+          "line": 54,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 3,
+          "line": 67,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 4,
+          "line": 84,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 5,
+          "line": 98,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 6,
+          "line": 113,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 7,
+          "line": 129,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 8,
+          "line": 137,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 9,
+          "line": 154,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 10,
+          "line": 168,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 11,
+          "line": 179,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 12,
+          "line": 190,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 13,
+          "line": 207,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 14,
+          "line": 221,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 15,
+          "line": 229,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 16,
+          "line": 237,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 17,
+          "line": 248,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 18,
+          "line": 259,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 19,
+          "line": 273,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 20,
+          "line": 291,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 21,
+          "line": 311,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 22,
+          "line": 323,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 23,
+          "line": 334,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 24,
+          "line": 345,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_audctlSrv",
+          "command": 32,
+          "line": 361,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "18.0.0",
+          "line": 102
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "14.0.0",
+          "line": 172
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "14.0.0",
+          "line": 183
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 241
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 252
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 304
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 320
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 327
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 338
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 354
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "audrec",
+      "path": "nx/source/services/audrec.c",
+      "blob": "111c2040cda61c28a0414c1e708da765892fa6c1",
+      "line_count": 124,
+      "literal_endpoints": [
+        {
+          "name": "audrec:u",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_audrecUserSrv",
+          "command": 0,
+          "line": 32,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&recorder->s",
+          "command": 1,
+          "line": 47,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&recorder->s",
+          "command": 2,
+          "line": 51,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&recorder->s",
+          "command": 4,
+          "line": 57,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&recorder->s",
+          "command": 8,
+          "line": 75,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&recorder->s",
+          "command": 3,
+          "line": 81,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&recorder->s",
+          "command": 9,
+          "line": 101,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&recorder->s",
+          "command": 5,
+          "line": 107,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 74
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 100
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "auddev",
+      "path": "nx/source/services/auddev.c",
+      "blob": "689c487075c9a540bd0e2e73a2cd2fa82a369e1e",
+      "line_count": 73,
+      "literal_endpoints": [
+        {
+          "name": "audren:u",
+          "line": 17
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 2,
+          "line": 36,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 43
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 51
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 59
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 67
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "hwopus",
+      "path": "nx/source/services/hwopus.c",
+      "blob": "27b42a1c33d1706f10a648a470d00685c52bfa81",
+      "line_count": 199,
+      "literal_endpoints": [
+        {
+          "name": "hwopus",
+          "line": 25
+        },
+        {
+          "name": "hwopus",
+          "line": 66
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 0,
+          "line": 97,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv",
+          "command": 1,
+          "line": 107,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 2,
+          "line": 112,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "srv",
+          "command": 3,
+          "line": 123,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 51
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 130
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "4.0.0",
+          "line": 131
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "csrng",
+      "path": "nx/source/services/csrng.c",
+      "blob": "fe0cfde6bcff4ac3a0bf0915627747736a129f47",
+      "line_count": 27,
+      "literal_endpoints": [
+        {
+          "name": "csrng",
+          "line": 10
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_csrngSrv",
+          "command": 0,
+          "line": 22,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "fan",
+      "path": "nx/source/services/fan.c",
+      "blob": "1a94d14751403ada942c6e23897b4e7f6a12e194",
+      "line_count": 40,
+      "literal_endpoints": [
+        {
+          "name": "fan",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_fanSrv",
+          "command": 0,
+          "line": 19,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&controller->s",
+          "command": 0,
+          "line": 34,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&controller->s",
+          "command": 2,
+          "line": 38,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "clkrst",
+      "path": "nx/source/services/clkrst.c",
+      "blob": "54984c77b30d69fcd9a7853c98258ebe118ca63f",
+      "line_count": 93,
+      "literal_endpoints": [
+        {
+          "name": "clkrst",
+          "line": 14
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_clkrstSrv",
+          "command": 0,
+          "line": 30,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&session->s",
+          "command": 7,
+          "line": 41,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&session->s",
+          "command": 8,
+          "line": 45,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&session->s",
+          "command": 9,
+          "line": 49,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&session->s",
+          "command": 10,
+          "line": 58,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&session->s",
+          "command": 11,
+          "line": 76,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "8.0.0",
+          "line": 11
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "omm",
+      "path": "nx/source/services/omm.c",
+      "blob": "6da7c7024dfe6a59d9aa0a1c87d00caf9a6e2ff5",
+      "line_count": 59,
+      "literal_endpoints": [
+        {
+          "name": "omm",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_ommSrv",
+          "command": 11,
+          "line": 31,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_ommSrv",
+          "command": 0,
+          "line": 43,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_ommSrv",
+          "command": 10,
+          "line": 57,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 23
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 53
+        }
+      ],
+      "status": "unreviewed_disabled"
+    }
+  ]
+}
