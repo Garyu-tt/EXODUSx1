@@ -20,3 +20,4 @@ jobs:
         with:
           node-version: '22'
       - run: node exodus/donors/validate.cjs --self-test
+      - run: node exodus/donors/graphics-policy.cjs
