@@ -18,7 +18,8 @@ Or:
 Host test covers read/write readiness, level triggering, duplicate descriptors, negative descriptors, zero-event watches, priority-event mask acceptance, timeout, invalid arguments, hangup, invalid descriptor and signal interruption. GCC and Clang host checks run in GitHub Actions. Host AF_UNIX fixtures do not prove Switch portability or BSD service behavior. Next device gate: compile a small libnx application with `socketInitialize`/BSD loopback, compare readiness and error behavior on real HOS, then add a separate Horizon handle-wait backend. Do not call this BSD binary compatibility until a separate ELF/ABI effort is validated.
 
 ## Next
-- Add a libnx-native TCP loopback smoke test and compile with devkitA64.
-- Add a separate adapter for Horizon waitable handles; do not mix handle IDs and socket FDs in one namespace.
+- A libnx-native TCP loopback smoke source now exists in `tcp_smoke.c`; `Makefile.switch` builds an NRO with devkitA64/libnx. Build with `make -f Makefile.switch` after setting `DEVKITPRO`. This target has not been built in the current environment (devkitPro is absent) and has not been run on hardware.
+- Host CI run [45462903122](https://github.com/Garyu-tt/EXODUSx1/actions/runs/45462903122) passed both GCC and Clang. The host TCP loopback fixture and reactor tests were also run locally with both compilers and UBSan.
+- Next: run the NRO on emuMMC and record HOS/Atmosphere/4IFIR versions, then add a separate adapter for Horizon waitable handles; do not mix handle IDs and socket FDs in one namespace.
 - Design timer/wakeup/cancellation semantics before any kqueue-like interface.
 - Memory mapping remains a separate investigation: libnx `virtmemFindAslr` only locates/reserves address ranges; SVC mapping/permissions and backing allocation need separate verified contracts.
