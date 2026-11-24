@@ -153,7 +153,8 @@
       "depends": [
         "gamescope",
         "steam-client",
-        "manager-dbus"
+        "manager-dbus",
+        "resident-ssh-dbus"
       ]
     },
     {
@@ -251,9 +252,23 @@
     {
       "id": "linux-glibc",
       "origin": "exodus/frankenstein/linux-dynamic-probe.c",
-      "state": "probe-pending",
+      "state": "freebsd-qemu-arm64-tested",
       "depends": [
         "linux-arm64-abi"
+      ],
+      "evidence": {
+        "run": 45501221806,
+        "job": 138824725136,
+        "scope": "glibc 2.39 dynamic Linux AArch64 test on FreeBSD QEMU: loader, uname/getpid/clock_gettime, dlopen/dlsym, pthread create/join, exit 0; no Steam client or physical console tested."
+      }
+    },
+    {
+      "id": "resident-ssh-dbus",
+      "origin": "exodus/frankenstein/guest-resident.sh",
+      "state": "integration-test-pending",
+      "depends": [
+        "ssh",
+        "manager-dbus"
       ]
     }
   ],
