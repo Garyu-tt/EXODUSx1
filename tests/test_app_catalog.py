@@ -113,6 +113,24 @@ class AppCatalogTests(unittest.TestCase):
             ["Blank title", "No NACP", "No assets"],
         )
 
+    def test_steam_install_discovery_combines_with_homebrew_and_preserves_partial_results(self):
+        self.add_steam_manifest()
+        self.add_nro("Tools.nro", nro_image("Local tools"))
+        config = self.steam / "libraryfolders.vdf"
+        config.write_text("LibraryFolders {}", encoding="utf-8")
+        result = self.run_catalog("--steam-install", self.steam.parent, "--switch-sd", self.sd)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(
+            [(item["provider"], item["provider_id"]) for item in json.loads(result.stdout)["entries"]],
+            [("steam", "42"), ("switch_homebrew", "Tools.nro")],
+        )
+
+        config.unlink()
+        partial = self.run_catalog("--steam-install", self.steam.parent, "--switch-sd", self.sd)
+        self.assertEqual(partial.returncode, 1)
+        self.assertEqual(json.loads(partial.stdout), json.loads(result.stdout))
+        self.assertIn("libraryfolders.vdf", partial.stderr)
+
     def test_reads_compressed_nacp_title_in_extended_language_slot(self):
         self.add_nro("Compressed.nro", nro_image("拡張タイトル", locale=23, compressed=True))
         result = self.run_catalog("--switch-sd", self.sd)
