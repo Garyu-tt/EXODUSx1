@@ -68,6 +68,44 @@ def prepare(donor, out):
             b"\tcase FILRD:\n\tcase FILWR:\n\tcase FILEX:\n\t\terror(\"effective access checks unavailable on Horizon\");\n\tcase FILEXIST:\n\t\treturn 1; /* stat above succeeded */")
     replace("bin/sh/exec.c", b"if (eaccess(argv[i], X_OK) == 0) {",
             b"if ((errno = ENOTSUP, 0)) { /* no effective access provider */")
+    # Headless first release: no kernel subprocesses or POSIX signal masks.
+    # Replace complete, hash-verified function bodies, not syscall results.
+    def body(path, signature, replacement):
+        dst = out / path
+        data = dst.read_bytes()
+        anchor = signature + b"\n{\n"
+        if data.count(anchor) != 1:
+            raise ValueError("unexpected function anchor: " + path + ": " + repr(signature))
+        start = data.index(anchor) + len(anchor)
+        end = data.index(b"\n}\n", start)
+        dst.write_bytes(data[:start] + replacement + data[end:])
+
+    jobs = "bin/sh/jobs.c"
+    replace(jobs, b"\t\t\t\t\tdeljob(job);",
+            b"#if JOBS\n\t\t\t\t\tdeljob(job);\n#endif")
+    replace(jobs, b"\t\tif (WCOREDUMP(status))\n\t\t\tcoredump = \" (core dumped)\";",
+            b"\t\t/* target has no core dump status */")
+    body(jobs, b"forkshell(struct job *jp, union node *n, int mode)",
+         b"\t(void)jp; (void)n; (void)mode;\n\terrorwithstatus(125, \"native subprocess unavailable on Horizon\");")
+    body(jobs, b"killjob(const char *name, int sig)",
+         b"\t(void)name; (void)sig; errno = ENOTSUP; return -1;")
+    body(jobs, b"dowait(int mode, struct job *job)",
+         b"\t(void)mode; (void)job; errno = ECHILD; return -1;")
+    # Native task completion uses the separate NX-BSD scheduler. Legacy
+    # process job creation is deliberately not admitted.
+    body(jobs, b"makejob(union node *node __unused, int nprocs)",
+         b"\t(void)node; (void)nprocs;\n\terrorwithstatus(125, \"legacy process job unavailable on Horizon\");")
+    # Timed read needs a real interrupt-aware provider; plain read is retained.
+    misc = "bin/sh/miscbltin.c"
+    dst = out / misc
+    data = dst.read_bytes()
+    start = data.index(b"\tif (timeout >= 0) {")
+    end = data.index(b"\n\tstatus = 0;\n\tstartword", start)
+    dst.write_bytes(data[:start] + b"\tif (timeout >= 0)\n\t\terrorwithstatus(125, \"timed read unavailable on Horizon\");\n" + data[end:])
+    body(misc, b"umaskcmd(int argc __unused, char **argv __unused)",
+         b"\t(void)argc; (void)argv;\n\terrorwithstatus(125, \"umask unavailable on Horizon\");")
+    body(misc, b"ulimitcmd(int argc __unused, char **argv __unused)",
+         b"\t(void)argc; (void)argv;\n\terrorwithstatus(125, \"ulimit unavailable on Horizon\");")
     # Explicit virtual path policy; not a claim that PATH executables work.
     replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
     replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
