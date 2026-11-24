@@ -74,11 +74,19 @@ def homebrew_name(path):
             raise ValueError("truncated NACP section")
 
     titles = title_table(nacp)
+    decode_error = None
     for start in range(0, len(titles), NACP_LANGUAGE_SIZE):
         raw_name = titles[start:start + NACP_NAME_SIZE].split(b"\0", 1)[0]
-        name = raw_name.decode("utf-8").strip()
+        try:
+            name = raw_name.decode("utf-8").strip()
+        except UnicodeDecodeError as exc:
+            if decode_error is None:
+                decode_error = exc
+            continue
         if name:
             return name
+    if decode_error is not None:
+        raise decode_error
     return path.stem
 
 
