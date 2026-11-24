@@ -82,3 +82,5 @@ The default file-backed path copies bytes into Horizon backing pages. For writab
 5. The current Box64 code arena relies on guest memory lifecycle notifications to invalidate translations; writes not followed by the expected flush/protection/unmap notification can leave stale translated code.
 
 EXODUS should wrap these existing providers as explicit capability nodes, preserve their limitations in provider metadata, and only replace a provider after differential tests. The JIT reservation-allocation rollback is being addressed separately in [Autorun PR #3](https://github.com/Garyu-tt/autorun/pull/3).
+
+The generic libnx JIT probe may report either `JitType_CodeMemory` or `JitType_SetProcessMemoryPermission`. The existing Box64 dynarec fallback explicitly rejects any type other than `JitType_CodeMemory` (`wow64_box64_dynarec.c`, `map_arena`). Therefore a successful generic JIT probe using the process-permission backend does **not** prove that the current Box64 fallback can run. Keep the two capability results separate in EXODUS.
