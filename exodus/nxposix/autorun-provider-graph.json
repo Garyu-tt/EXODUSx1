@@ -20,9 +20,24 @@
       "id": "provider:autorun:horizon_mmap",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "dlls/ntdll/unix/horizon.c", "line_start": 20630, "line_end": 20956},
-      "features": ["MAP_FIXED", "MAP_FIXED_NOREPLACE", "try-fixed", "anonymous PROT_NONE reservation", "lazy anonymous reservation", "file-backed copy", "optional lazy read-only file views", "section views"],
-      "limitations": ["section aliases require privileged SVC hints; fallback is copy-backed"]
+      "source": {
+        "path": "dlls/ntdll/unix/horizon.c",
+        "line_start": 20630,
+        "line_end": 20956
+      },
+      "features": [
+        "MAP_FIXED",
+        "MAP_FIXED_NOREPLACE",
+        "try-fixed",
+        "anonymous PROT_NONE reservation",
+        "lazy anonymous reservation",
+        "file-backed copy",
+        "optional lazy read-only file views",
+        "section views"
+      ],
+      "limitations": [
+        "section aliases require privileged SVC hints; fallback is copy-backed"
+      ]
     },
     {
       "id": "api:posix:munmap",
@@ -33,8 +48,16 @@
       "id": "provider:autorun:horizon_munmap",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "dlls/ntdll/unix/horizon.c", "line_start": 20028, "line_end": 20070},
-      "features": ["mapping tree overlap lookup", "range splitting", "reservation/backing release"]
+      "source": {
+        "path": "dlls/ntdll/unix/horizon.c",
+        "line_start": 20028,
+        "line_end": 20070
+      },
+      "features": [
+        "mapping tree overlap lookup",
+        "range splitting",
+        "reservation/backing release"
+      ]
     },
     {
       "id": "api:posix:mprotect",
@@ -45,8 +68,18 @@
       "id": "provider:autorun:horizon_mprotect",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "dlls/ntdll/unix/horizon.c", "line_start": 20106, "line_end": 20225},
-      "features": ["reservation commit", "64 KiB commit chunks", "mapping split", "W^X enforcement", "cache maintenance"]
+      "source": {
+        "path": "dlls/ntdll/unix/horizon.c",
+        "line_start": 20106,
+        "line_end": 20225
+      },
+      "features": [
+        "reservation commit",
+        "64 KiB commit chunks",
+        "mapping split",
+        "W^X enforcement",
+        "cache maintenance"
+      ]
     },
     {
       "id": "api:posix:madvise",
@@ -57,92 +90,202 @@
       "id": "provider:autorun:horizon_madvise",
       "kind": "provider",
       "status": "no_op_returns_success",
-      "source": {"path": "dlls/ntdll/unix/horizon.c", "line_start": 20991, "line_end": 20995},
-      "limitations": ["MADV_DONTNEED/WILLNEED and other advice have no effect"]
+      "source": {
+        "path": "dlls/ntdll/unix/horizon.c",
+        "line_start": 20991,
+        "line_end": 20995
+      },
+      "limitations": [
+        "MADV_DONTNEED/WILLNEED and other advice have no effect"
+      ]
     },
     {
       "id": "provider:autorun:backing_pages",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "dlls/ntdll/unix/horizon.c", "line_start": 18820, "line_end": 18879},
-      "features": ["heap-backed pages", "file reads into backing", "duplicated fd for writable MAP_SHARED", "writeback on final release"]
+      "source": {
+        "path": "dlls/ntdll/unix/horizon.c",
+        "line_start": 18820,
+        "line_end": 18879
+      },
+      "features": [
+        "heap-backed pages",
+        "file reads into backing",
+        "duplicated fd for writable MAP_SHARED",
+        "writeback on final release"
+      ]
     },
     {
       "id": "provider:autorun:lazy_fault_commit",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "dlls/ntdll/unix/horizon.c", "line_start": 20317, "line_end": 20529},
-      "features": ["256 MiB lazy anonymous threshold", "512 KiB lazy file-view chunks", "fault-driven commit"],
-      "limitations": ["lazy file views are opt-in, read-only and non-executable"]
+      "source": {
+        "path": "dlls/ntdll/unix/horizon.c",
+        "line_start": 20317,
+        "line_end": 20529
+      },
+      "features": [
+        "256 MiB lazy anonymous threshold",
+        "512 KiB lazy file-view chunks",
+        "fault-driven commit"
+      ],
+      "limitations": [
+        "lazy file views are opt-in, read-only and non-executable"
+      ]
     },
     {
       "id": "provider:autorun:process_code_memory",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "dlls/ntdll/unix/horizon.c", "line_start": 18128, "line_end": 18227},
-      "requirements": ["syscall hints 0x73/0x77/0x78", "valid own-process handle"],
-      "features": ["svcMapProcessCodeMemory", "svcSetProcessMemoryPermission", "D-cache flush", "I-cache invalidate"]
+      "source": {
+        "path": "dlls/ntdll/unix/horizon.c",
+        "line_start": 18128,
+        "line_end": 18227
+      },
+      "requirements": [
+        "syscall hints 0x73/0x77/0x78",
+        "valid own-process handle"
+      ],
+      "features": [
+        "svcMapProcessCodeMemory",
+        "svcSetProcessMemoryPermission",
+        "D-cache flush",
+        "I-cache invalidate"
+      ]
     },
     {
       "id": "provider:autorun:box64_code_memory",
       "kind": "provider",
       "status": "implemented_source_unverified_on_device",
-      "source": {"path": "dlls/ntdll/unix/horizon.c", "line_start": 19585, "line_end": 19649},
-      "features": ["CodeMemory owner RW alias", "CodeMemory slave RX alias", "libnx reservation tracking"],
-      "limitations": ["finite kernel CodeMemory object budget"]
+      "source": {
+        "path": "dlls/ntdll/unix/horizon.c",
+        "line_start": 19585,
+        "line_end": 19649
+      },
+      "features": [
+        "CodeMemory owner RW alias",
+        "CodeMemory slave RX alias",
+        "libnx reservation tracking"
+      ],
+      "limitations": [
+        "finite kernel CodeMemory object budget"
+      ]
     },
     {
       "id": "provider:autorun:box64_code_arena",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "horizon-wine/source/box64_code_arena.h", "line_start": 108, "line_end": 260},
-      "features": ["16-byte alignment", "24 free bins", "bounded bin search", "free-chunk coalescing", "duplicate-free guard"]
+      "source": {
+        "path": "horizon-wine/source/box64_code_arena.h",
+        "line_start": 108,
+        "line_end": 260
+      },
+      "features": [
+        "16-byte alignment",
+        "24 free bins",
+        "bounded bin search",
+        "free-chunk coalescing",
+        "duplicate-free guard"
+      ]
     },
     {
       "id": "provider:autorun:box64_dynarec",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "horizon-wine/source/wow64_box64_dynarec.c", "line_start": 205, "line_end": 328},
-      "features": ["custom Horizon CodeMemory mapping", "libnx JIT fallback", "arena reuse", "shutdown release"],
-      "limitations": ["fallback explicitly accepts JitType_CodeMemory only"]
+      "source": {
+        "path": "horizon-wine/source/wow64_box64_dynarec.c",
+        "line_start": 205,
+        "line_end": 328
+      },
+      "features": [
+        "custom Horizon CodeMemory mapping",
+        "libnx JIT fallback",
+        "arena reuse",
+        "shutdown release"
+      ],
+      "limitations": [
+        "fallback explicitly accepts JitType_CodeMemory only"
+      ]
     },
     {
       "id": "provider:libnx:socket_poll",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "nx/source/runtime/devices/socket.c", "line_start": 473, "line_end": 517},
-      "features": ["fd translation", "bsdPoll delegation"],
-      "limitations": ["poll(NULL, 0, timeout) is rejected by the current wrapper"]
+      "source": {
+        "path": "nx/source/runtime/devices/socket.c",
+        "line_start": 473,
+        "line_end": 517
+      },
+      "features": [
+        "fd translation",
+        "bsdPoll delegation"
+      ],
+      "limitations": [
+        "poll(NULL, 0, timeout) is rejected by the current wrapper"
+      ]
     },
     {
       "id": "provider:libnx:bsd_sockets",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "nx/source/runtime/devices/socket.c", "line_start": 550, "line_end": 570},
-      "features": ["BSD service-backed socket operations"]
+      "source": {
+        "path": "nx/source/runtime/devices/socket.c",
+        "line_start": 550,
+        "line_end": 570
+      },
+      "features": [
+        "BSD service-backed socket operations"
+      ]
     },
     {
       "id": "provider:libnx:newlib_threads_time",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "nx/source/runtime/newlib.c", "line_start": 164, "line_end": 382},
-      "features": ["thread creation/join", "TLS", "clock_gettime", "nanosleep"]
+      "source": {
+        "path": "nx/source/runtime/newlib.c",
+        "line_start": 164,
+        "line_end": 382
+      },
+      "features": [
+        "thread creation/join",
+        "TLS",
+        "clock_gettime",
+        "nanosleep"
+      ]
     },
     {
       "id": "provider:libnx:wait_handles",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "nx/include/switch/kernel/wait.h", "line_start": 63, "line_end": 75},
-      "features": ["waitObjects", "waitHandles"],
-      "limitations": ["kernel handles are a separate namespace from BSD socket FDs"]
+      "source": {
+        "path": "nx/include/switch/kernel/wait.h",
+        "line_start": 63,
+        "line_end": 75
+      },
+      "features": [
+        "waitObjects",
+        "waitHandles"
+      ],
+      "limitations": [
+        "kernel handles are a separate namespace from BSD socket FDs"
+      ]
     },
     {
       "id": "provider:libnx:virtmem",
       "kind": "provider",
       "status": "implemented",
-      "source": {"path": "nx/source/kernel/virtmem.c", "line_start": 226, "line_end": 245},
-      "features": ["ASLR/code-memory address search", "reservation list"],
-      "limitations": ["virtmemAddReservation allocates metadata and can return NULL"]
+      "source": {
+        "path": "nx/source/kernel/virtmem.c",
+        "line_start": 226,
+        "line_end": 245
+      },
+      "features": [
+        "ASLR/code-memory address search",
+        "reservation list"
+      ],
+      "limitations": [
+        "virtmemAddReservation allocates metadata and can return NULL"
+      ]
     },
     {
       "id": "gap:coherent_shared_file_mapping",
@@ -173,34 +316,251 @@
       "kind": "gap",
       "status": "fix_in_review",
       "description": "Reservation metadata allocation could fail after mapping an alias. Autorun PR #3 now reserves before mapping and tests rollback."
+    },
+    {
+      "id": "provider:libnx:jit",
+      "kind": "provider",
+      "status": "implemented",
+      "source": {
+        "path": "nx/source/kernel/jit.c",
+        "line_start": 11,
+        "line_end": 186
+      },
+      "features": [
+        "CodeMemory dual alias",
+        "SetProcessMemoryPermission backend",
+        "W^X transitions",
+        "D-cache flush/I-cache invalidation"
+      ]
+    },
+    {
+      "id": "service:bsd:u",
+      "kind": "service",
+      "status": "system_service",
+      "description": "Horizon BSD sockets service"
+    },
+    {
+      "id": "service:horizon_svc",
+      "kind": "service",
+      "status": "kernel_interface",
+      "description": "Horizon SVC interface"
+    },
+    {
+      "id": "svc:WaitSynchronization",
+      "kind": "syscall",
+      "status": "available"
+    },
+    {
+      "id": "svc:MapProcessCodeMemory",
+      "kind": "syscall",
+      "status": "privileged_hint_required"
+    },
+    {
+      "id": "svc:SetProcessMemoryPermission",
+      "kind": "syscall",
+      "status": "privileged_hint_required"
+    },
+    {
+      "id": "svc:CreateCodeMemory",
+      "kind": "syscall",
+      "status": "loader_hint_or_kernel_support_required"
+    },
+    {
+      "id": "svc:ControlCodeMemory",
+      "kind": "syscall",
+      "status": "loader_hint_or_kernel_support_required"
+    },
+    {
+      "id": "svc:QueryMemory",
+      "kind": "syscall",
+      "status": "available"
+    },
+    {
+      "id": "svc:bsdPoll",
+      "kind": "service_call",
+      "status": "bsd_service"
     }
   ],
   "edges": [
-    {"from": "api:posix:mmap", "to": "provider:autorun:horizon_mmap", "kind": "implemented_by"},
-    {"from": "api:posix:munmap", "to": "provider:autorun:horizon_munmap", "kind": "implemented_by"},
-    {"from": "api:posix:mprotect", "to": "provider:autorun:horizon_mprotect", "kind": "implemented_by"},
-    {"from": "api:posix:madvise", "to": "provider:autorun:horizon_madvise", "kind": "implemented_by"},
-    {"from": "provider:autorun:horizon_mmap", "to": "provider:autorun:backing_pages", "kind": "uses"},
-    {"from": "provider:autorun:horizon_mmap", "to": "provider:autorun:lazy_fault_commit", "kind": "uses"},
-    {"from": "provider:autorun:horizon_mmap", "to": "provider:autorun:process_code_memory", "kind": "uses"},
-    {"from": "provider:autorun:horizon_mprotect", "to": "provider:autorun:process_code_memory", "kind": "uses"},
-    {"from": "provider:autorun:process_code_memory", "to": "provider:libnx:virtmem", "kind": "uses"},
-    {"from": "provider:autorun:box64_dynarec", "to": "provider:autorun:box64_code_memory", "kind": "uses"},
-    {"from": "provider:autorun:box64_dynarec", "to": "provider:autorun:box64_code_arena", "kind": "allocates_from"},
-    {"from": "provider:autorun:box64_dynarec", "to": "provider:libnx:virtmem", "kind": "fallback_uses"},
-    {"from": "provider:libnx:socket_poll", "to": "provider:libnx:bsd_sockets", "kind": "uses"},
-    {"from": "provider:libnx:bsd_sockets", "to": "service:bsd:u", "kind": "delegates_to"},
-    {"from": "provider:libnx:newlib_threads_time", "to": "service:horizon_thread_time", "kind": "delegates_to"},
-    {"from": "provider:libnx:wait_handles", "to": "svc:WaitSynchronization", "kind": "delegates_to"},
-    {"from": "provider:autorun:horizon_madvise", "to": "gap:madvise", "kind": "exposes"},
-    {"from": "provider:autorun:horizon_mmap", "to": "gap:coherent_shared_file_mapping", "kind": "has_limitation"},
-    {"from": "provider:autorun:horizon_mmap", "to": "gap:section_alias_privilege", "kind": "has_limitation"},
-    {"from": "provider:autorun:box64_dynarec", "to": "gap:jit_object_budget", "kind": "constrained_by"},
-    {"from": "provider:libnx:virtmem", "to": "gap:jit_reservation_oom", "kind": "failure_mode"}
+    {
+      "from": "api:posix:mmap",
+      "to": "provider:autorun:horizon_mmap",
+      "kind": "implemented_by"
+    },
+    {
+      "from": "api:posix:munmap",
+      "to": "provider:autorun:horizon_munmap",
+      "kind": "implemented_by"
+    },
+    {
+      "from": "api:posix:mprotect",
+      "to": "provider:autorun:horizon_mprotect",
+      "kind": "implemented_by"
+    },
+    {
+      "from": "api:posix:madvise",
+      "to": "provider:autorun:horizon_madvise",
+      "kind": "implemented_by"
+    },
+    {
+      "from": "provider:autorun:horizon_mmap",
+      "to": "provider:autorun:backing_pages",
+      "kind": "uses"
+    },
+    {
+      "from": "provider:autorun:horizon_mmap",
+      "to": "provider:autorun:lazy_fault_commit",
+      "kind": "uses"
+    },
+    {
+      "from": "provider:autorun:horizon_mmap",
+      "to": "provider:autorun:process_code_memory",
+      "kind": "uses"
+    },
+    {
+      "from": "provider:autorun:horizon_mprotect",
+      "to": "provider:autorun:process_code_memory",
+      "kind": "uses"
+    },
+    {
+      "from": "provider:autorun:process_code_memory",
+      "to": "provider:libnx:virtmem",
+      "kind": "uses"
+    },
+    {
+      "from": "provider:autorun:box64_dynarec",
+      "to": "provider:autorun:box64_code_memory",
+      "kind": "uses"
+    },
+    {
+      "from": "provider:autorun:box64_dynarec",
+      "to": "provider:autorun:box64_code_arena",
+      "kind": "allocates_from"
+    },
+    {
+      "from": "provider:autorun:box64_dynarec",
+      "to": "provider:libnx:virtmem",
+      "kind": "fallback_uses"
+    },
+    {
+      "from": "provider:libnx:bsd_sockets",
+      "to": "service:bsd:u",
+      "kind": "delegates_to"
+    },
+    {
+      "from": "provider:libnx:newlib_threads_time",
+      "to": "service:horizon_svc",
+      "kind": "delegates_to"
+    },
+    {
+      "from": "provider:libnx:wait_handles",
+      "to": "svc:WaitSynchronization",
+      "kind": "delegates_to"
+    },
+    {
+      "from": "provider:autorun:horizon_madvise",
+      "to": "gap:madvise",
+      "kind": "exposes"
+    },
+    {
+      "from": "provider:autorun:horizon_mmap",
+      "to": "gap:coherent_shared_file_mapping",
+      "kind": "has_limitation"
+    },
+    {
+      "from": "provider:autorun:horizon_mmap",
+      "to": "gap:section_alias_privilege",
+      "kind": "has_limitation"
+    },
+    {
+      "from": "provider:autorun:box64_dynarec",
+      "to": "gap:jit_object_budget",
+      "kind": "constrained_by"
+    },
+    {
+      "from": "provider:libnx:virtmem",
+      "to": "gap:jit_reservation_oom",
+      "kind": "failure_mode"
+    },
+    {
+      "from": "provider:libnx:socket_poll",
+      "to": "service:bsd:u",
+      "kind": "delegates_to"
+    },
+    {
+      "from": "provider:libnx:bsd_sockets",
+      "to": "service:bsd:u",
+      "kind": "delegates_to"
+    },
+    {
+      "from": "provider:libnx:socket_poll",
+      "to": "svc:bsdPoll",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:libnx:wait_handles",
+      "to": "svc:WaitSynchronization",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:libnx:virtmem",
+      "to": "svc:QueryMemory",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:autorun:process_code_memory",
+      "to": "svc:MapProcessCodeMemory",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:autorun:process_code_memory",
+      "to": "svc:SetProcessMemoryPermission",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:autorun:box64_code_memory",
+      "to": "svc:CreateCodeMemory",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:autorun:box64_code_memory",
+      "to": "svc:ControlCodeMemory",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:libnx:jit",
+      "to": "svc:CreateCodeMemory",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:libnx:jit",
+      "to": "svc:ControlCodeMemory",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:libnx:jit",
+      "to": "svc:SetProcessMemoryPermission",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:libnx:jit",
+      "to": "svc:MapProcessCodeMemory",
+      "kind": "calls"
+    },
+    {
+      "from": "provider:autorun:box64_dynarec",
+      "to": "provider:libnx:jit",
+      "kind": "fallback_uses"
+    }
   ],
   "validation": {
     "source_inspection": "complete_for_listed_nodes",
-    "host_tests": ["NX-POSIX socket reactor GCC/Clang", "NX-POSIX TCP loopback GCC/Clang", "NX-POSIX mocked waitHandles GCC/Clang", "Autorun code-memory reservation rollback GitHub Actions"],
+    "host_tests": [
+      "NX-POSIX socket reactor GCC/Clang",
+      "NX-POSIX TCP loopback GCC/Clang",
+      "NX-POSIX mocked waitHandles GCC/Clang",
+      "Autorun code-memory reservation rollback GitHub Actions"
+    ],
     "target_build": "not_run",
     "switch_hardware": "not_run",
     "note": "Provider presence in source does not imply every privileged syscall is granted by the installed loader or firmware."
