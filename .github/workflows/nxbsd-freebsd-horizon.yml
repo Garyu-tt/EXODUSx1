@@ -34,6 +34,8 @@ jobs:
           persist-credentials: false
       - name: Verify pinned donor and generate grammar on host
         run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out horizon-grammar
+      - name: Check portability scripts before staging
+        run: python3 -m py_compile exodus/terminal/stage_freebsd_horizon.py exodus/terminal/prepare_freebsd_host.py exodus/terminal/generate_freebsd_sh.py
       - name: Stage verified newlib portability fixes
         run: python3 exodus/terminal/stage_freebsd_horizon.py --checkout donor-freebsd --out horizon-donor
       - name: Cross-compile original modules without host libc adapters
