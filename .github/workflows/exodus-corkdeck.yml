@@ -88,9 +88,18 @@ jobs:
           retention-days: 30
 
 
+
   tools:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tool: terminal
+            revision: 9dd382c56259447cd86fff0f38da063de9e25f30
+          - tool: ssh
+            revision: 8021faf0c02e6411c2c4b8d8d162a584291690ac
     steps:
       - uses: actions/checkout@v6
         with:
@@ -98,34 +107,39 @@ jobs:
       - name: Build NRO structural checker
         run: cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/check_shell_nro.c exodus/runtime/autorun_probe.c -o /tmp/check-shell-nro
       - name: Install SDK packages
-        run: dkp-pacman -Syu --noconfirm --needed switch-dev switch-libssh2
-      - name: Build pinned native tools
+        env:
+          TOOL: ${{ matrix.tool }}
+        run: |
+          dkp-pacman -Syu --noconfirm --needed switch-dev
+          if [ "$TOOL" = ssh ]; then
+            dkp-pacman -S --noconfirm --needed switch-libssh2
+          fi
+      - name: Build pinned native tool
+        env:
+          TOOL: ${{ matrix.tool }}
+          REVISION: ${{ matrix.revision }}
         run: |
           set -eu
-          mkdir -p /tmp/exodus-tools/switch/exodus-terminal /tmp/exodus-tools/switch/exodus-ssh
-          git init /tmp/exodus-terminal-source
-          git -C /tmp/exodus-terminal-source remote add origin https://github.com/Garyu-tt/EXODUSx1.git
-          git -C /tmp/exodus-terminal-source sparse-checkout set exodus/terminal
-          git -C /tmp/exodus-terminal-source fetch --depth=1 origin 9dd382c56259447cd86fff0f38da063de9e25f30
-          git -C /tmp/exodus-terminal-source checkout --detach FETCH_HEAD
-          make -C /tmp/exodus-terminal-source/exodus/terminal
-          cp /tmp/exodus-terminal-source/exodus/terminal/exodus-terminal.nro /tmp/exodus-tools/switch/exodus-terminal/
-          git init /tmp/exodus-ssh-source
-          git -C /tmp/exodus-ssh-source remote add origin https://github.com/Garyu-tt/EXODUSx1.git
-          git -C /tmp/exodus-ssh-source sparse-checkout set exodus/ssh
-          git -C /tmp/exodus-ssh-source fetch --depth=1 origin 8021faf0c02e6411c2c4b8d8d162a584291690ac
-          git -C /tmp/exodus-ssh-source checkout --detach FETCH_HEAD
-          export PKG_CONFIG_PATH=
-          export PKG_CONFIG_LIBDIR="$DEVKITPRO/portlibs/switch/lib/pkgconfig:$DEVKITPRO/portlibs/switch/share/pkgconfig"
-          make -C /tmp/exodus-ssh-source/exodus/ssh SSH_LIBS="$(pkg-config --static --libs libssh2)"
-          cp /tmp/exodus-ssh-source/exodus/ssh/exodus-ssh.nro /tmp/exodus-tools/switch/exodus-ssh/
+          git init /tmp/exodus-tool-source
+          git -C /tmp/exodus-tool-source remote add origin https://github.com/Garyu-tt/EXODUSx1.git
+          git -C /tmp/exodus-tool-source sparse-checkout set "exodus/$TOOL"
+          git -C /tmp/exodus-tool-source fetch --depth=1 origin "$REVISION"
+          git -C /tmp/exodus-tool-source checkout --detach FETCH_HEAD
+          if [ "$TOOL" = ssh ]; then
+            export PKG_CONFIG_PATH=
+            export PKG_CONFIG_LIBDIR="$DEVKITPRO/portlibs/switch/lib/pkgconfig:$DEVKITPRO/portlibs/switch/share/pkgconfig"
+            make -C "/tmp/exodus-tool-source/exodus/$TOOL" SSH_LIBS="$(pkg-config --static --libs libssh2)"
+          else
+            make -C "/tmp/exodus-tool-source/exodus/$TOOL"
+          fi
+          mkdir -p "/tmp/exodus-tools/switch/exodus-$TOOL"
+          cp "/tmp/exodus-tool-source/exodus/$TOOL/exodus-$TOOL.nro" "/tmp/exodus-tools/switch/exodus-$TOOL/"
           cd /tmp/exodus-tools
-          /tmp/check-shell-nro switch/exodus-terminal/exodus-terminal.nro
-          /tmp/check-shell-nro switch/exodus-ssh/exodus-ssh.nro
-          sha256sum switch/*/*.nro > SHA256SUMS
+          /tmp/check-shell-nro "switch/exodus-$TOOL/exodus-$TOOL.nro"
+          sha256sum "switch/exodus-$TOOL/exodus-$TOOL.nro" > SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: exodus-native-tools-switch-arm64
+          name: exodus-native-${{ matrix.tool }}-switch-arm64
           path: /tmp/exodus-tools/
           if-no-files-found: error
           retention-days: 30
