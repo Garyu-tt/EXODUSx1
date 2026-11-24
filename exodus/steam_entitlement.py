@@ -2,12 +2,14 @@
 
 import argparse
 from enum import Enum
+from http.client import HTTPException
 import json
 import os
 import re
 import sys
+from urllib.error import HTTPError
 from urllib.parse import urlencode
-from urllib.request import Request, build_opener
+from urllib.request import ProxyHandler, Request, build_opener
 import webbrowser
 
 from .steam_sync import (
@@ -15,7 +17,6 @@ from .steam_sync import (
     NoSteamRedirect,
     SteamSyncError,
     decode_json,
-    request_steam,
     sign_in,
 )
 
@@ -76,6 +77,33 @@ def _status_from_reply(document, app_id, steam_id):
     return LicenseStatus.ACTIVE_LICENSE if owns_app else LicenseStatus.NO_ACTIVE_LICENSE
 
 
+def _read_ownership_reply(opener, request):
+    try:
+        with opener.open(request, timeout=10) as response:
+            if response.getcode() != 200:
+                return None
+            declared = response.headers.get_all("Content-Length", [])
+            expected_bytes = None
+            if declared:
+                if len(declared) != 1 or "Transfer-Encoding" in response.headers:
+                    return None
+                value = declared[0].strip(" \t")
+                if re.fullmatch(r"[0-9]{1,10}", value, re.ASCII) is None:
+                    return None
+                expected_bytes = int(value)
+                if expected_bytes > MAX_OWNERSHIP_BYTES:
+                    return None
+            body = response.read(MAX_OWNERSHIP_BYTES + 1)
+    except HTTPError as error:
+        error.close()
+        return None
+    except (OSError, HTTPException, ValueError):
+        return None
+    if len(body) > MAX_OWNERSHIP_BYTES or (expected_bytes is not None and len(body) != expected_bytes):
+        return None
+    return body
+
+
 def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, opener=None, open_browser=None):
     """Return a live license status for an identity confirmed through Steam OpenID."""
     app_id = parse_identifier(app_id, MAX_APP_ID)
@@ -90,10 +118,10 @@ def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, o
         return LicenseStatus.SIGN_IN_UNAVAILABLE
 
     if opener is None:
-        opener = build_opener(NoSteamRedirect)
+        opener = build_opener(ProxyHandler({}), NoSteamRedirect)
     try:
         steam_id = parse_identifier(sign_in(opener, open_browser or webbrowser.open, timeout), MAX_STEAM_ID)
-    except (SteamSyncError, KeyboardInterrupt):
+    except (SteamSyncError, ValueError, KeyboardInterrupt):
         return LicenseStatus.SIGN_IN_UNAVAILABLE
     if steam_id is None:
         return LicenseStatus.SIGN_IN_UNAVAILABLE
@@ -102,7 +130,9 @@ def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, o
     request = Request(CHECK_APP_OWNERSHIP + "?" + params, headers={"Accept": "application/json"})
     request.add_unredirected_header("X-WebAPI-Key", publisher_key)
     try:
-        body = request_steam(opener, request, MAX_OWNERSHIP_BYTES, "license check")
+        body = _read_ownership_reply(opener, request)
+        if body is None:
+            return LicenseStatus.OWNERSHIP_UNAVAILABLE
         document = decode_json(body, "the Steam ownership response")
     except (SteamSyncError, KeyboardInterrupt):
         return LicenseStatus.OWNERSHIP_UNAVAILABLE

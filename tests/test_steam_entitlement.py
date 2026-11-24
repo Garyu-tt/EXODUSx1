@@ -25,10 +25,21 @@ KEY_ENV = "STEAMWORKS_PUBLISHER_KEY"
 Status = entitlement.LicenseStatus
 
 
+def http_reply(request, body, code=200, fields=()):
+    headers = Message()
+    for name, value in fields:
+        headers[name] = value
+    response = addinfourl(BytesIO(body), headers, request.full_url, code)
+    response.msg = "Synthetic provider response"
+    return response
+
+
 class FakeSteam:
-    def __init__(self, license_response=None, *, verified=True):
+    def __init__(self, license_response=None, *, verified=True, response_code=200, response_headers=()):
         self.license_response = {"ownsapp": True} if license_response is None else license_response
         self.verified = verified
+        self.response_code = response_code
+        self.response_headers = response_headers
         self.requests = []
 
     def open(self, request, *, timeout):
@@ -36,14 +47,15 @@ class FakeSteam:
         endpoint = request.full_url.split("?", 1)[0]
         if endpoint == sync.OPENID_PROVIDER:
             verdict = "true" if self.verified else "false"
-            return BytesIO(f"ns:{sync.OPENID_NS}\nis_valid:{verdict}\n".encode("ascii"))
+            return http_reply(request, f"ns:{sync.OPENID_NS}\nis_valid:{verdict}\n".encode("ascii"))
         if endpoint != PARTNER_ENDPOINT:
             raise AssertionError("Unexpected Steam endpoint")
         if isinstance(self.license_response, Exception):
             raise self.license_response
-        if isinstance(self.license_response, bytes):
-            return BytesIO(self.license_response)
-        return BytesIO(json.dumps(self.license_response).encode("utf-8"))
+        body = self.license_response
+        if not isinstance(body, bytes):
+            body = json.dumps(body).encode("utf-8")
+        return http_reply(request, body, self.response_code, self.response_headers)
 
 
 class SteamEntitlementTests(unittest.TestCase):
@@ -175,28 +187,67 @@ class SteamEntitlementTests(unittest.TestCase):
                 self.assertEqual(len(steam.requests), 2)
         self.assertEqual(self.check(FakeSteam(TimeoutError("synthetic timeout"))), Status.OWNERSHIP_UNAVAILABLE)
 
-    def test_default_steam_opener_does_not_follow_a_redirect_with_the_publisher_key(self):
-        requests = []
+    def test_a_valid_license_body_requires_http_200(self):
+        for code in (202, 206):
+            with self.subTest(code=code):
+                steam = FakeSteam({"ownsapp": True}, response_code=code)
+                self.assertEqual(self.check(steam), Status.OWNERSHIP_UNAVAILABLE)
+                self.assertEqual(len(steam.requests), 2)
 
-        def synthetic_https(handler, request):
-            endpoint = request.full_url.split("?", 1)[0]
-            requests.append(endpoint)
-            headers = Message()
-            if endpoint == sync.OPENID_PROVIDER:
-                data = f"ns:{sync.OPENID_NS}\nis_valid:true\n".encode("ascii")
-                response = addinfourl(BytesIO(data), headers, request.full_url, 200)
-                response.msg = "OK"
-            elif endpoint == PARTNER_ENDPOINT:
-                headers["Location"] = "https://elsewhere.invalid/"
-                response = addinfourl(BytesIO(), headers, request.full_url, 302)
-                response.msg = "Found"
-            else:
-                raise AssertionError("The publisher request followed an unexpected redirect")
-            return response
+    def test_http_200_requires_unambiguous_and_complete_body_framing(self):
+        # The returned bytes are valid JSON even when HTTP does not frame them as a complete reply.
+        body = b'{"ownsapp": true}'
+        size = str(len(body))
+        cases = (
+            (("Content-Length", str(len(body) + 1)),),
+            (("Content-Length", str(len(body) - 1)),),
+            (("Content-Length", size), ("content-length", size)),
+            (("Content-Length", "-1"),),
+            (("Content-Length", "invalid"),),
+            (("Content-Length", size + ", " + size),),
+            (("Content-Length", size), ("Transfer-Encoding", "chunked")),
+        )
+        for fields in cases:
+            with self.subTest(fields=fields):
+                self.assertEqual(self.check(FakeSteam(body, response_headers=fields)), Status.OWNERSHIP_UNAVAILABLE)
 
-        with patch.dict(os.environ, {}, clear=True), patch.object(HTTPSHandler, "https_open", synthetic_https):
-            self.assertEqual(self.check(None), Status.OWNERSHIP_UNAVAILABLE)
-        self.assertEqual(requests, [sync.OPENID_PROVIDER, PARTNER_ENDPOINT])
+        for fields in ((), (("Content-Length", size),)):
+            with self.subTest(valid_fields=fields):
+                self.assertEqual(self.check(FakeSteam(body, response_headers=fields)), Status.ACTIVE_LICENSE)
+
+    def test_default_steam_opener_ignores_ambient_proxies_and_rejects_redirects(self):
+        proxy_env = {
+            "HTTP_PROXY": "http://proxy.invalid:18990",
+            "HTTPS_PROXY": "http://proxy.invalid:18991",
+            "ALL_PROXY": "http://proxy.invalid:18992",
+        }
+        for location, expected in (
+            (None, Status.ACTIVE_LICENSE),
+            ("https://elsewhere.invalid/", Status.OWNERSHIP_UNAVAILABLE),
+            ("https://[invalid/", Status.OWNERSHIP_UNAVAILABLE),
+        ):
+            with self.subTest(location=location):
+                requests = []
+
+                def synthetic_https(handler, request):
+                    endpoint = request.full_url.split("?", 1)[0]
+                    requests.append(endpoint)
+                    self.assertEqual(request.host, urlsplit(endpoint).netloc)
+                    if endpoint == sync.OPENID_PROVIDER:
+                        data = f"ns:{sync.OPENID_NS}\nis_valid:true\n".encode("ascii")
+                        return http_reply(request, data)
+                    if endpoint != PARTNER_ENDPOINT:
+                        raise AssertionError("The publisher request followed an unexpected redirect")
+                    if location is not None:
+                        response = http_reply(request, b"", 302, (("Location", location),))
+                        # urllib can reject Location before the caller receives the response.
+                        self.addCleanup(response.close)
+                        return response
+                    return http_reply(request, b'{"ownsapp": true}')
+
+                with patch.dict(os.environ, proxy_env, clear=True), patch.object(HTTPSHandler, "https_open", synthetic_https):
+                    self.assertEqual(self.check(None), expected)
+                self.assertEqual(requests, [sync.OPENID_PROVIDER, PARTNER_ENDPOINT])
 
     def invoke_cli(self, args):
         stdout = StringIO()
