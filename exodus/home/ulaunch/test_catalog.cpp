@@ -52,6 +52,15 @@ namespace {
         assert(again.entries[0].artwork == catalog.entries[0].artwork);
         assert(again.entries[0].last_played == catalog.entries[0].last_played);
 
+        auto unusable_artwork = source;
+        const auto cover = unusable_artwork.find(u"game.png");
+        assert(cover != std::u16string::npos);
+        unusable_artwork.insert(cover, uR"(\u0000)");
+        const auto without_artwork = ParseCatalog(EncodeUtf16Le(unusable_artwork));
+        assert(without_artwork.status == CatalogStatus::Ready && without_artwork.entries.size() == 1);
+        assert(without_artwork.entries[0].artwork.empty());
+        assert(without_artwork.entries[0].last_played == 42);
+
         assert(ParseCatalog(bytes.substr(0, bytes.size() - 1)).status == CatalogStatus::Invalid);
         const auto icon = source.find(u"🕹");
         assert(icon != std::u16string::npos);

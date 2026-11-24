@@ -157,7 +157,7 @@ namespace exodus::home {
             const auto &last = entry["last_played"];
             std::string artwork = art.is_string() ? art.get<std::string>() : "";
             if (artwork.find('\0') != std::string::npos)
-                return {CatalogStatus::Invalid, {}};
+                artwork.clear();
             catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name), id,
                 std::move(artwork), last.is_null() ? 0 : last.get<std::uint64_t>()});
         }
