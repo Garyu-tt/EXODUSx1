@@ -20,6 +20,7 @@ class ProbeTests(unittest.TestCase):
             (bytes(PAGE), 1, 1, 8, 0),
             (dense, 1, 0, PAGE, 0),
             (bytes(PAGE) + sparse + dense + b"abc", 3, 2, 8 + 72 + PAGE + 3, 3),
+            (sparse * 129 + b"end", 129, 129, 129 * 72 + 3, 3),
         ]:
             with self.subTest(size=len(sample)), tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp) / "input with spaces.bin"

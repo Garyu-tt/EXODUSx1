@@ -1,9 +1,7 @@
-#include "page_codec.h"
+#include "page_probe_stats.h"
 
 #include <inttypes.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 int main(int argc, char **argv)
 {
@@ -17,35 +15,26 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    uint8_t page[EXODUS_PAGE_BYTES], encoded[EXODUS_PAGE_BYTES], decoded[EXODUS_PAGE_BYTES];
-    uint64_t pages = 0, sparse = 0, payload = 0;
-    size_t count;
-    while ((count = fread(page, 1, sizeof(page), input)) == sizeof(page)) {
-        size_t size = exodus_page_encode(page, encoded);
-        if (!exodus_page_decode(encoded, size, decoded) || memcmp(decoded, page, sizeof(page)) != 0) {
-            fprintf(stderr, "Round-trip verification failed at page %" PRIu64 "\n", pages);
-            fclose(input);
-            return EXIT_FAILURE;
-        }
-        ++pages;
-        sparse += size < sizeof(page);
-        payload += size;
-    }
-    if (ferror(input)) {
+    struct exodus_probe_stats stats = {0};
+    enum exodus_probe_result result;
+    do {
+        result = exodus_probe_batch(input, 128, &stats);
+    } while (result == EXODUS_PROBE_MORE);
+    if (result == EXODUS_PROBE_IO_ERROR)
         perror(argv[1]);
-        fclose(input);
-        return EXIT_FAILURE;
-    }
+    if (result == EXODUS_PROBE_MISMATCH)
+        fprintf(stderr, "Round-trip verification failed at page %" PRIu64 "\n", stats.pages);
     if (fclose(input) != 0) {
         perror(argv[1]);
         return EXIT_FAILURE;
     }
+    if (result != EXODUS_PROBE_DONE)
+        return EXIT_FAILURE;
 
-    /* A trailing fragment stays raw. Two bytes per full page can hold the
-     * encoded length; allocator overhead and random-access offsets vary by caller. */
     printf("{\"pages\":%" PRIu64 ",\"sparse_pages\":%" PRIu64
            ",\"input_bytes\":%" PRIu64 ",\"payload_bytes\":%" PRIu64
            ",\"length_index_bytes\":%" PRIu64 ",\"trailing_bytes\":%zu}\n",
-           pages, sparse, pages * EXODUS_PAGE_BYTES + count, payload + count, pages * 2, count);
+           stats.pages, stats.sparse_pages, stats.pages * EXODUS_PAGE_BYTES + stats.trailing_bytes,
+           stats.payload_bytes, stats.pages * 2, stats.trailing_bytes);
     return EXIT_SUCCESS;
 }
