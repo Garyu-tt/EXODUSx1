@@ -139,6 +139,69 @@ def prepare(donor, out):
          b"\t(void)argc; (void)argv;\n\terrorwithstatus(125, \"kernel signal delivery unavailable on Horizon\");")
     body(kill, b"printsignals(FILE *fp)",
          b"\t(void)fp;")
+    # Final link admission: no invented identities or external process ABI.
+    parser = "bin/sh/parser.c"
+    body(parser, b"getpwlogin(void)", b"\treturn NULL; /* no login database */")
+    body(parser, b"getusername(char *name, size_t namelen)",
+         b"\tif (namelen) strlcpy(name, \"unknown\", namelen);")
+    replace(parser, b"ps[i] = (geteuid() != 0) ? ' not a claim that PATH executables work.
+    replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
+    replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
+            b"nxbsd_fwopen(dest, doformat_wr)")
+    replace("bin/sh/output.c", b"fwopen(out1, doformat_wr)",
+            b"nxbsd_fwopen(out1, doformat_wr)")
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--checkout", required=True, type=Path)
+    p.add_argument("--out", required=True, type=Path)
+    a = p.parse_args()
+    prepare(a.checkout, a.out)
+ : '#';", b"ps[i] = ' not a claim that PATH executables work.
+    replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
+    replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
+            b"nxbsd_fwopen(dest, doformat_wr)")
+    replace("bin/sh/output.c", b"fwopen(out1, doformat_wr)",
+            b"nxbsd_fwopen(out1, doformat_wr)")
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--checkout", required=True, type=Path)
+    p.add_argument("--out", required=True, type=Path)
+    a = p.parse_args()
+    prepare(a.checkout, a.out)
+;")
+    replace("bin/sh/var.c", b'geteuid() ? "PS1=$ " : "PS1=# "', b'"PS1=$ "')
+    replace("bin/sh/var.c", b'\tfmtstr(ppid, sizeof(ppid), "%d", (int)getppid());\n\tsetvarsafe("PPID", ppid, 0);',
+            b'\t/* PPID unavailable: do not invent a parent process. */')
+    replace("bin/sh/expand.c", b"pw = getpwnam(user);\n\t\t\t\thome = pw != NULL ? pw->pw_dir : NULL;",
+            b"home = NULL; /* named home lookup unsupported */")
+    options = "bin/sh/options.c"
+    replace(options, b"privileged = (getuid() != geteuid() || getgid() != getegid());",
+            b"privileged = 0; /* no Unix identity transition model */")
+    replace(options, b'\tif (&optval[idx] == &privileged && !val && privileged) {\n\t\tif (setgid(getgid()) == -1)\n\t\t\terror("setgid");\n\t\tif (setuid(getuid()) == -1)\n\t\t\terror("setuid");\n\t}',
+            b'\tif (&optval[idx] == &privileged && val)\n\t\terrorwithstatus(125, "privileged mode unavailable on Horizon");')
+    replace("bin/test/test.c", b"\tcase FILUID:\n\t\treturn s.st_uid == geteuid();\n\tcase FILGID:\n\t\treturn s.st_gid == getegid();",
+            b'\tcase FILUID:\n\tcase FILGID:\n\t\terrorwithstatus(125, "Unix ownership unavailable on Horizon");')
+    body("bin/sh/exec.c", b"tryexec(char *cmd, char **argv, char **envp)",
+         b"\t(void)cmd; (void)argv; (void)envp; errno = ENOTSUP;")
+    body("bin/sh/eval.c", b"evalbackcmd(union node *n, struct backcmd *result)",
+         b'\t(void)n; (void)result;\n\terrorwithstatus(125, "command substitution unavailable on Horizon");')
+    body("bin/sh/eval.c", b"timescmd(int argc __unused, char **argv __unused)",
+         b'\t(void)argc; (void)argv;\n\terrorwithstatus(125, "process accounting unavailable on Horizon");')
+    # The one remaining legacy pipe in evalcommand is unreachable after
+    # makejob refuses; make that branch itself explicitly fail closed.
+    replace("bin/sh/eval.c", b'\t\t\tif (pipe(pip) < 0)\n\t\t\t\terror("Pipe call failed: %s", strerror(errno));',
+            b'\t\t\terrorwithstatus(125, "legacy process pipe unavailable on Horizon");')
+    body("bin/sh/redir.c", b"openhere(union node *redir)",
+         b'\t(void)redir;\n\terrorwithstatus(125, "here document unavailable on Horizon");')
+    body("bin/sh/error.c", b"onint(void)",
+         b'\tintpending = 0;\n\texraise(EXINT);')
+    # Generated builtin table still contains fg/bg in this inventory.
+    # Supply explicit errors, not a fictitious job-control implementation.
+    dst = out / jobs
+    with dst.open("ab") as f:
+        f.write(b'\n#if !JOBS\nint fgcmd(int argc, char **argv) { (void)argc; (void)argv; errorwithstatus(125, "job control unavailable on Horizon"); }\nint bgcmd(int argc, char **argv) { (void)argc; (void)argv; errorwithstatus(125, "job control unavailable on Horizon"); }\n#endif\n')
     # Explicit virtual path policy; not a claim that PATH executables work.
     replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
     replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
