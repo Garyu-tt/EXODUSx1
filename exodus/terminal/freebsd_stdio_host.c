@@ -61,3 +61,34 @@ const char *nxbsd_signal_name(int number)
 {
     return number > 0 && number < NSIG ? sigabbrev_np(number) : NULL;
 }
+
+/* Named signals supported by the host; do not invent BSD numbers.
+   Realtime numeric signals may be passed to kill, but names are not synthesized. */
+int nxbsd_sig2str(int n, char *out)
+{
+    const char *name = nxbsd_signal_name(n);
+    if (!out || !name || strlen(name) >= 32) { errno = EINVAL; return -1; }
+    strcpy(out, name);
+    return 0;
+}
+int nxbsd_str2sig(const char *s, int *out)
+{
+    if (!s || !*s || !out) { errno = EINVAL; return -1; }
+    if (*s >= '0' && *s <= '9') {
+        char *end;
+        errno = 0;
+        long n = strtol(s, &end, 10);
+        if (!errno && !*end && n > 0 && n < NSIG &&
+            (nxbsd_signal_name((int)n) || (n >= SIGRTMIN && n <= SIGRTMAX))) {
+            *out = (int)n;
+            return 0;
+        }
+    } else {
+        for (int n = 1; n < NSIG; ++n) {
+            const char *name = nxbsd_signal_name(n);
+            if (name && !strcasecmp(s, name)) { *out = n; return 0; }
+        }
+    }
+    errno = EINVAL;
+    return -1;
+}
