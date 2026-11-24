@@ -92,3 +92,12 @@ int nxbsd_str2sig(const char *s, int *out)
     errno = EINVAL;
     return -1;
 }
+
+#include <sys/ioctl.h>
+/* Only acquire a controlling terminal for the caller's own session.
+   Never request forced takeover of another session's terminal. */
+int tcsetsid(int fd, pid_t sid)
+{
+    if (sid != getpid() || sid != getsid(0)) { errno = EPERM; return -1; }
+    return ioctl(fd, TIOCSCTTY, 0);
+}
