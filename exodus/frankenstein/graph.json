@@ -154,7 +154,8 @@
         "gamescope",
         "steam-client",
         "manager-dbus",
-        "resident-ssh-dbus"
+        "resident-ssh-dbus",
+        "resident-rc"
       ]
     },
     {
@@ -275,6 +276,14 @@
         "job": 138826845885,
         "scope": "Native OpenSSH loopback ED25519 authentication and revocation, actual D-Bus DefaultLoginMode changes through SSH, same SSH and D-Bus daemon PID, generation 3 persisted. Desired mode only, active=unknown; no graphical session or Switch hardware."
       }
+    },
+    {
+      "id": "resident-rc",
+      "origin": "exodus/frankenstein/tumor_reference_session",
+      "state": "integration-test-pending",
+      "depends": [
+        "resident-ssh-dbus"
+      ]
     }
   ],
   "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. No physical Switch execution or full SteamOS runtime proven.",
