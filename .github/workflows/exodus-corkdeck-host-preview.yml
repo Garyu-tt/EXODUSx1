@@ -1,0 +1,44 @@
+name: EXODUS CorkDeck host preview
+
+on:
+  pull_request:
+    paths:
+      - 'exodus/home/corkdeck/settings_preview.c'
+      - 'exodus/home/corkdeck/build-host.sh'
+      - '.github/workflows/exodus-corkdeck-host-preview.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'exodus/home/corkdeck/settings_preview.c'
+      - 'exodus/home/corkdeck/build-host.sh'
+      - '.github/workflows/exodus-corkdeck-host-preview.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: Garyu-tt/CorkDeck
+          ref: adc0b52284e9e57d18808427a770a2a162c76bf0
+          path: .ci-corkdeck
+          sparse-checkout: horizon-wine/source
+          persist-credentials: false
+      - name: Install SDL dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev fonts-dejavu-core
+      - name: Build and render the standalone settings preview
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: |
+          sh exodus/home/corkdeck/build-host.sh .ci-corkdeck "$RUNNER_TEMP/exodus-settings"
+          timeout 30 "$RUNNER_TEMP/exodus-settings" /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf --smoke

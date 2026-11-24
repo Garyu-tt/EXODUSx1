@@ -26,4 +26,4 @@ The donor is pinned and referenced, not copied into EXODUS. Preserve CorkDeck/Wi
 - Keep Latitude/uLaunch fallback until device acceptance.
 - Extract further actual CorkDeck shell screens incrementally; shell.inc currently relies on launcher state and is not standalone.
 
-No successful build or device run is claimed by this PR.
+The host preview workflow builds against the pinned donor and renders one frame on Linux. Device acceptance follows the separate Switch build and hardware gates above.
