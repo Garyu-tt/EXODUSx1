@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "sync.hpp"
 
-#include "../home/ulaunch/catalog.hpp"
+#include "../home/ulaunch/catalog_refresh.hpp"
 
 #include <array>
 #include <cstdio>
@@ -10,9 +10,8 @@
 namespace {
 
     namespace steam = exodus::steam_switch;
-    constexpr char Directory[] = "sdmc:/switch/exodus-steam-sync";
+    namespace home = exodus::home;
     constexpr char GatewayFile[] = "sdmc:/switch/exodus-steam-sync/gateway.txt";
-    constexpr char HomeCatalog[] = "sdmc:/ulaunch/exodus-catalog.json";
 
     std::string HexToken(const std::array<u8, 32> &bytes) {
         constexpr char digits[] = "0123456789abcdef";
@@ -71,25 +70,11 @@ namespace {
             return;
         }
 
-        const auto existing = steam::ReadTextFile(HomeCatalog, exodus::home::CatalogByteLimit);
-        if (existing.status == steam::ReadStatus::Error) {
-            std::puts("Could not read the working HOME catalog.");
+        if (!home::PublishSteamSnapshot(home::SteamSnapshotsPath, snapshot.catalog)) {
+            std::puts("Could not publish the Steam snapshot.");
             return;
         }
-        std::optional<std::string_view> base;
-        if (existing.status == steam::ReadStatus::Ready)
-            base = existing.text;
-        const auto catalog = steam::MergeSteamSnapshot(snapshot.catalog, base);
-        if (!catalog) {
-            std::puts("The HOME catalog is invalid or the combined snapshot is too large.");
-            return;
-        }
-        const auto saved = steam::SaveNewSnapshot(Directory, *catalog);
-        if (!saved) {
-            std::puts("Could not save a new catalog snapshot.");
-            return;
-        }
-        std::printf("Saved a new HOME snapshot.\n%s\n%s\n", Directory, saved->c_str());
+        std::puts("Steam library saved. Reopen EXODUS library in HOME.");
     }
 
 }

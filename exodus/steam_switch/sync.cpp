@@ -1,19 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "sync.hpp"
 
-#include "../home/ulaunch/catalog.hpp"
+#include "../home/ulaunch/catalog_refresh.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cerrno>
 #include <charconv>
 #include <cstdio>
-#include <cstdlib>
 #include <json.hpp>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <utility>
-#include <vector>
 
 namespace exodus::steam_switch {
 
@@ -102,14 +98,6 @@ namespace exodus::steam_switch {
             if (!session.is_string() || !IsToken(session.get_ref<const std::string &>()))
                 return std::nullopt;
             return session.get<std::string>();
-        }
-
-        bool IsSteamSnapshot(std::string_view text, std::string *normalized_utf8 = nullptr) {
-            const auto parsed = home::ParseCatalog(text, normalized_utf8);
-            return parsed.status == home::CatalogStatus::Ready &&
-                   std::all_of(parsed.entries.begin(), parsed.entries.end(), [](const auto &entry) {
-                       return entry.provider == home::Provider::Steam;
-                   });
         }
 
     }
@@ -210,37 +198,9 @@ namespace exodus::steam_switch {
             return {SyncStatus::SessionExpired, {}};
         if (fetched.status != 200)
             return {SyncStatus::GatewayUnavailable, {}};
-        if (!IsSteamSnapshot(fetched.body))
+        if (!home::IsSteamCatalog(home::ParseCatalog(fetched.body)))
             return {SyncStatus::InvalidCatalog, {}};
         return {SyncStatus::Ready, std::move(fetched.body)};
-    }
-
-    std::optional<std::string> MergeSteamSnapshot(std::string_view steam,
-                                                  std::optional<std::string_view> base) {
-        std::string incoming_utf8;
-        if (!IsSteamSnapshot(steam, base ? &incoming_utf8 : nullptr))
-            return std::nullopt;
-        if (!base)
-            return std::string(steam);
-        std::string existing_utf8;
-        if (home::ParseCatalog(*base, &existing_utf8).status != home::CatalogStatus::Ready)
-            return std::nullopt;
-
-        auto incoming = JSON::parse(incoming_utf8, nullptr, false);
-        auto existing = JSON::parse(existing_utf8, nullptr, false);
-        auto &entries = incoming["entries"];
-        for (auto &entry : existing["entries"]) {
-            if (entry["provider"] == "steam")
-                continue;
-            if (entries.size() == home::CatalogEntryLimit)
-                return std::nullopt;
-            entries.push_back(std::move(entry));
-        }
-        auto result = incoming.dump();
-        if (result.size() >= home::CatalogByteLimit)
-            return std::nullopt;
-        result.push_back('\n');
-        return result;
     }
 
     TextFile ReadTextFile(const char *path, std::size_t limit) {
@@ -263,45 +223,6 @@ namespace exodus::steam_switch {
         if (!good || closed != 0)
             return {ReadStatus::Error, {}};
         return {ReadStatus::Ready, std::move(text)};
-    }
-
-    std::optional<std::string> SaveNewSnapshot(const std::string &directory, std::string_view catalog) {
-        if (home::ParseCatalog(catalog).status != home::CatalogStatus::Ready)
-            return std::nullopt;
-        const std::string pattern = directory + "/.steam-sync-XXXXXX";
-        std::vector<char> name(pattern.begin(), pattern.end());
-        name.push_back('\0');
-        const int fd = mkstemp(name.data());
-        if (fd < 0)
-            return std::nullopt;
-        const std::string staged(name.data());
-        const std::string filename = "exodus-catalog-" + staged.substr(staged.size() - 6) + ".json";
-        const std::string path = directory + "/" + filename;
-
-        FILE *output = fdopen(fd, "wb");
-        if (!output) {
-            close(fd);
-            std::remove(staged.c_str());
-            return std::nullopt;
-        }
-        const bool synced = std::fwrite(catalog.data(), 1, catalog.size(), output) == catalog.size() &&
-                            std::fflush(output) == 0 && fsync(fd) == 0;
-        const auto closed = std::fclose(output);
-        bool published = false;
-        if (synced && closed == 0) {
-#ifdef __SWITCH__
-            // The SD service refuses to rename over an existing file.
-            if (std::rename(staged.c_str(), path.c_str()) == 0)
-                return filename;
-#else
-            // POSIX rename can overwrite the destination so use an exclusive link on the host.
-            published = link(staged.c_str(), path.c_str()) == 0;
-#endif
-        }
-        std::remove(staged.c_str());
-        if (!published)
-            return std::nullopt;
-        return filename;
     }
 
 }
