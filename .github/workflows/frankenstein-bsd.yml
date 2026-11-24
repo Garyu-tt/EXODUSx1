@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'exodus/frankenstein/guest-*.sh'
+      - 'exodus/frankenstein/tumor_reference_*'
       - 'exodus/frankenstein/linux-abi-probe.S'
       - 'exodus/frankenstein/linux-dynamic-probe.c'
       - 'exodus/frankenstein/run-reference.sh'
@@ -19,10 +20,27 @@ jobs:
     runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         include:
+          - mode: boot
+            minutes: 35
+          - mode: linuxabi
+            minutes: 35
+          - mode: linuxdynamic
+            minutes: 35
+          - mode: ssh
+            minutes: 85
+          - mode: native
+            minutes: 85
           - mode: resident
             minutes: 85
+          - mode: rcresident
+            minutes: 100
+          - mode: graphics
+            minutes: 165
+          - mode: manager
+            minutes: 165
     timeout-minutes: ${{ matrix.minutes }}
     steps:
       - uses: actions/checkout@v6
@@ -41,6 +59,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tumor-r15-${{ matrix.mode }}-evidence
+          name: tumor-r16-${{ matrix.mode }}-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn

@@ -154,7 +154,8 @@
         "gamescope",
         "steam-client",
         "manager-dbus",
-        "resident-ssh-dbus"
+        "resident-ssh-dbus",
+        "resident-rc"
       ]
     },
     {
@@ -274,6 +275,20 @@
         "run": 45501837956,
         "job": 138826845885,
         "scope": "Native OpenSSH loopback ED25519 authentication and revocation, actual D-Bus DefaultLoginMode changes through SSH, same SSH and D-Bus daemon PID, generation 3 persisted. Desired mode only, active=unknown; no graphical session or Switch hardware."
+      }
+    },
+    {
+      "id": "resident-rc",
+      "origin": "exodus/frankenstein/tumor_reference_session",
+      "state": "freebsd-qemu-arm64-tested",
+      "depends": [
+        "resident-ssh-dbus"
+      ],
+      "evidence": {
+        "run": 45504844294,
+        "job": 138837269432,
+        "artifact": 14973126956,
+        "scope": "Native FreeBSD ARM64 rc.d boot order, stop/start, persisted desired mode, independent SSH and revoked-key rejection; guest exit 0, host SHA256 verification, exact archive member and internal checksum validation, executable mode and AArch64 ELF64 checks, artifact upload PASS. Opt-in test-account userspace bundle only; cold boot, graphical execution and physical hardware remain separate unproven gates."
       }
     }
   ],
