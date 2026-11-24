@@ -92,11 +92,12 @@ inline void exodus_scan_nros(Catalog &catalog, const std::string &prefix, bool d
     }
 }
 
-inline Catalog exodus_live_inventory()
+inline Catalog exodus_live_inventory(bool *title_scan_ok = nullptr)
 {
     Catalog catalog{CatalogStatus::Ready, {}};
     // A failed NS scan must not publish an incomplete set of registered games.
     bool ns_ok = exodus_scan_titles(catalog);
+    if (title_scan_ok) *title_scan_ok=ns_ok;
     if (!ns_ok) catalog.entries.clear();
     size_t budget = 4096;
     exodus_scan_nros(catalog, "", true, budget);
