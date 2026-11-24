@@ -6,6 +6,7 @@ from audit_freebsd import LOCK, verify
 from prepare_freebsd_host import stage
 
 def prepare(donor, out):
+    donor = donor.resolve(strict=True)
     lock = json.loads(LOCK.read_text())
     verify(donor, lock)
     out.mkdir()
