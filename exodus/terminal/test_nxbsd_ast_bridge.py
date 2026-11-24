@@ -29,9 +29,27 @@ class BridgeTests(unittest.TestCase):
         p = self.run_sh("echo hello | /bin/cat")
         self.assertEqual((p.returncode, p.stdout), (127, ""))
 
-    def test_reject_expansion(self):
-        p = self.run_sh("echo $HOME | wc -c")
-        self.assertEqual((p.returncode, p.stdout), (125, ""))
+    def test_quoted_words(self):
+        p = self.run_sh('echo "hello world" "" | wc -c')
+        self.assertEqual((p.returncode, p.stdout), (0, "13\n"), p.stderr)
+
+    def test_variable_words(self):
+        p = self.run_sh('X="hello world"; echo "$X" | wc -c')
+        self.assertEqual((p.returncode, p.stdout), (0, "12\n"), p.stderr)
+
+    def test_field_splitting(self):
+        p = self.run_sh('X="a  b"; echo $X | wc -c')
+        self.assertEqual((p.returncode, p.stdout), (0, "4\n"), p.stderr)
+
+    def test_reject_effectful_expansion(self):
+        for script in ('echo $(echo bad) | wc -c',
+                       'echo ${X:=bad} | wc -c',
+                       'echo $((1+2)) | wc -c',
+                       'X=bad echo hello | wc -c',
+                       'echo *.txt | wc -c'):
+            with self.subTest(script=script):
+                p = self.run_sh(script)
+                self.assertEqual((p.returncode, p.stdout), (125, ""))
 
     def test_reject_redirect(self):
         p = self.run_sh("echo hello | cat > out")
