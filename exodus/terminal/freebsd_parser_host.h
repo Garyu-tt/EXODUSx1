@@ -4,6 +4,11 @@
 #include <sys/cdefs.h>
 #include <stddef.h>
 #include <string.h>
+#include <sys/param.h>
+/* FreeBSD sys/sys/param.h at the locked revision: length includes NUL. */
+#ifndef MAXLOGNAME
+#define MAXLOGNAME 33
+#endif
 #ifndef __dead2
 #define __dead2 __attribute__((noreturn))
 #endif
