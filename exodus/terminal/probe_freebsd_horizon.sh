@@ -8,7 +8,7 @@ nm="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-nm"
 readelf="$DEVKITPRO/devkitA64/bin/aarch64-none-elf-readelf"
 libnx="$DEVKITPRO/libnx"
 mkdir -p "$out/objects"
-flags=(-std=gnu11 -funsigned-char -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE -D__SWITCH__ -DNO_HISTORY -DSHELL -Werror=implicit-function-declaration -include exodus/terminal/freebsd_horizon_compile.h -I"$libnx/include" -I"$donor/bin/sh" -I"$donor/contrib/libedit" -I"$generated")
+flags=(-std=gnu11 -funsigned-char -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE -D__SWITCH__ -DNO_HISTORY -DSHELL -DNXBSD_AST_BRIDGE -Werror=implicit-function-declaration -include exodus/terminal/freebsd_horizon_compile.h -I"$libnx/include" -I"$donor/bin/sh" -I"$donor/contrib/libedit" -I"$generated")
 "$cc" --version > "$out/toolchain.txt"
 printf 'module\tcompile\truntime\n' > "$out/modules.tsv"
 objects=(); failed=0
@@ -32,7 +32,12 @@ probe echo "$donor/bin/sh/bltin/echo.c"
 probe printf "$donor/usr.bin/printf/printf.c"
 probe test "$donor/bin/test/test.c"
 probe kill "$donor/bin/kill/kill.c"
+donor_compiled=${#objects[@]}
+donor_failed=$failed
 probe target-stdio exodus/terminal/freebsd_stdio_horizon.c
+for m in ast_bridge pipe fd context task pipeline commands; do
+    probe "target-$m" "exodus/terminal/nxbsd_$m.c"
+done
 cat "$out/modules.tsv"
 if ((${#objects[@]})); then
     "$cc" -r "${objects[@]}" -o "$out/shell-partial.o"
@@ -44,7 +49,7 @@ if ((failed==0)); then
     link=no
     if "$cc" -specs="$libnx/switch.specs" "$out/shell-partial.o" -L"$libnx/lib" -lnx -o "$out/shell-probe.elf" > "$out/final-link.log" 2>&1; then link=yes; fi
 fi
-printf 'compiled=%s\nfailed=%s\nfinal_link=%s\nruntime=not_tested\n' "${#objects[@]}" "$failed" "$link" | tee "$out/summary.txt"
+printf 'donor_compiled=%s\ndonor_failed=%s\ncompiled=%s\nfailed=%s\nfinal_link=%s\nruntime=not_tested\n' "$donor_compiled" "$donor_failed" "${#objects[@]}" "$failed" "$link" | tee "$out/summary.txt"
 # A successful inventory does not mean the shell builds. Require a real target object.
 test -s "$out/objects/generated-syntax.o"
 test -s "$out/objects/target-stdio.o"
