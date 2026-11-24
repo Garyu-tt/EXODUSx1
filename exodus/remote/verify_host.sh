@@ -16,4 +16,5 @@ sh test_remote_tls.sh
 sh test_remote_session.sh
 cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -no-pie loopback_server.c -o "$d/server" $(pkg-config --cflags --libs openssl)
 python3 test_loopback.py "$d/server"
+EXR_SERVER="$d/server" python3 test_client.py
 printf '%s\n' 'PASS: complete host admission suite (not a device test)'
