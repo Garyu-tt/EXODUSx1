@@ -45,6 +45,22 @@ class ShellTests(unittest.TestCase):
         self.check('printf "%s\\n" hello > a.nro; test -f a.nro && cat a.nro; printf "%s\\n" *.nro',
                    "hello\na.nro\n")
 
+    def test_async_wait(self):
+        self.check('false & p=$!; wait "$p"; printf "%s\n" "$?"', "1\n")
+
+    def test_command_substitution(self):
+        self.check('x=$(printf "%s\n" abc); printf "<%s>\n" "$x"', "<abc>\n")
+
+    def test_function_scope(self):
+        self.check('x=outer; f() { local x=inner; echo "$x"; }; f; echo "$x"',
+                   "inner\nouter\n")
+
+    def test_descriptor_duplication(self):
+        self.check('echo text 3>out 1>&3; cat out', "text\n")
+
+    def test_trap(self):
+        self.check('trap "echo cleanup" EXIT; echo body', "body\ncleanup\n")
+
     def test_status(self):
         self.check("false", "", 1)
         self.check("exit 7", "", 7)
