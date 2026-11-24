@@ -75,8 +75,12 @@ int nxbsd_fd_adopt(struct nxbsd_fd_table *t, int fd)
 }
 int nxbsd_fd_pipe(struct nxbsd_fd_table *t, int ends[2])
 {
-    if (!t || !ends) return bad(EINVAL);
-    int r = empty(t, 0);
+    return nxbsd_fd_pipe_from(t, 0, ends);
+}
+int nxbsd_fd_pipe_from(struct nxbsd_fd_table *t, int minimum, int ends[2])
+{
+    if (!t || !ends || !valid(minimum)) return bad(EINVAL);
+    int r = empty(t, minimum);
     if (r < 0) return -1;
     int w = empty(t, r+1);
     if (w < 0) return -1;
