@@ -112,7 +112,7 @@ int exodus_library_archive_detail(const struct exodus_library *library, size_t i
     auto rc = f ? evcs_pfs0_probe(f, (uint64_t)st.st_size, &info) : EVCS_PFS0_IO;
     if (f && fclose(f)) rc = EVCS_PFS0_IO;
     if (rc == EVCS_PFS0_OK)
-        snprintf(out, cap, "NSP directory: %lu files, %lu NCA, %lu metadata candidates.\\nNo verified launch backend.",
+        snprintf(out, cap, "NSP directory: %lu files, %lu NCA, %lu metadata candidates.\nNo verified launch backend.",
                  (unsigned long)info.entries, (unsigned long)info.nca, (unsigned long)info.meta_nca);
     else
         snprintf(out, cap, "NSP directory %s. Not launchable.",
