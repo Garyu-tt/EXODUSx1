@@ -4,6 +4,7 @@
 #include "evcs_pfs0.h"
 #include "evcs_manifest.h"
 #include "launch_route.h"
+#include "native_catalog_merge.hpp"
 extern "C" {
 #include "../../runtime/autorun_probe.h"
 }
@@ -18,6 +19,7 @@ struct exodus_library { Catalog catalog; const char *discovery = "Not requested"
     std::vector<evcs_content> graph{};
     std::vector<size_t> graph_indices{};
     bool graph_valid = true;
+    const char *native_inventory = "Not requested";
     std::vector<size_t> representatives{};
 };
 struct evcs_catalog_pending {
@@ -119,15 +121,29 @@ struct exodus_library *exodus_library_open_with_games(const char *path, const ch
     try {
         auto catalog = ReadCatalog(path);
 #ifdef __SWITCH__
-        if (catalog.status == CatalogStatus::Unavailable &&
-            std::string_view(path) == "sdmc:/ulaunch/exodus-catalog.json")
-            catalog = exodus_live_inventory();
+        const char *native_status="Not requested";
+        if (std::string_view(path) == "sdmc:/ulaunch/exodus-catalog.json" &&
+            (catalog.status==CatalogStatus::Ready || catalog.status==CatalogStatus::Unavailable)) {
+            bool ns_ok=false;
+            const auto live=exodus_live_inventory(&ns_ok);
+            const auto merged=MergeNativeCatalog(catalog,live);
+            native_status=merged==NativeMergeResult::Limit ? "Native merge exceeds limits" :
+                merged!=NativeMergeResult::Ready ? "Native inventory unavailable" :
+                !ns_ok ? "Native title scan unavailable" : "Native inventory merged";
+        }
 #endif
         exodus_library result{std::move(catalog)};
+#ifdef __SWITCH__
+        result.native_inventory=native_status;
+#endif
         evcs_catalog_merge(result, root);
         return new exodus_library{std::move(result)};
     }
     catch (...) { return nullptr; }
+}
+const char *exodus_library_native_inventory_status(const struct exodus_library *library)
+{
+    return library ? library->native_inventory : "Catalog unavailable";
 }
 const char *exodus_library_discovery_status(const struct exodus_library *library)
 {
