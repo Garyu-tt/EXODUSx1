@@ -72,6 +72,42 @@ class SteamCatalogTests(unittest.TestCase):
              ("12", "Missing flags", "unknown"), ("15", "Updating", "not_fully_installed")],
         )
 
+    def test_duplicate_keys_preserve_first_match_in_both_catalog_commands(self):
+        (self.first / "appmanifest_42.acf").write_text(
+            '''
+            AppState {
+                appid 42 Name "First title" name "Stale title"
+                StateFlags 4 stateflags 2 LastPlayed 1700000000 lastplayed 0
+            }
+            APPSTATE { appid 42 name "Stale block" StateFlags 2 LastPlayed 0 }
+            ''', encoding="utf-8",
+        )
+        (self.first / "appmanifest_43.acf").write_text(
+            'AppState { appid 99 APPID 43 name "Mismatched app" }', encoding="utf-8",
+        )
+        self.manifest(self.first, 44, "Readable neighbor", 4)
+        (self.first / "appmanifest_45.acf").write_text(
+            'AppState { appid 45 name First InstalledDepots {} installeddepots { file "unfinished',
+            encoding="utf-8",
+        )
+
+        direct = self.scan(self.first)
+        combined = subprocess.run(
+            [sys.executable, "-B", "-X", "utf8", "-m", "exodus.app_catalog", "--steam-library", str(self.first)],
+            cwd=SCRIPT.parent.parent, capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertEqual((combined.returncode, json.loads(combined.stdout), combined.stderr), direct)
+        code, output, errors = direct
+        self.assertEqual(code, 1)
+        self.assertEqual(
+            [(entry["provider_id"], entry["name"], entry["installation_state"], entry["last_played"])
+             for entry in output["entries"]],
+            [("42", "First title", "reported_installed", 1700000000),
+             ("44", "Readable neighbor", "reported_installed", None)],
+        )
+        self.assertIn("appmanifest_43.acf: appid must be a positive Steam App ID matching the filename", errors)
+        self.assertIn("appmanifest_45.acf: unterminated quoted string", errors)
+
     def test_rejects_corrupt_manifests_and_keeps_other_libraries(self):
         invalid = {
             10: b'AppState { appid 10 name "unfinished',
