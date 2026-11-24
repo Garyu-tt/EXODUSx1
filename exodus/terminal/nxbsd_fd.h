@@ -12,8 +12,11 @@ struct nxbsd_fd_table {
  * Native descriptors transfer ownership only on successful adoption.
  * Do not close adopted descriptors outside this provider.
  * Independent namespace: virtual fd != native fd or Horizon handle.
- * No process inheritance, signal delivery or libc interposition yet. */
+ * Separate tables may share objects via clone; never adopt an already-owned
+ * native fd into another table. No signal delivery or libc interposition yet. */
 void nxbsd_fd_init(struct nxbsd_fd_table *);
+/* dst must be initialized and empty; source table must remain stable. */
+int nxbsd_fd_clone(struct nxbsd_fd_table *dst, const struct nxbsd_fd_table *src);
 int nxbsd_fd_adopt(struct nxbsd_fd_table *, int native_fd);
 int nxbsd_fd_pipe(struct nxbsd_fd_table *, int ends[2]);
 int nxbsd_fd_dup2(struct nxbsd_fd_table *, int oldfd, int newfd);
