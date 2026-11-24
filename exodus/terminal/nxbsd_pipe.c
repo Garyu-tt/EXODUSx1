@@ -1,6 +1,9 @@
 #include "nxbsd_pipe.h"
 #include <errno.h>
 #include <limits.h>
+#include <stdint.h>
+/* Conservative bound for signed byte counts on supported 64-bit targets. */
+_Static_assert(sizeof(ssize_t) >= sizeof(ptrdiff_t), "unsupported ssize_t width");
 #include <string.h>
 static int bad(int e) { errno = e; return -1; }
 int nxbsd_pipe_init(struct nxbsd_pipe *p)
@@ -71,7 +74,7 @@ ssize_t nxbsd_pipe_read(struct nxbsd_pipe *p, void *buf, size_t len, int nonbloc
 }
 ssize_t nxbsd_pipe_write(struct nxbsd_pipe *p, const void *buf, size_t len, int nonblock)
 {
-    if (!p || (!buf && len) || len > (size_t)SSIZE_MAX) return bad(EINVAL);
+    if (!p || (!buf && len) || len > (size_t)PTRDIFF_MAX) return bad(EINVAL);
     pthread_mutex_lock(&p->lock);
     if (!p->writers) { pthread_mutex_unlock(&p->lock); return bad(EBADF); }
     size_t done = 0;
