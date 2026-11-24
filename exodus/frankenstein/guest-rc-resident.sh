@@ -63,12 +63,16 @@ for f in tumor_reference_bus tumor_reference_session; do
     sh -n "$src/$f"
     install -m 555 "$src/$f" "/usr/local/etc/rc.d/$f"
 done
+# Validate the native boot dependency graph, not a hand-ordered list.
+rcorder /etc/rc.d/* /usr/local/etc/rc.d/* > "$src/rcorder.txt"
+awk '
+/\/tumor_reference_bus$/ { bus=NR }
+/\/tumor_reference_session$/ { session=NR }
+END { exit !(bus && session && bus < session) }
+' "$src/rcorder.txt"
+echo EXODUS_RC_BOOT_ORDER_PASS
 sysrc tumor_reference_bus_enable=YES tumor_reference_session_enable=YES
 service tumor_reference_bus start
-i=0
-until [ -S "$state/bus" ]; do
-    i=$((i+1)); test "$i" -lt 20; sleep 1
-done
 service tumor_reference_session start
 cat > "$src/session-select" <<'SCRIPT'
 #!/bin/sh
@@ -164,10 +168,6 @@ service tumor_reference_bus stop
 test ! -e /var/run/tumor-reference-session.supervisor.pid
 test ! -e /var/run/tumor-reference-bus.supervisor.pid
 service tumor_reference_bus start
-i=0
-until [ -S "$state/bus" ]; do
-    i=$((i+1)); test "$i" -lt 20; sleep 1
-done
 service tumor_reference_session start
 su -m exodusref -c "HOME=$home DBUS_SESSION_BUS_ADDRESS=unix:path=$state/bus /usr/local/bin/gdbus wait --session --timeout 15 com.steampowered.SteamOSManager1"
 new_pid=$(cat /var/run/tumor-reference-session.child.pid)
