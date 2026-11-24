@@ -60,6 +60,15 @@ static void evcs_catalog_merge(exodus_library &lib, const char *root)
         lib.discovery = "Base catalog invalid"; return;
     }
     evcs_catalog_pending pending{lib.catalog, {}, 0};
+    for (const auto &e:lib.catalog.entries) {
+        for (size_t n:{e.id.size(),e.title.size(),e.artwork.size()}) {
+            if (n>CatalogByteLimit-pending.bytes) {
+                lib.discovery="Catalog byte limit reached";
+                return;
+            }
+            pending.bytes+=n;
+        }
+    }
     const auto rc = evcs_discover(root, evcs_catalog_emit, &pending);
     if (rc != EVCS_OK) {
         lib.discovery = rc == EVCS_IO ? "Games folder unavailable" : "Games scan incomplete";
