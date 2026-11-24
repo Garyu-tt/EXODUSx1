@@ -1,0 +1,809 @@
+{
+  "schema": "exodus.horizon-requirements-map/v1",
+  "graph_blob": "9bed1922dc4be893d9edea36b96eab4f01bfd317",
+  "scope": "Hand-curated first-pass requirements, not an exhaustive API specification or compatibility proof. Source-reviewed indicates only source evidence. All capabilities disabled.",
+  "status_definitions": {
+    "adapter": "Candidate native primitive exists; semantic adapter and validation needed",
+    "port": "Independent userland implementation or port required",
+    "gap": "Fundamental unproven or missing semantic/ABI support",
+    "source_reviewed": "Manually traced source atom; runtime unverified",
+    "blocked": "Policy denied"
+  },
+  "counts": {
+    "adapter": 26,
+    "gap": 13,
+    "port": 9,
+    "source_reviewed": 3,
+    "blocked": 2
+  },
+  "families": {
+    "POSIX": {
+      "adapter": 16,
+      "gap": 5
+    },
+    "FreeBSD": {
+      "port": 1,
+      "gap": 4,
+      "adapter": 1
+    },
+    "KDE/Qt": {
+      "port": 5,
+      "source_reviewed": 3,
+      "gap": 1,
+      "adapter": 3
+    },
+    "Win32": {
+      "adapter": 6,
+      "gap": 3,
+      "port": 3
+    },
+    "EXODUS policy": {
+      "blocked": 2
+    }
+  },
+  "requirements": [
+    {
+      "id": "posix.files.open",
+      "family": "POSIX",
+      "requirement": "open / close",
+      "status": "adapter",
+      "evidence": [
+        "function:fs:fsFsOpenFile",
+        "header:switch/services/fs.h",
+        "header:switch/runtime/devices/fs_dev.h"
+      ],
+      "missing": "Path resolution, descriptor ownership, flags, errno and close semantics",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.files.io",
+      "family": "POSIX",
+      "requirement": "read / write / pread / pwrite",
+      "status": "adapter",
+      "evidence": [
+        "function:fs:fsFileRead",
+        "function:fs:fsFileWrite"
+      ],
+      "missing": "Offset semantics, partial transfers, permissions and error conversion",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.files.stat",
+      "family": "POSIX",
+      "requirement": "stat / fstat",
+      "status": "adapter",
+      "evidence": [
+        "function:fs:fsFsGetEntryType",
+        "function:fs:fsFileGetSize",
+        "function:fs:fsFsGetFileTimeStampRaw"
+      ],
+      "missing": "Metadata synthesis; inode, ownership and mode semantics not established",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.files.directory",
+      "family": "POSIX",
+      "requirement": "opendir / readdir / closedir",
+      "status": "adapter",
+      "evidence": [
+        "function:fs:fsFsOpenDirectory",
+        "header:switch/services/fs.h"
+      ],
+      "missing": "Directory iteration, ownership, offsets and errors",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.files.rename",
+      "family": "POSIX",
+      "requirement": "rename / unlink / mkdir",
+      "status": "adapter",
+      "evidence": [
+        "function:fs:fsFsRenameFile",
+        "function:fs:fsFsDeleteFile",
+        "function:fs:fsFsCreateDirectory"
+      ],
+      "missing": "Atomicity, replacement rules, scoped mounts; own files only",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.files.sync",
+      "family": "POSIX",
+      "requirement": "fsync / ftruncate",
+      "status": "adapter",
+      "evidence": [
+        "function:fs:fsFileFlush",
+        "function:fs:fsFileSetSize"
+      ],
+      "missing": "Durability guarantees, resize limits, permissions",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.files.links",
+      "family": "POSIX",
+      "requirement": "symlink / hardlink / chmod / chown",
+      "status": "gap",
+      "evidence": [
+        "header:switch/services/fs.h"
+      ],
+      "missing": "Underlying filesystem support and ownership model not established; virtual metadata may be needed",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.thread",
+      "family": "POSIX",
+      "requirement": "pthread_create / join",
+      "status": "adapter",
+      "evidence": [
+        "svc:svcCreateThread",
+        "svc:svcStartThread",
+        "svc:svcWaitSynchronization",
+        "header:switch/kernel/thread.h"
+      ],
+      "missing": "Thread lifecycle, TLS, pthread ABI, cancellation",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.sync",
+      "family": "POSIX",
+      "requirement": "mutex / condition / semaphore",
+      "status": "adapter",
+      "evidence": [
+        "header:switch/kernel/mutex.h",
+        "header:switch/kernel/condvar.h",
+        "header:switch/kernel/semaphore.h"
+      ],
+      "missing": "POSIX semantics and contention tests",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.memory",
+      "family": "POSIX",
+      "requirement": "malloc / mmap / mprotect / munmap",
+      "status": "adapter",
+      "evidence": [
+        "svc:svcSetHeapSize",
+        "svc:svcMapMemory",
+        "svc:svcSetMemoryPermission",
+        "svc:svcUnmapMemory",
+        "header:switch/kernel/virtmem.h"
+      ],
+      "missing": "Mapping ownership, file-backed mappings, flags and page alignment not equivalent",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.time",
+      "family": "POSIX",
+      "requirement": "clock_gettime / nanosleep",
+      "status": "adapter",
+      "evidence": [
+        "svc:svcGetSystemTick",
+        "svc:svcSleepThread",
+        "header:switch/services/time.h"
+      ],
+      "missing": "Clock epochs, resolution, interruption and overflow",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.process.identity",
+      "family": "POSIX",
+      "requirement": "getpid / process identity",
+      "status": "adapter",
+      "evidence": [
+        "svc:svcGetProcessId"
+      ],
+      "missing": "PID mapping and context-specific identity",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.process.spawn",
+      "family": "POSIX",
+      "requirement": "posix_spawn / waitpid",
+      "status": "gap",
+      "evidence": [
+        "domain:lifecycle",
+        "header:switch/services/applet.h",
+        "header:switch/services/pm.h"
+      ],
+      "missing": "Owned application lifecycle is not arbitrary POSIX child execution; exit status and isolation required",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.process.fork",
+      "family": "POSIX",
+      "requirement": "fork / execve",
+      "status": "gap",
+      "evidence": [
+        "domain:kernel",
+        "domain:lifecycle"
+      ],
+      "missing": "No proven copy-on-write process clone or Unix image replacement; design alternate runtime",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.signal",
+      "family": "POSIX",
+      "requirement": "signals / kill / sigaction",
+      "status": "gap",
+      "evidence": [
+        "header:switch/kernel/event.h",
+        "svc:svcCancelSynchronization"
+      ],
+      "missing": "Events are not Unix signals; delivery, masks, ownership and interruption missing",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.poll",
+      "family": "POSIX",
+      "requirement": "poll / select",
+      "status": "adapter",
+      "evidence": [
+        "function:bsd:bsdPoll",
+        "function:bsd:bsdSelect",
+        "svc:svcWaitSynchronization"
+      ],
+      "missing": "Socket and handle multiplexing need unified semantics; arbitrary FD support not proven",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.socket",
+      "family": "POSIX",
+      "requirement": "socket / bind / listen / accept",
+      "status": "adapter",
+      "evidence": [
+        "function:bsd:bsdSocket",
+        "function:bsd:bsdBind",
+        "function:bsd:bsdListen",
+        "function:bsd:bsdAccept"
+      ],
+      "missing": "Socket types, address family, permissions, limits and peer policy",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.socket.io",
+      "family": "POSIX",
+      "requirement": "connect / send / recv / shutdown",
+      "status": "adapter",
+      "evidence": [
+        "function:bsd:bsdConnect",
+        "function:bsd:bsdSend",
+        "function:bsd:bsdRecv",
+        "function:bsd:bsdShutdown"
+      ],
+      "missing": "Nonblocking behavior, errno, partial I/O, endpoint review",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.dns",
+      "family": "POSIX",
+      "requirement": "getaddrinfo / getnameinfo",
+      "status": "adapter",
+      "evidence": [
+        "header:switch/services/sfdnsres.h"
+      ],
+      "missing": "Resolver ABI, cancellation, endpoint policy",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.pipe",
+      "family": "POSIX",
+      "requirement": "pipe / socketpair / AF_UNIX",
+      "status": "gap",
+      "evidence": [
+        "domain:ipc",
+        "header:switch/sf/service.h"
+      ],
+      "missing": "Unix descriptor semantics not established; local bounded IPC provider required",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "posix.dlopen",
+      "family": "POSIX",
+      "requirement": "dlopen / dlsym",
+      "status": "adapter",
+      "evidence": [
+        "header:switch/services/ro.h",
+        "domain:lifecycle"
+      ],
+      "missing": "NRO/module loading differs from ELF shared libraries; ABI, relocation and policy",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "bsd.shell",
+      "family": "FreeBSD",
+      "requirement": "sh parser, expansions and builtins",
+      "status": "port",
+      "evidence": [
+        "domain:runtime",
+        "domain:filesystem"
+      ],
+      "missing": "Port FreeBSD sh userland; process and terminal gaps remain",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "bsd.pty",
+      "family": "FreeBSD",
+      "requirement": "PTY / termios / job control",
+      "status": "gap",
+      "evidence": [
+        "domain:ipc",
+        "domain:input"
+      ],
+      "missing": "Virtual terminal, line discipline, process groups and signals",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "bsd.kqueue",
+      "family": "FreeBSD",
+      "requirement": "kqueue / kevent",
+      "status": "gap",
+      "evidence": [
+        "svc:svcWaitSynchronization",
+        "function:bsd:bsdPoll"
+      ],
+      "missing": "Build event adapter; no native kqueue claim",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "bsd.sysctl",
+      "family": "FreeBSD",
+      "requirement": "sysctl / system telemetry",
+      "status": "adapter",
+      "evidence": [
+        "function:bsd:bsdSysctl",
+        "svc:svcGetInfo"
+      ],
+      "missing": "Only reviewed read-only keys; no arbitrary sysctl writes",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "bsd.devices",
+      "family": "FreeBSD",
+      "requirement": "devfs / ioctl / device drivers",
+      "status": "gap",
+      "evidence": [
+        "domain:bus",
+        "domain:usb",
+        "domain:input"
+      ],
+      "missing": "No general FreeBSD kernel driver ABI; narrowly scoped device providers",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "bsd.elf",
+      "family": "FreeBSD",
+      "requirement": "FreeBSD ELF executable ABI",
+      "status": "gap",
+      "evidence": [
+        "domain:lifecycle",
+        "domain:runtime"
+      ],
+      "missing": "ELF loader, ABI, syscalls, libc and relocations; source compatibility first",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.qpa",
+      "family": "KDE/Qt",
+      "requirement": "Qt QPA platform integration",
+      "status": "port",
+      "evidence": [
+        "domain:display",
+        "domain:input",
+        "domain:clock"
+      ],
+      "missing": "Windowing, input, event loop, fonts and lifecycle backend",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.display",
+      "family": "KDE/Qt",
+      "requirement": "Display discovery and frame pacing",
+      "status": "source_reviewed",
+      "evidence": [
+        "atom:display.resolution",
+        "atom:display.vsync.event"
+      ],
+      "missing": "Applet/application context, ownership and display cleanup remain to test",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.compositor",
+      "family": "KDE/Qt",
+      "requirement": "Compositor surfaces / buffers",
+      "status": "port",
+      "evidence": [
+        "header:switch/display/framebuffer.h",
+        "header:switch/display/native_window.h",
+        "header:switch/services/vi.h"
+      ],
+      "missing": "Owned surface composition, buffer lifecycle, focus and synchronization; no privileged layer assumption",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.gpu",
+      "family": "KDE/Qt",
+      "requirement": "OpenGL / Vulkan / rendering",
+      "status": "gap",
+      "evidence": [
+        "header:switch/services/nv.h",
+        "header:switch/nvidia/gpu.h"
+      ],
+      "missing": "Native graphics backend and API translation; no driver compatibility assumed",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.input",
+      "family": "KDE/Qt",
+      "requirement": "Keyboard, mouse, controller, touch",
+      "status": "adapter",
+      "evidence": [
+        "header:switch/services/hid.h",
+        "header:switch/runtime/pad.h"
+      ],
+      "missing": "Input seat, focus, device availability, coordinate transforms",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.font",
+      "family": "KDE/Qt",
+      "requirement": "Fonts and locale",
+      "status": "adapter",
+      "evidence": [
+        "header:switch/services/pl.h",
+        "header:switch/services/set.h"
+      ],
+      "missing": "Font discovery, fallback, locale and rendering",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.audio",
+      "family": "KDE/Qt",
+      "requirement": "Audio playback / mixer",
+      "status": "adapter",
+      "evidence": [
+        "header:switch/services/audout.h",
+        "header:switch/services/audren.h",
+        "atom:audio.output.state"
+      ],
+      "missing": "Audio routing and buffering; own audio session only",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.dbus",
+      "family": "KDE/Qt",
+      "requirement": "D-Bus session bus",
+      "status": "port",
+      "evidence": [
+        "domain:ipc",
+        "header:switch/sf/cmif.h"
+      ],
+      "missing": "D-Bus protocol and local transport, ownership and authentication",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.wayland",
+      "family": "KDE/Qt",
+      "requirement": "Wayland protocol / KWin",
+      "status": "port",
+      "evidence": [
+        "domain:display",
+        "domain:ipc"
+      ],
+      "missing": "Wayland transport and compositor port; DRM/KMS and GBM unavailable as assumed APIs",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.power",
+      "family": "KDE/Qt",
+      "requirement": "Battery and charger status",
+      "status": "source_reviewed",
+      "evidence": [
+        "atom:power.battery.percent",
+        "atom:power.charger.type"
+      ],
+      "missing": "Context-specific permission and device validation",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.network",
+      "family": "KDE/Qt",
+      "requirement": "Network status",
+      "status": "source_reviewed",
+      "evidence": [
+        "atom:network.connection.status",
+        "atom:network.wireless.enabled",
+        "atom:network.local.ipv4"
+      ],
+      "missing": "Local status only; redact IP in exported diagnostics",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "kde.notifications",
+      "family": "KDE/Qt",
+      "requirement": "Desktop notifications",
+      "status": "port",
+      "evidence": [
+        "header:switch/services/notif.h",
+        "domain:local_data"
+      ],
+      "missing": "Implement independent local desktop notification bus; native service semantics not equivalent",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.clock",
+      "family": "Win32",
+      "requirement": "GetTickCount64 / QueryPerformanceCounter",
+      "status": "adapter",
+      "evidence": [
+        "svc:svcGetSystemTick",
+        "header:switch/arm/counter.h"
+      ],
+      "missing": "Windows boot epoch and tick conversion; monotonicity",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.wait",
+      "family": "Win32",
+      "requirement": "WaitForSingleObject / WaitForMultipleObjects",
+      "status": "adapter",
+      "evidence": [
+        "svc:svcWaitSynchronization",
+        "header:switch/kernel/event.h"
+      ],
+      "missing": "Windows object lifetime, wait-all, abandoned mutex and timeout semantics",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.virtualmemory",
+      "family": "Win32",
+      "requirement": "VirtualAlloc / VirtualProtect / VirtualFree",
+      "status": "adapter",
+      "evidence": [
+        "svc:svcSetMemoryPermission",
+        "svc:svcMapMemory",
+        "svc:svcUnmapMemory",
+        "header:switch/kernel/virtmem.h"
+      ],
+      "missing": "Reserve/commit and page protection semantics; own address space only",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.file",
+      "family": "Win32",
+      "requirement": "CreateFile / ReadFile / WriteFile",
+      "status": "adapter",
+      "evidence": [
+        "function:fs:fsFsOpenFile",
+        "function:fs:fsFileRead",
+        "function:fs:fsFileWrite"
+      ],
+      "missing": "Share modes, NT paths, async I/O and handle semantics",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.thread",
+      "family": "Win32",
+      "requirement": "CreateThread / Sleep",
+      "status": "adapter",
+      "evidence": [
+        "svc:svcCreateThread",
+        "svc:svcStartThread",
+        "svc:svcSleepThread"
+      ],
+      "missing": "Windows calling convention, TLS, handle ownership",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.winsock",
+      "family": "Win32",
+      "requirement": "Winsock2",
+      "status": "adapter",
+      "evidence": [
+        "function:bsd:bsdSocket",
+        "function:bsd:bsdConnect",
+        "function:bsd:bsdPoll"
+      ],
+      "missing": "WSA initialization, error mapping, overlapped I/O and socket lifecycle",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.process",
+      "family": "Win32",
+      "requirement": "CreateProcess / process handles",
+      "status": "gap",
+      "evidence": [
+        "domain:lifecycle",
+        "domain:kernel"
+      ],
+      "missing": "Guest process environment, PE image loader, lifecycle and isolation",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.pe",
+      "family": "Win32",
+      "requirement": "PE loader / imports / x86-64",
+      "status": "gap",
+      "evidence": [
+        "domain:runtime",
+        "header:switch/kernel/jit.h"
+      ],
+      "missing": "PE loader, ABI translation and CPU translation; JIT access not established",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.registry",
+      "family": "Win32",
+      "requirement": "Registry",
+      "status": "port",
+      "evidence": [
+        "domain:filesystem"
+      ],
+      "missing": "Independent local registry store, ACL and persistence",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.gui",
+      "family": "Win32",
+      "requirement": "USER32 / GDI",
+      "status": "port",
+      "evidence": [
+        "domain:display",
+        "domain:input"
+      ],
+      "missing": "Window/message model, drawing, fonts and focus",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.graphics",
+      "family": "Win32",
+      "requirement": "Direct3D / DXGI",
+      "status": "gap",
+      "evidence": [
+        "domain:display",
+        "header:switch/services/nv.h"
+      ],
+      "missing": "Graphics API translation, shader compiler and synchronization",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "win32.com",
+      "family": "Win32",
+      "requirement": "COM / RPC",
+      "status": "port",
+      "evidence": [
+        "domain:ipc"
+      ],
+      "missing": "COM ABI, lifetime, marshalling and local RPC",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "security.nintendo",
+      "family": "EXODUS policy",
+      "requirement": "Nintendo eShop / account / NSO",
+      "status": "blocked",
+      "evidence": [
+        "domain:accounts",
+        "domain:official"
+      ],
+      "missing": "Inventory only; no provider admission or exposure",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "denied"
+    },
+    {
+      "id": "security.privileged",
+      "family": "EXODUS policy",
+      "requirement": "Raw privileged access / unrestricted drivers",
+      "status": "blocked",
+      "evidence": [
+        "domain:bus",
+        "domain:kernel"
+      ],
+      "missing": "No general raw SVC, protected content or hardware control dispatch",
+      "executable": false,
+      "device": "not_tested",
+      "admission": "denied"
+    }
+  ]
+}
