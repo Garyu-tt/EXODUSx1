@@ -24,7 +24,7 @@ def token_text(token):
 
 
 def parse_keyvalues(text):
-    """Parse key/value pairs, keeping nested objects separate from AppState."""
+    """Parse nested KeyValues with case-insensitive first-match lookup."""
     root = {}
     stack = [root]
     key = None
@@ -40,13 +40,14 @@ def parse_keyvalues(text):
             if key is None:
                 raise ValueError("object is missing a key")
             child = {}
-            stack[-1][key] = child
+            # Parse repeated blocks even after the first value has been retained.
+            stack[-1].setdefault(key, child)
             stack.append(child)
             key = None
         elif key is None:
             key = token_text(token).lower()
         else:
-            stack[-1][key] = token_text(token)
+            stack[-1].setdefault(key, token_text(token))
             key = None
     if len(stack) != 1 or key is not None:
         raise ValueError("incomplete key/value object")
