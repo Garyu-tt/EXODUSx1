@@ -337,11 +337,16 @@ class SteamSyncTests(unittest.TestCase):
         self.assertEqual(list(self.output.parent.iterdir()), [self.output])
 
     def test_invalid_base_encoding_preserves_snapshot_before_sign_in(self):
+        text = '{"schema_version":1,"entries":[]}'
         invalid_catalogs = [
             b"\xff\xfe{",  # Partial UTF-16 code unit.
             b"\xff\xfe\x00\xd8",  # Lone high surrogate.
             b"\xff\xfe\x00\xdc",  # Lone low surrogate.
-            b"\xfe\xff" + '{"schema_version":1,"entries":[]}'.encode("utf-16-be"),
+            b"\xfe\xff" + text.encode("utf-16-be"),
+            text.encode("utf-16-le"),  # UTF-16 requires a supported BOM.
+            text.encode("utf-16-be"),
+            b"\xff\xfe\x00\x00" + text.encode("utf-32-le"),
+            b"\x00\x00\xfe\xff" + text.encode("utf-32-be"),
         ]
         for data in invalid_catalogs:
             with self.subTest(data=data):
@@ -349,6 +354,31 @@ class SteamSyncTests(unittest.TestCase):
                 provider = FakeSteam()
                 with patch("exodus.steam_sync.webbrowser.open", return_value=False) as browser, self.assertRaisesRegex(
                         sync.SteamSyncError, "Invalid JSON"):
+                    sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=provider)
+                browser.assert_not_called()
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(self.output.read_bytes(), data)
+                self.assertEqual(list(self.output.parent.iterdir()), [self.output])
+
+    def test_utf16le_base_limit_counts_encoded_bytes(self):
+        data = b"\xff\xfe" + '{"schema_version":1,"entries":[]}'.encode("utf-16-le")
+        self.output.write_bytes(data)
+        with patch("exodus.steam_sync.MAX_CATALOG_BYTES", len(data)):
+            self.assertEqual(sync.read_base_catalog(self.output), [])
+        with patch("exodus.steam_sync.MAX_CATALOG_BYTES", len(data) - 1), self.assertRaisesRegex(
+                sync.SteamSyncError, "size limit"):
+            sync.read_base_catalog(self.output)
+
+    def test_utf16le_nonfinite_values_preserve_snapshot_before_sign_in(self):
+        for value in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(value=value):
+                data = b"\xff\xfe" + (
+                    '{"schema_version":1,"entries":[' + value + ']}'
+                ).encode("utf-16-le")
+                self.output.write_bytes(data)
+                provider = FakeSteam()
+                with patch("exodus.steam_sync.webbrowser.open", return_value=False) as browser, self.assertRaisesRegex(
+                        sync.SteamSyncError, "Invalid JSON in the base catalog"):
                     sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=provider)
                 browser.assert_not_called()
                 self.assertEqual(provider.requests, [])
