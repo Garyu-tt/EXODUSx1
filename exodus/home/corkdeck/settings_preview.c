@@ -9,6 +9,7 @@
 #include "shell_menu.h"
 #include "control_metrics.h"
 #include "launcher_image.h"
+#include "native_artwork.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,10 +90,14 @@ static void clear_covers(struct cover_slot covers[8])
     }
 }
 
-static void load_cover(struct ui *ui, const char *path, struct cover_slot *slot)
+static void load_cover(struct ui *ui, const char *path, const char *provider,
+                       const char *id, struct cover_slot *slot)
 {
     struct launcher_icon icon = {0};
-    if (!exodus_artwork_path(path) || !launcher_image_load(path, &icon)) return;
+    int loaded = exodus_artwork_path(path) && launcher_image_load(path, &icon);
+    if (!loaded && !strcmp(provider, "Switch"))
+        loaded = exodus_title_artwork(id, &icon);
+    if (!loaded) return;
     if (launcher_icon_fit(&icon, 256)) {
         slot->texture = SDL_CreateTexture(ui->renderer, SDL_PIXELFORMAT_RGBA32,
                                           SDL_TEXTUREACCESS_STATIC, icon.width, icon.height);
@@ -206,7 +211,9 @@ static int show_library(struct ui *ui, const char *path)
         if (cached_page != first) {
             clear_covers(covers);
             for (size_t n = first; n < count && n < first + 8; ++n)
-                load_cover(ui, exodus_library_artwork(library, cards[n].index), &covers[n - first]);
+                load_cover(ui, exodus_library_artwork(library, cards[n].index),
+                           exodus_library_provider(library, cards[n].index),
+                           exodus_library_id(library, cards[n].index), &covers[n - first]);
             cached_page = first;
         }
         char page[96];
@@ -235,7 +242,7 @@ static int show_library(struct ui *ui, const char *path)
                 SDL_RenderCopy(ui->renderer, cover->texture, NULL, &dst);
             }
             ui_text_fit(ui, ui->normal, x + 12, y + 168, 240,
-                        exodus_library_title(library, index), ui->text, n == selection);
+                        exodus_library_title(library, index), ui->text, 0);
         }
         ui_footer(ui, hints, 6);
         ui_present(ui);

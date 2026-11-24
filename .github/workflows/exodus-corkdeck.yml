@@ -80,7 +80,7 @@ jobs:
       - name: Publish experimental NRO
         uses: actions/upload-artifact@v4
         with:
-          name: exodus-shell-r12-switch-arm64
+          name: exodus-shell-r13-switch-arm64
           path: |
             /tmp/exodus-build/exodus-shell.nro
             /tmp/exodus-build/SHA256SUMS
