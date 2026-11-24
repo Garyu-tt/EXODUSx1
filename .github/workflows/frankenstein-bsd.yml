@@ -4,6 +4,7 @@ on:
     paths:
       - 'exodus/frankenstein/guest-*.sh'
       - 'exodus/frankenstein/linux-abi-probe.S'
+      - 'exodus/frankenstein/linux-abi-probe.S'
       - 'exodus/frankenstein/run-reference.sh'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/sessiond-dbus.inc'
