@@ -2,6 +2,7 @@
 #ifndef EXODUS_LIBRARY_CATALOG_H
 #define EXODUS_LIBRARY_CATALOG_H
 #include <stddef.h>
+#include <stdint.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -11,6 +12,8 @@ void exodus_library_close(struct exodus_library *library);
 const char *exodus_library_status(const struct exodus_library *library);
 size_t exodus_library_count(const struct exodus_library *library);
 const char *exodus_library_id(const struct exodus_library *library, size_t index);
+const char *exodus_library_artwork(const struct exodus_library *library, size_t index);
+uint64_t exodus_library_last_played(const struct exodus_library *library, size_t index);
 const char *exodus_library_title(const struct exodus_library *library, size_t index);
 const char *exodus_library_provider(const struct exodus_library *library, size_t index);
 #ifdef __cplusplus
