@@ -1,0 +1,13 @@
+# R18 USB storage donor and admission gate
+
+Kefir Hub references ITotalJustice/libusbhsfs d0a973e (abbreviated revision, version 0.2.9). Source blobs inspected: README 54bf7f8b74c0fa49e95ff7fa2e326e0aa37eabf9; include/usbhsfs.h 1f5de19088da35309c9ab1bc0d1f7fe5a353a1bb; CMakeLists.txt aa43e8a7349c07f1fa9f8b0090466b06965f8355; source/usbhsfs_manager.c 8b21e49da44c47dea1e41b019cbd2c55c34d7b39; source/usbhsfs_mount.c c42bce395d222a45bb3b9a91361fcfc7bed4287e; LICENSE_ISC.md e4f3535ef63cbaca1b6625d03620621226afd9ed; LICENSE_GPLv2+.md 623b6258a134210f0b0ada106fdaab7f0370d9c5.
+
+First candidate profile: USBHSFS_GPL/OFF, USBHSFS_NTFS/OFF, USBHSFS_EXT4/OFF, USBHSFS_SXOS_DISABLE/ON. FAT family only. Full revision pin and third-party license closure still needed. README reports 8 MiB transport buffer per UMS device and warns against sysmodule contexts. This is not a total memory estimate.
+
+Header permits setting mount flags before initialization. Mount source copies flags into each context and sets FatFs readonly flag. Default includes journal replay and access-time updates for relevant filesystems, so proposed profile requires exactly ReadOnly before any initialization, never default or combined flags. Verify no physical writes including mount/unmount on sacrificial or hardware write-protected media. No automatic application admission. Never change global cwd; devoptab names can be reused or fall back to SD. MTP is a separate protocol.
+
+UsbGate is an independent C++17 policy model, not a USB driver or a VFS Provider implementation. Explicit consent, FAT types 1–4, exact readonly flag, restricted umsN: names, monotonic backend generation, one admitted volume, revocable leases. External serialized backend must supply authoritative generation and coordinate device lifetime; a name or device ID alone is not reliable. A lease check alone cannot eliminate unplug/replug races or unsafe upstream devoptab lifetime. No physical mounting enabled.
+
+Actual local Linux test: 47 assertions passed under GCC ASan/UBSan. Reproduce with g++ -std=c++17 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer -no-pie -g test_usb_gate.cpp -o /tmp/test_usb_gate && /tmp/test_usb_gate. Matching uploaded blobs: usb_gate.hpp 7b1ec402ef6303fbb65f5a6c4b62df4af4c9bd38, test_usb_gate.cpp 100c0e00487167395794727f187793fabf616f8c. Prior 643 assertions were not rerun.
+
+Next: inspect upstream detach/open-handle semantics, enforce generation at the I/O boundary, build an opt-in provider with controlled lifetime and native toolchain tests. No device access or donor code copied.
