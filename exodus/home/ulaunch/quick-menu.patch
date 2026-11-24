@@ -323,7 +323,7 @@ index 075eb97..80ca142 100755
 +        catalog_menu_item->AddOnKey(&exodus::home::ShowCatalog);
 +        this->options_menu->AddItem(catalog_menu_item);
 diff --git a/projects/uSystem/source/main.cpp b/projects/uSystem/source/main.cpp
-index 2d6aca3..b32c54a 100644
+index 2d6aca3..c9956ca 100644
 --- a/projects/uSystem/source/main.cpp
 +++ b/projects/uSystem/source/main.cpp
 @@ -16,0 +17,4 @@
@@ -359,7 +359,7 @@ index 2d6aca3..b32c54a 100644
 +            return false;
 +        }
 +
-+        const auto records = os::ListApplicationRecords();
++        const auto records = ul::os::ListApplicationRecords();
 +        const auto record = std::find_if(records.begin(), records.end(),
 +            [app_id](const NsExtApplicationRecord &item) { return item.id == app_id; });
 +        NsApplicationView view{};
