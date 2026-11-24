@@ -39,6 +39,9 @@ jobs:
               "$dir/test_$test.c" -o "$RUNNER_TEMP/test-$test"
             "$RUNNER_TEMP/test-$test"
           done
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
+            "$dir/test_windows_pe.c" "$dir/windows_pe.c" -o "$RUNNER_TEMP/test-windows-pe"
+          "$RUNNER_TEMP/test-windows-pe"
           c++ -std=c++17 -Wall -Wextra -Werror -I /usr/include/nlohmann \
             "$dir/test_library_catalog.cpp" "$dir/library_catalog.cpp" exodus/home/ulaunch/catalog.cpp \
             -o "$RUNNER_TEMP/test-catalog"

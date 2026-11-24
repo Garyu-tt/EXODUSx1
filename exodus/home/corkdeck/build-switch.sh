@@ -47,7 +47,7 @@ trap 'exit 1' HUP INT TERM
 mkdir -p "$tmp/json-headers/nlohmann"
 cp -R "$json_include/." "$tmp/json-headers/nlohmann/"
 arch="-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE"
-for file in "$here/settings_preview.c" "$here/../../runtime/autorun_probe.c" \
+for file in "$here/settings_preview.c" "$here/windows_pe.c" "$here/../../runtime/autorun_probe.c" \
     "$src/launcher_ui.c" "$src/launcher_audio.c" "$src/launcher_svg.c" "$src/launcher_image.c"; do
     "$cc" $arch -D__SWITCH__ -D_REENTRANT -std=gnu11 -O2 -Wall -Wextra \
         -ffunction-sections -fdata-sections -I"$nx/include" -I"$src" $cflags \
