@@ -270,6 +270,60 @@
       "blob": "04fe7b87bb0f60968d1ecd592bd847739272a121",
       "capability": "shell.parser",
       "observed_calls": []
+    },
+    {
+      "path": "bin/sh/memalloc.c",
+      "blob": "9c50156e8e001551d63f6a1f0725d2d297aba3f5",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mystring.c",
+      "blob": "9ac590d39f64908adb7335e12fa168333604292a",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/alias.c",
+      "blob": "7ddc2b30ec3eecbdb5b675bf863dba59bd1d10b3",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/output.c",
+      "blob": "baf4b8b7cc1779824889d30b4e910261c2e2377e",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/var.c",
+      "blob": "2f9820a91bdd44ca562dc40cd71cb18a4c63c844",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/expand.c",
+      "blob": "e1e5ac07b7bd27c836b5d1901a7fa09880dc0540",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mail.h",
+      "blob": "fd05aaddf7afd8a86c8eb51aa2366fb07ede8233",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/arith.h",
+      "blob": "1371b02a5630541dcb31df7106463baef32bb281",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "sys/sys/_align.h",
+      "blob": "09444bc4afcef344cd64a4b393c373fc7e0fa710",
+      "capability": "shell.parser",
+      "observed_calls": []
     }
   ],
   "providers": {
