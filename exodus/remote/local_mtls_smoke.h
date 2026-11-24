@@ -4,6 +4,7 @@
 #include <string.h>
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/pk.h>
+#include <mbedtls/sha256.h>
 #include <mbedtls/x509_crt.h>
 #include "tls_fixtures.h"
 
@@ -52,9 +53,16 @@ static int exm_payload(mbedtls_ssl_context *tx,mbedtls_ssl_context *rx){
     }
     return sent==sizeof(msg)&&got==sizeof(msg)&&memcmp(msg,buf,sizeof(msg))==0;
 }
-/* mode=0 valid, 1 missing client cert, 2 wrong server hostname.
+/* Compare exact leaf certificate DER fingerprint after verified handshake. */
+static int exm_pin(const mbedtls_x509_crt *peer,const mbedtls_x509_crt *expected){
+    unsigned char a[32],b[32];
+    if(!peer||!expected||!peer->raw.p||!expected->raw.p)return -1;
+    if(mbedtls_sha256(peer->raw.p,peer->raw.len,a,0)||mbedtls_sha256(expected->raw.p,expected->raw.len,b,0))return -1;
+    return memcmp(a,b,sizeof(a))==0;
+}
+/* mode=0 valid, 1 missing client cert, 2 wrong server hostname, 3 unpaired.
  * Return 1 only for expected results, never for configuration errors/timeouts. */
-static int exm_case(int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,mbedtls_x509_crt *sc,mbedtls_pk_context *sk,mbedtls_x509_crt *cc,mbedtls_pk_context *ck){
+static int exm_case(int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,mbedtls_x509_crt *sc,mbedtls_pk_context *sk,mbedtls_x509_crt *cc,mbedtls_pk_context *ck,mbedtls_x509_crt *allowed){
     mbedtls_ssl_config a,b;mbedtls_ssl_context s,c;
     mbedtls_ssl_config_init(&a);mbedtls_ssl_config_init(&b);
     mbedtls_ssl_init(&s);mbedtls_ssl_init(&c);
@@ -87,12 +95,15 @@ static int exm_case(int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,
             }
         }
     }
-    if(mode==0&&s_done&&c_done&&
+    if((mode==0||mode==3)&&s_done&&c_done&&
        mbedtls_ssl_get_verify_result(&s)==0&&mbedtls_ssl_get_verify_result(&c)==0&&
        mbedtls_ssl_get_peer_cert(&s)&&mbedtls_ssl_get_peer_cert(&c)&&
        strcmp(mbedtls_ssl_get_version(&s),"TLSv1.3")==0&&
-       strcmp(mbedtls_ssl_get_version(&c),"TLSv1.3")==0)
-        pass=exm_payload(&c,&s)&&exm_payload(&s,&c);
+       strcmp(mbedtls_ssl_get_version(&c),"TLSv1.3")==0){
+        int pin=exm_pin(mbedtls_ssl_get_peer_cert(&s),allowed);
+        if(mode==3)pass=pin==0; /* Valid CA, but no application admission. */
+        else if(pin==1)pass=exm_payload(&c,&s)&&exm_payload(&s,&c);
+    }
 done:
     if(!pass)printf("  mode %d diagnostic rc=%d\n",mode,r);
     mbedtls_ssl_free(&s);mbedtls_ssl_free(&c);
@@ -103,10 +114,11 @@ done:
 static int exm_run(void){
     int pass=0;
     mbedtls_entropy_context e;mbedtls_ctr_drbg_context rng;
-    mbedtls_x509_crt ca,sc,cc;mbedtls_pk_context sk,ck;
+    mbedtls_x509_crt ca,sc,cc,uc;mbedtls_pk_context sk,ck,uk;
     mbedtls_entropy_init(&e);mbedtls_ctr_drbg_init(&rng);
     mbedtls_x509_crt_init(&ca);mbedtls_x509_crt_init(&sc);mbedtls_x509_crt_init(&cc);
-    mbedtls_pk_init(&sk);mbedtls_pk_init(&ck);
+    mbedtls_pk_init(&sk);mbedtls_pk_init(&ck);mbedtls_pk_init(&uk);
+    mbedtls_x509_crt_init(&uc);
     static const unsigned char label[]="EXODUS test only";
     int r=mbedtls_ctr_drbg_seed(&rng,mbedtls_entropy_func,&e,label,sizeof(label)-1);
     if(!r)r=mbedtls_x509_crt_parse(&ca,fixture_ca_pem,sizeof(fixture_ca_pem));
@@ -114,18 +126,23 @@ static int exm_run(void){
     if(!r)r=mbedtls_x509_crt_parse(&cc,fixture_client_pem,sizeof(fixture_client_pem));
     if(!r)r=mbedtls_pk_parse_key(&sk,fixture_server_key,sizeof(fixture_server_key),NULL,0,mbedtls_ctr_drbg_random,&rng);
     if(!r)r=mbedtls_pk_parse_key(&ck,fixture_client_key,sizeof(fixture_client_key),NULL,0,mbedtls_ctr_drbg_random,&rng);
+    if(!r)r=mbedtls_x509_crt_parse(&uc,fixture_unpaired_pem,sizeof(fixture_unpaired_pem));
+    if(!r)r=mbedtls_pk_parse_key(&uk,fixture_unpaired_key,sizeof(fixture_unpaired_key),NULL,0,mbedtls_ctr_drbg_random,&rng);
     printf("Test fixture setup: %s (%d)\n",r?"FAIL":"PASS",r);
     if(!r){
-        int good=exm_case(0,&rng,&ca,&sc,&sk,&cc,&ck);
+        int good=exm_case(0,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
         printf("mTLS 1.3 + payload both ways: %s\n",good?"PASS":"FAIL");
         if(good){
-            int missing=exm_case(1,&rng,&ca,&sc,&sk,&cc,&ck);
-            int hostname=exm_case(2,&rng,&ca,&sc,&sk,&cc,&ck);
+            int missing=exm_case(1,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
+            int hostname=exm_case(2,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
             printf("Missing client cert rejection: %s\n",missing?"PASS":"FAIL");
             printf("Wrong hostname rejection: %s\n",hostname?"PASS":"FAIL");
-            pass=missing&&hostname;
+            int unpaired=exm_case(3,&rng,&ca,&sc,&sk,&uc,&uk,&cc);
+            printf("Same CA unpaired client denied: %s\n",unpaired?"PASS":"FAIL");
+            pass=missing&&hostname&&unpaired;
         }
     }
+    mbedtls_pk_free(&uk);mbedtls_x509_crt_free(&uc);
     mbedtls_pk_free(&ck);mbedtls_pk_free(&sk);
     mbedtls_x509_crt_free(&cc);mbedtls_x509_crt_free(&sc);mbedtls_x509_crt_free(&ca);
     mbedtls_ctr_drbg_free(&rng);mbedtls_entropy_free(&e);
