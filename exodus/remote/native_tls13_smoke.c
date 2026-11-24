@@ -1,6 +1,9 @@
 /* Local diagnostic only: no listener, credentials or remote grants. */
 #include <switch.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <mbedtls/platform_time.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/entropy_poll.h>
 #include <mbedtls/ssl.h>
@@ -22,6 +25,15 @@
     !defined(MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_EPHEMERAL_ENABLED)
 #error Required certificate/time configuration missing
 #endif
+/* The library's clock API cannot return an error. Abort rather than
+ * fabricate a timestamp. Wall-clock certificate checks remain separate. */
+mbedtls_ms_time_t mbedtls_ms_time(void){
+    struct timespec t;
+    if(clock_gettime(CLOCK_MONOTONIC,&t)!=0 || t.tv_sec<0 ||
+       t.tv_nsec<0 || t.tv_nsec>=1000000000L ||
+       (uint64_t)t.tv_sec>(uint64_t)(INT64_MAX-999)/1000)abort();
+    return (mbedtls_ms_time_t)t.tv_sec*1000+t.tv_nsec/1000000;
+}
 int mbedtls_hardware_poll(void *ctx,unsigned char *out,size_t len,size_t *olen){
     (void)ctx;
     if(!olen || (!out && len))return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
@@ -34,6 +46,9 @@ int mbedtls_hardware_poll(void *ctx,unsigned char *out,size_t len,size_t *olen){
     *olen=len;return 0;
 }
 static void run(void){
+    mbedtls_ms_time_t before=mbedtls_ms_time(), after=mbedtls_ms_time();
+    printf("Monotonic TLS clock: %s\n",after>=before?"PASS":"FAIL");
+    if(after<before)return;
     unsigned char random[32]={0};size_t n=0;
     int rc=mbedtls_hardware_poll(NULL,random,sizeof(random),&n);
     mbedtls_platform_zeroize(random,sizeof(random));
