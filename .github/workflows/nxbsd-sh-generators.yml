@@ -98,12 +98,15 @@ jobs:
       - name: Compile original BSD job and execution modules
         run: |
           mkdir "$RUNNER_TEMP/process"
-          for module in jobs exec; do
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module trap --out "$RUNNER_TEMP/trap-host.c"
+          for module in jobs exec trap; do
+            source="donor-freebsd/bin/sh/$module.c"
+            if [ "$module" = trap ]; then source="$RUNNER_TEMP/trap-host.c"; fi
             cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
               -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
               -I "$RUNNER_TEMP/grammar-a" \
-              -c "donor-freebsd/bin/sh/$module.c" -o "$RUNNER_TEMP/process/$module.o"
+              -c "$source" -o "$RUNNER_TEMP/process/$module.o"
           done
           cc -r "$RUNNER_TEMP/shell-io.o" "$RUNNER_TEMP/process/"*.o -o "$RUNNER_TEMP/shell-process.o"
           nm -u "$RUNNER_TEMP/shell-process.o" > "$RUNNER_TEMP/grammar-a/process-undefined.txt"
