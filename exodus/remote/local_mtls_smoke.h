@@ -72,7 +72,8 @@ static int exm_case(int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,
             r=mbedtls_ssl_handshake(&c);
             if(!r)c_done=1;
             else if(!exm_retry(r)){
-                if(mode==2 && (mbedtls_ssl_get_verify_result(&c)&MBEDTLS_X509_BADCERT_CN_MISMATCH))pass=1;
+                uint32_t flags=mbedtls_ssl_get_verify_result(&c);
+                if(mode==2 && flags==MBEDTLS_X509_BADCERT_CN_MISMATCH)pass=1;
                 goto done;
             }
         }
@@ -80,8 +81,8 @@ static int exm_case(int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,
             r=mbedtls_ssl_handshake(&s);
             if(!r)s_done=1;
             else if(!exm_retry(r)){
-                if(mode==1 && (r==MBEDTLS_ERR_SSL_NO_CLIENT_CERTIFICATE ||
-                    (mbedtls_ssl_get_verify_result(&s)&MBEDTLS_X509_BADCERT_MISSING)))pass=1;
+                if(mode==1 && r==MBEDTLS_ERR_SSL_NO_CLIENT_CERTIFICATE &&
+                   mbedtls_ssl_get_verify_result(&s)==MBEDTLS_X509_BADCERT_MISSING)pass=1;
                 goto done;
             }
         }
@@ -99,7 +100,8 @@ done:
     if(q){mbedtls_platform_zeroize(q,2*sizeof(*q));free(q);}
     return pass;
 }
-static void exm_run(void){
+static int exm_run(void){
+    int pass=0;
     mbedtls_entropy_context e;mbedtls_ctr_drbg_context rng;
     mbedtls_x509_crt ca,sc,cc;mbedtls_pk_context sk,ck;
     mbedtls_entropy_init(&e);mbedtls_ctr_drbg_init(&rng);
@@ -117,13 +119,17 @@ static void exm_run(void){
         int good=exm_case(0,&rng,&ca,&sc,&sk,&cc,&ck);
         printf("mTLS 1.3 + payload both ways: %s\n",good?"PASS":"FAIL");
         if(good){
-            printf("Missing client cert rejection: %s\n",exm_case(1,&rng,&ca,&sc,&sk,&cc,&ck)?"PASS":"FAIL");
-            printf("Wrong hostname rejection: %s\n",exm_case(2,&rng,&ca,&sc,&sk,&cc,&ck)?"PASS":"FAIL");
+            int missing=exm_case(1,&rng,&ca,&sc,&sk,&cc,&ck);
+            int hostname=exm_case(2,&rng,&ca,&sc,&sk,&cc,&ck);
+            printf("Missing client cert rejection: %s\n",missing?"PASS":"FAIL");
+            printf("Wrong hostname rejection: %s\n",hostname?"PASS":"FAIL");
+            pass=missing&&hostname;
         }
     }
     mbedtls_pk_free(&ck);mbedtls_pk_free(&sk);
     mbedtls_x509_crt_free(&cc);mbedtls_x509_crt_free(&sc);mbedtls_x509_crt_free(&ca);
     mbedtls_ctr_drbg_free(&rng);mbedtls_entropy_free(&e);
     puts("Public test credentials. Memory BIO only. Remote disabled.");
+    return pass;
 }
 #endif
