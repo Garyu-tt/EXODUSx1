@@ -1,0 +1,3006 @@
+{
+  "schema": "exodus.hardware-capability-graph/v1",
+  "scope": "First-generation Switch family only. Generic Tegra210 data not proof of Mariko parity, board wiring, enabled silicon or usable permissions. Research only.",
+  "sources": {
+    "dts": {
+      "url": "https://github.com/torvalds/linux/blob/6f771ce6c3bb2c4dc9d348b578871c7adb8b285b/arch/arm64/boot/dts/nvidia/tegra210.dtsi",
+      "blob": "26b3f98a211c2f1a39bee85b6c7fbb13c9980574",
+      "scope": "generic Tegra210, not Switch board or Mariko device tree"
+    },
+    "board": {
+      "url": "https://github.com/backupbrew/switchbrew/blob/master/Hardware.md",
+      "blob": "927baa88991141e2dfaf97aeb2e8e7af021d5e1c",
+      "scope": "historical community motherboard observations"
+    },
+    "soc": {
+      "url": "https://github.com/backupbrew/switchbrew/blob/master/Tegra%20X1.md",
+      "blob": "8c3177f22e6b899d97f1e6b8e70dc82dc09606f9",
+      "scope": "generic silicon specification, not guaranteed console features"
+    },
+    "nv": {
+      "url": "https://github.com/backupbrew/switchbrew/blob/master/NV%20services.md",
+      "blob": "71d4717a05f57b39f4faa9db41bd72793fb3da56",
+      "scope": "historical Horizon driver interface evidence, permissions unverified"
+    },
+    "official": {
+      "url": "https://www.nintendo.com/us/gaming-systems/switch/tech-specs/",
+      "scope": "consumer external hardware specs"
+    },
+    "teardown": {
+      "url": "https://www.techinsights.com/blog/nintendo-switch-teardown",
+      "scope": "launch model teardown"
+    }
+  },
+  "horizon_graph_blob": "9bed1922dc4be893d9edea36b96eab4f01bfd317",
+  "counts": {
+    "nodes": 115,
+    "edges": 252,
+    "hardware_capabilities": 45,
+    "dts_types": 52,
+    "dts_occurrences": 79,
+    "groups": 11,
+    "board_families": 4
+  },
+  "nodes": [
+    {
+      "id": "hw:root",
+      "kind": "platform",
+      "label": "Switch 1 family",
+      "executable": false
+    },
+    {
+      "id": "soc:t210",
+      "kind": "soc",
+      "label": "Erista / Tegra210",
+      "executable": false
+    },
+    {
+      "id": "soc:mariko",
+      "kind": "soc",
+      "label": "Mariko / T210B01",
+      "executable": false
+    },
+    {
+      "id": "board:erista",
+      "kind": "board_family",
+      "label": "HAC-001 launch",
+      "evidence": [
+        "board",
+        "official"
+      ],
+      "executable": false
+    },
+    {
+      "id": "board:mariko",
+      "kind": "board_family",
+      "label": "HAC-001(-01)",
+      "evidence": [
+        "board",
+        "official"
+      ],
+      "executable": false
+    },
+    {
+      "id": "board:lite",
+      "kind": "board_family",
+      "label": "HDH-001 Lite",
+      "evidence": [
+        "board",
+        "official"
+      ],
+      "executable": false
+    },
+    {
+      "id": "board:oled",
+      "kind": "board_family",
+      "label": "HEG-001 OLED",
+      "evidence": [
+        "board",
+        "official"
+      ],
+      "executable": false
+    },
+    {
+      "id": "hwgroup:cpu",
+      "kind": "group",
+      "label": "cpu",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:compute",
+      "kind": "group",
+      "label": "compute",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:memory",
+      "kind": "group",
+      "label": "memory",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:display",
+      "kind": "group",
+      "label": "display",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:audio",
+      "kind": "group",
+      "label": "audio",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:storage",
+      "kind": "group",
+      "label": "storage",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:io",
+      "kind": "group",
+      "label": "io",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:network",
+      "kind": "group",
+      "label": "network",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:bus",
+      "kind": "group",
+      "label": "bus",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:power",
+      "kind": "group",
+      "label": "power",
+      "executable": false
+    },
+    {
+      "id": "hwgroup:security",
+      "kind": "group",
+      "label": "security",
+      "executable": false
+    },
+    {
+      "id": "hw:cpu",
+      "kind": "hardware_capability",
+      "label": "CPU Cortex-A57",
+      "group": "cpu",
+      "evidence_status": "board_observed",
+      "sources": [
+        "soc",
+        "teardown"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:cpu",
+        "domain:kernel"
+      ],
+      "candidate_use": "ARM64 native compute, shell and emulation",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:a53",
+      "kind": "hardware_capability",
+      "label": "Cortex-A53 cluster",
+      "group": "cpu",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "soc",
+        "teardown"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:cpu"
+      ],
+      "candidate_use": "Inventory only; no proof available to Switch software",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:gpu",
+      "kind": "hardware_capability",
+      "label": "Maxwell GM20B",
+      "group": "compute",
+      "evidence_status": "board_observed",
+      "sources": [
+        "soc",
+        "teardown",
+        "nv"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:display",
+        "domain:runtime"
+      ],
+      "candidate_use": "Graphics and carefully bounded compute; no CUDA runtime assumed",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:host1x",
+      "kind": "hardware_capability",
+      "label": "Host1x command fabric",
+      "group": "compute",
+      "evidence_status": "driver_candidate",
+      "sources": [
+        "nv",
+        "dts"
+      ],
+      "dt_types": [
+        "host1x"
+      ],
+      "horizon_domains": [
+        "domain:display",
+        "domain:ipc"
+      ],
+      "candidate_use": "Engine dispatch and sync; use admitted driver only",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:vic",
+      "kind": "hardware_capability",
+      "label": "VIC image compositor",
+      "group": "compute",
+      "evidence_status": "driver_candidate",
+      "sources": [
+        "nv",
+        "dts"
+      ],
+      "dt_types": [
+        "vic"
+      ],
+      "horizon_domains": [
+        "domain:display",
+        "domain:capture"
+      ],
+      "candidate_use": "Scale, convert and composite images without 3D GPU workload",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:nvdec",
+      "kind": "hardware_capability",
+      "label": "NVDEC video decode",
+      "group": "compute",
+      "evidence_status": "driver_candidate",
+      "sources": [
+        "nv",
+        "dts"
+      ],
+      "dt_types": [
+        "nvdec"
+      ],
+      "horizon_domains": [
+        "domain:display",
+        "domain:capture"
+      ],
+      "candidate_use": "Media playback and remote desktop decode; codec/profile checks",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:nvenc",
+      "kind": "hardware_capability",
+      "label": "NVENC video encode",
+      "group": "compute",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "soc",
+        "dts"
+      ],
+      "dt_types": [
+        "nvenc"
+      ],
+      "horizon_domains": [
+        "domain:capture"
+      ],
+      "candidate_use": "Screen streaming hypothesis; Horizon exposure not established",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:nvjpg",
+      "kind": "hardware_capability",
+      "label": "NVJPG JPEG engine",
+      "group": "compute",
+      "evidence_status": "driver_candidate",
+      "sources": [
+        "nv",
+        "dts"
+      ],
+      "dt_types": [
+        "nvjpg"
+      ],
+      "horizon_domains": [
+        "domain:formats",
+        "domain:display"
+      ],
+      "candidate_use": "Thumbnail and image decoding",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:isp",
+      "kind": "hardware_capability",
+      "label": "ISP image signal processor",
+      "group": "compute",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "soc",
+        "dts"
+      ],
+      "dt_types": [
+        "isp"
+      ],
+      "horizon_domains": [
+        "domain:capture"
+      ],
+      "candidate_use": "Camera pipeline hypothesis; board routing not established",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:vi",
+      "kind": "hardware_capability",
+      "label": "Video input/CSI",
+      "group": "compute",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "soc",
+        "dts"
+      ],
+      "dt_types": [
+        "vi",
+        "csi"
+      ],
+      "horizon_domains": [
+        "domain:capture"
+      ],
+      "candidate_use": "No internal camera interface admission",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:mc",
+      "kind": "hardware_capability",
+      "label": "Memory controller and IOMMU",
+      "group": "memory",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "soc",
+        "dts"
+      ],
+      "dt_types": [
+        "mc",
+        "emc"
+      ],
+      "horizon_domains": [
+        "domain:kernel"
+      ],
+      "candidate_use": "Shared RAM and DMA buffer planning; no direct register access",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:ram",
+      "kind": "hardware_capability",
+      "label": "LPDDR4 / LPDDR4X",
+      "group": "memory",
+      "evidence_status": "board_observed",
+      "sources": [
+        "board",
+        "teardown"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:kernel",
+        "domain:runtime"
+      ],
+      "candidate_use": "4 GB on documented retail boards; measure usable application memory",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:dma",
+      "kind": "hardware_capability",
+      "label": "APB DMA",
+      "group": "memory",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "apbdma"
+      ],
+      "horizon_domains": [
+        "domain:kernel",
+        "domain:bus"
+      ],
+      "candidate_use": "Bulk transfer via owned driver buffers",
+      "priority": "P2",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:display",
+      "kind": "hardware_capability",
+      "label": "Display controller / DSI / SOR",
+      "group": "display",
+      "evidence_status": "driver_candidate",
+      "sources": [
+        "official",
+        "nv",
+        "dts"
+      ],
+      "dt_types": [
+        "dc",
+        "dsi",
+        "sor",
+        "sor1",
+        "dpaux"
+      ],
+      "horizon_domains": [
+        "domain:display"
+      ],
+      "candidate_use": "Native panel and dock output, independent displays not assumed",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:panel",
+      "kind": "hardware_capability",
+      "label": "LCD / OLED + touch",
+      "group": "display",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official",
+        "board"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:display",
+        "domain:input"
+      ],
+      "candidate_use": "Desktop and touchscreen UI",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:dock",
+      "kind": "hardware_capability",
+      "label": "Dock HDMI / USB / Ethernet",
+      "group": "display",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:display",
+        "domain:usb",
+        "domain:network"
+      ],
+      "candidate_use": "Dock desktop mode; Lite not assumed capable",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:audio",
+      "kind": "hardware_capability",
+      "label": "Audio hub / I2S / ADMA",
+      "group": "audio",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "aconnect",
+        "adma",
+        "ahub",
+        "admaif",
+        "i2s",
+        "dmic",
+        "hda"
+      ],
+      "horizon_domains": [
+        "domain:audio"
+      ],
+      "candidate_use": "Mixer and audio routing via Horizon services",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:codec",
+      "kind": "hardware_capability",
+      "label": "Realtek audio codec / speakers / jack",
+      "group": "audio",
+      "evidence_status": "board_observed",
+      "sources": [
+        "board",
+        "official"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:audio"
+      ],
+      "candidate_use": "Playback and microphone input subject to service access",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:sdmmc",
+      "kind": "hardware_capability",
+      "label": "SD/MMC controllers",
+      "group": "storage",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "sdhci"
+      ],
+      "horizon_domains": [
+        "domain:filesystem",
+        "domain:bus"
+      ],
+      "candidate_use": "SD and eMMC driver mapping; no raw storage mutation",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:sd",
+      "kind": "hardware_capability",
+      "label": "microSD",
+      "group": "storage",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:filesystem"
+      ],
+      "candidate_use": "Owned application files and VFS",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:emmc",
+      "kind": "hardware_capability",
+      "label": "Internal eMMC",
+      "group": "storage",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official",
+        "board"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:filesystem"
+      ],
+      "candidate_use": "Inventory only for protected system storage",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:gamecard",
+      "kind": "hardware_capability",
+      "label": "Game card ASIC",
+      "group": "storage",
+      "evidence_status": "board_observed",
+      "sources": [
+        "board",
+        "official"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:filesystem",
+        "domain:official"
+      ],
+      "candidate_use": "Inventory only; no protected content operations",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:xusb",
+      "kind": "hardware_capability",
+      "label": "USB host / device / PHY",
+      "group": "io",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "xusb",
+        "xusb-padctl",
+        "xudc",
+        "ehci",
+        "usb-phy"
+      ],
+      "horizon_domains": [
+        "domain:usb"
+      ],
+      "candidate_use": "Mass storage, HID and networking candidates; role/port tests",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:typec",
+      "kind": "hardware_capability",
+      "label": "USB-C port and power role",
+      "group": "io",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:usb",
+        "domain:power"
+      ],
+      "candidate_use": "Peripheral and dock lifecycle, no arbitrary PD changes",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:wifi",
+      "kind": "hardware_capability",
+      "label": "Wi-Fi 802.11ac",
+      "group": "network",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official",
+        "teardown"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:network"
+      ],
+      "candidate_use": "SSH, SFTP, network mounts",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:bt",
+      "kind": "hardware_capability",
+      "label": "Bluetooth",
+      "group": "network",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official",
+        "teardown"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:bluetooth",
+        "domain:input"
+      ],
+      "candidate_use": "Controllers and other supported peripherals",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:nfc",
+      "kind": "hardware_capability",
+      "label": "NFC",
+      "group": "io",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official",
+        "board"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:input"
+      ],
+      "candidate_use": "Read-only permitted tag use candidate",
+      "priority": "P2",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:imu",
+      "kind": "hardware_capability",
+      "label": "Accelerometer / gyroscope",
+      "group": "io",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official",
+        "teardown"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:input"
+      ],
+      "candidate_use": "Motion pointer and orientation",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:light",
+      "kind": "hardware_capability",
+      "label": "Ambient light sensor",
+      "group": "io",
+      "evidence_status": "board_observed",
+      "sources": [
+        "official"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:input",
+        "domain:display"
+      ],
+      "candidate_use": "Adaptive brightness on equipped revisions",
+      "priority": "P2",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:gpio",
+      "kind": "hardware_capability",
+      "label": "GPIO / pinmux",
+      "group": "bus",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "gpio",
+        "pinmux"
+      ],
+      "horizon_domains": [
+        "domain:bus"
+      ],
+      "candidate_use": "Board integration inventory; no raw pin probing",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:i2c",
+      "kind": "hardware_capability",
+      "label": "I2C controllers",
+      "group": "bus",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "i2c",
+        "i2c-vi"
+      ],
+      "horizon_domains": [
+        "domain:bus"
+      ],
+      "candidate_use": "Inventory known attached peripherals, no arbitrary bus writes",
+      "priority": "P2",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:spi",
+      "kind": "hardware_capability",
+      "label": "SPI / QSPI",
+      "group": "bus",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "spi",
+        "qspi"
+      ],
+      "horizon_domains": [
+        "domain:bus"
+      ],
+      "candidate_use": "Board routing and ownership unknown",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:uart",
+      "kind": "hardware_capability",
+      "label": "UART",
+      "group": "bus",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "uart"
+      ],
+      "horizon_domains": [
+        "domain:bus"
+      ],
+      "candidate_use": "Documented diagnostic interfaces only",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:pcie",
+      "kind": "hardware_capability",
+      "label": "PCI Express",
+      "group": "bus",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "pcie"
+      ],
+      "horizon_domains": [
+        "domain:bus"
+      ],
+      "candidate_use": "Unknown retail lane routing; no eGPU claim",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:sata",
+      "kind": "hardware_capability",
+      "label": "SATA/AHCI",
+      "group": "bus",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "ahci"
+      ],
+      "horizon_domains": [
+        "domain:bus",
+        "domain:filesystem"
+      ],
+      "candidate_use": "Unknown retail routing; no SATA connector claim",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:pmic",
+      "kind": "hardware_capability",
+      "label": "PMIC and battery charging",
+      "group": "power",
+      "evidence_status": "board_observed",
+      "sources": [
+        "board",
+        "official",
+        "teardown"
+      ],
+      "dt_types": [],
+      "horizon_domains": [
+        "domain:power"
+      ],
+      "candidate_use": "Battery telemetry, no voltage override",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:thermal",
+      "kind": "hardware_capability",
+      "label": "Thermal sensors / fan",
+      "group": "power",
+      "evidence_status": "driver_candidate",
+      "sources": [
+        "official",
+        "dts"
+      ],
+      "dt_types": [
+        "soctherm",
+        "pwm"
+      ],
+      "horizon_domains": [
+        "domain:power",
+        "domain:diagnostics"
+      ],
+      "candidate_use": "Monitoring and thermal budget; no unsafe overrides",
+      "priority": "P0",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:clocks",
+      "kind": "hardware_capability",
+      "label": "Clock/reset and DFLL",
+      "group": "power",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "car",
+        "dfll"
+      ],
+      "horizon_domains": [
+        "domain:clock",
+        "domain:power"
+      ],
+      "candidate_use": "Read-only clock telemetry and supported profiles",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:pmc",
+      "kind": "hardware_capability",
+      "label": "Power management controller",
+      "group": "power",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "pmc",
+        "flowctrl"
+      ],
+      "horizon_domains": [
+        "domain:power",
+        "domain:lifecycle"
+      ],
+      "candidate_use": "Suspend/resume integration through supported services",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:rtc",
+      "kind": "hardware_capability",
+      "label": "RTC / timers",
+      "group": "power",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "rtc",
+        "timer"
+      ],
+      "horizon_domains": [
+        "domain:clock"
+      ],
+      "candidate_use": "Clock and timers via OS",
+      "priority": "P1",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:irq",
+      "kind": "hardware_capability",
+      "label": "Interrupt controllers",
+      "group": "cpu",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "ictlr",
+        "agic"
+      ],
+      "horizon_domains": [
+        "domain:kernel"
+      ],
+      "candidate_use": "Kernel inventory, no direct access",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:tsec",
+      "kind": "hardware_capability",
+      "label": "TSEC security engine",
+      "group": "security",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "tsec"
+      ],
+      "horizon_domains": [
+        "domain:crypto"
+      ],
+      "candidate_use": "Inventory only, no protected operations",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:efuse",
+      "kind": "hardware_capability",
+      "label": "Fuse controller",
+      "group": "security",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "efuse"
+      ],
+      "horizon_domains": [
+        "domain:crypto"
+      ],
+      "candidate_use": "Inventory only; no readout or modification",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:apbmisc",
+      "kind": "hardware_capability",
+      "label": "APB miscellaneous controller",
+      "group": "bus",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "apbmisc"
+      ],
+      "horizon_domains": [
+        "domain:bus"
+      ],
+      "candidate_use": "Inventory only",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "hw:mipi",
+      "kind": "hardware_capability",
+      "label": "MIPI PHY",
+      "group": "bus",
+      "evidence_status": "soc_candidate",
+      "sources": [
+        "dts"
+      ],
+      "dt_types": [
+        "mipi"
+      ],
+      "horizon_domains": [
+        "domain:display",
+        "domain:capture"
+      ],
+      "candidate_use": "Board routing/ownership unknown",
+      "priority": "P3",
+      "board_availability": "variant_specific_unverified",
+      "horizon_access": "unknown",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "dts:pcie",
+      "kind": "soc_dts_type",
+      "label": "pcie",
+      "source": "dts",
+      "source_lines": [
+        19
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:host1x",
+      "kind": "soc_dts_type",
+      "label": "host1x",
+      "source": "dts",
+      "source_lines": [
+        89
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:dpaux",
+      "kind": "soc_dts_type",
+      "label": "dpaux",
+      "source": "dts",
+      "source_lines": [
+        107,
+        330
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:vi",
+      "kind": "soc_dts_type",
+      "label": "vi",
+      "source": "dts",
+      "source_lines": [
+        140
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:csi",
+      "kind": "soc_dts_type",
+      "label": "csi",
+      "source": "dts",
+      "source_lines": [
+        156
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:tsec",
+      "kind": "soc_dts_type",
+      "label": "tsec",
+      "source": "dts",
+      "source_lines": [
+        182,
+        284
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:dc",
+      "kind": "soc_dts_type",
+      "label": "dc",
+      "source": "dts",
+      "source_lines": [
+        187,
+        202
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:dsi",
+      "kind": "soc_dts_type",
+      "label": "dsi",
+      "source": "dts",
+      "source_lines": [
+        217,
+        254
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:vic",
+      "kind": "soc_dts_type",
+      "label": "vic",
+      "source": "dts",
+      "source_lines": [
+        235
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:nvjpg",
+      "kind": "soc_dts_type",
+      "label": "nvjpg",
+      "source": "dts",
+      "source_lines": [
+        248
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:nvdec",
+      "kind": "soc_dts_type",
+      "label": "nvdec",
+      "source": "dts",
+      "source_lines": [
+        272
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:nvenc",
+      "kind": "soc_dts_type",
+      "label": "nvenc",
+      "source": "dts",
+      "source_lines": [
+        278
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:sor",
+      "kind": "soc_dts_type",
+      "label": "sor",
+      "source": "dts",
+      "source_lines": [
+        290
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:sor1",
+      "kind": "soc_dts_type",
+      "label": "sor1",
+      "source": "dts",
+      "source_lines": [
+        310
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:isp",
+      "kind": "soc_dts_type",
+      "label": "isp",
+      "source": "dts",
+      "source_lines": [
+        363,
+        373
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:i2c-vi",
+      "kind": "soc_dts_type",
+      "label": "i2c-vi",
+      "source": "dts",
+      "source_lines": [
+        383
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:ictlr",
+      "kind": "soc_dts_type",
+      "label": "ictlr",
+      "source": "dts",
+      "source_lines": [
+        432
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:timer",
+      "kind": "soc_dts_type",
+      "label": "timer",
+      "source": "dts",
+      "source_lines": [
+        445
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:car",
+      "kind": "soc_dts_type",
+      "label": "car",
+      "source": "dts",
+      "source_lines": [
+        466
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:flowctrl",
+      "kind": "soc_dts_type",
+      "label": "flowctrl",
+      "source": "dts",
+      "source_lines": [
+        473
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:gpio",
+      "kind": "soc_dts_type",
+      "label": "gpio",
+      "source": "dts",
+      "source_lines": [
+        478
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:apbdma",
+      "kind": "soc_dts_type",
+      "label": "apbdma",
+      "source": "dts",
+      "source_lines": [
+        495
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:apbmisc",
+      "kind": "soc_dts_type",
+      "label": "apbmisc",
+      "source": "dts",
+      "source_lines": [
+        537
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:pinmux",
+      "kind": "soc_dts_type",
+      "label": "pinmux",
+      "source": "dts",
+      "source_lines": [
+        543
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:uart",
+      "kind": "soc_dts_type",
+      "label": "uart",
+      "source": "dts",
+      "source_lines": [
+        599,
+        613,
+        627,
+        641
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:pwm",
+      "kind": "soc_dts_type",
+      "label": "pwm",
+      "source": "dts",
+      "source_lines": [
+        655
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:i2c",
+      "kind": "soc_dts_type",
+      "label": "i2c",
+      "source": "dts",
+      "source_lines": [
+        666,
+        681,
+        696,
+        711,
+        729,
+        744
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:spi",
+      "kind": "soc_dts_type",
+      "label": "spi",
+      "source": "dts",
+      "source_lines": [
+        762,
+        777,
+        792,
+        807
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:rtc",
+      "kind": "soc_dts_type",
+      "label": "rtc",
+      "source": "dts",
+      "source_lines": [
+        822
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:pmc",
+      "kind": "soc_dts_type",
+      "label": "pmc",
+      "source": "dts",
+      "source_lines": [
+        831
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:efuse",
+      "kind": "soc_dts_type",
+      "label": "efuse",
+      "source": "dts",
+      "source_lines": [
+        940
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:mc",
+      "kind": "soc_dts_type",
+      "label": "mc",
+      "source": "dts",
+      "source_lines": [
+        949
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:emc",
+      "kind": "soc_dts_type",
+      "label": "emc",
+      "source": "dts",
+      "source_lines": [
+        961
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:ahci",
+      "kind": "soc_dts_type",
+      "label": "ahci",
+      "source": "dts",
+      "source_lines": [
+        973
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:hda",
+      "kind": "soc_dts_type",
+      "label": "hda",
+      "source": "dts",
+      "source_lines": [
+        989
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:xusb",
+      "kind": "soc_dts_type",
+      "label": "xusb",
+      "source": "dts",
+      "source_lines": [
+        1005
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:xusb-padctl",
+      "kind": "soc_dts_type",
+      "label": "xusb-padctl",
+      "source": "dts",
+      "source_lines": [
+        1042
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:sdhci",
+      "kind": "soc_dts_type",
+      "label": "sdhci",
+      "source": "dts",
+      "source_lines": [
+        1199,
+        1228,
+        1246,
+        1270
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:xudc",
+      "kind": "soc_dts_type",
+      "label": "xudc",
+      "source": "dts",
+      "source_lines": [
+        1294
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:soctherm",
+      "kind": "soc_dts_type",
+      "label": "soctherm",
+      "source": "dts",
+      "source_lines": [
+        1313
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:mipi",
+      "kind": "soc_dts_type",
+      "label": "mipi",
+      "source": "dts",
+      "source_lines": [
+        1339
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:dfll",
+      "kind": "soc_dts_type",
+      "label": "dfll",
+      "source": "dts",
+      "source_lines": [
+        1348
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:aconnect",
+      "kind": "soc_dts_type",
+      "label": "aconnect",
+      "source": "dts",
+      "source_lines": [
+        1366
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:adma",
+      "kind": "soc_dts_type",
+      "label": "adma",
+      "source": "dts",
+      "source_lines": [
+        1377
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:agic",
+      "kind": "soc_dts_type",
+      "label": "agic",
+      "source": "dts",
+      "source_lines": [
+        1409
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:ahub",
+      "kind": "soc_dts_type",
+      "label": "ahub",
+      "source": "dts",
+      "source_lines": [
+        1421
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:admaif",
+      "kind": "soc_dts_type",
+      "label": "admaif",
+      "source": "dts",
+      "source_lines": [
+        1433
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:i2s",
+      "kind": "soc_dts_type",
+      "label": "i2s",
+      "source": "dts",
+      "source_lines": [
+        1544,
+        1557,
+        1570,
+        1583,
+        1596
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:dmic",
+      "kind": "soc_dts_type",
+      "label": "dmic",
+      "source": "dts",
+      "source_lines": [
+        1609,
+        1621,
+        1633
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:qspi",
+      "kind": "soc_dts_type",
+      "label": "qspi",
+      "source": "dts",
+      "source_lines": [
+        1730
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:ehci",
+      "kind": "soc_dts_type",
+      "label": "ehci",
+      "source": "dts",
+      "source_lines": [
+        1746,
+        1784
+      ],
+      "executable": false
+    },
+    {
+      "id": "dts:usb-phy",
+      "kind": "soc_dts_type",
+      "label": "usb-phy",
+      "source": "dts",
+      "source_lines": [
+        1759,
+        1797
+      ],
+      "executable": false
+    }
+  ],
+  "edges": [
+    [
+      "hw:root",
+      "soc:t210",
+      "includes_variant"
+    ],
+    [
+      "hw:root",
+      "soc:mariko",
+      "includes_variant"
+    ],
+    [
+      "hw:root",
+      "board:erista",
+      "includes_board"
+    ],
+    [
+      "board:erista",
+      "soc:t210",
+      "soc_family"
+    ],
+    [
+      "hw:root",
+      "board:mariko",
+      "includes_board"
+    ],
+    [
+      "board:mariko",
+      "soc:mariko",
+      "soc_family"
+    ],
+    [
+      "hw:root",
+      "board:lite",
+      "includes_board"
+    ],
+    [
+      "board:lite",
+      "soc:mariko",
+      "soc_family"
+    ],
+    [
+      "hw:root",
+      "board:oled",
+      "includes_board"
+    ],
+    [
+      "board:oled",
+      "soc:mariko",
+      "soc_family"
+    ],
+    [
+      "hw:root",
+      "hwgroup:cpu",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:compute",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:memory",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:display",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:audio",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:storage",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:io",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:network",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:bus",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:power",
+      "groups"
+    ],
+    [
+      "hw:root",
+      "hwgroup:security",
+      "groups"
+    ],
+    [
+      "hwgroup:cpu",
+      "hw:cpu",
+      "contains"
+    ],
+    [
+      "hw:cpu",
+      "domain:cpu",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:cpu",
+      "domain:kernel",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:cpu",
+      "hw:a53",
+      "contains"
+    ],
+    [
+      "hw:a53",
+      "domain:cpu",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:compute",
+      "hw:gpu",
+      "contains"
+    ],
+    [
+      "hw:gpu",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:gpu",
+      "domain:runtime",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:compute",
+      "hw:host1x",
+      "contains"
+    ],
+    [
+      "hw:host1x",
+      "dts:host1x",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:host1x",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:host1x",
+      "domain:ipc",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:compute",
+      "hw:vic",
+      "contains"
+    ],
+    [
+      "hw:vic",
+      "dts:vic",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:vic",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:vic",
+      "domain:capture",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:compute",
+      "hw:nvdec",
+      "contains"
+    ],
+    [
+      "hw:nvdec",
+      "dts:nvdec",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:nvdec",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:nvdec",
+      "domain:capture",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:compute",
+      "hw:nvenc",
+      "contains"
+    ],
+    [
+      "hw:nvenc",
+      "dts:nvenc",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:nvenc",
+      "domain:capture",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:compute",
+      "hw:nvjpg",
+      "contains"
+    ],
+    [
+      "hw:nvjpg",
+      "dts:nvjpg",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:nvjpg",
+      "domain:formats",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:nvjpg",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:compute",
+      "hw:isp",
+      "contains"
+    ],
+    [
+      "hw:isp",
+      "dts:isp",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:isp",
+      "domain:capture",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:compute",
+      "hw:vi",
+      "contains"
+    ],
+    [
+      "hw:vi",
+      "dts:vi",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:vi",
+      "dts:csi",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:vi",
+      "domain:capture",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:memory",
+      "hw:mc",
+      "contains"
+    ],
+    [
+      "hw:mc",
+      "dts:mc",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:mc",
+      "dts:emc",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:mc",
+      "domain:kernel",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:memory",
+      "hw:ram",
+      "contains"
+    ],
+    [
+      "hw:ram",
+      "domain:kernel",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:ram",
+      "domain:runtime",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:memory",
+      "hw:dma",
+      "contains"
+    ],
+    [
+      "hw:dma",
+      "dts:apbdma",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:dma",
+      "domain:kernel",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:dma",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:display",
+      "hw:display",
+      "contains"
+    ],
+    [
+      "hw:display",
+      "dts:dc",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:display",
+      "dts:dsi",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:display",
+      "dts:sor",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:display",
+      "dts:sor1",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:display",
+      "dts:dpaux",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:display",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:display",
+      "hw:panel",
+      "contains"
+    ],
+    [
+      "hw:panel",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:panel",
+      "domain:input",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:display",
+      "hw:dock",
+      "contains"
+    ],
+    [
+      "hw:dock",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:dock",
+      "domain:usb",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:dock",
+      "domain:network",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:audio",
+      "hw:audio",
+      "contains"
+    ],
+    [
+      "hw:audio",
+      "dts:aconnect",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:audio",
+      "dts:adma",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:audio",
+      "dts:ahub",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:audio",
+      "dts:admaif",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:audio",
+      "dts:i2s",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:audio",
+      "dts:dmic",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:audio",
+      "dts:hda",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:audio",
+      "domain:audio",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:audio",
+      "hw:codec",
+      "contains"
+    ],
+    [
+      "hw:codec",
+      "domain:audio",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:storage",
+      "hw:sdmmc",
+      "contains"
+    ],
+    [
+      "hw:sdmmc",
+      "dts:sdhci",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:sdmmc",
+      "domain:filesystem",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:sdmmc",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:storage",
+      "hw:sd",
+      "contains"
+    ],
+    [
+      "hw:sd",
+      "domain:filesystem",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:storage",
+      "hw:emmc",
+      "contains"
+    ],
+    [
+      "hw:emmc",
+      "domain:filesystem",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:storage",
+      "hw:gamecard",
+      "contains"
+    ],
+    [
+      "hw:gamecard",
+      "domain:filesystem",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:gamecard",
+      "domain:official",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:io",
+      "hw:xusb",
+      "contains"
+    ],
+    [
+      "hw:xusb",
+      "dts:xusb",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:xusb",
+      "dts:xusb-padctl",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:xusb",
+      "dts:xudc",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:xusb",
+      "dts:ehci",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:xusb",
+      "dts:usb-phy",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:xusb",
+      "domain:usb",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:io",
+      "hw:typec",
+      "contains"
+    ],
+    [
+      "hw:typec",
+      "domain:usb",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:typec",
+      "domain:power",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:network",
+      "hw:wifi",
+      "contains"
+    ],
+    [
+      "hw:wifi",
+      "domain:network",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:network",
+      "hw:bt",
+      "contains"
+    ],
+    [
+      "hw:bt",
+      "domain:bluetooth",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:bt",
+      "domain:input",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:io",
+      "hw:nfc",
+      "contains"
+    ],
+    [
+      "hw:nfc",
+      "domain:input",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:io",
+      "hw:imu",
+      "contains"
+    ],
+    [
+      "hw:imu",
+      "domain:input",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:io",
+      "hw:light",
+      "contains"
+    ],
+    [
+      "hw:light",
+      "domain:input",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:light",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:bus",
+      "hw:gpio",
+      "contains"
+    ],
+    [
+      "hw:gpio",
+      "dts:gpio",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:gpio",
+      "dts:pinmux",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:gpio",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:bus",
+      "hw:i2c",
+      "contains"
+    ],
+    [
+      "hw:i2c",
+      "dts:i2c",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:i2c",
+      "dts:i2c-vi",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:i2c",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:bus",
+      "hw:spi",
+      "contains"
+    ],
+    [
+      "hw:spi",
+      "dts:spi",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:spi",
+      "dts:qspi",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:spi",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:bus",
+      "hw:uart",
+      "contains"
+    ],
+    [
+      "hw:uart",
+      "dts:uart",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:uart",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:bus",
+      "hw:pcie",
+      "contains"
+    ],
+    [
+      "hw:pcie",
+      "dts:pcie",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:pcie",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:bus",
+      "hw:sata",
+      "contains"
+    ],
+    [
+      "hw:sata",
+      "dts:ahci",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:sata",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:sata",
+      "domain:filesystem",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:power",
+      "hw:pmic",
+      "contains"
+    ],
+    [
+      "hw:pmic",
+      "domain:power",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:power",
+      "hw:thermal",
+      "contains"
+    ],
+    [
+      "hw:thermal",
+      "dts:soctherm",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:thermal",
+      "dts:pwm",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:thermal",
+      "domain:power",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:thermal",
+      "domain:diagnostics",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:power",
+      "hw:clocks",
+      "contains"
+    ],
+    [
+      "hw:clocks",
+      "dts:car",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:clocks",
+      "dts:dfll",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:clocks",
+      "domain:clock",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:clocks",
+      "domain:power",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:power",
+      "hw:pmc",
+      "contains"
+    ],
+    [
+      "hw:pmc",
+      "dts:pmc",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:pmc",
+      "dts:flowctrl",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:pmc",
+      "domain:power",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:pmc",
+      "domain:lifecycle",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:power",
+      "hw:rtc",
+      "contains"
+    ],
+    [
+      "hw:rtc",
+      "dts:rtc",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:rtc",
+      "dts:timer",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:rtc",
+      "domain:clock",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:cpu",
+      "hw:irq",
+      "contains"
+    ],
+    [
+      "hw:irq",
+      "dts:ictlr",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:irq",
+      "dts:agic",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:irq",
+      "domain:kernel",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:security",
+      "hw:tsec",
+      "contains"
+    ],
+    [
+      "hw:tsec",
+      "dts:tsec",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:tsec",
+      "domain:crypto",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:security",
+      "hw:efuse",
+      "contains"
+    ],
+    [
+      "hw:efuse",
+      "dts:efuse",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:efuse",
+      "domain:crypto",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:bus",
+      "hw:apbmisc",
+      "contains"
+    ],
+    [
+      "hw:apbmisc",
+      "dts:apbmisc",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:apbmisc",
+      "domain:bus",
+      "candidate_os_mapping"
+    ],
+    [
+      "hwgroup:bus",
+      "hw:mipi",
+      "contains"
+    ],
+    [
+      "hw:mipi",
+      "dts:mipi",
+      "generic_soc_evidence"
+    ],
+    [
+      "hw:mipi",
+      "domain:display",
+      "candidate_os_mapping"
+    ],
+    [
+      "hw:mipi",
+      "domain:capture",
+      "candidate_os_mapping"
+    ],
+    [
+      "soc:t210",
+      "dts:pcie",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:host1x",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:dpaux",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:vi",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:csi",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:tsec",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:dc",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:dsi",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:vic",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:nvjpg",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:nvdec",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:nvenc",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:sor",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:sor1",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:isp",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:i2c-vi",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:ictlr",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:timer",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:car",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:flowctrl",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:gpio",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:apbdma",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:apbmisc",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:pinmux",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:uart",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:pwm",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:i2c",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:spi",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:rtc",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:pmc",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:efuse",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:mc",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:emc",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:ahci",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:hda",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:xusb",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:xusb-padctl",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:sdhci",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:xudc",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:soctherm",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:mipi",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:dfll",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:aconnect",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:adma",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:agic",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:ahub",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:admaif",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:i2s",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:dmic",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:qspi",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:ehci",
+      "generic_description"
+    ],
+    [
+      "soc:t210",
+      "dts:usb-phy",
+      "generic_description"
+    ],
+    [
+      "hw:gpu",
+      "hw:mc",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:vic",
+      "hw:host1x",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:nvdec",
+      "hw:host1x",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:nvenc",
+      "hw:host1x",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:nvjpg",
+      "hw:host1x",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:host1x",
+      "hw:mc",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:display",
+      "hw:panel",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:display",
+      "hw:dock",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:audio",
+      "hw:codec",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:sdmmc",
+      "hw:sd",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:sdmmc",
+      "hw:emmc",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:xusb",
+      "hw:typec",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:typec",
+      "hw:dock",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:pmic",
+      "hw:thermal",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:vi",
+      "hw:isp",
+      "conceptual_dependency_not_board_wiring"
+    ],
+    [
+      "hw:isp",
+      "hw:mc",
+      "conceptual_dependency_not_board_wiring"
+    ]
+  ]
+}
