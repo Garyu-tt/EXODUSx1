@@ -1,0 +1,26 @@
+name: EXODUS terminal
+on:
+  pull_request:
+    paths:
+      - 'exodus/terminal/**'
+      - '.github/workflows/exodus-terminal.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'exodus/terminal/**'
+      - '.github/workflows/exodus-terminal.yml'
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    env:
+      CC: ${{ matrix.cc }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s exodus/terminal -v
