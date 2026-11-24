@@ -16,6 +16,8 @@ $(BUILD)/nxbsd-pipe-probe.elf: nxbsd_pipe.c nxbsd_pipe.h test_nxbsd_pipe.c Makef
 	$(CC) -std=gnu11 -O2 -Wall -Wextra $(ARCH) -D__SWITCH__ -I$(LIBNX)/include -specs=$(LIBNX)/switch.specs nxbsd_pipe.c test_nxbsd_pipe.c -L$(LIBNX)/lib -lnx -o $@
 $(BUILD)/nxbsd-fd-probe.elf: nxbsd_pipe.c nxbsd_pipe.h nxbsd_fd.c nxbsd_fd.h test_nxbsd_fd.c Makefile | $(BUILD)
 	$(CC) -std=gnu11 -O2 -Wall -Wextra $(ARCH) -D__SWITCH__ -I$(LIBNX)/include -specs=$(LIBNX)/switch.specs nxbsd_pipe.c nxbsd_fd.c test_nxbsd_fd.c -L$(LIBNX)/lib -lnx -o $@
+$(BUILD)/nxbsd-context-probe.elf: nxbsd_pipe.c nxbsd_pipe.h nxbsd_fd.c nxbsd_fd.h nxbsd_context.c nxbsd_context.h test_nxbsd_context.c Makefile | $(BUILD)
+	$(CC) -std=gnu11 -O2 -Wall -Wextra $(ARCH) -D__SWITCH__ -I$(LIBNX)/include -specs=$(LIBNX)/switch.specs nxbsd_pipe.c nxbsd_fd.c nxbsd_context.c test_nxbsd_context.c -L$(LIBNX)/lib -lnx -o $@
 $(BUILD)/$(TARGET).nacp: Makefile | $(BUILD)
 	nacptool --create "EXODUS Terminal" "EXODUSx1" "0.1.0" $@
 $(TARGET).nro: $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).nacp $(LIBNX)/default_icon.jpg
