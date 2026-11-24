@@ -18,7 +18,7 @@ inline std::pair<Provider,std::string> NativeCatalogKey(const Entry &e)
     }
     if (e.provider==Provider::Homebrew && exodus_nro_path(e.id.c_str(),key))
         return {e.provider,key};
-    return {e.provider,e.id};
+    return {e.provider,std::string("raw:")+e.id};
 }
 
 // Native inventory contributes identities, never launch authorization.
