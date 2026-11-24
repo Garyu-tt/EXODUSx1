@@ -1,0 +1,297 @@
+{
+  "schema": 1,
+  "target": {
+    "os": "FreeBSD",
+    "release": "15.1-RELEASE",
+    "arch": "aarch64",
+    "cpu": "cortex-a57",
+    "ports_commit": "98796bd539ea8f03adb7c9d6f9f3a3d54dcca553"
+  },
+  "nodes": [
+    {
+      "id": "kernel",
+      "origin": null,
+      "state": "qemu-boot-verified",
+      "depends": [],
+      "evidence": {
+        "run": 45495215979,
+        "scope": "QEMU virt Cortex-A57, not physical Switch"
+      }
+    },
+    {
+      "id": "wayland",
+      "origin": "graphics/wayland",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "drm",
+      "origin": "graphics/libdrm",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "mesa",
+      "origin": "graphics/mesa-libs",
+      "state": "source-recipe",
+      "depends": [
+        "drm",
+        "wayland"
+      ]
+    },
+    {
+      "id": "mesa-dri",
+      "origin": "graphics/mesa-dri",
+      "state": "source-recipe",
+      "depends": [
+        "mesa"
+      ]
+    },
+    {
+      "id": "vulkan",
+      "origin": "graphics/vulkan-loader",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "input",
+      "origin": "x11/libinput",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "xwayland",
+      "origin": "x11-servers/xwayland",
+      "state": "source-recipe",
+      "depends": [
+        "wayland",
+        "mesa"
+      ]
+    },
+    {
+      "id": "pipewire",
+      "origin": "multimedia/pipewire",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "gamescope",
+      "origin": "x11-wm/gamescope",
+      "state": "source-recipe",
+      "depends": [
+        "vulkan",
+        "drm",
+        "wayland",
+        "xwayland",
+        "input"
+      ]
+    },
+    {
+      "id": "plasma",
+      "origin": "x11/plasma6-plasma",
+      "state": "source-recipe",
+      "depends": [
+        "wayland",
+        "mesa",
+        "input"
+      ]
+    },
+    {
+      "id": "ssh",
+      "origin": "FreeBSD base OpenSSH",
+      "state": "qemu-arm64-tested",
+      "depends": [
+        "kernel"
+      ],
+      "evidence": {
+        "run": 45496663587,
+        "job": 138808871803,
+        "scope": "FreeBSD ARM64 QEMU loopback inbound authentication, desired mode changes, new-login key revocation; not physical Switch or graphical switching"
+      }
+    },
+    {
+      "id": "steam-utils",
+      "origin": "games/linux-steam-utils",
+      "state": "amd64-only",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "wine-proton",
+      "origin": "emulators/wine-proton",
+      "state": "amd64-only",
+      "depends": [
+        "mesa"
+      ]
+    },
+    {
+      "id": "steam-client",
+      "origin": null,
+      "state": "closed-binary-unverified",
+      "depends": [
+        "gamescope",
+        "pipewire",
+        "linux-arm64-abi",
+        "linux-glibc"
+      ]
+    },
+    {
+      "id": "session",
+      "origin": null,
+      "state": "needs-port",
+      "depends": [
+        "gamescope",
+        "steam-client",
+        "manager-dbus",
+        "resident-ssh-dbus",
+        "resident-rc"
+      ]
+    },
+    {
+      "id": "horizon-bridge",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "kernel",
+        "dual-kernel"
+      ]
+    },
+    {
+      "id": "gaming-mode",
+      "origin": null,
+      "state": "blocked",
+      "depends": [
+        "session",
+        "horizon-bridge",
+        "gpu-mediation"
+      ]
+    },
+    {
+      "id": "resident-service",
+      "origin": "exodus/frankenstein/sessiond.c",
+      "state": "freebsd-qemu-arm64-tested",
+      "depends": [
+        "kernel"
+      ],
+      "evidence": {
+        "run": 45500312919,
+        "job": 138821525995,
+        "artifact": 14970783442,
+        "scope": "Native FreeBSD 15.1 ARM64 compile and same-process live reload, rejected unsafe configs, clean shutdown; QEMU virt only."
+      }
+    },
+    {
+      "id": "manager-proxy",
+      "origin": "evlav/steamos-manager@a0d399defebd60db30ba38325d9cf47dbda49bee",
+      "state": "build-pending",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "manager-dbus",
+      "origin": "exodus/frankenstein/sessiond-dbus.inc",
+      "state": "freebsd-qemu-arm64-tested",
+      "depends": [
+        "resident-service"
+      ],
+      "evidence": {
+        "run": 45500312919,
+        "job": 138821525995,
+        "artifact": 14970783442,
+        "scope": "Native FreeBSD 15.1 ARM64 D-Bus desired mode property, persisted configuration, reload and rejection on isolated session bus; no actual graphical session switching."
+      }
+    },
+    {
+      "id": "tegra-board",
+      "origin": "freebsd/freebsd-src@releng/15.1:sys/arm64/nvidia/tegra210",
+      "state": "source-audited",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "dual-kernel",
+      "origin": "exodus/frankenstein/TEGRA_ADMISSION.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "tegra-board"
+      ]
+    },
+    {
+      "id": "gpu-mediation",
+      "origin": "frankyfife/mesa-switch_ff@0ff52079ca9e9e837ed27eb95a8d239f439a1864",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "dual-kernel"
+      ]
+    },
+    {
+      "id": "linux-arm64-abi",
+      "origin": "freebsd/freebsd-src@releng/15.1:sys/arm64/linux",
+      "state": "static-syscall-and-lse-boundary-verified",
+      "depends": [
+        "kernel"
+      ],
+      "evidence": {
+        "run": 45500903377,
+        "job": 138823600784,
+        "scope": "Static AArch64 Linux syscall probe passed under Linuxulator 5.15.0; native waitpid observed SIGILL=4 for LSE instruction on emulated Cortex-A57; overall guest exit 0. Dynamic ABI and physical hardware unverified."
+      }
+    },
+    {
+      "id": "linux-glibc",
+      "origin": "exodus/frankenstein/linux-dynamic-probe.c",
+      "state": "freebsd-qemu-arm64-tested",
+      "depends": [
+        "linux-arm64-abi"
+      ],
+      "evidence": {
+        "run": 45501221806,
+        "job": 138824725136,
+        "scope": "glibc 2.39 dynamic Linux AArch64 test on FreeBSD QEMU: loader, uname/getpid/clock_gettime, dlopen/dlsym, pthread create/join, exit 0; no Steam client or physical console tested."
+      }
+    },
+    {
+      "id": "resident-ssh-dbus",
+      "origin": "exodus/frankenstein/guest-resident.sh",
+      "state": "freebsd-qemu-arm64-tested",
+      "depends": [
+        "ssh",
+        "manager-dbus"
+      ],
+      "evidence": {
+        "run": 45501837956,
+        "job": 138826845885,
+        "scope": "Native OpenSSH loopback ED25519 authentication and revocation, actual D-Bus DefaultLoginMode changes through SSH, same SSH and D-Bus daemon PID, generation 3 persisted. Desired mode only, active=unknown; no graphical session or Switch hardware."
+      }
+    },
+    {
+      "id": "resident-rc",
+      "origin": "exodus/frankenstein/tumor_reference_session",
+      "state": "freebsd-qemu-arm64-tested",
+      "depends": [
+        "resident-ssh-dbus"
+      ],
+      "evidence": {
+        "run": 45504844294,
+        "job": 138837269432,
+        "artifact": 14973126956,
+        "scope": "Native FreeBSD ARM64 rc.d boot order, stop/start, persisted desired mode, independent SSH and revoked-key rejection; guest exit 0, host SHA256 verification, exact archive member and internal checksum validation, executable mode and AArch64 ELF64 checks, artifact upload PASS. Opt-in test-account userspace bundle only; cold boot, graphical execution and physical hardware remain separate unproven gates."
+      }
+    }
+  ],
+  "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. No physical Switch execution or full SteamOS runtime proven.",
+  "name": "EXODUS Tumor"
+}
