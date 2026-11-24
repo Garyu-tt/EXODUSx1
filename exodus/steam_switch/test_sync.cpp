@@ -124,6 +124,12 @@ namespace {
         const auto entries = JSON::parse(*merged)["entries"];
         assert(entries.size() == 3 && entries[0]["provider_id"] == "7");
         assert(entries[1] == homebrew && entries[2] == native);
+        std::string windows_base = "\xff\xfe";
+        for (const char byte : existing) {
+            windows_base.push_back(byte);
+            windows_base.push_back('\0');
+        }
+        assert(MergeSteamSnapshot(incoming, windows_base) == merged);
         assert(MergeSteamSnapshot(incoming, std::nullopt) == incoming);
         assert(!MergeSteamSnapshot(incoming, "{broken"));
         assert(!MergeSteamSnapshot(existing, std::nullopt));

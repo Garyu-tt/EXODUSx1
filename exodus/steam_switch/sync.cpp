@@ -104,8 +104,8 @@ namespace exodus::steam_switch {
             return session.get<std::string>();
         }
 
-        bool IsSteamSnapshot(std::string_view text) {
-            const auto parsed = home::ParseCatalog(text);
+        bool IsSteamSnapshot(std::string_view text, std::string *normalized_utf8 = nullptr) {
+            const auto parsed = home::ParseCatalog(text, normalized_utf8);
             return parsed.status == home::CatalogStatus::Ready &&
                    std::all_of(parsed.entries.begin(), parsed.entries.end(), [](const auto &entry) {
                        return entry.provider == home::Provider::Steam;
@@ -217,15 +217,17 @@ namespace exodus::steam_switch {
 
     std::optional<std::string> MergeSteamSnapshot(std::string_view steam,
                                                   std::optional<std::string_view> base) {
-        if (!IsSteamSnapshot(steam))
+        std::string incoming_utf8;
+        if (!IsSteamSnapshot(steam, base ? &incoming_utf8 : nullptr))
             return std::nullopt;
         if (!base)
             return std::string(steam);
-        if (home::ParseCatalog(*base).status != home::CatalogStatus::Ready)
+        std::string existing_utf8;
+        if (home::ParseCatalog(*base, &existing_utf8).status != home::CatalogStatus::Ready)
             return std::nullopt;
 
-        auto incoming = JSON::parse(steam, nullptr, false);
-        auto existing = JSON::parse(*base, nullptr, false);
+        auto incoming = JSON::parse(incoming_utf8, nullptr, false);
+        auto existing = JSON::parse(existing_utf8, nullptr, false);
         auto &entries = incoming["entries"];
         for (auto &entry : existing["entries"]) {
             if (entry["provider"] == "steam")
