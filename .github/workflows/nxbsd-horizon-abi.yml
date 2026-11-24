@@ -34,6 +34,8 @@ jobs:
             cp exodus/terminal/build/nxbsd-task-probe.elf horizon-results/
             make -C exodus/terminal build/nxbsd-pipeline-probe.elf
             cp exodus/terminal/build/nxbsd-pipeline-probe.elf horizon-results/
+            make -C exodus/terminal build/nxbsd-commands-probe.elf
+            cp exodus/terminal/build/nxbsd-commands-probe.elf horizon-results/
           '
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
@@ -50,4 +52,5 @@ jobs:
             horizon-results/nxbsd-context-probe.elf
             horizon-results/nxbsd-task-probe.elf
             horizon-results/nxbsd-pipeline-probe.elf
+            horizon-results/nxbsd-commands-probe.elf
           retention-days: 7
