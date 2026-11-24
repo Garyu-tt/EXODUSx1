@@ -231,9 +231,9 @@ def unique_json_object(pairs):
     return value
 
 
-def decode_json(data, source):
+def decode_json(data, source, *, encoding="utf-8-sig"):
     try:
-        return json.loads(data.decode("utf-8-sig"), object_pairs_hook=unique_json_object,
+        return json.loads(data.decode(encoding), object_pairs_hook=unique_json_object,
                           parse_int=json_integer, parse_constant=invalid_json_constant)
     except (ValueError, RecursionError):
         raise SteamSyncError(f"Invalid JSON in {source}.") from None
@@ -295,7 +295,10 @@ def read_base_catalog(path):
         raise SteamSyncError("Could not read the base catalog.") from None
     if len(data) > MAX_CATALOG_BYTES:
         raise SteamSyncError("Base catalog exceeds the HOME catalog size limit.")
-    catalog = decode_json(data, "the base catalog")
+    # Match HOME's support for output redirected by Windows PowerShell 5.1.
+    # Only local snapshots opt in; Steam responses continue to require UTF-8.
+    encoding = "utf-16" if data.startswith(b"\xff\xfe") else "utf-8-sig"
+    catalog = decode_json(data, "the base catalog", encoding=encoding)
     if (type(catalog) is not dict or catalog.keys() != {"schema_version", "entries"}
             or type(catalog["schema_version"]) is not int or catalog["schema_version"] != 1
             or type(catalog["entries"]) is not list):
@@ -318,6 +321,8 @@ def read_base_catalog(path):
         if any(isinstance(value, str) and any(0xD800 <= ord(ch) <= 0xDFFF for ch in value)
                for value in entry.values()):
             raise SteamSyncError("Base catalog contains invalid text.")
+        if "\0" in entry["provider_id"]:
+            raise SteamSyncError("Base catalog contains an invalid app identity.")
         identity = (entry["provider"], entry["provider_id"])
         if identity in identities:
             raise SteamSyncError("Base catalog contains duplicate app identities.")
