@@ -7,7 +7,8 @@
 #include <limits.h>
 #include <string.h>
 #include <stdio.h>
-/* Host-only implementation in freebsd_stdio_host.c. */
+/* Host-only implementations in freebsd_stdio_host.c. */
+int eaccess(const char *, int);
 FILE *fwopen(void *, int (*)(void *, const char *, int));
 #include <sys/param.h>
 /* FreeBSD sys/sys/param.h at the locked revision: length includes NUL. */
