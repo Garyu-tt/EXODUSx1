@@ -22,3 +22,31 @@ Pinned donors:
 5. Prove independent kernel uptime and IPC with bounded shared memory, then authorized native-title launch through existing Horizon provider work (#30–36, #61). SSH reachability must survive UI/session switches. Require physical test and recovery plan before any boot changes.
 
 No boot image, firmware patch, register access, security-state change or hardware test is included in R11. All paths above are admission gates, not completed capabilities. Keep source-port work independent of hardware risks.
+
+## Physical USB admission (R16; read-only)
+
+A connected USB cable is not hardware acceptance. Before any target-side test,
+record the authorized laptop identity, observed USB mode and device class.
+
+- On the Windows laptop, compare present USB/PnP devices, disk inventory and
+  mounted volumes. Read-only queries: `Get-PnpDevice -PresentOnly`,
+  `Get-Disk`, `Get-Partition`, `Get-Volume`. Correlate disk numbers to
+  device instance IDs and capacity; do not select a disk based on its drive
+  letter or capacity alone.
+- Distinguish USB mass storage, RCM/recovery, MTP, and an actual target shell.
+  A mounted volume does not establish CPU execution, EL2 ownership, board
+  revision or access to Horizon services. If the exposed UMS backing store
+  (SD versus eMMC or partition) is ambiguous, stop at enumeration.
+- Record confirmed console model/board revision only from authorized
+  device-specific diagnostic evidence. Do not infer it from the laptop's
+  USB class or the QEMU CPU model.
+- The R16 resident archive is a FreeBSD ARM64 reference userspace bundle,
+  not an NRO, boot payload, firmware image or Switch installer. Do not
+  copy it over a bootloader or attempt to launch it directly under Horizon.
+- No format, mount-mode changes, raw writes, payload injection, boot
+  configuration edits, NAND access beyond device enumeration or security
+  changes are part of this admission. A recovery plan and exact target
+  identification are required before a separate physical boot experiment.
+
+Record USB inventory, target execution, boot persistence and graphics as
+independent evidence. A missing transport is BLOCKED, not a target failure.
