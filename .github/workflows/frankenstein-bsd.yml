@@ -10,7 +10,7 @@ permissions:
 jobs:
   reference:
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 85
+    timeout-minutes: 165
     steps:
       - uses: actions/checkout@v6
         with:
@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
-      - name: Validate scripts and build upstream Wayland on FreeBSD
+      - name: Validate scripts and build upstream Wayland and Gamescope on FreeBSD
         run: |
           sh -n exodus/frankenstein/guest-build.sh
           sh -n exodus/frankenstein/run-reference.sh
@@ -28,6 +28,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frankenstein-bsd-r01-evidence
+          name: frankenstein-bsd-r02-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn
