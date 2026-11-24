@@ -2,6 +2,7 @@
 #pragma once
 
 #include "catalog_homebrew_policy.hpp"
+#include "loader_nro_bounds.hpp"
 
 #include <array>
 #include <cerrno>
@@ -25,7 +26,6 @@ namespace exodus::home {
         inline constexpr std::size_t GridRecordByteLimit = 16 * 1024;
         inline constexpr std::size_t NroPrefixBytes = 0x80; // libnx NroStart followed by NroHeader.
         inline constexpr std::uint32_t NroMagic = 0x304f524e;
-        inline constexpr std::uint32_t NroPageBytes = 0x1000;
         using File = std::unique_ptr<std::FILE, int (*)(std::FILE *)>;
 
         inline bool IsDirectory(const std::string &path) {
@@ -121,23 +121,15 @@ namespace exodus::home {
 
             const auto image_size = ReadLe32(prefix, 0x18);
             const auto bss_size = ReadLe32(prefix, 0x38);
-            if (image_size <= prefix.size() || image_size > file_size
-                || ReadLe32(prefix, 0x04) >= image_size
-                || bss_size > std::numeric_limits<std::uint32_t>::max() - image_size)
+            if (image_size > file_size || ReadLe32(prefix, 0x04) >= image_size)
                 return false;
 
-            std::uint32_t previous_end = 0;
-            for (std::size_t segment = 0; segment < 3; ++segment) {
-                const auto offset = ReadLe32(prefix, 0x20 + 8 * segment);
-                const auto size = ReadLe32(prefix, 0x24 + 8 * segment);
-                if ((segment == 0 && (offset != 0 || size < prefix.size()))
-                    || offset % NroPageBytes != 0 || (segment < 2 && size % NroPageBytes != 0)
-                    || offset < previous_end || offset >= image_size || size == 0
-                    || size > image_size - offset)
-                    return false;
-                previous_end = offset + size;
+            std::array<NroLoadSegment, 3> segments;
+            for (std::size_t i = 0; i < segments.size(); ++i) {
+                segments[i] = {ReadLe32(prefix, 0x20 + 8 * i), ReadLe32(prefix, 0x24 + 8 * i)};
             }
-            return previous_end == image_size;
+            return NroMappedSize(segments, prefix.size(), image_size, bss_size,
+                std::numeric_limits<std::uint32_t>::max()).has_value();
         }
 
         inline bool HasLocalNro(std::string_view registered_path, std::string_view sd_mount) {

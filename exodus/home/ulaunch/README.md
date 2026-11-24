@@ -24,9 +24,9 @@ The gate requires a canonical Switch application ID, a matching registered Horiz
 
 Add a local NRO under `/switch/` to the root of the selected user's uLaunch grid. The catalog's **Launch** list includes it when a `switch_homebrew` row matches exactly one live registration and the NRO is present and passes the loader format checks. Confirm the registered path displayed by uMenu. Use the default uLaunch library-applet configuration.
 
-uSystem checks the same local registration and file before queueing and again before handing off to the existing uLoader library applet. The queued request carries the registered ID, and the backend constructs the single path argument. The route uses the default Album library applet for one NRO execution. [Nintendo Safe Mode #55](https://github.com/Garyu-tt/EXODUSx1/issues/55)
+uSystem checks the same local registration and file before queueing and again before handing off to the matching uLoader applet. The backend constructs the single path argument from the registered ID. The patched loader accepts a dedicated one-shot input for the default Album library applet and checks the image, BSS and page padding against the allocated applet heap before reading the payload. It returns to HOME after the target exits. [Nintendo Safe Mode #55](https://github.com/Garyu-tt/EXODUSx1/issues/55)
 
-## Build the matching uMenu and uSystem
+## Build the matching uMenu, uSystem and uLoader applet
 
 The source patch targets uLaunch 1.2.6 and uses its pinned Plutonium, libnx-ext and nlohmann/json submodules. The build uses the upstream devkitPro and Python dependencies and needs the source libnx layout for NACP language data. [uLaunch release](https://github.com/XorTroll/uLaunch/releases/tag/1.2.6) · [Upstream build workflow](https://github.com/XorTroll/uLaunch/blob/6e0e1de633eec601fb527aadb602abe3bc817541/.github/workflows/main.yml) · [Tested libnx revision](https://github.com/switchbrew/libnx/tree/b156b4774fb2df7b93402169509266da7547fc4c)
 
@@ -42,17 +42,18 @@ cp "$adapter"/catalog.hpp "$adapter"/catalog.cpp "$adapter"/catalog_view.cpp \
   uLaunch/projects/uMenu/source/ul/menu/ui/
 cp "$adapter"/catalog_homebrew_policy.hpp uLaunch/libs/uCommon/include/ul/menu/
 cp "$adapter"/catalog_gamecard_policy.hpp "$adapter"/catalog_homebrew_policy.hpp \
-  "$adapter"/catalog_homebrew_provider.hpp uLaunch/projects/uSystem/source/
+  "$adapter"/catalog_homebrew_provider.hpp "$adapter"/loader_nro_bounds.hpp uLaunch/projects/uSystem/source/
+cp "$adapter"/loader_nro_bounds.hpp uLaunch/projects/uLoader/source/ul/loader/
 
 git init libnx
 git -C libnx fetch --depth 1 https://github.com/switchbrew/libnx.git b156b4774fb2df7b93402169509266da7547fc4c
 git -C libnx checkout --detach FETCH_HEAD
 make -C libnx
 cp -r libnx/nx/external/bsd/include/. libnx/nx/include/
-PYTHONUTF8=1 make -C uLaunch LIBNX="$PWD/libnx/nx" umenu usystem
+PYTHONUTF8=1 make -C uLaunch LIBNX="$PWD/libnx/nx" umenu usystem uloader
 ```
 
-The targets populate `uLaunch/SdOut/ulaunch/bin/uMenu/` and both uSystem locations under `SdOut`. Install the pair together on a test SD for uLaunch 1.2.6 and save the original files for rollback. An older uSystem does not return a typed catalog admission reply, so uMenu offers browsing only with it. The patch and adapter use GPL-2.0-only. [COPYING](COPYING)
+Use a test SD with uLaunch 1.2.6. Save the originals and install `SdOut/ulaunch/bin/uMenu/`, both uSystem files, and `SdOut/ulaunch/bin/uLoader/applet/` together. The catalog homebrew route requires this matching applet loader. The patch and adapter use GPL-2.0-only. [COPYING](COPYING)
 
 ## Check the adapter on a host
 
@@ -63,6 +64,6 @@ make -C "$adapter" check-launch-policy CXXFLAGS="-O2 -Werror -fsanitize=undefine
 
 On a Switch running the matching uLaunch release, start with a manual catalog containing Steam and Switch or homebrew entries. Open **EXODUS library** to check the baseline, sync from the NRO, then reopen the library to confirm the Steam rows update and the local entries remain. Repeat with an authorized Steam account whose shared library is empty to check Steam row removal. On a test SD card, add an invalid file with a newer snapshot number and verify that the last valid library still opens.
 
-Check that **Launch** appears for a ready title on an inserted card and opens it after confirmation. Check cancellation, a stale ID, an ejected card, an installed digital title and a suspended application. Check that the normal HOME grid still opens a title. For rollback, power off and restore the saved uMenu directory and both uSystem files.
+Check that **Launch** appears for a ready title on an inserted card and opens it after confirmation. Check cancellation, a stale ID, an ejected card, an installed digital title and a suspended application. Check that the normal HOME grid still opens a title. For rollback, power off and restore the saved uMenu and uLoader applet directories and both uSystem files.
 
 For homebrew, use an NRO registered in the root grid with spaces in its filename. Check the displayed path, cancellation and a confirmed applet launch, then remove the grid registration while keeping the catalog row and check that it disappears from the launch list. Try the same check with a missing NRO and verify that the normal grid still handles its own entries.
