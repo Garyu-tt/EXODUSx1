@@ -23,3 +23,9 @@ Host test covers read/write readiness, level triggering, duplicate descriptors, 
 - Next: run the NRO on emuMMC and record HOS/Atmosphere/4IFIR versions, then add a separate adapter for Horizon waitable handles; do not mix handle IDs and socket FDs in one namespace.
 - Design timer/wakeup/cancellation semantics before any kqueue-like interface.
 - Memory mapping remains a separate investigation: libnx `virtmemFindAslr` only locates/reserves address ranges; SVC mapping/permissions and backing allocation need separate verified contracts.
+
+## R03: native kernel handle wait
+
+`handle_wait.h` / `handle_wait.c` use the raw libnx `svcWaitSynchronization` (pinned `svc.h` and `result.h` at b156b4774fb2df7b93402169509266da7547fc4c). Wait-any on 1..64 borrowed, unique kernel handles with unique caller tokens. No implicit close, event reset, or retry. Timeout is nanoseconds: zero polls, up to INT64_MAX finite, UINT64_MAX infinite. Cancellation is returned separately from timeout; other errors preserve the raw Result. Native handles are not socket descriptors. No wait-all, mixed socket/handle wait, cross-thread cancellation protocol or Windows ABI promise yet.
+
+`make test` builds the adapter against a mock libnx header and tests input rejection, bounds, token mapping, timeout, cancellation and raw error propagation. This tests the wrapper only, not Horizon. The Switch build includes the real adapter, but devkitA64 build and hardware execution are pending. Device gate: create or obtain a valid waitable event, exercise zero-timeout, signal, cancellation and ownership on emuMMC before connecting Windows APIs.
