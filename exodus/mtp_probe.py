@@ -20,11 +20,24 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $vendor, $product = $env:EXODUS_MTP_USB_ID.Split(':')
 $prefix = 'USB\VID_{0}&PID_{1}' -f $vendor, $product
-$devices = @(Get-CimInstance -ClassName Win32_PnPEntity `
+$interfacePattern = "$prefix&MI_*\*"
+$matchingDevices = @(Get-CimInstance -ClassName Win32_PnPEntity `
     -Filter 'Present = TRUE' `
     -Property PNPDeviceID,PNPClass,CompatibleID,ConfigManagerErrorCode |
-    Where-Object { $_.PNPDeviceID -like "$prefix\*" -or $_.PNPDeviceID -like "$prefix&MI_*\*" } |
-    Select-Object PNPDeviceID,PNPClass,CompatibleID,ConfigManagerErrorCode)
+    Where-Object { $_.PNPDeviceID -like "$prefix\*" -or $_.PNPDeviceID -like $interfacePattern })
+$parents = @{}
+foreach ($device in $matchingDevices) {
+    if ($device.PNPDeviceID -notlike $interfacePattern) { continue }
+    # A device can vanish between enumeration and the property lookup.
+    $result = Invoke-CimMethod -InputObject $device -MethodName GetDeviceProperties `
+        -Arguments @{ devicePropertyKeys = [string[]]@('DEVPKEY_Device_Parent') } `
+        -ErrorAction SilentlyContinue
+    if ($result.ReturnValue -eq 0 -and $result.deviceProperties) {
+        $parents[$device.PNPDeviceID] = $result.deviceProperties[0].Data
+    }
+}
+$devices = @($matchingDevices | Select-Object PNPDeviceID,PNPClass,CompatibleID,ConfigManagerErrorCode,
+    @{Name = 'ParentInstanceId'; Expression = { $parents[$_.PNPDeviceID] }})
 ConvertTo-Json -InputObject $devices -Compress
 """
 
@@ -63,13 +76,7 @@ def classify(devices, usb_id):
         re.IGNORECASE,
     )
     parents = {}
-    usb_nodes = 0
-    wpd_nodes = 0
-    mtp_advertised = False
-    healthy_wpd = False
-    healthy_mtp = False
-    problem_codes = set()
-
+    matching_nodes = []
     if not isinstance(devices, list):
         raise ProbeError("Windows returned an invalid device list.")
     for device in devices:
@@ -81,20 +88,35 @@ def classify(devices, usb_id):
             continue
         device_class = device.get("PNPClass")
         problem = device.get("ConfigManagerErrorCode")
+        usb_parent = device.get("ParentInstanceId")
         compatible = device.get("CompatibleID")
         if compatible is None:
             compatible = []
         if (
             (device_class is not None and not isinstance(device_class, str))
             or (problem is not None and (type(problem) is not int or not 0 <= problem <= 0xFFFFFFFF))
+            or (usb_parent is not None and not isinstance(usb_parent, str))
             or not isinstance(compatible, list)
             or not all(isinstance(value, str) for value in compatible)
         ):
             raise ProbeError("Windows returned invalid USB driver data.")
 
-        usb_nodes += 1
         if match.group("interface") is None:
-            parents[instance_id.casefold()] = problem
+            owner_id = instance_id.casefold()
+            parents[owner_id] = problem
+        else:
+            owner_id = usb_parent.casefold() if usb_parent else None
+        matching_nodes.append((owner_id, device_class, problem, compatible))
+
+    wpd_nodes = 0
+    mtp_advertised = False
+    healthy_wpd = False
+    healthy_mtp = False
+    problem_codes = set()
+    for owner_id, device_class, problem, compatible in matching_nodes:
+        # Preserve diagnostics when Windows sees only interface rows.
+        if parents and owner_id not in parents:
+            continue
         if problem:
             problem_codes.add(problem)
 
@@ -107,7 +129,7 @@ def classify(devices, usb_id):
 
     parent_id = next(iter(parents)) if len(parents) == 1 else None
     healthy_endpoint = healthy_mtp if mtp_advertised else healthy_wpd
-    if usb_nodes == 0:
+    if not matching_nodes:
         state = "not_present"
     elif len(parents) > 1:
         state = "ambiguous"
@@ -117,7 +139,7 @@ def classify(devices, usb_id):
         state = "driver_problem"
     else:
         state = "usb_only"
-    return Snapshot(state, usb_nodes, wpd_nodes, mtp_advertised, tuple(sorted(problem_codes)), parent_id)
+    return Snapshot(state, len(matching_nodes), wpd_nodes, mtp_advertised, tuple(sorted(problem_codes)), parent_id)
 
 
 def read_windows(usb_id, timeout=QUERY_TIMEOUT):
