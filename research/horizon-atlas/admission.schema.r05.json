@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EXODUS Horizon capability admission record",
+  "type": "object",
+  "required": [
+    "id",
+    "evidence",
+    "context",
+    "firmware",
+    "permissions",
+    "effects",
+    "policy",
+    "verification"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "revision",
+          "path",
+          "line"
+        ],
+        "properties": {
+          "revision": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "required": [
+        "applet",
+        "application",
+        "sysmodule"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "applet": {
+          "enum": [
+            "unknown",
+            "denied",
+            "observed_allowed",
+            "not_applicable"
+          ]
+        },
+        "application": {
+          "enum": [
+            "unknown",
+            "denied",
+            "observed_allowed",
+            "not_applicable"
+          ]
+        },
+        "sysmodule": {
+          "enum": [
+            "unknown",
+            "denied",
+            "observed_allowed",
+            "not_applicable"
+          ]
+        }
+      }
+    },
+    "firmware": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "unknown",
+            "source_condition",
+            "device_verified"
+          ]
+        },
+        "min": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "required": [
+        "svc_acl",
+        "service_acl",
+        "filesystem_acl",
+        "object_scope"
+      ],
+      "properties": {
+        "svc_acl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "service_acl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "filesystem_acl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "object_scope": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "effects": {
+      "enum": [
+        "unknown",
+        "read_only",
+        "handle_acquisition",
+        "local_mutation",
+        "external_network",
+        "privileged",
+        "restricted"
+      ]
+    },
+    "policy": {
+      "enum": [
+        "inventory_only",
+        "denied",
+        "review_required",
+        "admitted"
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "host",
+        "native_build",
+        "device",
+        "safe_mode"
+      ],
+      "properties": {
+        "host": {
+          "enum": [
+            "not_tested",
+            "pass",
+            "fail"
+          ]
+        },
+        "native_build": {
+          "enum": [
+            "not_tested",
+            "pass",
+            "fail"
+          ]
+        },
+        "device": {
+          "enum": [
+            "not_tested",
+            "pass",
+            "fail"
+          ]
+        },
+        "safe_mode": {
+          "enum": [
+            "not_tested",
+            "pass",
+            "fail"
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "policy": {
+            "const": "admitted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "effects": {
+            "enum": [
+              "read_only",
+              "handle_acquisition",
+              "local_mutation",
+              "external_network"
+            ]
+          },
+          "firmware": {
+            "properties": {
+              "status": {
+                "const": "device_verified"
+              }
+            }
+          },
+          "verification": {
+            "properties": {
+              "host": {
+                "const": "pass"
+              },
+              "native_build": {
+                "const": "pass"
+              },
+              "device": {
+                "const": "pass"
+              },
+              "safe_mode": {
+                "const": "pass"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
