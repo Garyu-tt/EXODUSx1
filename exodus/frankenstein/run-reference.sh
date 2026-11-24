@@ -113,6 +113,7 @@ grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
 case "$mode" in
     graphics) files="wayland.pkg gamescope.pkg dependencies.txt" ;;
     native) files="exodus-native.tar.gz dependencies.txt" ;;
+    rcresident) files="tumor-resident-reference.tar.gz dependencies.txt" ;;
     *) exit 0 ;;
 esac
 mkdir extracted
