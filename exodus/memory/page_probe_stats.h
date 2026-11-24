@@ -9,6 +9,7 @@ struct exodus_probe_stats {
     uint64_t sparse_pages;
     uint64_t payload_bytes;
     size_t trailing_bytes;
+    uint64_t word_run_pages;
 };
 
 enum exodus_probe_result {
@@ -20,6 +21,7 @@ enum exodus_probe_result {
 
 /* Update a zero-initialized or ongoing measurement only after exact recovery. */
 bool exodus_probe_page(const uint8_t *page, struct exodus_probe_stats *stats);
+bool exodus_probe_adaptive_page(const uint8_t *page, struct exodus_probe_stats *stats);
 
 /* Consume at most max_pages (positive). Call again only after EXODUS_PROBE_MORE.
  * At EOF a final partial page is counted as raw payload. */
