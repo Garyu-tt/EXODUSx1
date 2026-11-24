@@ -176,6 +176,12 @@ def prepare(donor, out):
     dst = out / jobs
     with dst.open("ab") as f:
         f.write(b'\n#if !JOBS\nint fgcmd(int argc, char **argv) { (void)argc; (void)argv; errorwithstatus(125, "job control unavailable on Horizon"); }\nint bgcmd(int argc, char **argv) { (void)argc; (void)argv; errorwithstatus(125, "job control unavailable on Horizon"); }\n#endif\n')
+    # Single invocation from libnx console; retain the donor's exit/trap
+    # sequence but display the actual result before returning to hbmenu.
+    replace("bin/sh/main.c", b"main(int argc, char *argv[])",
+            b"nxbsd_shell_main(int argc, char *argv[])")
+    replace("bin/sh/trap.c", b"\t_exit(exiting_exitstatus);",
+            b"\t{ extern void nxbsd_horizon_finish(int) __attribute__((noreturn));\n\t  nxbsd_horizon_finish(exiting_exitstatus); }")
     # Explicit virtual path policy; not a claim that PATH executables work.
     replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
     replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
