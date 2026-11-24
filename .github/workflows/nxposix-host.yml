@@ -1,0 +1,29 @@
+name: NX-POSIX host tests
+
+on:
+  pull_request:
+    paths:
+      - "exodus/nxposix/**"
+      - ".github/workflows/nxposix-host.yml"
+  push:
+    branches: [main]
+    paths:
+      - "exodus/nxposix/**"
+      - ".github/workflows/nxposix-host.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run host tests
+        env:
+          CC: ${{ matrix.compiler }}
+        run: make -C exodus/nxposix clean test
