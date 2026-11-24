@@ -1,0 +1,22 @@
+name: NX-POSIX TCP smoke
+on:
+  pull_request:
+    paths:
+      - 'exodus/nxposix/**'
+      - '.github/workflows/nxposix-tcp-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tcp-loopback:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run TCP smoke
+        working-directory: exodus/nxposix
+        run: |
+          ${{ matrix.cc }} -std=c99 -Wall -Wextra -Werror -O2 -fsanitize=undefined reactor.c tcp_smoke.c -o /tmp/nxposix-tcp-smoke
+          timeout 15s /tmp/nxposix-tcp-smoke
