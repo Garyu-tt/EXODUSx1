@@ -23,6 +23,7 @@ jobs:
           sparse-checkout: |
             bin/sh
             lib/libedit
+            contrib/libedit
           persist-credentials: false
       - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-a"
       - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-b"
@@ -32,6 +33,13 @@ jobs:
           for mode in -fsigned-char -funsigned-char; do
             cc -std=gnu11 "$mode" -I donor-freebsd/bin/sh -I "$RUNNER_TEMP/grammar-a" -c "$RUNNER_TEMP/grammar-a/syntax.c" -o "$RUNNER_TEMP/syntax.o"
           done
+      - name: Compile original FreeBSD parser to a host object (no link)
+        run: |
+          cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+            -include exodus/terminal/freebsd_parser_host.h \
+            -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+            -I "$RUNNER_TEMP/grammar-a" \
+            -c donor-freebsd/bin/sh/parser.c -o "$RUNNER_TEMP/parser.o"
       - uses: actions/upload-artifact@v4
         with:
           name: freebsd-sh-grammar
