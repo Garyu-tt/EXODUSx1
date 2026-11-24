@@ -259,6 +259,7 @@ coldboot_start() (
     }
     trap finish_cold EXIT
     echo EXODUS_RC_COLD_BOOT_BEGIN
+    test "$(sysrc -n nuageinit_enable)" = NO
     proof=/var/db/tumor-reference-coldboot
     work=$(cat "$proof/work")
     before=$(cat "$proof/boot-before")
@@ -304,6 +305,12 @@ COLD
 chmod 555 /usr/local/etc/rc.d/tumor_reference_coldboot
 sh -n /usr/local/etc/rc.d/tumor_reference_coldboot
 sysrc tumor_reference_coldboot_enable=YES
+# FreeBSD CI images can retain the firstboot flag when user-data powers
+# off before rc completes. Both nuageinit rc scripts share this rcvar.
+# The second boot must not replay cached provisioning or require a seed.
+sysrc nuageinit_enable=NO
+test "$(sysrc -n nuageinit_enable)" = NO
+echo EXODUS_RC_PROVISIONING_DISABLED
 rcorder /etc/rc.d/* /usr/local/etc/rc.d/* > "$src/cold-rcorder.txt"
 awk '
 /\/tumor_reference_session$/ { session=NR }
