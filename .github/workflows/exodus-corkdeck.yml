@@ -80,7 +80,7 @@ jobs:
       - name: Publish experimental NRO
         uses: actions/upload-artifact@v4
         with:
-          name: exodus-shell-r14-switch-arm64
+          name: exodus-shell-r15-switch-arm64
           path: |
             /tmp/exodus-build/exodus-shell.nro
             /tmp/exodus-build/SHA256SUMS
@@ -97,9 +97,9 @@ jobs:
       matrix:
         include:
           - tool: terminal
-            revision: 9dd382c56259447cd86fff0f38da063de9e25f30
+            revision: ba0345fa5d26b98a3f5fca71e37375ada21b5127
           - tool: ssh
-            revision: 8021faf0c02e6411c2c4b8d8d162a584291690ac
+            revision: 966ad2d7b3cdb069f667df790e253b8c82d34230
     steps:
       - uses: actions/checkout@v6
         with:
