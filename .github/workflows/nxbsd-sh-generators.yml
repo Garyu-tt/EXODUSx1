@@ -52,6 +52,26 @@ jobs:
         run: |
           nm -u "$RUNNER_TEMP/parser.o" > "$RUNNER_TEMP/grammar-a/parser-undefined.txt"
           nm -u "$RUNNER_TEMP/eval.o" > "$RUNNER_TEMP/grammar-a/eval-undefined.txt"
+      - name: Compile BSD support modules and partially link shell core
+        run: |
+          mkdir "$RUNNER_TEMP/core"
+          for module in memalloc mystring alias output var expand; do
+            cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "donor-freebsd/bin/sh/$module.c" -o "$RUNNER_TEMP/core/$module.o"
+          done
+          for module in nodes builtins; do
+            cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I "$RUNNER_TEMP/grammar-a" \
+              -c "$RUNNER_TEMP/grammar-a/$module.c" -o "$RUNNER_TEMP/core/$module.o"
+          done
+          cc -r "$RUNNER_TEMP/parser.o" "$RUNNER_TEMP/eval.o" "$RUNNER_TEMP/syntax.o" "$RUNNER_TEMP/core/"*.o -o "$RUNNER_TEMP/shell-core.o"
+          nm -u "$RUNNER_TEMP/shell-core.o" > "$RUNNER_TEMP/grammar-a/core-undefined.txt"
+          nm --defined-only "$RUNNER_TEMP/shell-core.o" > "$RUNNER_TEMP/grammar-a/core-defined.txt"
+          test -s "$RUNNER_TEMP/grammar-a/core-defined.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: freebsd-sh-grammar
