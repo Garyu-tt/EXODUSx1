@@ -3,13 +3,24 @@
 #include "../ulaunch/catalog.hpp"
 #include <new>
 #include <utility>
+#ifdef __SWITCH__
+#include "live_inventory.hpp"
+#endif
 using namespace exodus::home;
 struct exodus_library { Catalog catalog; };
 extern "C" {
 struct exodus_library *exodus_library_open(const char *path)
 {
     if (!path) return nullptr;
-    try { return new exodus_library{ReadCatalog(path)}; }
+    try {
+        auto catalog = ReadCatalog(path);
+#ifdef __SWITCH__
+        if (catalog.status == CatalogStatus::Unavailable &&
+            std::string_view(path) == "sdmc:/ulaunch/exodus-catalog.json")
+            catalog = exodus_live_inventory();
+#endif
+        return new exodus_library{std::move(catalog)};
+    }
     catch (...) { return nullptr; }
 }
 void exodus_library_close(struct exodus_library *library) { delete library; }
