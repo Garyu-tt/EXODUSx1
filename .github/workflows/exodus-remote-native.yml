@@ -12,13 +12,13 @@ jobs:
   native:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    container: devkitpro/devkita64:latest
+    container: devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
       - name: Install target SDK and crypto
-        run: dkp-pacman -Syu --noconfirm --needed switch-dev switch-openssl
+        run: dkp-pacman -Syu --noconfirm --needed switch-dev switch-mbedtls
       - name: Record SDK and build
         run: |
           git rev-parse HEAD
