@@ -12,6 +12,7 @@ case "$mode" in
     boot) guest=guest-boot.sh; gate=EXODUS_FREEBSD_BOOT_PASS ;;
     native) guest=guest-native.sh; gate=EXODUS_NATIVE_DBUS_PASS ;;
     linuxabi) guest=guest-linuxabi.sh; gate=EXODUS_LINUX_ABI_REFERENCE_PASS ;;
+    linuxabi) guest=guest-linuxabi.sh; gate=EXODUS_LINUX_ABI_REFERENCE_PASS ;;
     *) echo "Unknown reference mode" >&2; exit 2 ;;
 esac
 work=$(mktemp -d)
@@ -47,6 +48,11 @@ if [ "$mode" = native ]; then
         mcopy -i seed.img "$here/$f" ::
     done
 fi
+if [ "$mode" = linuxabi ]; then
+    cc -march=armv8-a -nostdlib -static -no-pie "$here/linux-abi-probe.S" -o linux-armv8
+    cc -march=armv8.1-a+lse -DTEST_LSE -nostdlib -static -no-pie "$here/linux-abi-probe.S" -o linux-lse
+    mcopy -i seed.img linux-armv8 linux-lse ::
+fi
 # Emulate the Tegra CPU ISA baseline; no KVM/host CPU assumption.
 efi=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
 test -f "$efi"
@@ -56,6 +62,7 @@ limit=145m
 [ "$mode" != ssh ] || limit=65m
 [ "$mode" != native ] || limit=65m
 [ "$mode" != boot ] || limit=12m
+[ "$mode" != linuxabi ] || limit=12m
 [ "$mode" != linuxabi ] || limit=12m
 # Stream serial evidence even if the guest never reaches the build script.
 # Preserve QEMU/timeout status independently of log forwarding.
