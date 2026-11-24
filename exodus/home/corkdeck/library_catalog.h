@@ -10,6 +10,7 @@ struct exodus_library;
 struct exodus_library *exodus_library_open(const char *path);
 /* Optional read-only Games inventory, entries remain nonlaunchable Other. */
 struct exodus_library *exodus_library_open_with_games(const char *path, const char *root);
+const char *exodus_library_native_inventory_status(const struct exodus_library *library);
 const char *exodus_library_discovery_status(const struct exodus_library *library);
 /* Read-only on-demand Horizon metadata for registered title candidates. */
 int exodus_library_native_detail(const struct exodus_library *library, size_t index, char *out, size_t cap);
