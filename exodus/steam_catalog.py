@@ -11,8 +11,15 @@ import sys
 TOKEN = re.compile(r'\s+|//[^\n]*|"(?:\\.|[^"\\])*"|[{}]|[^\s{}"]+|.', re.DOTALL)
 MANIFEST = re.compile(r"appmanifest_([0-9]+)\.acf", re.IGNORECASE | re.ASCII)
 MAX_MANIFEST_BYTES = 16 * 1024 * 1024
+# Keep produced snapshots within the limits of the HOME catalog reader.
+MAX_CATALOG_BYTES = 2 * 1024 * 1024
+MAX_CATALOG_ENTRIES = 4096
 FULLY_INSTALLED = 4
 STATE_PRIORITY = {"unknown": 0, "not_fully_installed": 1, "reported_installed": 2}
+
+
+class CatalogLimitError(ValueError):
+    """A catalog cannot fit in the HOME reader's entry or byte budget."""
 
 
 def token_text(token):
@@ -194,11 +201,34 @@ def scan_libraries(libraries, *, steam_installs=()):
     return [entries[k] for k in sorted(entries, key=int)], errors
 
 
-def write_catalog(entries, stream=None):
-    stream = sys.stdout if stream is None else stream
+def serialize_catalog(entries):
+    """Return bounded ASCII JSON with LF line endings, before touching output."""
+    if len(entries) > MAX_CATALOG_ENTRIES:
+        raise CatalogLimitError("Combined library exceeds the HOME catalog entry limit.")
     catalog = {"schema_version": 1, "entries": entries}
-    json.dump(catalog, stream, ensure_ascii=True, indent=2)
-    stream.write("\n")
+    chunks = []
+    size = 1  # The final LF is part of the serialized document.
+    for chunk in json.JSONEncoder(ensure_ascii=True, indent=2).iterencode(catalog):
+        # ASCII escaping makes the character and byte counts identical.
+        size += len(chunk)
+        if size > MAX_CATALOG_BYTES:
+            raise CatalogLimitError("Combined library exceeds the HOME catalog size limit.")
+        chunks.append(chunk)
+    return ("".join(chunks) + "\n").encode("ascii")
+
+
+def write_catalog(entries, stream=None):
+    data = serialize_catalog(entries)
+    if stream is None:
+        stream = sys.stdout
+        binary = getattr(stream, "buffer", None)
+        if binary is not None:
+            # Windows text-mode CRLF expansion must not exceed the checked budget.
+            stream.flush()
+            binary.write(data)
+            return
+    # Preserve text-stream callers, including redirected in-memory stdout.
+    stream.write(data.decode("ascii"))
 
 
 def main():
@@ -213,7 +243,11 @@ def main():
     if not args.libraries and not args.steam_install:
         parser.error("supply at least one LIBRARY or --steam-install")
     entries, errors = scan_libraries(args.libraries, steam_installs=args.steam_install)
-    write_catalog(entries)
+    try:
+        write_catalog(entries)
+    except CatalogLimitError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     return int(errors)
 
 
