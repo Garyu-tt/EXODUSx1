@@ -141,7 +141,8 @@
       "state": "closed-binary-unverified",
       "depends": [
         "gamescope",
-        "pipewire"
+        "pipewire",
+        "linux-arm64-abi"
       ]
     },
     {
@@ -176,13 +177,14 @@
     {
       "id": "resident-service",
       "origin": "exodus/frankenstein/sessiond.c",
-      "state": "linux-amd64-arm64-tested",
+      "state": "freebsd-compiled-runtime-test-failed",
       "depends": [
         "kernel"
       ],
       "evidence": {
-        "run": 45495521234,
-        "scope": "Linux tests only"
+        "run": 45498059941,
+        "job": 138813713487,
+        "scope": "Both native FreeBSD ELF executables compiled, but POSIX signal reload timed out; earlier Linux tests passed."
       }
     },
     {
@@ -196,13 +198,14 @@
     {
       "id": "manager-dbus",
       "origin": "exodus/frankenstein/sessiond-dbus.inc",
-      "state": "linux-amd64-arm64-tested",
+      "state": "freebsd-compiled-runtime-pending",
       "depends": [
         "resident-service"
       ],
       "evidence": {
-        "run": 45496077072,
-        "scope": "Linux private bus, no actual graphical switching"
+        "run": 45498059941,
+        "job": 138813713487,
+        "scope": "FreeBSD native compilation verified; D-Bus runtime not reached; earlier Linux tests passed."
       }
     },
     {
@@ -227,6 +230,14 @@
       "state": "needs-hardware-proof",
       "depends": [
         "dual-kernel"
+      ]
+    },
+    {
+      "id": "linux-arm64-abi",
+      "origin": "freebsd/freebsd-src@releng/15.1:sys/arm64/linux",
+      "state": "probe-pending",
+      "depends": [
+        "kernel"
       ]
     }
   ],
