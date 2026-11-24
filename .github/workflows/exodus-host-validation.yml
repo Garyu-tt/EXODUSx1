@@ -9,6 +9,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -29,6 +33,19 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -B -m unittest discover -v
+      - name: Test the memory probe with MSVC
+        if: runner.os == 'Windows' && matrix.python == '3.12'
+        working-directory: exodus/memory
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installation) { throw 'The MSVC x64 build tools are unavailable' }
+          $devShell = Join-Path $installation 'Common7\Tools\Launch-VsDevShell.ps1'
+          & $devShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          cl /nologo /W4 /WX /TC /Fe:page_probe.exe page_probe.c page_probe_stats.c page_codec.c
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B test_probe.py ./page_probe.exe
 
   memory:
     name: Memory codec and probe

@@ -5,7 +5,6 @@ from concurrent.futures import Future
 from datetime import datetime, timezone
 from http.client import HTTPException
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from io import StringIO
 import json
 import os
 from pathlib import Path
@@ -20,7 +19,13 @@ from urllib.parse import parse_qsl, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import webbrowser
 
-from .steam_catalog import steam_entry, write_catalog
+from .steam_catalog import (
+    CatalogLimitError,
+    MAX_CATALOG_BYTES,
+    MAX_CATALOG_ENTRIES,
+    serialize_catalog,
+    steam_entry,
+)
 
 
 OPENID_PROVIDER = "https://steamcommunity.com/openid/login"
@@ -30,8 +35,6 @@ STEAM_ID = re.compile(r"https?://steamcommunity\.com/openid/id/([1-9][0-9]{0,19}
 KEY_ENV = "STEAM_WEB_API_KEY"
 MAX_CALLBACK_BYTES = 8192
 MAX_ASSERTION_AGE = 300
-MAX_CATALOG_BYTES = 2 * 1024 * 1024
-MAX_CATALOG_ENTRIES = 4096
 REQUIRED_SIGNATURE_FIELDS = {
     "op_endpoint", "claimed_id", "identity", "return_to", "response_nonce", "assoc_handle",
 }
@@ -333,13 +336,10 @@ def read_base_catalog(path):
 
 
 def save_catalog(path, entries):
-    if len(entries) > MAX_CATALOG_ENTRIES:
-        raise SteamSyncError("Combined library exceeds the HOME catalog entry limit.")
-    stream = StringIO()
-    write_catalog(entries, stream)
-    data = stream.getvalue().encode("ascii")
-    if len(data) > MAX_CATALOG_BYTES:
-        raise SteamSyncError("Combined library exceeds the HOME catalog size limit.")
+    try:
+        data = serialize_catalog(entries)
+    except CatalogLimitError as exc:
+        raise SteamSyncError(str(exc)) from None
 
     staged = None
     try:
