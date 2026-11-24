@@ -25,6 +25,7 @@ export ASSUME_ALWAYS_YES=yes
 pkg bootstrap -y
 pkg update -f
 pkg -vv
+pkg info
 # A real source build (not merely installation of a precompiled Wayland).
 pkg install -y git-lite meson ninja pkgconf expat libffi libxml2
 git init /usr/ports
@@ -42,3 +43,20 @@ done
 make -C /usr/ports/graphics/wayland BATCH=yes USE_PACKAGE_DEPENDS=yes package
 make -C /usr/ports/graphics/wayland -V PKGFILE
 echo EXODUS_WAYLAND_SOURCE_BUILD_PASS
+# Run an actual Valve Gamescope source package build against the BSD port.
+# Dependencies may be installed from the binary repository; the target may not.
+echo EXODUS_GAMESCOPE_BEGIN
+port=/usr/ports/x11-wm/gamescope
+test -z "$(make -C "$port" -V IGNORE)"
+make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes all-depends-list
+make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes checksum
+make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes package
+package=$(make -C "$port" -V PKGFILE)
+test -s "$package"
+sha256 "$package"
+pkg add -f "$package"
+pkg info -d gamescope
+file /usr/local/bin/gamescope
+/usr/local/bin/gamescope --help
+pkg info
+echo EXODUS_GAMESCOPE_SOURCE_BUILD_PASS
