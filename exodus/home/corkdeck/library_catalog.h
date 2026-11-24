@@ -11,6 +11,8 @@ struct exodus_library *exodus_library_open(const char *path);
 /* Optional read-only Games inventory, entries remain nonlaunchable Other. */
 struct exodus_library *exodus_library_open_with_games(const char *path, const char *root);
 const char *exodus_library_discovery_status(const struct exodus_library *library);
+/* Probe selected discovered NSP directory; never authorizes launch. */
+int exodus_library_archive_detail(const struct exodus_library *library, size_t index, char *out, size_t cap);
 void exodus_library_close(struct exodus_library *library);
 const char *exodus_library_status(const struct exodus_library *library);
 size_t exodus_library_count(const struct exodus_library *library);
