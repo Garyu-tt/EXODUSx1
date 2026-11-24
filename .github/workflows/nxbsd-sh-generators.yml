@@ -158,11 +158,12 @@ jobs:
           sudo apt-get install -y --no-install-recommends libbsd-dev libedit-dev
       - name: Compile original FreeBSD history and line editing
         run: |
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module histedit --out "$RUNNER_TEMP/histedit-host.c"
           cc -std=gnu11 -funsigned-char -DSHELL -Werror=implicit-function-declaration \
             -include exodus/terminal/freebsd_parser_host.h \
             -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
             -I "$RUNNER_TEMP/grammar-a" \
-            -c donor-freebsd/bin/sh/histedit.c -o "$RUNNER_TEMP/histedit.o"
+            -c "$RUNNER_TEMP/histedit-host.c" -o "$RUNNER_TEMP/histedit.o"
       - name: Link host FreeBSD sh reference executable
         run: |
           cc "$RUNNER_TEMP/shell-tools.o" "$RUNNER_TEMP/histedit.o" -ledit -lbsd -o "$RUNNER_TEMP/nxbsd-sh"
