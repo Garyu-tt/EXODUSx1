@@ -23,6 +23,10 @@ jobs:
             history_flags: "-DNO_HISTORY"
             runner: ubuntu-24.04
             arch: x86_64
+          - profile: bridge
+            history_flags: "-DNO_HISTORY -DNXBSD_AST_BRIDGE"
+            runner: ubuntu-24.04
+            arch: x86_64
           - profile: headless
             history_flags: "-DNO_HISTORY"
             runner: ubuntu-24.04-arm
@@ -64,11 +68,16 @@ jobs:
             -c donor-freebsd/bin/sh/parser.c -o "$RUNNER_TEMP/parser.o"
       - name: Compile original FreeBSD evaluator to a host object (no link)
         run: |
+          source=donor-freebsd/bin/sh/eval.c
+          if [ "${{ matrix.profile }}" = bridge ]; then
+            python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module evalbridge --out "$RUNNER_TEMP/eval-bridge.c"
+            source="$RUNNER_TEMP/eval-bridge.c"
+          fi
           cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
             -include exodus/terminal/freebsd_parser_host.h \
             -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
             -I "$RUNNER_TEMP/grammar-a" \
-            -c donor-freebsd/bin/sh/eval.c -o "$RUNNER_TEMP/eval.o"
+            -c "$source" -o "$RUNNER_TEMP/eval.o"
       - name: Inventory unresolved parser and evaluator symbols
         run: |
           nm -u "$RUNNER_TEMP/parser.o" > "$RUNNER_TEMP/grammar-a/parser-undefined.txt"
@@ -186,12 +195,20 @@ jobs:
         run: |
           edit_lib=()
           if [ "${{ matrix.profile }}" = full ]; then edit_lib=(-ledit); fi
-          cc "$RUNNER_TEMP/shell-tools.o" "$RUNNER_TEMP/histedit.o" "${edit_lib[@]}" -lbsd -o "$RUNNER_TEMP/nxbsd-sh"
+          bridge=()
+          if [ "${{ matrix.profile }}" = bridge ]; then
+            bridge=(-pthread -I"$RUNNER_TEMP/grammar-a" exodus/terminal/nxbsd_ast_bridge.c exodus/terminal/nxbsd_pipe.c exodus/terminal/nxbsd_fd.c exodus/terminal/nxbsd_context.c exodus/terminal/nxbsd_task.c exodus/terminal/nxbsd_pipeline.c exodus/terminal/nxbsd_commands.c)
+          fi
+          cc "$RUNNER_TEMP/shell-tools.o" "$RUNNER_TEMP/histedit.o" "${bridge[@]}" "${edit_lib[@]}" -lbsd -o "$RUNNER_TEMP/nxbsd-sh"
           file "$RUNNER_TEMP/nxbsd-sh"
           test "$(uname -m)" = "${{ matrix.arch }}"
           readelf -h "$RUNNER_TEMP/nxbsd-sh" | tee "$RUNNER_TEMP/grammar-a/elf-header.txt"
           ldd "$RUNNER_TEMP/nxbsd-sh"
-          python3 exodus/terminal/test_freebsd_shell_host.py "$RUNNER_TEMP/nxbsd-sh"
+          if [ "${{ matrix.profile }}" = bridge ]; then
+            python3 exodus/terminal/test_nxbsd_ast_bridge.py "$RUNNER_TEMP/nxbsd-sh"
+          else
+            python3 exodus/terminal/test_freebsd_shell_host.py "$RUNNER_TEMP/nxbsd-sh"
+          fi
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
