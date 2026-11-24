@@ -30,6 +30,7 @@ namespace exodus::home {
                 case Provider::Steam: return "exodus_catalog_steam";
                 case Provider::Switch: return "exodus_catalog_switch";
                 case Provider::Homebrew: return "exodus_catalog_homebrew";
+                case Provider::CorkDeck: return "CorkDeck";
                 case Provider::Other: return "exodus_catalog_other";
             }
             return "exodus_catalog_other";

@@ -79,6 +79,8 @@ namespace exodus::home {
                 return Provider::Switch;
             if (id == "switch_homebrew")
                 return Provider::Homebrew;
+            if (id == "corkdeck")
+                return Provider::CorkDeck;
             return Provider::Other;
         }
 
@@ -151,7 +153,13 @@ namespace exodus::home {
             const auto &name = entry["name"].get_ref<const std::string &>();
             if (id.find('\0') != std::string::npos)
                 return {CatalogStatus::Invalid, {}};
-            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name), id});
+            const auto &art = entry["artwork"];
+            const auto &last = entry["last_played"];
+            std::string artwork = art.is_string() ? art.get<std::string>() : "";
+            if (artwork.find('\0') != std::string::npos)
+                artwork.clear();
+            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name), id,
+                std::move(artwork), last.is_null() ? 0 : last.get<std::uint64_t>()});
         }
         if (normalized_utf8 != nullptr)
             *normalized_utf8 = document.dump();

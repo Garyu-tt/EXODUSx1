@@ -25,6 +25,7 @@ namespace exodus::home {
         Steam,
         Switch,
         Homebrew,
+        CorkDeck,
         Other,
     };
 
@@ -32,6 +33,8 @@ namespace exodus::home {
         Provider provider;
         std::string title;
         std::string id;
+        std::string artwork{};
+        std::uint64_t last_played = 0;
     };
 
     struct Catalog {
