@@ -1,6 +1,8 @@
 #!/bin/sh
 # Reference FreeBSD only. No installation onto Switch or production host.
 set -eu
+# nuageinit inherits the base-system rc PATH, not a login shell PATH.
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 exec >/dev/console 2>&1
 work=
 finish() {

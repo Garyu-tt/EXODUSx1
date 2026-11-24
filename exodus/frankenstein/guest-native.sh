@@ -1,6 +1,8 @@
 #!/bin/sh
 # Run only in disposable FreeBSD ARM64 guest.
 set -eu
+# nuageinit inherits the base-system rc PATH, not a login shell PATH.
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 exec >/dev/console 2>&1
 finish() {
     rc=$?
@@ -34,6 +36,7 @@ export ASSUME_ALWAYS_YES=yes
 pkg bootstrap -y
 pkg update -f
 pkg install -y python3 glib dbus pkgconf
+command -v pkgconf
 cd "$work/src"
 cc -std=c11 -Wall -Wextra -Werror -O2 sessiond.c -o exodus-sessiond
 cc -std=c11 -Wall -Wextra -Werror -O2 -DEXODUS_DBUS sessiond.c $(pkgconf --cflags --libs gio-2.0) -o exodus-sessiond-dbus

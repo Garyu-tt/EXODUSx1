@@ -23,6 +23,8 @@ jobs:
             minutes: 85
           - mode: graphics
             minutes: 165
+          - mode: manager
+            minutes: 165
     timeout-minutes: ${{ matrix.minutes }}
     steps:
       - uses: actions/checkout@v6
@@ -41,6 +43,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frankenstein-artifacts-r09-${{ matrix.mode }}-evidence
+          name: tumor-r12-${{ matrix.mode }}-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn

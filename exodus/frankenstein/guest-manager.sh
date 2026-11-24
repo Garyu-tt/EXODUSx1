@@ -1,6 +1,8 @@
 #!/bin/sh
 # Execute in the disposable FreeBSD guest, never on a real console.
 set -eu
+# nuageinit inherits the base-system rc PATH, not a login shell PATH.
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 exec >/dev/console 2>&1
 finish() {
     rc=$?
@@ -22,6 +24,7 @@ export ASSUME_ALWAYS_YES=yes
 pkg bootstrap -y
 pkg update -f
 pkg install -y git-lite rust pkgconf dbus glib speech-dispatcher
+command -v git rustc cargo
 rustc -Vv
 cargo -V
 pkg info

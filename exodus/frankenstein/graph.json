@@ -108,11 +108,16 @@
     },
     {
       "id": "ssh",
-      "origin": "security/openssh-portable",
-      "state": "source-recipe",
+      "origin": "FreeBSD base OpenSSH",
+      "state": "qemu-arm64-tested",
       "depends": [
         "kernel"
-      ]
+      ],
+      "evidence": {
+        "run": 45496663587,
+        "job": 138808871803,
+        "scope": "FreeBSD ARM64 QEMU loopback inbound authentication, desired mode changes, new-login key revocation; not physical Switch or graphical switching"
+      }
     },
     {
       "id": "steam-utils",

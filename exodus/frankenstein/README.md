@@ -59,3 +59,9 @@ Graphics mode now exports the source-built Wayland and Gamescope packages. Nativ
 ## R10: official track name and evidence graph
 
 Owner terminology: EXODUS Tumor (Опухоль) is the architectural/source-port track. Frankenstein names a separate programming language. Existing branch names, source directory and workflow file paths remain historical identifiers to avoid breaking stacked PRs and in-flight checks. New branch names use tumor. The integration graph now records scoped CI evidence for FreeBSD QEMU boot and Linux service/D-Bus tests; the graph validator checks unique nodes, dependency references, cycles and evidence fields. This is not proof of native FreeBSD application builds or physical Switch support. R08/R09 native jobs were still pending at inspection.
+
+## R12: fix nuageinit PATH and accept native inbound SSH
+
+R08 graphics job 138808871064 failed after successfully installing git-lite, with /var/cache/nuageinit/user_data: git: not found and exit 127. Explicitly include FreeBSD /usr/local/bin and /usr/local/sbin in all package-dependent guest workloads, and check command availability before building. Re-run graphics, manager and native export modes; no successful build claimed until new evidence.
+
+R08 SSH job 138808871803 in run 45496663587 passed EXODUS_SSH_AUTH_PASS, EXODUS_SESSION_INTENT_WITHOUT_REBOOT_PASS, EXODUS_SSH_REVOCATION_PASS, EXODUS_SSH_REFERENCE_PASS, guest exit 0. This establishes native base OpenSSH server on QEMU FreeBSD ARM64 with loopback tests, not external Switch connectivity or actual graphical mode switching. R10 host graph validation completed successfully on both architectures. No console changes.
