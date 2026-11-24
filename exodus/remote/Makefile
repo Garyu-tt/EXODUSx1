@@ -7,14 +7,14 @@ BUILD := build-native
 LIBNX := $(DEVKITPRO)/libnx
 PORTLIBS := $(DEVKITPRO)/portlibs/switch
 ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
-TLS_LIBS ?= -lssl -lcrypto
+TLS_LIBS ?= -lmbedtls -lmbedx509 -lmbedcrypto -lz
 
 all: $(TARGET).nro
 
 $(BUILD):
 	mkdir -p $@
 
-$(BUILD)/$(TARGET).elf: native_smoke.c horizon_provider.h remote_gate.h remote_wire.h remote_tls.h remote_session.h Makefile | $(BUILD)
+$(BUILD)/$(TARGET).elf: native_smoke.c horizon_provider.h remote_gate.h remote_wire.h  Makefile | $(BUILD)
 	$(CC) -std=gnu11 -O2 -Wall -Wextra -Werror $(ARCH) -D__SWITCH__ $(CFLAGS) \
 		-I$(LIBNX)/include -I$(PORTLIBS)/include -specs=$(LIBNX)/switch.specs \
 		$(LDFLAGS) native_smoke.c -L$(PORTLIBS)/lib -L$(LIBNX)/lib $(TLS_LIBS) -lnx -o $@
