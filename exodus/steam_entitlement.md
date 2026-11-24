@@ -8,7 +8,9 @@ Configure `EXODUS_STEAM_PUBLISHER_APP_ID` and `STEAMWORKS_PUBLISHER_KEY` on that
 python -m exodus.steam_entitlement --app-id <publisher-app-id>
 ```
 
-The command writes one JSON object with `appid` and `status`. It exits with status code 0 when Steam provides a definitive license result, 1 when the result is unavailable, and 2 for invalid command-line usage.
+For a known test account, add `--expect-steam-id <expected-steam-id64>` with its canonical positive decimal SteamID64. The command checks that value after Steam OpenID verifies the browser account. Steamworks receives the verified account only after the comparison succeeds. The expected and verified account IDs stay out of the command's results and diagnostics.
+
+The command writes one JSON object with `appid` and `status`. It exits with status code 0 when Steam provides a definitive license result, 1 when the result is unavailable or the account differs, and 2 for invalid command-line usage.
 
 A definitive result requires one explicit `Content-Length` matching the complete HTTP 200 body and a Boolean `ownsapp`. The check reports `ownership_unavailable` for transfer-coded, close-delimited or truncated replies.
 
@@ -19,9 +21,20 @@ A definitive result requires one explicit `Content-Length` matching the complete
 | `unsupported_app` | The requested AppID is outside the host's configured publisher scope. |
 | `publisher_not_configured` | The host needs a valid publisher AppID and key. |
 | `sign_in_unavailable` | Steam identity verification could not complete. |
+| `account_mismatch` | Steam verified a different account from the one expected. The Steamworks ownership request is skipped. |
 | `ownership_unavailable` | Steamworks access, transport or response validation failed. |
 
-The Switch device gateway and HOME catalog retain their current flows. Live acceptance uses an authorized publisher key and test accounts with and without an active license. The host tests use synthetic Steam replies and a loopback OpenID callback.
+## Publisher acceptance
+
+On the secure host, configure an authorized publisher key and choose test accounts with and without an active license for the same AppID. Supply the expected account for each check.
+
+| Expected account and browser choice | JSON status | Exit code |
+| --- | --- | --- |
+| Licensed test account entered and verified | `active_license` | 0 |
+| Unlicensed test account entered and verified | `no_active_license` | 0 |
+| First test account expected and second test account verified | `account_mismatch` | 1 |
+
+The host tests use synthetic Steam replies and a loopback OpenID callback and verify that the mismatch stops at identity verification.
 
 ```sh
 python -B -m unittest tests.test_steam_entitlement
