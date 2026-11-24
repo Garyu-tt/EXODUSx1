@@ -154,5 +154,31 @@ class MtpProbeTests(unittest.TestCase):
         sample.assert_called_with(USB_ID, timeout=4)
 
 
+    def test_observe_cross_port_from_absent(self):
+        other = [node(PARENT + "2"), self.ready[1]]
+        sample = Mock(side_effect=snapshots([], [node(PARENT)], self.ready, [], other))
+        code, report, _ = self.run_probe(sample, "--observe", "5")
+        self.assertEqual(code, 0)
+        events = report["observation"]["events"]
+        self.assertEqual([x["state"] for x in events],
+                         ["not_present", "usb_only", "wpd_ready", "not_present", "wpd_ready"])
+        self.assertTrue(events[-1]["parent_changed"])
+        self.assertEqual([x["elapsed_ms"] for x in events], [0, 1000, 2000, 3000, 4000])
+
+    def test_observe_never_claims_transfer(self):
+        sample = Mock(return_value=snapshots([])[0])
+        code, report, _ = self.run_probe(sample, "--observe", "5")
+        self.assertEqual(code, 0)
+        self.assertEqual(len(report["observation"]["events"]), 1)
+        self.assertEqual(report["initial"]["state"], "not_present")
+
+    def test_observe_timeout_is_incomplete(self):
+        sample = Mock(side_effect=[snapshots([])[0], mtp_probe.ProbeTimeout("timed out")])
+        code, report, _ = self.run_probe(sample, "--observe", "5")
+        self.assertEqual(code, 1)
+        self.assertFalse(report["observation"]["complete"])
+        self.assertEqual(report["observation"]["reason"], "query_timeout")
+
+
 if __name__ == "__main__":
     unittest.main()
