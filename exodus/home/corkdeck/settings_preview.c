@@ -95,9 +95,10 @@ static void show_library(struct ui *ui, const char *path)
                 const char *id = exodus_library_id(library, selection);
                 enum exodus_route route = exodus_route_for(provider, id);
 #ifdef __SWITCH__
-                if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW) {
-                    snprintf(detail, sizeof(detail), "Target: %s\n%s", exodus_route_name(route), id);
-                    if (ui_confirm(ui, exodus_library_title(library, selection), detail, "Launch")) {
+                if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW ||
+                    route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
+                    snprintf(detail, sizeof(detail), "Target: %s\n%.500s", exodus_route_name(route), id);
+                    if (ui_confirm(ui, exodus_library_title(library, selection), detail, route == EXODUS_ROUTE_STEAM ? "Open library" : "Launch")) {
                         if (exodus_launch(route, id, result)) goto done;
                         ui_message(ui, "Launch unavailable", result);
                     }
