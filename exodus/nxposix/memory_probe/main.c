@@ -5,6 +5,27 @@
 #include <switch/kernel/virtmem.h>
 #include <switch/kernel/svc.h>
 
+static void probe_heap_readonly(void *page)
+{
+    volatile uint32_t *word = (volatile uint32_t *)page;
+    Result rc;
+    *word = 0x584F4458u; /* "XODX" sentinel while the page is RW. */
+    rc = svcSetMemoryPermission(page, 0x1000, Perm_R);
+    if (R_FAILED(rc)) {
+        printf("heap RW->R protection unsupported: 0x%08X\n", (unsigned)rc);
+        return;
+    }
+
+    printf("heap page became read-only; sentinel=0x%08X\n", *word);
+    rc = svcSetMemoryPermission(page, 0x1000, Perm_Rw);
+    if (R_FAILED(rc)) {
+        printf("FATAL: failed to restore heap page RW: 0x%08X\n", (unsigned)rc);
+        svcExitProcess();
+    }
+    *word = 0x52575257u;
+    puts("heap page RW restore and write passed");
+}
+
 static void report_region(const char *label, const void *address)
 {
     MemoryInfo info = {0};
@@ -38,7 +59,16 @@ int main(void)
 
     page = aligned_alloc(0x1000, 0x1000);
     if (page) {
+        MemoryInfo info = {0};
+        u32 page_info = 0;
         report_region("aligned heap page", page);
+        if (R_SUCCEEDED(svcQueryMemory(&info, &page_info, (u64)page)) &&
+            info.type == MemType_Heap && info.perm == Perm_Rw &&
+            !(info.attr & (MemAttr_IsBorrowed | MemAttr_IsUncached))) {
+            probe_heap_readonly(page);
+        } else {
+            puts("heap page does not meet safe RW heap probe preconditions");
+        }
         free(page);
     } else {
         puts("aligned_alloc failed");
