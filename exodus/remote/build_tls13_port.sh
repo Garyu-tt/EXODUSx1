@@ -40,10 +40,17 @@ cmake -S . -B build -DCMAKE_SYSTEM_NAME=Generic \
 cmake --build build --parallel 2
 cmake --install build
 lib="$work/install/lib"
+# Mbed TLS exports these third-party targets as PUBLIC dependencies of
+# mbedcrypto. A manual static link must preserve that dependency closure.
+for archive in libmbedtls.a libmbedx509.a libmbedcrypto.a libeverest.a libp256m.a; do
+    test -f "$lib/$archive"
+done
 nx="$DEVKITPRO/libnx"
 "$cc" -std=gnu11 -Wall -Wextra -Werror $arch -D__SWITCH__ \
   -I"$work/install/include" -I"$nx/include" -specs="$nx/switch.specs" \
-  "$src/native_tls13_smoke.c" "$lib/libmbedtls.a" "$lib/libmbedx509.a" "$lib/libmbedcrypto.a" \
+  "$src/native_tls13_smoke.c" -Wl,--start-group \
+  "$lib/libmbedtls.a" "$lib/libmbedx509.a" "$lib/libmbedcrypto.a" \
+  "$lib/libeverest.a" "$lib/libp256m.a" -Wl,--end-group \
   -L"$nx/lib" -lnx -o "$out/exodus-tls13-smoke.elf"
 nacptool --create "EXODUS TLS 1.3 Smoke" "EXODUSx1" "0.3.7" "$out/smoke.nacp"
 elf2nro "$out/exodus-tls13-smoke.elf" "$out/exodus-tls13-smoke.nro" --icon="$nx/default_icon.jpg" --nacp="$out/smoke.nacp"
