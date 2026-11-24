@@ -51,8 +51,26 @@ class BridgeTests(unittest.TestCase):
                 p = self.run_sh(script)
                 self.assertEqual((p.returncode, p.stdout), (125, ""))
 
-    def test_reject_redirect(self):
-        p = self.run_sh("echo hello | cat > out")
+    def test_file_redirects(self):
+        p = self.run_sh('echo hello | cat > out; echo world | cat >> out; cat < out | wc -c')
+        self.assertEqual((p.returncode, p.stdout), (0, "12\n"), p.stderr)
+
+    def test_redirect_order(self):
+        p = self.run_sh('echo hello | cat 3>&1 > out 1>&3')
+        self.assertEqual((p.returncode, p.stdout), (0, "hello\n"), p.stderr)
+        p = self.run_sh('echo hello | cat > out 3>&1 1>&3; cat < out | wc -c')
+        self.assertEqual((p.returncode, p.stdout), (0, "6\n"), p.stderr)
+
+    def test_noclobber(self):
+        p = self.run_sh('echo old | cat > out; set -C; echo new | cat > out; echo $?; cat < out | wc -c')
+        self.assertEqual((p.returncode, p.stdout), (0, "1\n4\n"), p.stderr)
+
+    def test_pipefail(self):
+        p = self.run_sh('set -o pipefail; false | true')
+        self.assertEqual(p.returncode, 1)
+
+    def test_reject_unsupported_redirect(self):
+        p = self.run_sh('echo hello | cat <<EOF\nbad\nEOF\n')
         self.assertEqual((p.returncode, p.stdout), (125, ""))
 
     def test_reject_background(self):
