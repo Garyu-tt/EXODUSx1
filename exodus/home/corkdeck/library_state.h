@@ -28,7 +28,8 @@ static inline void exodus_state_clear(struct exodus_state *s)
 }
 static inline int exodus_state_key(const char *p,const char *id)
 {
-    return p && id && *p && *id && strlen(p)<16 && strlen(id)<=EXODUS_STATE_ID_MAX;
+    return p && id && *id && strlen(id)<=EXODUS_STATE_ID_MAX &&
+        (!strcmp(p,"Switch") || !strcmp(p,"Homebrew") || !strcmp(p,"Steam") || !strcmp(p,"CorkDeck"));
 }
 static inline struct exodus_state_row *exodus_state_find(const struct exodus_state *s,const char *p,const char *id)
 {
