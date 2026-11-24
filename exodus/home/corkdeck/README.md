@@ -183,3 +183,7 @@ Operator photos show R12 on Switch Lite: 18 library entries (registered Switch t
 The R13 UI tries existing permitted SD artwork first, then reads the selected visible Switch title's JPEG from NS application control data. Bounds are checked against the actual returned size and the icon field; the donor image decoder and eight-entry thumbnail cache are reused. No downloads, icon file writes or changes to title data. Native service and decoding failures keep the text card. Selected titles now use stable ellipsizing rather than scrolling. Homebrew NRO embedded artwork is not yet read. NS reads and decode are synchronous on page changes; measure latency on hardware.
 
 R12 follow-up CI 45486046365 succeeded in host, native, terminal and SSH jobs. SSH artifact 14963762508 is available, not yet installed or exercised on hardware. R13 requires separate CI and physical acceptance.
+
+## R14: Homebrew embedded icons
+
+R13 CI 45487610132 passed host, native, terminal and SSH. R14 extends the eight visible card cache to Homebrew NRO icons, reading the ASET version-0 header only after the existing NRO structure check, limiting encoded image size to 128 KiB, checking offsets against the actual file size, and decoding with the existing image decoder. No NRO execution, extraction to SD, or network calls. Missing or invalid artwork retains a text card. A portable range test covers malformed offsets, version, truncation and excessive lengths; CI and hardware validation are pending. No changes to the console in this revision.
