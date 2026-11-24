@@ -14,6 +14,7 @@ case "$mode" in
     linuxabi) guest=guest-linuxabi.sh; gate=EXODUS_LINUX_ABI_REFERENCE_PASS ;;
     linuxdynamic) guest=guest-linuxdynamic.sh; gate=EXODUS_LINUX_DYNAMIC_PASS ;;
     resident) guest=guest-resident.sh; gate=EXODUS_RESIDENT_SSH_DBUS_PASS ;;
+    rcresident) guest=guest-rc-resident.sh; gate=EXODUS_RC_RESIDENT_PASS ;;
     *) echo "Unknown reference mode" >&2; exit 2 ;;
 esac
 work=$(mktemp -d)
@@ -57,6 +58,9 @@ if [ "$mode" = linuxdynamic ]; then
     grep -Fx TUMOR_GLIBC_PTHREAD_OK "$out/linux-dynamic-host.txt"
     mcopy -i seed.img linux-dynamic ld-linux-aarch64.so.1 libc.so.6 ::
 fi
+if [ "$mode" = rcresident ]; then
+    for f in sessiond.c sessiond-dbus.inc tumor_reference_bus tumor_reference_session; do mcopy -i seed.img "$here/$f" ::; done
+fi
 if [ "$mode" = resident ]; then
     for f in sessiond.c sessiond-dbus.inc; do mcopy -i seed.img "$here/$f" ::; done
 fi
@@ -74,6 +78,7 @@ limit=145m
 [ "$mode" != ssh ] || limit=65m
 [ "$mode" != native ] || limit=65m
 [ "$mode" != resident ] || limit=65m
+[ "$mode" != rcresident ] || limit=65m
 [ "$mode" != boot ] || limit=12m
 [ "$mode" != linuxabi ] || limit=12m
 [ "$mode" != linuxdynamic ] || limit=12m
