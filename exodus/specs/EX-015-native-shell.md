@@ -19,3 +19,6 @@ Priority: P0 for R0.1 usability. Owner requests replacement of the currently sel
 5. Final visual direction and interaction design require owner review before default rollout.
 
 This PR is a specification only. No shell code, screenshots or hardware tests are claimed. Exact Latitude binary/source provenance remains unresolved.
+
+## Native shell candidate audit
+[XorTroll/uLaunch](https://github.com/XorTroll/uLaunch/tree/6e0e1de633eec601fb527aadb602abe3bc817541), GPL-2.0, is an actual HOME replacement rather than an NRO launcher. Release [1.2.6](https://github.com/XorTroll/uLaunch/releases/tag/1.2.6) reports Atmosphere 1.12.2/HOS 23.5.0 compatibility. Its uSystem/uMenu/uLoader split provides a starting point; audit uSystem applet lifecycle, uMenu quick menu and catalog before porting. Its documentation acknowledges missing system settings, automatic sleep and update features; these remain acceptance gates. No online safety guarantee. Do not install alongside Latitude's HOME replacement. Exact 4IFIR compatibility is untested. Candidate selection is provisional. No owner fork found; fork is not created by this change.
