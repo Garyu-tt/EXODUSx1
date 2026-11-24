@@ -128,6 +128,63 @@ for f in $files; do
     printf '%s  %s\n' "$sum" "$f" >> extracted/SHA256SUMS
 done
 (cd extracted && sha256sum -c --strict SHA256SUMS)
+if [ "$mode" = rcresident ]; then
+    # Verify the archive itself, without extracting guest-controlled paths.
+    python3 - extracted/tumor-resident-reference.tar.gz extracted/dependencies.txt <<'PY'
+import hashlib
+import pathlib
+import re
+import struct
+import sys
+import tarfile
+
+expected = {
+    "bin/exodus-sessiond-dbus", "bin/exodus-session-select",
+    "rc.d/tumor_reference_bus", "rc.d/tumor_reference_session",
+    "dependencies.txt", "freebsd-version.txt", "README.txt", "SHA256SUMS",
+}
+directories = {".", "bin", "rc.d"}
+payload = {}
+seen = set()
+with tarfile.open(sys.argv[1], "r:gz") as archive:
+    for member in archive:
+        name = member.name.removeprefix("./").rstrip("/") or "."
+        if name in seen:
+            raise SystemExit(f"duplicate archive member: {name}")
+        seen.add(name)
+        if member.isdir() and name in directories:
+            continue
+        if not member.isfile() or name not in expected:
+            raise SystemExit(f"unexpected archive member: {name}")
+        if member.size > 32 * 1024 * 1024:
+            raise SystemExit(f"oversized archive member: {name}")
+        payload[name] = archive.extractfile(member).read()
+        if name.startswith(("bin/", "rc.d/")) and not member.mode & 0o111:
+            raise SystemExit(f"non-executable archive member: {name}")
+if set(payload) != expected:
+    raise SystemExit("reference archive contents incomplete")
+manifest = {}
+for line in payload["SHA256SUMS"].decode("ascii").splitlines():
+    match = re.fullmatch(r"([0-9a-fA-F]{64})  ?(.+)", line)
+    if not match:
+        raise SystemExit("invalid internal checksum record")
+    digest, name = match.groups()
+    if name in manifest or name not in expected - {"SHA256SUMS"}:
+        raise SystemExit(f"unexpected checksum entry: {name}")
+    manifest[name] = digest.lower()
+if set(manifest) != expected - {"SHA256SUMS"}:
+    raise SystemExit("internal checksum coverage incomplete")
+for name, digest in manifest.items():
+    if hashlib.sha256(payload[name]).hexdigest() != digest:
+        raise SystemExit(f"internal checksum mismatch: {name}")
+if payload["dependencies.txt"] != pathlib.Path(sys.argv[2]).read_bytes():
+    raise SystemExit("dependency manifest differs from exported copy")
+elf = payload["bin/exodus-sessiond-dbus"]
+if len(elf) < 64 or elf[:6] != b"\x7fELF\x02\x01" or struct.unpack_from("<H", elf, 18)[0] != 183:
+    raise SystemExit("session daemon is not little-endian ELF64 AArch64")
+print("EXODUS_RC_ARCHIVE_CONTENT_PASS")
+PY
+fi
 mkdir -p "$out/packages"
 cp extracted/* "$out/packages/"
 echo EXODUS_ARTIFACT_EXPORT_PASS
