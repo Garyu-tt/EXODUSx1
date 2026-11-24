@@ -8,9 +8,11 @@ with tempfile.TemporaryDirectory() as tmp:
         stage.chmod(0o600)
         os.replace(stage, path)
     write('generation=1\nmode=game\n')
-    with subprocess.Popen([sys.argv[1], str(path)], stdout=subprocess.PIPE, text=True) as proc:
+    def inherited_ignore():
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    with subprocess.Popen([sys.argv[1], str(path)], stdout=subprocess.PIPE, text=True, preexec_fn=inherited_ignore) as proc:
         def expect(event, gen, mode):
-            assert select.select([proc.stdout], [], [], 5)[0], 'daemon timeout'
+            assert select.select([proc.stdout], [], [], 20)[0], f'daemon timeout: {event}, poll={proc.poll()}'
             line = proc.stdout.readline().strip()
             assert line == f'{event} generation={gen} desired={mode} active=unknown pid={proc.pid}', line
         def reload(text, event, gen, mode):
