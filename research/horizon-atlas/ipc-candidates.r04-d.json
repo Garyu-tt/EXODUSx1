@@ -1,0 +1,378 @@
+{
+  "schema": "exodus.horizon-ipc-candidates/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Literal source candidates only; no privilege or availability inference. Hardware writes and power transitions remain disabled.",
+  "missing": [],
+  "counts": {
+    "requested": 8,
+    "fetched": 8,
+    "distinct_endpoint_tokens": 8,
+    "dispatch_occurrences": 21,
+    "version_check_occurrences": 17
+  },
+  "records": [
+    {
+      "module": "bpc",
+      "path": "nx/source/services/bpc.c",
+      "blob": "acf45fc14a02b9cf975ac2d7af7e874712979c0f",
+      "line_count": 60,
+      "literal_endpoints": [
+        {
+          "name": "bpc",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "2.0.0",
+          "line": 11
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 51
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "pcv",
+      "path": "nx/source/services/pcv.c",
+      "blob": "e7b2271fe823b82c7ee594f88c691b5103730dd5",
+      "line_count": 122,
+      "literal_endpoints": [
+        {
+          "name": "pcv",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_pcvSrv",
+          "command": 2,
+          "line": 64,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_pcvSrv",
+          "command": 3,
+          "line": 72,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_pcvSrv",
+          "command": 8,
+          "line": 83,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_pcvSrv",
+          "command": 9,
+          "line": 91,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_pcvSrv",
+          "command": 5,
+          "line": 112,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "8.0.0",
+          "line": 57
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "8.0.0",
+          "line": 68
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "8.0.0",
+          "line": 76
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "8.0.0",
+          "line": 87
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "8.0.0",
+          "line": 99
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "spsm",
+      "path": "nx/source/services/spsm.c",
+      "blob": "90867bad93bfd3d18ad77f3f4b0c6b876972b4b1",
+      "line_count": 29,
+      "literal_endpoints": [
+        {
+          "name": "spsm",
+          "line": 10
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_spsmSrv",
+          "command": 3,
+          "line": 23,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_spsmSrv",
+          "command": 10,
+          "line": 27,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "psc",
+      "path": "nx/source/services/psc.c",
+      "blob": "87b9e975f1974949e4684d29b8e2c686256d8fa5",
+      "line_count": 103,
+      "literal_endpoints": [
+        {
+          "name": "psc:m",
+          "line": 10
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_pscmSrv",
+          "command": 0,
+          "line": 32,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&module->srv",
+          "command": 0,
+          "line": 51,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&module->srv",
+          "command": 1,
+          "line": 73,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&module->srv",
+          "command": 4,
+          "line": 88,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&module->srv",
+          "command": 2,
+          "line": 90,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&module->srv",
+          "command": 3,
+          "line": 96,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "5.1.0",
+          "line": 86
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "idlesys",
+      "path": "nx/source/services/idlesys.c",
+      "blob": "d9d012a60134bf49ace8e6e7a81b75b4ef82bc82",
+      "line_count": 24,
+      "literal_endpoints": [
+        {
+          "name": "idle:sys",
+          "line": 10
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_idlesysSrv",
+          "command": 5,
+          "line": 22,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "mm",
+      "path": "nx/source/services/mm.c",
+      "blob": "ecb171d9ff2f97f54d606cd0f92b4beacfb3d59b",
+      "line_count": 67,
+      "literal_endpoints": [
+        {
+          "name": "mm:u",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 30
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 41
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 46
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 57
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "i2c",
+      "path": "nx/source/services/i2c.c",
+      "blob": "05bf83bb03a260f583729d7b69faf8df001b0f0c",
+      "line_count": 62,
+      "literal_endpoints": [
+        {
+          "name": "i2c",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_i2cSrv",
+          "command": 1,
+          "line": 24,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&s->s",
+          "command": 10,
+          "line": 32,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&s->s",
+          "command": 11,
+          "line": 40,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&s->s",
+          "command": 12,
+          "line": 47,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "gpio",
+      "path": "nx/source/services/gpio.c",
+      "blob": "5600b26594551e8bbc867de6abd166a6c066d533",
+      "line_count": 187,
+      "literal_endpoints": [
+        {
+          "name": "gpio",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_gpioSrv",
+          "command": 1,
+          "line": 59,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_gpioSrv",
+          "command": 7,
+          "line": 75,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&p->s",
+          "command": 10,
+          "line": 151,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 66
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 82
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 91
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 127
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 134
+        }
+      ],
+      "status": "unreviewed_disabled"
+    }
+  ]
+}
