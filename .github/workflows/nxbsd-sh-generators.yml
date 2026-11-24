@@ -27,6 +27,10 @@ jobs:
             history_flags: "-DNO_HISTORY -DNXBSD_AST_BRIDGE"
             runner: ubuntu-24.04
             arch: x86_64
+          - profile: bridge
+            history_flags: "-DNO_HISTORY -DNXBSD_AST_BRIDGE"
+            runner: ubuntu-24.04-arm
+            arch: aarch64
           - profile: headless
             history_flags: "-DNO_HISTORY"
             runner: ubuntu-24.04-arm
@@ -197,7 +201,7 @@ jobs:
           if [ "${{ matrix.profile }}" = full ]; then edit_lib=(-ledit); fi
           bridge=()
           if [ "${{ matrix.profile }}" = bridge ]; then
-            bridge=(-pthread -I"$RUNNER_TEMP/grammar-a" exodus/terminal/nxbsd_ast_bridge.c exodus/terminal/nxbsd_pipe.c exodus/terminal/nxbsd_fd.c exodus/terminal/nxbsd_context.c exodus/terminal/nxbsd_task.c exodus/terminal/nxbsd_pipeline.c exodus/terminal/nxbsd_commands.c)
+            bridge=(-pthread -funsigned-char -I donor-freebsd/bin/sh -I"$RUNNER_TEMP/grammar-a" exodus/terminal/nxbsd_ast_bridge.c exodus/terminal/nxbsd_pipe.c exodus/terminal/nxbsd_fd.c exodus/terminal/nxbsd_context.c exodus/terminal/nxbsd_task.c exodus/terminal/nxbsd_pipeline.c exodus/terminal/nxbsd_commands.c)
           fi
           cc "$RUNNER_TEMP/shell-tools.o" "$RUNNER_TEMP/histedit.o" "${bridge[@]}" "${edit_lib[@]}" -lbsd -o "$RUNNER_TEMP/nxbsd-sh"
           file "$RUNNER_TEMP/nxbsd-sh"
