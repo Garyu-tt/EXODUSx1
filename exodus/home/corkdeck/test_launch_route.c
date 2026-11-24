@@ -9,6 +9,14 @@ int main(void)
     assert(!exodus_title_id("010000000000123z", &id));
     assert(exodus_nro_path("tools/example.nro", path));
     assert(!strcmp(path, "sdmc:/switch/tools/example.nro"));
+    assert(exodus_nro_path("sdmc:/Games/tools/demo.NRO", path));
+    assert(!strcmp(path, "sdmc:/Games/tools/demo.NRO"));
+    assert(exodus_route_for("Homebrew", "sdmc:/Games/demo.nro") == EXODUS_ROUTE_HOMEBREW);
+    assert(!exodus_nro_path("sdmc:/Games/../bad.nro", path));
+    assert(!exodus_nro_path("sdmc:/Games//bad.nro", path));
+    assert(!exodus_nro_path("sdmc:/GamesExtra/bad.nro", path));
+    assert(!exodus_nro_path("sdmc:/Games/bad.nsp", path));
+    assert(exodus_route_for("Other", "sdmc:/Games/demo.nro") == EXODUS_ROUTE_UNSUPPORTED);
     assert(!exodus_nro_path("../bad.nro", path));
     assert(!exodus_nro_path("tools//bad.nro", path));
     assert(!exodus_nro_path("sdmc:/bad.nro", path));
