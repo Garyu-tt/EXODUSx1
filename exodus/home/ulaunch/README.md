@@ -4,6 +4,8 @@ The adapter adds **EXODUS library** to the Quick Menu in uLaunch's `uMenu` HOME 
 
 The viewer opens `/ulaunch/exodus-catalog.json` on the SD card when selected. Use a version 1 snapshot from the EXODUS Steam importer, or combine it with system and homebrew inventory snapshots using the EXODUS catalog merger. The viewer accepts up to 2 MiB and 4,096 entries. It requires the eight version 1 entry fields, preserves order, rejects duplicate identities and opens an error dialog for unreadable or malformed snapshots. Display names are shortened to fit. The catalog carries snapshot metadata on the console. Live ownership, downloads and launch routing are separate work. [Catalog merger and Switch exporter](https://github.com/Garyu-tt/EXODUSx1/pull/15) · [Homebrew inventory](https://github.com/Garyu-tt/EXODUSx1/pull/13) · [EX-006](https://github.com/Garyu-tt/EXODUSx1/pull/3)
 
+The viewer accepts UTF-8 catalogs and BOM-marked UTF-16LE catalogs, including snapshots saved by redirecting importer output in Windows PowerShell 5.1.
+
 ## Build the patched uMenu
 
 The source patch targets uLaunch 1.2.6 and uses its pinned Plutonium, libnx-ext and nlohmann/json submodules. The build uses the upstream devkitPro and Python dependencies and needs the source libnx layout for NACP language data. [uLaunch release](https://github.com/XorTroll/uLaunch/releases/tag/1.2.6) · [Upstream build workflow](https://github.com/XorTroll/uLaunch/blob/6e0e1de633eec601fb527aadb602abe3bc817541/.github/workflows/main.yml) · [Tested libnx revision](https://github.com/switchbrew/libnx/tree/b156b4774fb2df7b93402169509266da7547fc4c)
