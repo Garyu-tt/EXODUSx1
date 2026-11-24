@@ -128,3 +128,9 @@ clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined exodus/home/co
 ```
 
 Both passed locally against files whose git blob hashes matched the branch: shell_menu.h 6996d43f37a57dfdf1a2ed44dbc2c1a550f7acfa and test_shell_menu.c 4f253eb757e46c6a5a6738cb20281d2e0b91857e. SDL and native compilation, actual screen navigation, tool handoff and device acceptance remain pending.
+
+## R09: Control Center preview
+
+Plus opens the quick panel from Gaming Mode home. X refreshes the snapshot; B or Plus returns. Ten fields report battery, network, Wi-Fi, Bluetooth, brightness, APM mode, process memory used/available budget (not total console RAM), SD used/total capacity, SoC and board temperatures. Uses existing settings adapter plus svcGetInfo, FS and TS service read calls. Legacy temperature reads before HOS 17 and session calls on HOS 17+ follow pinned libnx source. Failed or unsupported reads display unavailable, not fabricated readings. No polling while the panel is idle, no clock, fan, voltage, radio or brightness writes, no Nintendo network actions. No HOME button interception yet; this is the in-shell preview for #4.
+
+Portable capacity arithmetic and unavailable fallback test passed GCC and Clang ASan/UBSan locally, with the two test/source files reconstructed and blob-checked; horizon_settings.h was stubbed for the host-only build (no native symbols are used). Full SDL and Switch SDK compilation and service permissions on real firmware remain unverified.
