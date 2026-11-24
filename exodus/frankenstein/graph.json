@@ -154,7 +154,8 @@
       "origin": null,
       "state": "needs-hardware-proof",
       "depends": [
-        "kernel"
+        "kernel",
+        "dual-kernel"
       ]
     },
     {
@@ -163,7 +164,8 @@
       "state": "blocked",
       "depends": [
         "session",
-        "horizon-bridge"
+        "horizon-bridge",
+        "gpu-mediation"
       ]
     },
     {
@@ -197,6 +199,30 @@
         "run": 45496077072,
         "scope": "Linux private bus, no actual graphical switching"
       }
+    },
+    {
+      "id": "tegra-board",
+      "origin": "freebsd/freebsd-src@releng/15.1:sys/arm64/nvidia/tegra210",
+      "state": "source-audited",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "dual-kernel",
+      "origin": "exodus/frankenstein/TEGRA_ADMISSION.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "tegra-board"
+      ]
+    },
+    {
+      "id": "gpu-mediation",
+      "origin": "frankyfife/mesa-switch_ff@0ff52079ca9e9e837ed27eb95a8d239f439a1864",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "dual-kernel"
+      ]
     }
   ],
   "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. No physical Switch execution or full SteamOS runtime proven.",
