@@ -48,6 +48,8 @@ jobs:
           "$RUNNER_TEMP/test-evcs"
           cc -std=c11 -Wall -Wextra -Werror -D_FILE_OFFSET_BITS=64 exodus/tests/evcs_split_test.c -o "$RUNNER_TEMP/test-evcs-split"
           "$RUNNER_TEMP/test-evcs-split"
+          cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_favorites_store.c -o "$RUNNER_TEMP/test-favorites"
+          "$RUNNER_TEMP/test-favorites"
           cc -std=c11 -Wall -Wextra -Werror -c exodus/runtime/autorun_probe.c -o "$RUNNER_TEMP/autorun-probe.o"
           c++ -std=c++17 -Wall -Wextra -Werror -I /usr/include/nlohmann \
             "$dir/test_library_catalog.cpp" "$dir/library_catalog.cpp" exodus/home/ulaunch/catalog.cpp \
