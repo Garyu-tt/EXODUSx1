@@ -8,6 +8,17 @@ extern "C" {
 #endif
 struct exodus_library;
 struct exodus_library *exodus_library_open(const char *path);
+/* Optional read-only Games inventory, entries remain nonlaunchable Other. */
+struct exodus_library *exodus_library_open_with_games(const char *path, const char *root);
+const char *exodus_library_discovery_status(const struct exodus_library *library);
+/* Read-only on-demand Horizon metadata for registered title candidates. */
+int exodus_library_native_detail(const struct exodus_library *library, size_t index, char *out, size_t cap);
+/* Probe selected discovered NSP directory; never authorizes launch. */
+int exodus_library_archive_detail(const struct exodus_library *library, size_t index, char *out, size_t cap);
+/* Grouped presentation only. Raw index space and launch policy are unchanged. */
+int exodus_library_is_group_card(const struct exodus_library *library, size_t index);
+int exodus_library_is_discovered(const struct exodus_library *library, size_t index);
+size_t exodus_library_group_size(const struct exodus_library *library, size_t index);
 void exodus_library_close(struct exodus_library *library);
 const char *exodus_library_status(const struct exodus_library *library);
 size_t exodus_library_count(const struct exodus_library *library);

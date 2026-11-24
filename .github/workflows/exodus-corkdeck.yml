@@ -6,6 +6,7 @@ on:
       - 'exodus/home/corkdeck/**'
       - 'exodus/home/ulaunch/catalog*'
       - 'exodus/runtime/autorun_probe*'
+      - 'exodus/tests/evcs_discovery_test.c'
       - '.github/workflows/exodus-corkdeck.yml'
   workflow_dispatch:
 
@@ -42,9 +43,12 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
             "$dir/test_windows_pe.c" "$dir/windows_pe.c" -o "$RUNNER_TEMP/test-windows-pe"
           "$RUNNER_TEMP/test-windows-pe"
+          cc -std=c11 -Wall -Wextra -Werror exodus/tests/evcs_discovery_test.c -o "$RUNNER_TEMP/test-evcs"
+          "$RUNNER_TEMP/test-evcs"
+          cc -std=c11 -Wall -Wextra -Werror -c exodus/runtime/autorun_probe.c -o "$RUNNER_TEMP/autorun-probe.o"
           c++ -std=c++17 -Wall -Wextra -Werror -I /usr/include/nlohmann \
             "$dir/test_library_catalog.cpp" "$dir/library_catalog.cpp" exodus/home/ulaunch/catalog.cpp \
-            -o "$RUNNER_TEMP/test-catalog"
+            "$RUNNER_TEMP/autorun-probe.o" -o "$RUNNER_TEMP/test-catalog"
           "$RUNNER_TEMP/test-catalog" "$RUNNER_TEMP/catalog-fixture.json"
       - name: Build and render home
         run: |
@@ -88,6 +92,15 @@ jobs:
           cd /tmp/exodus-build
           sha256sum exodus-shell.nro > SHA256SUMS
           cat SHA256SUMS
+      - name: Publish tested native shell
+        uses: actions/upload-artifact@v4
+        with:
+          name: exodus-shell-switch-arm64
+          path: |
+            /tmp/exodus-build/exodus-shell.nro
+            /tmp/exodus-build/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
 
 
 

@@ -112,6 +112,12 @@ static size_t filter_cards(const struct exodus_library *library, enum exodus_fil
     size_t count = 0;
     for (size_t n = 0; n < exodus_library_count(library); ++n) {
         uint64_t recent = exodus_library_last_played(library, n);
+        if (filter == FILTER_FILES) {
+            if (exodus_library_is_discovered(library, n))
+                cards[count++] = (struct exodus_card_index){n, recent};
+            continue;
+        }
+        if (!exodus_library_is_group_card(library, n)) continue;
         if (exodus_filter_matches(filter, exodus_library_provider(library, n), favorites[n], recent))
             cards[count++] = (struct exodus_card_index){n, recent};
     }
@@ -187,6 +193,12 @@ static int show_library(struct ui *ui, const char *path)
                 if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW ||
                     route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
                     snprintf(detail, sizeof(detail), "Target: %s\n%.500s", exodus_route_name(route), id);
+                    size_t used = strlen(detail);
+                    if (route == EXODUS_ROUTE_SWITCH && used + 2 < sizeof(detail)) {
+                        detail[used++] = '\n';
+                        detail[used] = 0;
+                        exodus_library_native_detail(library, index, detail + used, sizeof(detail) - used);
+                    }
                     if (ui_confirm(ui, exodus_library_title(library, index), detail,
                                    route == EXODUS_ROUTE_STEAM ? "Open library" : "Launch")) {
                         if (exodus_launch(route, id, result)) { handoff = 1; goto done; }
@@ -195,7 +207,9 @@ static int show_library(struct ui *ui, const char *path)
                     break;
                 }
 #endif
-                snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
+                if (!exodus_library_native_detail(library, index, detail, sizeof(detail)) &&
+                    !exodus_library_archive_detail(library, index, detail, sizeof(detail)))
+                    snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
                 ui_message(ui, exodus_library_title(library, index), detail);
                 break;
             }
@@ -223,6 +237,12 @@ static int show_library(struct ui *ui, const char *path)
             if (n == selection) ui_outline(ui, x, y, 264, 220, 6, 3, ui->selection);
             ui_text_fit(ui, ui->small, x + 12, y + 12, 200,
                         exodus_library_provider(library, index), ui->dim, 0);
+            size_t group_size = exodus_library_group_size(library, index);
+            if (filter != FILTER_FILES && group_size > 1) {
+                char group_label[48];
+                snprintf(group_label, sizeof(group_label), "%zu files (declared)", group_size);
+                ui_text_fit(ui, ui->small, x + 12, y + 192, 240, group_label, ui->dim, 0);
+            }
             if (favorites[index]) ui_text(ui, ui->small, x + 230, y + 12, "*", ui->text);
             struct cover_slot *cover = &covers[n - first];
             if (cover->texture) {

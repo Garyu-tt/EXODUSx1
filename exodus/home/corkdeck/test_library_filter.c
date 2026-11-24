@@ -3,6 +3,7 @@
 int main(void)
 {
     assert(exodus_filter_matches(FILTER_ALL, "Switch", 0, 0));
+    assert(!strcmp(exodus_filter_name(FILTER_FILES), "Game files"));
     assert(exodus_filter_matches(FILTER_SWITCH, "Switch", 0, 0));
     assert(!exodus_filter_matches(FILTER_SWITCH, "Steam", 1, 1));
     assert(exodus_filter_matches(FILTER_FAVORITES, "Steam", 1, 0));
