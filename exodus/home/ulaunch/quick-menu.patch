@@ -1,0 +1,29 @@
+diff --git a/projects/uMenu/romfs/lang/en.json b/projects/uMenu/romfs/lang/en.json
+index 6014634..1fb6438 100755
+--- a/projects/uMenu/romfs/lang/en.json
++++ b/projects/uMenu/romfs/lang/en.json
+@@ -5,0 +6,12 @@
++    "exodus_catalog": "EXODUS library",
++    "exodus_catalog_unavailable": "Copy a catalog snapshot to /ulaunch/exodus-catalog.json.",
++    "exodus_catalog_invalid": "The snapshot must use the EXODUS v1 catalog format.",
++    "exodus_catalog_too_large": "The snapshot exceeds the HOME catalog size limit.",
++    "exodus_catalog_empty": "The snapshot contains no applications.",
++    "exodus_catalog_steam": "Steam",
++    "exodus_catalog_switch": "Switch",
++    "exodus_catalog_homebrew": "Homebrew",
++    "exodus_catalog_other": "Other",
++    "exodus_catalog_previous": "Previous",
++    "exodus_catalog_next": "Next",
++    "exodus_catalog_close": "Close",
+diff --git a/projects/uMenu/source/ul/menu/ui/ui_QuickMenu.cpp b/projects/uMenu/source/ul/menu/ui/ui_QuickMenu.cpp
+index 075eb97..80ca142 100755
+--- a/projects/uMenu/source/ul/menu/ui/ui_QuickMenu.cpp
++++ b/projects/uMenu/source/ul/menu/ui/ui_QuickMenu.cpp
+@@ -4,0 +5 @@
++#include "catalog.hpp"
+@@ -80,0 +82,5 @@ namespace ul::menu::ui {
++
++        auto catalog_menu_item = pu::ui::elm::MenuItem::New(exodus::home::CatalogLabel());
++        catalog_menu_item->SetColor(g_MenuApplication->GetTextColor());
++        catalog_menu_item->AddOnKey(&exodus::home::ShowCatalog);
++        this->options_menu->AddItem(catalog_menu_item);
