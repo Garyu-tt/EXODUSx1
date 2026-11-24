@@ -1,4 +1,4 @@
-/* Local diagnostic only: no listener, credentials or remote grants. */
+/* Local diagnostic only: loopback only, public test credentials, no remote grants. */
 #include <switch.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,12 +71,13 @@ static void run(void){
     }
     printf("TLS 1.3 config only: %s\n",rc==0?"PASS":"FAIL");
     mbedtls_ssl_config_free(&c);
-    if(!rc)exm_run();
+    if(!rc){int memory=exm_run(0);int tcp=memory?exm_run(1):0;
+        printf("Local mTLS transport suite: %s\n",memory&&tcp?"PASS":"FAIL");}
 }
 int main(void){
     consoleInit(NULL);
     char v[64];mbedtls_version_get_string_full(v);
-    printf("EXODUS R03.16 %s\nA: local test; Plus: exit\n",v);
+    printf("EXODUS R03.22 %s\nA: local test; Plus: exit\n",v);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);PadState pad;padInitializeDefault(&pad);
     while(appletMainLoop()){padUpdate(&pad);u64 down=padGetButtonsDown(&pad);
         if(down&HidNpadButton_Plus)break;

@@ -8,5 +8,5 @@
 #include "local_mtls_smoke.h"
 int main(void){
     if(psa_crypto_init()!=PSA_SUCCESS)return 2;
-    return exm_run()?0:1;
+    return exm_run(0)&&exm_run(1)?0:1;
 }

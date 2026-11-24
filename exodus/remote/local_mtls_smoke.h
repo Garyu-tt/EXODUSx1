@@ -7,6 +7,7 @@
 #include <mbedtls/sha256.h>
 #include <mbedtls/x509_crt.h>
 #include "tls_fixtures.h"
+#include "tcp_mtls_bio.h"
 
 #define EXM_CAP 32768
 typedef struct { unsigned char bytes[EXM_CAP]; size_t used; } exm_queue;
@@ -39,17 +40,19 @@ static int exm_config(mbedtls_ssl_config *c,int endpoint,mbedtls_ctr_drbg_contex
     mbedtls_ssl_conf_ca_chain(c,ca,NULL);
     return cert?mbedtls_ssl_conf_own_cert(c,cert,key):0;
 }
-static int exm_payload(mbedtls_ssl_context *tx,mbedtls_ssl_context *rx){
+static int exm_payload(mbedtls_ssl_context *tx,mbedtls_ssl_context *rx,const ext_pair *tcp){
     static const unsigned char msg[]="EXODUS LOCAL TLS TEST";
     unsigned char buf[sizeof(msg)]={0};
     size_t sent=0,got=0;
-    for(unsigned i=0;i<128 && got<sizeof(msg);++i){
+    mbedtls_ms_time_t start=mbedtls_ms_time();
+    for(unsigned i=0;i<128 && got<sizeof(msg) && ext_within(start);++i){
         if(sent<sizeof(msg)){
             int r=mbedtls_ssl_write(tx,msg+sent,sizeof(msg)-sent);
             if(r>0)sent+=(size_t)r;else if(!exm_retry(r))return 0;
         }
         int r=mbedtls_ssl_read(rx,buf+got,sizeof(buf)-got);
         if(r>0)got+=(size_t)r;else if(!exm_retry(r))return 0;
+        if(tcp&&got<sizeof(msg))ext_wait(tcp);
     }
     return sent==sizeof(msg)&&got==sizeof(msg)&&memcmp(msg,buf,sizeof(msg))==0;
 }
@@ -62,20 +65,28 @@ static int exm_pin(const mbedtls_x509_crt *peer,const mbedtls_x509_crt *expected
 }
 /* mode=0 valid, 1 missing client cert, 2 wrong server hostname, 3 unpaired.
  * Return 1 only for expected results, never for configuration errors/timeouts. */
-static int exm_case(int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,mbedtls_x509_crt *sc,mbedtls_pk_context *sk,mbedtls_x509_crt *cc,mbedtls_pk_context *ck,mbedtls_x509_crt *allowed){
+static int exm_case(int tcp,int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,mbedtls_x509_crt *sc,mbedtls_pk_context *sk,mbedtls_x509_crt *cc,mbedtls_pk_context *ck,mbedtls_x509_crt *allowed){
     mbedtls_ssl_config a,b;mbedtls_ssl_context s,c;
     mbedtls_ssl_config_init(&a);mbedtls_ssl_config_init(&b);
     mbedtls_ssl_init(&s);mbedtls_ssl_init(&c);
-    exm_queue *q=calloc(2,sizeof(*q));int pass=0,r=0,s_done=0,c_done=0;
-    if(!q)goto done;
-    exm_bio sb={q,q+1},cb={q+1,q};
+    ext_pair pair={.client=-1,.server=-1,.initialized=0};
+    exm_queue *q=tcp?NULL:calloc(2,sizeof(*q));int pass=0,r=0,s_done=0,c_done=0;
+    exm_bio sb={0},cb={0};
+    if(tcp){if(!ext_open(&pair))goto done;}
+    else {if(!q)goto done;sb=(exm_bio){q,q+1};cb=(exm_bio){q+1,q};}
     if((r=exm_config(&a,MBEDTLS_SSL_IS_SERVER,rng,ca,sc,sk))||
        (r=exm_config(&b,MBEDTLS_SSL_IS_CLIENT,rng,ca,mode==1?NULL:cc,ck))||
        (r=mbedtls_ssl_setup(&s,&a))||(r=mbedtls_ssl_setup(&c,&b))||
        (r=mbedtls_ssl_set_hostname(&c,mode==2?"wrong.invalid":"exodus-smoke.invalid")))goto done;
-    mbedtls_ssl_set_bio(&s,&sb,exm_send,exm_recv,NULL);
-    mbedtls_ssl_set_bio(&c,&cb,exm_send,exm_recv,NULL);
-    for(unsigned i=0;i<256 && !(s_done&&c_done);++i){
+    if(tcp){
+        mbedtls_ssl_set_bio(&s,&pair.server,ext_send,ext_recv,NULL);
+        mbedtls_ssl_set_bio(&c,&pair.client,ext_send,ext_recv,NULL);
+    }else{
+        mbedtls_ssl_set_bio(&s,&sb,exm_send,exm_recv,NULL);
+        mbedtls_ssl_set_bio(&c,&cb,exm_send,exm_recv,NULL);
+    }
+    mbedtls_ms_time_t start=mbedtls_ms_time();
+    for(unsigned i=0;i<256 && !(s_done&&c_done) && ext_within(start);++i){
         if(!c_done){
             r=mbedtls_ssl_handshake(&c);
             if(!r)c_done=1;
@@ -94,6 +105,7 @@ static int exm_case(int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,
                 goto done;
             }
         }
+        if(tcp&&!(s_done&&c_done))ext_wait(&pair);
     }
     if((mode==0||mode==3)&&s_done&&c_done&&
        mbedtls_ssl_get_verify_result(&s)==0&&mbedtls_ssl_get_verify_result(&c)==0&&
@@ -102,16 +114,18 @@ static int exm_case(int mode,mbedtls_ctr_drbg_context *rng,mbedtls_x509_crt *ca,
        strcmp(mbedtls_ssl_get_version(&c),"TLSv1.3")==0){
         int pin=exm_pin(mbedtls_ssl_get_peer_cert(&s),allowed);
         if(mode==3)pass=pin==0; /* Valid CA, but no application admission. */
-        else if(pin==1)pass=exm_payload(&c,&s)&&exm_payload(&s,&c);
+        else if(pin==1)pass=exm_payload(&c,&s,tcp?&pair:NULL)&&exm_payload(&s,&c,tcp?&pair:NULL);
     }
 done:
     if(!pass)printf("  mode %d diagnostic rc=%d\n",mode,r);
     mbedtls_ssl_free(&s);mbedtls_ssl_free(&c);
     mbedtls_ssl_config_free(&a);mbedtls_ssl_config_free(&b);
+    ext_close(&pair);
     if(q){mbedtls_platform_zeroize(q,2*sizeof(*q));free(q);}
     return pass;
 }
-static int exm_run(void){
+static int exm_run(int tcp){
+    printf("Transport: %s\n",tcp?"TCP loopback":"memory BIO");
     int pass=0;
     mbedtls_entropy_context e;mbedtls_ctr_drbg_context rng;
     mbedtls_x509_crt ca,sc,cc,uc;mbedtls_pk_context sk,ck,uk;
@@ -130,14 +144,14 @@ static int exm_run(void){
     if(!r)r=mbedtls_pk_parse_key(&uk,fixture_unpaired_key,sizeof(fixture_unpaired_key),NULL,0,mbedtls_ctr_drbg_random,&rng);
     printf("Test fixture setup: %s (%d)\n",r?"FAIL":"PASS",r);
     if(!r){
-        int good=exm_case(0,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
+        int good=exm_case(tcp,0,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
         printf("mTLS 1.3 + payload both ways: %s\n",good?"PASS":"FAIL");
         if(good){
-            int missing=exm_case(1,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
-            int hostname=exm_case(2,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
+            int missing=exm_case(tcp,1,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
+            int hostname=exm_case(tcp,2,&rng,&ca,&sc,&sk,&cc,&ck,&cc);
             printf("Missing client cert rejection: %s\n",missing?"PASS":"FAIL");
             printf("Wrong hostname rejection: %s\n",hostname?"PASS":"FAIL");
-            int unpaired=exm_case(3,&rng,&ca,&sc,&sk,&uc,&uk,&cc);
+            int unpaired=exm_case(tcp,3,&rng,&ca,&sc,&sk,&uc,&uk,&cc);
             printf("Same CA unpaired client denied: %s\n",unpaired?"PASS":"FAIL");
             pass=missing&&hostname&&unpaired;
         }
@@ -146,7 +160,7 @@ static int exm_run(void){
     mbedtls_pk_free(&ck);mbedtls_pk_free(&sk);
     mbedtls_x509_crt_free(&cc);mbedtls_x509_crt_free(&sc);mbedtls_x509_crt_free(&ca);
     mbedtls_ctr_drbg_free(&rng);mbedtls_entropy_free(&e);
-    puts("Public test credentials. Memory BIO only. Remote disabled.");
+    puts("Public test credentials. Local only. Remote disabled.");
     return pass;
 }
 #endif
