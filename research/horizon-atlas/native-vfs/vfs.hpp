@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <memory>
 
 namespace exodus::vfs {
 enum class Error { ok, invalid_path, unavailable, denied, invalid_buffer, backend_error };
@@ -16,11 +17,24 @@ struct StatResult { Error error; Metadata metadata{}; };
 struct DirectoryEntry { std::string name; Metadata metadata; };
 struct ListResult { Error error; std::vector<DirectoryEntry> entries{}; bool truncated=false; };
 constexpr std::size_t max_list_entries=64;
+struct NextResult { Error error; bool eof=false; DirectoryEntry entry{}; };
+struct FileHandle {
+    virtual ~FileHandle() = default;
+    virtual ReadResult read_at(std::uint64_t, std::uint8_t*, std::size_t) = 0;
+    virtual StatResult stat() = 0;
+};
+struct DirectoryHandle {
+    virtual ~DirectoryHandle() = default;
+    virtual NextResult next() = 0;
+};
+template<class T> struct OpenResult { Error error; std::unique_ptr<T> handle{}; };
 struct Provider {
     virtual ~Provider() = default;
     // Relative path, never an OS path. Provider must independently confine access.
     virtual ReadResult read(std::string_view path, std::uint64_t offset,
                             std::uint8_t* buffer, std::size_t capacity) = 0;
+    virtual OpenResult<FileHandle> open_file(std::string_view) { return {Error::denied}; }
+    virtual OpenResult<DirectoryHandle> open_directory(std::string_view) { return {Error::denied}; }
     virtual StatResult stat(std::string_view) { return {Error::denied}; }
     virtual ListResult list(std::string_view, std::size_t) { return {Error::denied}; }
 };
