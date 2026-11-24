@@ -7,6 +7,8 @@ on:
       - 'exodus/frankenstein/linux-abi-probe.S'
       - 'exodus/frankenstein/linux-dynamic-probe.c'
       - 'exodus/frankenstein/run-reference.sh'
+      - 'exodus/frankenstein/verify-manager-evidence.sh'
+      - 'exodus/frankenstein/test_manager_gate.py'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/sessiond-dbus.inc'
       - 'exodus/frankenstein/test_sessiond.py'
@@ -54,6 +56,7 @@ jobs:
         run: |
           for script in exodus/frankenstein/guest-*.sh; do sh -n "$script"; done
           sh -n exodus/frankenstein/run-reference.sh
+          sh -n exodus/frankenstein/verify-manager-evidence.sh
           sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" "${{ matrix.mode }}"
       - name: Publish boot evidence and verified build artifacts
         if: always()
