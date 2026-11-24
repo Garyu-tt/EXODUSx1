@@ -43,6 +43,8 @@ jobs:
             "$dir/test_library_catalog.cpp" "$dir/library_catalog.cpp" exodus/home/ulaunch/catalog.cpp \
             -o "$RUNNER_TEMP/test-catalog"
           "$RUNNER_TEMP/test-catalog" "$RUNNER_TEMP/catalog-fixture.json"
+          c++ -std=c++17 -Wall -Wextra -Werror -I /usr/include/nlohmann "$dir/test_unified_catalog.cpp" exodus/home/ulaunch/catalog.cpp -o "$RUNNER_TEMP/test-unified"
+          "$RUNNER_TEMP/test-unified"
       - name: Build and render home
         run: |
           sh exodus/home/corkdeck/build-host.sh "$RUNNER_TEMP/corkdeck" "$RUNNER_TEMP/exodus-shell"
@@ -80,7 +82,7 @@ jobs:
       - name: Publish experimental NRO
         uses: actions/upload-artifact@v4
         with:
-          name: exodus-shell-r16-switch-arm64
+          name: exodus-shell-r17-switch-arm64
           path: |
             /tmp/exodus-build/exodus-shell.nro
             /tmp/exodus-build/SHA256SUMS
