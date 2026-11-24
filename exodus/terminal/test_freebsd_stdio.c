@@ -5,6 +5,10 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <signal.h>
+int tcsetsid(int, pid_t);
+int nxbsd_sig2str(int, char *);
+int nxbsd_str2sig(const char *, int *);
 int eaccess(const char *, int);
 FILE *fwopen(void *, int (*)(void *, const char *, int));
 
@@ -49,6 +53,14 @@ int main(void)
     assert(eaccess(name, X_OK) == 0);
     assert(unlink(name) == 0);
     assert(eaccess(name, F_OK) == -1 && errno == ENOENT);
-    puts("fwopen and eaccess contract checks passed");
+    char signal_name[32];
+    int signal_number = -1;
+    assert(nxbsd_sig2str(SIGTERM, signal_name) == 0);
+    assert(!strcmp(signal_name, "TERM"));
+    assert(nxbsd_str2sig("term", &signal_number) == 0 && signal_number == SIGTERM);
+    assert(nxbsd_str2sig("unknown-signal", &signal_number) == -1 && errno == EINVAL);
+    assert(nxbsd_sig2str(-1, signal_name) == -1 && errno == EINVAL);
+    assert(tcsetsid(-1, -1) == -1 && errno == EPERM);
+    puts("fwopen, eaccess, signal and terminal rejection checks passed");
     return 0;
 }
