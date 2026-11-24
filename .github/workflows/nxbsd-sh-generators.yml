@@ -55,6 +55,9 @@ jobs:
       - name: Compile BSD support modules and partially link shell core
         run: |
           mkdir "$RUNNER_TEMP/core"
+          cc -std=gnu11 -Wall -Wextra -Werror -c exodus/terminal/freebsd_stdio_host.c -o "$RUNNER_TEMP/core/stdio-host.o"
+          cc -std=gnu11 -Wall -Wextra -Werror exodus/terminal/test_freebsd_stdio.c "$RUNNER_TEMP/core/stdio-host.o" -o "$RUNNER_TEMP/test-fwopen"
+          "$RUNNER_TEMP/test-fwopen"
           for module in memalloc mystring alias output var expand; do
             cc -std=gnu11 -funsigned-char -Werror=implicit-function-declaration \
               -include exodus/terminal/freebsd_parser_host.h \
