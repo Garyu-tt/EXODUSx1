@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "library_catalog.h"
 #include "evcs_discovery.h"
+#include "evcs_pfs0.h"
 #include "launch_route.h"
 extern "C" {
 #include "../../runtime/autorun_probe.h"
@@ -12,7 +13,7 @@ extern "C" {
 #include "live_inventory.hpp"
 #endif
 using namespace exodus::home;
-struct exodus_library { Catalog catalog; const char *discovery = "Not requested"; };
+struct exodus_library { Catalog catalog; const char *discovery = "Not requested"; size_t first_game = SIZE_MAX; };
 struct evcs_catalog_pending {
     const Catalog &base;
     std::vector<Entry> entries;
@@ -58,6 +59,7 @@ static void evcs_catalog_merge(exodus_library &lib, const char *root)
     }
     auto &entries = lib.catalog.entries;
     entries.reserve(entries.size() + pending.entries.size());
+    lib.first_game = entries.size();
     for (auto &entry : pending.entries) entries.push_back(std::move(entry));
     if (!entries.empty()) lib.catalog.status = CatalogStatus::Ready;
     lib.discovery = "Games scan complete";
@@ -90,6 +92,33 @@ struct exodus_library *exodus_library_open_with_games(const char *path, const ch
 const char *exodus_library_discovery_status(const struct exodus_library *library)
 {
     return library ? library->discovery : "Catalog unavailable";
+}
+int exodus_library_archive_detail(const struct exodus_library *library, size_t index,
+                                  char *out, size_t cap)
+{
+    if (!library || !out || !cap || index < library->first_game ||
+        index >= library->catalog.entries.size()) return 0;
+    const auto &entry = library->catalog.entries[index];
+    enum evcs_kind kind;
+    if (entry.provider != Provider::Other ||
+        !evcs_kind_of(entry.id.c_str(), &kind) || kind != EVCS_NSP) return 0;
+    struct stat st;
+    if (lstat(entry.id.c_str(), &st) || !S_ISREG(st.st_mode) || st.st_size <= 0) {
+        snprintf(out, cap, "NSP unavailable. Not launchable.");
+        return 1;
+    }
+    FILE *f = fopen(entry.id.c_str(), "rb");
+    struct evcs_pfs0_info info;
+    auto rc = f ? evcs_pfs0_probe(f, (uint64_t)st.st_size, &info) : EVCS_PFS0_IO;
+    if (f && fclose(f)) rc = EVCS_PFS0_IO;
+    if (rc == EVCS_PFS0_OK)
+        snprintf(out, cap, "NSP directory: %lu files, %lu NCA, %lu metadata candidates.\\nNo verified launch backend.",
+                 (unsigned long)info.entries, (unsigned long)info.nca, (unsigned long)info.meta_nca);
+    else
+        snprintf(out, cap, "NSP directory %s. Not launchable.",
+                 rc == EVCS_PFS0_LIMIT ? "exceeds scan limits" :
+                 rc == EVCS_PFS0_IO ? "unreadable" : "invalid");
+    return 1;
 }
 void exodus_library_close(struct exodus_library *library) { delete library; }
 const char *exodus_library_status(const struct exodus_library *library)
