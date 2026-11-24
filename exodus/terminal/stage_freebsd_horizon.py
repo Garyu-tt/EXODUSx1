@@ -53,6 +53,14 @@ def prepare(donor, out):
     if data.count(b"_PATH_STDPATH") != 2:
         raise ValueError("unexpected standard PATH anchor")
     dst.write_bytes(data.replace(b"_PATH_STDPATH", b'"/switch"'))
+    # The upstream shell has an explicit no-Berkeley-job-control build.
+    # Use it instead of inventing a termios ABI or pretending to own a tty.
+    replace("bin/sh/shell.h", b"#define\tJOBS 1", b"#define\tJOBS 0")
+    replace("bin/sh/main.c", b"#include <termios.h>\n", b"")
+    replace("bin/sh/main.c", b"\tif (rootpid == 1) {",
+            b"#ifndef __SWITCH__\n\tif (rootpid == 1) {")
+    replace("bin/sh/main.c", b"\t}\n\trootshell = 1;",
+            b"\t}\n#endif\n\trootshell = 1;")
     # Explicit virtual path policy; not a claim that PATH executables work.
     replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
     replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
