@@ -25,6 +25,7 @@ int main(void)
 {
     void *page;
     void *candidate;
+    VirtmemReservation *reservation = NULL;
 
     consoleInit(NULL);
     printf("EXODUS NX memory probe (read-only)\n");
@@ -45,13 +46,20 @@ int main(void)
 
     virtmemLock();
     candidate = virtmemFindAslr(0x1000, 0x1000);
-    virtmemUnlock();
     if (candidate)
-        report_region("free ASLR candidate (not reserved or mapped)", candidate);
-    else
-        puts("No free ASLR candidate returned");
+        reservation = virtmemAddReservation(candidate, 0x1000);
+    virtmemUnlock();
 
-    puts("No mappings or permissions were changed.");
+    if (candidate && reservation) {
+        report_region("free ASLR candidate (bookkeeping-reserved, not mapped)", candidate);
+        virtmemLock();
+        virtmemRemoveReservation(reservation);
+        virtmemUnlock();
+    } else {
+        puts("No free ASLR candidate/reservation returned");
+    }
+
+    puts("No kernel mappings or permissions were changed.");
     puts("Press PLUS to exit.");
     PadState pad;
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
