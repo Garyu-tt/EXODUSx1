@@ -1,0 +1,34 @@
+name: EXODUS Remote host admission
+on:
+  push:
+    branches:
+      - feat/exodus-remote-r03-loopback
+    paths:
+      - 'exodus/remote/**'
+      - '.github/workflows/exodus-remote-host.yml'
+  pull_request:
+    paths:
+      - 'exodus/remote/**'
+      - '.github/workflows/exodus-remote-host.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Record checkout and toolchain
+        run: |
+          git rev-parse HEAD
+          git status --porcelain
+          cc --version
+          openssl version
+          python3 --version
+      - name: Install build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev pkg-config
+      - name: Execute full host admission
+        run: sh exodus/remote/verify_host.sh
