@@ -19,6 +19,12 @@ struct exodus_page_store {
  * the store unchanged. */
 bool exodus_page_store_append(struct exodus_page_store *store, const uint8_t *page);
 
+/* Replace an existing page without changing its index or the page count.
+ * Shifts the following payloads and adjusts their offsets when the encoded
+ * size changes. Invalid indices, inconsistent offsets or insufficient capacity
+ * leave the store unchanged. Access must be serialized by the caller. */
+bool exodus_page_store_replace(struct exodus_page_store *store, size_t index, const uint8_t *page);
+
 /* Restore into a separate EXODUS_PAGE_BYTES buffer. Invalid indices or
  * malformed sparse encodings leave the destination unchanged. */
 bool exodus_page_store_restore(const struct exodus_page_store *store, size_t index, uint8_t *page);
