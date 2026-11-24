@@ -44,6 +44,15 @@ def prepare(donor, out):
     for path in ("usr.bin/printf/printf.c", "bin/test/test.c", "bin/kill/kill.c"):
         replace(path, b"#include <err.h>",
                 b"#ifndef SHELL\n#include <err.h>\n#endif")
+    # Reuse the tested AST bridge hook; no target subprocess fallback is
+    # admitted for bridged pipelines. Non-pipeline paths still require review.
+    dst = out / "bin/sh/eval.c"
+    dst.unlink()
+    stage(donor, dst, "evalbridge")
+    data = dst.read_bytes()
+    if data.count(b"_PATH_STDPATH") != 2:
+        raise ValueError("unexpected standard PATH anchor")
+    dst.write_bytes(data.replace(b"_PATH_STDPATH", b'"/switch"'))
     # Explicit virtual path policy; not a claim that PATH executables work.
     replace("bin/sh/var.c", b'"PATH=" _PATH_DEFPATH', b'"PATH=/switch"')
     replace("bin/sh/output.c", b"fwopen(dest, doformat_wr)",
