@@ -28,6 +28,10 @@ size_t exodus_library_count(const struct exodus_library *library)
 {
     return library ? library->catalog.entries.size() : 0;
 }
+const char *exodus_library_id(const struct exodus_library *library, size_t index)
+{
+    return index < exodus_library_count(library) ? library->catalog.entries[index].id.c_str() : "";
+}
 const char *exodus_library_title(const struct exodus_library *library, size_t index)
 {
     return index < exodus_library_count(library) ? library->catalog.entries[index].title.c_str() : "";

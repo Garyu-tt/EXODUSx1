@@ -1,9 +1,10 @@
 /* Standalone EXODUS settings proof: uses the original CorkDeck drawing/input
- * engine, not the Wine launcher. No system writes or executable dispatch. */
+ * engine, not the Wine launcher. No system settings writes; guarded launch requests. */
 #define SDL_MAIN_HANDLED
 #include "launcher_ui.h"
 #include "horizon_settings.h"
 #include "library_catalog.h"
+#include "native_launch.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,7 +59,7 @@ static void settings_snapshot(struct ui_row rows[9])
 }
 
 /* Eight cards per page; the donor renderer and input system stay in charge.
- * Snapshots are metadata only. No provider is implicitly executable. */
+ * Launch is explicit, validated and restricted to supported native providers. */
 static void show_library(struct ui *ui, const char *path)
 {
     struct exodus_library *library = exodus_library_open(path);
@@ -71,7 +72,7 @@ static void show_library(struct ui *ui, const char *path)
         return;
     }
     const struct ui_hint hints[] = {
-        {UI_A, "Details"}, {UI_B, "Back"}, {UI_L, "Previous"}, {UI_R, "Next"}
+        {UI_A, "Open"}, {UI_B, "Back"}, {UI_L, "Previous"}, {UI_R, "Next"}
     };
     ui_start_screen(ui);
     while (ui_begin_frame(ui)) {
@@ -89,9 +90,21 @@ static void show_library(struct ui *ui, const char *path)
                 if (selection >= count) selection = count - 1;
             }
             if (input.button == UI_A) {
-                char detail[256];
-                snprintf(detail, sizeof(detail), "Provider: %s\nMetadata snapshot only. Launch unavailable.",
-                         exodus_library_provider(library, selection));
+                char detail[640], result[256];
+                const char *provider = exodus_library_provider(library, selection);
+                const char *id = exodus_library_id(library, selection);
+                enum exodus_route route = exodus_route_for(provider, id);
+#ifdef __SWITCH__
+                if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW) {
+                    snprintf(detail, sizeof(detail), "Target: %s\n%s", exodus_route_name(route), id);
+                    if (ui_confirm(ui, exodus_library_title(library, selection), detail, "Launch")) {
+                        if (exodus_launch(route, id, result)) goto done;
+                        ui_message(ui, "Launch unavailable", result);
+                    }
+                    break;
+                }
+#endif
+                snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
                 ui_message(ui, exodus_library_title(library, selection), detail);
                 break;
             }

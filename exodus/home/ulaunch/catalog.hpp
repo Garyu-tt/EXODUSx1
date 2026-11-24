@@ -30,6 +30,7 @@ namespace exodus::home {
     struct Entry {
         Provider provider;
         std::string title;
+        std::string id;
     };
 
     struct Catalog {

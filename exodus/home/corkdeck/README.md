@@ -64,3 +64,16 @@ rm -f "$scratch"
 ```
 
 The shared parser is GPL-2.0-only; verify combined donor licensing and notices before distribution. Build/tests and native execution have not been verified in this session.
+
+## R05: explicit provider launch routing
+
+Native Switch title IDs are 16 hexadecimal characters (nonzero) and must appear in a fresh NS application inventory before appletRequestLaunchApplication. Library applet launches require HOS 5.0 or later; unsupported contexts fail closed. Homebrew IDs are relative to sdmc:/switch, must use .nro, cannot traverse directories, and are checked for a regular file and NRO0 header before envSetNextLoad. A supported loader must be present. The user must confirm the target; accepted requests exit the preview normally. This is a request handoff, not proof that the title executed. Steam and CorkDeck are recognized routes but have no active backend yet; the host never launches anything. No arbitrary command strings are executed.
+
+Portable routing test (no SDL or libnx needed):
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_launch_route.c -o /tmp/exodus-route-check
+/tmp/exodus-route-check
+```
+
+Actual HOS launch handoff, permissions, return-to-shell behavior and NRO argument handling require a native build and physical device tests. Use emuMMC and retain the original HOME. No system menu replacement is installed by this change.
