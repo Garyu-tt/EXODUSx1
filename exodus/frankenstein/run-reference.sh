@@ -109,6 +109,20 @@ fi
 grep -F "$gate" "$out/serial.log"
 grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
 
+# The upstream manager workload deliberately preserves compiler diagnostics
+# and exits cleanly even when the full daemon does not compile. A completed
+# audit is not a successful port: enforce its explicit result at the host.
+if [ "$mode" = manager ]; then
+    tr -d '\r' < "$out/serial.log" > "$out/manager-evidence.txt"
+    grep -Fx EXODUS_MANAGER_PROTOCOL_BUILD_PASS "$out/manager-evidence.txt"
+    result=$(sed -n 's/^EXODUS_MANAGER_DAEMON_CHECK_RESULT=//p' "$out/manager-evidence.txt")
+    if [ "$result" != 0 ]; then
+        printf 'Upstream manager daemon compile gate not passed (result=%s)\n' "$result" >&2
+        exit 1
+    fi
+    echo EXODUS_MANAGER_DAEMON_COMPILE_PASS
+fi
+
 # A fresh emulator process, same disk, no cloud-init seed or output drive.
 # A successful first-stage shutdown alone is not evidence of cold boot.
 if [ "$mode" = rcresident ]; then
