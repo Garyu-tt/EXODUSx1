@@ -3,6 +3,8 @@
 #define EXODUS_FREEBSD_PARSER_HOST_H
 #include <sys/cdefs.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <limits.h>
 #include <string.h>
 #include <sys/param.h>
 /* FreeBSD sys/sys/param.h at the locked revision: length includes NUL. */
@@ -23,6 +25,13 @@
 #endif
 #ifndef __nonstring
 #define __nonstring __attribute__((nonstring))
+#endif
+/* Host object probe: FreeBSD sys/sys/_align.h aligns to pointer width. */
+#ifndef ALIGN
+#define ALIGN(p) (((p) + (sizeof(void *) - 1)) & ~(sizeof(void *) - 1))
+#endif
+#ifndef __DECONST
+#define __DECONST(type, value) ((type)(uintptr_t)(const void *)(value))
 #endif
 /* Declaration only: object compilation does not establish link/runtime availability. */
 size_t strlcpy(char *, const char *, size_t);
