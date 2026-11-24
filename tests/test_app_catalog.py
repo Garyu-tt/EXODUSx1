@@ -121,6 +121,7 @@ class AppCatalogTests(unittest.TestCase):
         self.assertEqual(output.read_bytes(), expected)
 
         self.add_nro("Broken.nro", b"NRO0")
+        output.write_bytes(b"previous snapshot")
         partial = self.run_catalog(*args, "--output", output)
         self.assertEqual((partial.returncode, partial.stdout), (1, ""))
         self.assertIn("Broken.nro", partial.stderr)
