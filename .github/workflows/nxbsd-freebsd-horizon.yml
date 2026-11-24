@@ -52,6 +52,7 @@ jobs:
             horizon-shell/*.txt
             horizon-shell/*.tsv
             horizon-shell/*.log
+            horizon-shell/*.map
             horizon-shell/*.json
             horizon-grammar/manifest.json
           retention-days: 7
