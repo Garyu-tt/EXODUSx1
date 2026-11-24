@@ -174,6 +174,9 @@ int main(int argc, char **argv)
     char key[64], key2[64];
     assert(exodus_library_declared_group_key(lib,split_index,key,sizeof(key)));
     assert(!strcmp(key,"evcs-declared:0000000000000010"));
+    assert(exodus_library_favorite_key(lib,split_index,key2,sizeof(key2)) && !strcmp(key,key2));
+    assert(exodus_library_favorite_key(lib,patch_index,key2,sizeof(key2)) && !strcmp(key,key2));
+    assert(exodus_library_favorite_key(lib,0,key2,sizeof(key2)) && !strcmp(key2,"Steam:1"));
     assert(exodus_library_declared_group_key(lib,patch_index,key2,sizeof(key2)) && !strcmp(key,key2));
     assert(!exodus_library_declared_group_key(lib,0,key2,sizeof(key2)));
     assert(!exodus_library_declared_group_key(lib,split_index,key2,5) && !key2[0]);
@@ -191,6 +194,9 @@ int main(int argc, char **argv)
     for (size_t n=5;n<7;++n)
         assert(exodus_library_declared_group_key(lib,n,key2,sizeof(key2)) && !strcmp(key,key2));
     assert(exodus_library_group_representative(lib,99)==SIZE_MAX);
+    for (size_t n=5;n<7;++n)
+        assert(exodus_library_favorite_key(lib,n,key2,sizeof(key2)) && !strcmp(key,key2));
+    assert(!exodus_library_favorite_key(lib,99,key2,sizeof(key2)));
     exodus_library_close(lib);
     assert(std::filesystem::file_size(moved+"/00")==4);
     assert(std::filesystem::remove_all(root)==7);
