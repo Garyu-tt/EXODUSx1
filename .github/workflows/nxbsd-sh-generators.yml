@@ -113,6 +113,23 @@ jobs:
           nm --defined-only "$RUNNER_TEMP/shell-process.o" > "$RUNNER_TEMP/grammar-a/process-defined.txt"
           test -s "$RUNNER_TEMP/grammar-a/process-defined.txt"
           cat "$RUNNER_TEMP/grammar-a/process-undefined.txt"
+      - name: Compile original shell entry point, arithmetic and basic builtins
+        run: |
+          mkdir "$RUNNER_TEMP/builtins"
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module main --out "$RUNNER_TEMP/main-host.c"
+          for module in main cd miscbltin mail arith_yacc arith_yylex bltin/echo; do
+            source="donor-freebsd/bin/sh/$module.c"
+            if [ "$module" = main ]; then source="$RUNNER_TEMP/main-host.c"; fi
+            cc -std=gnu11 -funsigned-char -DSHELL -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "$source" -o "$RUNNER_TEMP/builtins/${module##*/}.o"
+          done
+          cc -r "$RUNNER_TEMP/shell-process.o" "$RUNNER_TEMP/builtins/"*.o -o "$RUNNER_TEMP/shell-builtins.o"
+          nm -u "$RUNNER_TEMP/shell-builtins.o" > "$RUNNER_TEMP/grammar-a/builtins-undefined.txt"
+          nm --defined-only "$RUNNER_TEMP/shell-builtins.o" > "$RUNNER_TEMP/grammar-a/builtins-defined.txt"
+          cat "$RUNNER_TEMP/grammar-a/builtins-undefined.txt"
       - uses: actions/upload-artifact@v4
         if: ${{ always() }}
         with:
