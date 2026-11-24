@@ -17,6 +17,9 @@ int exodus_library_native_detail(const struct exodus_library *library, size_t in
 /* Probe selected discovered NSP directory; never authorizes launch. */
 int exodus_library_archive_detail(const struct exodus_library *library, size_t index, char *out, size_t cap);
 /* Grouped presentation only. Raw index space and launch policy are unchanged. */
+size_t exodus_library_group_representative(const struct exodus_library *library, size_t index);
+/* Stable owner-declared group key; never a launch ID. Returns 0 for orphan/unclassified. */
+int exodus_library_declared_group_key(const struct exodus_library *library, size_t index, char *out, size_t cap);
 int exodus_library_is_group_card(const struct exodus_library *library, size_t index);
 int exodus_library_is_discovered(const struct exodus_library *library, size_t index);
 size_t exodus_library_group_size(const struct exodus_library *library, size_t index);
