@@ -26,7 +26,7 @@ The donor is pinned and referenced, not copied into EXODUS. Preserve CorkDeck/Wi
 - Keep Latitude/uLaunch fallback until device acceptance.
 - Extract further actual CorkDeck shell screens incrementally; shell.inc currently relies on launcher state and is not standalone.
 
-No successful build or device run is claimed by this PR.
+The CorkDeck CI workflow covers the host build and one-frame smoke. Switch device acceptance is tracked separately.
 
 ## R03: Horizon status provider
 
@@ -54,9 +54,9 @@ The library uses the original CorkDeck drawing/input primitives with a new eight
 Bridge test (use a disposable file path):
 
 ```sh
-c++ -std=c++17 -Wall -Wextra -Werror -I "${JSON_INCLUDE:-/usr/include/nlohmann}" \\
-  exodus/home/corkdeck/test_library_catalog.cpp \\
-  exodus/home/corkdeck/library_catalog.cpp exodus/home/ulaunch/catalog.cpp \\
+c++ -std=c++17 -Wall -Wextra -Werror -I "${JSON_INCLUDE:-/usr/include/nlohmann}" \
+  exodus/home/corkdeck/test_library_catalog.cpp \
+  exodus/home/corkdeck/library_catalog.cpp exodus/home/ulaunch/catalog.cpp \
   -o /tmp/exodus-catalog-check
 scratch=$(mktemp)
 /tmp/exodus-catalog-check "$scratch"
@@ -67,7 +67,7 @@ The shared parser is GPL-2.0-only; verify combined donor licensing and notices b
 
 ## R05: explicit provider launch routing
 
-Native Switch title IDs are 16 hexadecimal characters (nonzero) and must appear in a fresh NS application inventory before appletRequestLaunchApplication. Library applet launches require HOS 5.0 or later; unsupported contexts fail closed. Homebrew IDs are relative to sdmc:/switch, must use .nro, cannot traverse directories, and are checked for a regular file and NRO0 header before envSetNextLoad. A supported loader must be present. The user must confirm the target; accepted requests exit the preview normally. This is a request handoff, not proof that the title executed. Steam and CorkDeck are recognized routes but have no active backend yet; the host never launches anything. No arbitrary command strings are executed.
+Native Switch title IDs are 16 hexadecimal characters (nonzero) and must appear in a fresh NS application inventory before appletRequestLaunchApplication. Library applet launches require HOS 5.0 or later; unsupported contexts fail closed. Homebrew IDs are relative to sdmc:/switch, must use .nro, cannot traverse directories, and must pass the shared structural NRO preflight before envSetNextLoad. A supported loader must be present. The user must confirm the target; accepted requests exit the preview normally. This is a request handoff, not proof that the title executed. Steam and CorkDeck are recognized routes but have no active backend yet; the host never launches anything. No arbitrary command strings are executed.
 
 Portable routing test (no SDL or libnx needed):
 
@@ -148,7 +148,7 @@ cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/check_shell_nro.c exodus/
 /tmp/check-shell-nro /tmp/exodus-native/exodus-shell.nro
 ```
 
-The script restricts pkg-config to the Switch portlibs. Set JSON_INCLUDE if json.hpp is elsewhere; SWITCH_EXTRA_LIBS is available for SDK-specific static linking requirements. The new workflow runs portable tests, the host SDL smoke, and a separate native compilation and structural NRO check. The donor is pinned; the CI toolchain image and package versions are not yet locked. CI success is not asserted in this revision.
+The script restricts pkg-config to the Switch portlibs. Set JSON_INCLUDE if json.hpp is elsewhere; SWITCH_EXTRA_LIBS is available for SDK-specific static linking requirements. The workflow runs portable tests, the host SDL smoke, and a separate native compilation and structural NRO check. The donor is pinned; the CI toolchain image and package versions are not yet locked. CI records the NRO checksum. Linked binary distribution follows the provenance and license review above.
 
 ### Safe first deployment
 

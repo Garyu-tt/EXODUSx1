@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
-from threading import Thread
+from threading import Event, Thread
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -210,7 +210,60 @@ class SteamSyncTests(unittest.TestCase):
             sync.sign_in(provider, lambda address: True, timeout=0.01)
         with self.assertRaisesRegex(sync.SteamSyncError, "Could not open"):
             sync.sign_in(provider, lambda address: False, timeout=1)
+        with patch("exodus.steam_sync.webbrowser.open", side_effect=OSError("synthetic launch error")) as failed:
+            with self.assertRaisesRegex(sync.SteamSyncError, "Could not open"):
+                sync.sign_in(provider, failed, timeout=1)
         self.assertFalse(self.output.exists())
+        self.assertEqual(provider.requests, [])
+
+    def test_callback_can_finish_while_foreground_launcher_waits(self):
+        provider = FakeSteam()
+        browser = LocalBrowser()
+        release = Event()
+        launch_finished = Event()
+        self.addCleanup(browser.join)
+
+        def foreground_browser(address):
+            try:
+                opened = browser.open(address)
+                browser.join()
+                release.wait(timeout=5)
+                return opened
+            finally:
+                launch_finished.set()
+
+        try:
+            count = sync.sync_library(self.output, API_KEY, timeout=2, opener=provider,
+                                      open_browser=foreground_browser)
+            self.assertEqual(count, 2)
+            browser.join()
+            self.assertFalse(launch_finished.is_set())
+            self.assertEqual(browser.replies[0][0], 200)
+            self.assertTrue(self.output.is_file())
+        finally:
+            release.set()
+        self.assertTrue(launch_finished.wait(timeout=2))
+
+    def test_foreground_launcher_does_not_delay_timeout(self):
+        provider = FakeSteam()
+        launch_started = Event()
+        launch_finished = Event()
+        release = Event()
+
+        def slow_browser(address):
+            launch_started.set()
+            release.wait(timeout=2)
+            launch_finished.set()
+            return True
+
+        try:
+            with self.assertRaisesRegex(sync.SteamSyncError, "Timed out"):
+                sync.sign_in(provider, slow_browser, timeout=0.05)
+            self.assertTrue(launch_started.wait(timeout=1))
+            self.assertFalse(launch_finished.is_set())
+        finally:
+            release.set()
+        self.assertTrue(launch_finished.wait(timeout=1))
         self.assertEqual(provider.requests, [])
 
     def test_rejects_duplicate_callback_fields(self):
@@ -259,6 +312,109 @@ class SteamSyncTests(unittest.TestCase):
                 sync.SteamSyncError, "invalid entry"):
             sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=FakeSteam())
         browser.assert_not_called()
+
+    def test_refreshes_windows_utf16le_base_catalog_in_place(self):
+        homebrew = {
+            **steam_entry("tools/local.nro", "Local \u661f \U0001f3ae"),
+            "provider": "switch_homebrew",
+        }
+        native = {**steam_entry("0100000000001000", "Native title"), "provider": "switch"}
+        original = {"schema_version": 1, "entries": [
+            steam_entry("77", "Prior Steam account"), homebrew, native,
+        ]}
+        # Windows PowerShell 5.1 redirects command output with a UTF-16LE BOM.
+        self.output.write_bytes(b"\xff\xfe" + json.dumps(
+            original, ensure_ascii=False,
+        ).encode("utf-16-le"))
+
+        count = self.run_sync(FakeSteam(), LocalBrowser(), self.output)
+
+        self.assertEqual(count, 2)
+        text = self.output.read_bytes().decode("utf-8")
+        self.assertEqual(json.loads(text), {"schema_version": 1, "entries": [
+            steam_entry("10", "\u661f Test"), steam_entry("440", "Synthetic Team"), homebrew, native,
+        ]})
+        self.assertEqual(list(self.output.parent.iterdir()), [self.output])
+
+    def test_invalid_base_encoding_preserves_snapshot_before_sign_in(self):
+        text = '{"schema_version":1,"entries":[]}'
+        invalid_catalogs = [
+            b"\xff\xfe{",  # Partial UTF-16 code unit.
+            b"\xff\xfe\x00\xd8",  # Lone high surrogate.
+            b"\xff\xfe\x00\xdc",  # Lone low surrogate.
+            b"\xfe\xff" + text.encode("utf-16-be"),
+            text.encode("utf-16-le"),  # UTF-16 requires a supported BOM.
+            text.encode("utf-16-be"),
+            b"\xff\xfe\x00\x00" + text.encode("utf-32-le"),
+            b"\x00\x00\xfe\xff" + text.encode("utf-32-be"),
+        ]
+        for data in invalid_catalogs:
+            with self.subTest(data=data):
+                self.output.write_bytes(data)
+                provider = FakeSteam()
+                with patch("exodus.steam_sync.webbrowser.open", return_value=False) as browser, self.assertRaisesRegex(
+                        sync.SteamSyncError, "Invalid JSON"):
+                    sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=provider)
+                browser.assert_not_called()
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(self.output.read_bytes(), data)
+                self.assertEqual(list(self.output.parent.iterdir()), [self.output])
+
+    def test_utf16le_base_limit_counts_encoded_bytes(self):
+        data = b"\xff\xfe" + '{"schema_version":1,"entries":[]}'.encode("utf-16-le")
+        self.output.write_bytes(data)
+        with patch("exodus.steam_sync.MAX_CATALOG_BYTES", len(data)):
+            self.assertEqual(sync.read_base_catalog(self.output), [])
+        with patch("exodus.steam_sync.MAX_CATALOG_BYTES", len(data) - 1), self.assertRaisesRegex(
+                sync.SteamSyncError, "size limit"):
+            sync.read_base_catalog(self.output)
+
+    def test_utf16le_nonfinite_values_preserve_snapshot_before_sign_in(self):
+        for value in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(value=value):
+                data = b"\xff\xfe" + (
+                    '{"schema_version":1,"entries":[' + value + ']}'
+                ).encode("utf-16-le")
+                self.output.write_bytes(data)
+                provider = FakeSteam()
+                with patch("exodus.steam_sync.webbrowser.open", return_value=False) as browser, self.assertRaisesRegex(
+                        sync.SteamSyncError, "Invalid JSON in the base catalog"):
+                    sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=provider)
+                browser.assert_not_called()
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(self.output.read_bytes(), data)
+                self.assertEqual(list(self.output.parent.iterdir()), [self.output])
+
+    def test_utf16le_base_keeps_duplicate_field_and_size_checks(self):
+        duplicate = b"\xff\xfe" + (
+            '{"schema_version":1,"schema_version":1,"entries":[]}'
+        ).encode("utf-16-le")
+        self.output.write_bytes(duplicate)
+        with self.assertRaisesRegex(sync.SteamSyncError, "Invalid JSON"):
+            sync.read_base_catalog(self.output)
+        oversized = b"\xff\xfe" + b" \x00" * (sync.MAX_CATALOG_BYTES // 2)
+        self.output.write_bytes(oversized)
+        with self.assertRaisesRegex(sync.SteamSyncError, "size limit"):
+            sync.read_base_catalog(self.output)
+
+    def test_base_catalog_rejects_nul_provider_ids_before_sign_in(self):
+        for provider_name in ("steam", "switch_homebrew"):
+            with self.subTest(provider=provider_name):
+                entry = {**steam_entry("local\0.nro", "Test"), "provider": provider_name}
+                data = json.dumps({"schema_version": 1, "entries": [entry]}).encode("utf-8")
+                self.output.write_bytes(data)
+                provider = FakeSteam()
+                with patch("exodus.steam_sync.webbrowser.open", return_value=False) as browser, self.assertRaisesRegex(
+                        sync.SteamSyncError, "invalid.*identity"):
+                    sync.sync_library(self.output, API_KEY, base_catalog=self.output, opener=provider)
+                browser.assert_not_called()
+                self.assertEqual(provider.requests, [])
+                self.assertEqual(self.output.read_bytes(), data)
+
+    def test_steam_network_json_remains_utf8_only(self):
+        data = b"\xff\xfe" + json.dumps(APP_INFO).encode("utf-16-le")
+        with self.assertRaisesRegex(sync.SteamSyncError, "Invalid JSON"):
+            sync.fetch_library(FakeSteam(data), API_KEY, ACCOUNT)
 
     def test_failed_atomic_replace_preserves_output_and_cleans_stage(self):
         self.output.write_bytes(b"prior snapshot")

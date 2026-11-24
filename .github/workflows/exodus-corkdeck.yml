@@ -76,19 +76,16 @@ jobs:
           sh exodus/home/corkdeck/build-switch.sh /tmp/corkdeck /tmp/exodus-build
           cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/check_shell_nro.c exodus/runtime/autorun_probe.c -o /tmp/check-shell-nro
           /tmp/check-shell-nro /tmp/exodus-build/exodus-shell.nro
+          dd if=/dev/zero of=/tmp/magic-only.nro bs=128 count=1 status=none
+          printf 'NRO0' | dd of=/tmp/magic-only.nro bs=1 seek=16 conv=notrunc status=none
+          if /tmp/check-shell-nro /tmp/magic-only.nro; then
+            echo 'NRO preflight accepted an incomplete header' >&2
+            exit 1
+          fi
           file /tmp/exodus-build/exodus-shell.elf
           cd /tmp/exodus-build
           sha256sum exodus-shell.nro > SHA256SUMS
           cat SHA256SUMS
-      - name: Publish experimental NRO
-        uses: actions/upload-artifact@v4
-        with:
-          name: exodus-shell-r12-switch-arm64
-          path: |
-            /tmp/exodus-build/exodus-shell.nro
-            /tmp/exodus-build/SHA256SUMS
-          if-no-files-found: error
-          retention-days: 30
 
 
 

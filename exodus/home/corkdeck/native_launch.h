@@ -45,19 +45,14 @@ static inline int exodus_launch(enum exodus_route route, const char *id, char me
         rc = appletRequestLaunchApplication(title, NULL);
     } else if (route == EXODUS_ROUTE_HOMEBREW) {
         char path[512], args[516];
-        struct stat st;
-        unsigned char magic[4];
-        if (!exodus_nro_path(id, path) || !envHasNextLoad() ||
-            stat(path, &st) || !S_ISREG(st.st_mode)) {
+        if (!exodus_nro_path(id, path) || !envHasNextLoad()) {
             snprintf(message, 256, "NRO or loader unavailable.");
             return 0;
         }
-        FILE *f = fopen(path, "rb");
-        if (!f) { snprintf(message, 256, "Cannot open NRO."); return 0; }
-        int ok = st.st_size >= 128 && !fseek(f, 16, SEEK_SET) &&
-                 fread(magic, 1, 4, f) == 4 && !memcmp(magic, "NRO0", 4);
-        fclose(f);
-        if (!ok) { snprintf(message, 256, "Invalid NRO header."); return 0; }
+        if (exodus_autorun_probe(path) != EXODUS_AUTORUN_READY) {
+            snprintf(message, 256, "NRO missing, unreadable or invalid.");
+            return 0;
+        }
         snprintf(args, sizeof(args), "\"%s\"", path);
         rc = envSetNextLoad(path, args);
     } else if (route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
