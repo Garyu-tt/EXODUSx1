@@ -60,7 +60,13 @@ jobs:
           persist-credentials: false
       - name: Install Switch portlibs and host headers
         run: |
-          dkp-pacman -Syu --noconfirm --needed switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-libjpeg-turbo
+          export PKG_CONFIG_PATH=
+          export PKG_CONFIG_LIBDIR="$DEVKITPRO/portlibs/switch/lib/pkgconfig:$DEVKITPRO/portlibs/switch/share/pkgconfig"
+          if ! pkg-config --exists sdl2 SDL2_ttf libpng libturbojpeg; then
+            dkp-pacman -S --noconfirm --needed switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-libjpeg-turbo ||
+              dkp-pacman -Syu --noconfirm --needed switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-libjpeg-turbo
+          fi
+          pkg-config --exists sdl2 SDL2_ttf libpng libturbojpeg
           apt-get update
           apt-get install -y git pkg-config nlohmann-json3-dev file
       - name: Checkout exact donor source
