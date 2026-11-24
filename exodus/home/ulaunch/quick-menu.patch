@@ -1,0 +1,458 @@
+diff --git a/libs/uCommon/include/ul/smi/smi_Protocol.hpp b/libs/uCommon/include/ul/smi/smi_Protocol.hpp
+index 7dd331d..a0d0d6d 100755
+--- a/libs/uCommon/include/ul/smi/smi_Protocol.hpp
++++ b/libs/uCommon/include/ul/smi/smi_Protocol.hpp
+@@ -82 +82,8 @@ namespace ul::smi {
+-        OpenControllerKeyRemapping
++        OpenControllerKeyRemapping,
++        QueryCatalogGameCardApplication,
++        LaunchCatalogGameCardApplication,
++    };
++
++    struct CatalogGameCardInfo {
++        u64 application_id;
++        char name[0x200];
+diff --git a/libs/uCommon/include/ul/ul_Results.rc.hpp b/libs/uCommon/include/ul/ul_Results.rc.hpp
+index abd7983..14336ad 100644
+--- a/libs/uCommon/include/ul/ul_Results.rc.hpp
++++ b/libs/uCommon/include/ul/ul_Results.rc.hpp
+@@ -34,0 +35 @@ namespace ulaunch {
++    R_DEFINE_ERROR_RESULT(CatalogLaunchDenied, 407);
+diff --git a/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp b/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
+index 4c5a30d..c51db63 100755
+--- a/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
++++ b/projects/uMenu/include/ul/menu/smi/smi_Commands.hpp
+@@ -45,0 +46,25 @@ namespace ul::menu::smi {
++    inline Result QueryCatalogGameCardApplication(const u64 app_id, CatalogGameCardInfo &info) {
++        return SendCommand(SystemMessage::QueryCatalogGameCardApplication,
++            [&](ScopedStorageWriter &writer) {
++                return writer.Push(app_id);
++            },
++            [&](ScopedStorageReader &reader) {
++                UL_RC_TRY(reader.Pop(info));
++                // An older uSystem does not return this typed reply.
++                return (info.application_id == app_id && info.name[sizeof(info.name) - 1] == '\0')
++                    ? ResultSuccess : ResultCatalogLaunchDenied;
++            }
++        );
++    }
++
++    inline Result LaunchCatalogGameCardApplication(const u64 app_id) {
++        return SendCommand(SystemMessage::LaunchCatalogGameCardApplication,
++            [&](ScopedStorageWriter &writer) {
++                return writer.Push(app_id);
++            },
++            [](ScopedStorageReader &) {
++                return ResultSuccess;
++            }
++        );
++    }
++
+diff --git a/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp b/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
+index 933d011..449012b 100755
+--- a/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
++++ b/projects/uMenu/include/ul/menu/ui/ui_MainMenuLayout.hpp
+@@ -125,0 +126,2 @@ namespace ul::menu::ui {
++            bool HandleLaunchEntry(const Entry &entry);
++            bool CompleteNativeApplicationLaunch(const Result rc);
+@@ -200,0 +203,2 @@ namespace ul::menu::ui {
++            bool CanLaunchCatalogApplication(const u64 app_id);
++            bool TryLaunchCatalogApplication(const u64 app_id);
+diff --git a/projects/uMenu/romfs/lang/en.json b/projects/uMenu/romfs/lang/en.json
+index 6014634..1b6a674 100755
+--- a/projects/uMenu/romfs/lang/en.json
++++ b/projects/uMenu/romfs/lang/en.json
+@@ -5,0 +6,15 @@
++    "exodus_catalog": "EXODUS library",
++    "exodus_catalog_unavailable": "Copy a catalog snapshot to /ulaunch/exodus-catalog.json.",
++    "exodus_catalog_invalid": "The snapshot must use the EXODUS v1 catalog format.",
++    "exodus_catalog_too_large": "The snapshot exceeds the HOME catalog size limit.",
++    "exodus_catalog_empty": "The snapshot contains no applications.",
++    "exodus_catalog_steam": "Steam",
++    "exodus_catalog_switch": "Switch",
++    "exodus_catalog_homebrew": "Homebrew",
++    "exodus_catalog_other": "Other",
++    "exodus_catalog_previous": "Previous",
++    "exodus_catalog_next": "Next",
++    "exodus_catalog_close": "Close",
++    "exodus_catalog_launch": "Launch",
++    "exodus_catalog_select_title": "Select a title from the inserted game card",
++    "exodus_catalog_title_unavailable": "Launch requires a ready game card title and no suspended application.",
+diff --git a/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp b/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
+index 19a6a26..3dd232b 100755
+--- a/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
++++ b/projects/uMenu/source/ul/menu/ui/ui_MainMenuLayout.cpp
+@@ -10,0 +11 @@
++#include <cstdio>
+@@ -64,0 +66,127 @@ namespace ul::menu::ui {
++    bool MainMenuLayout::HandleLaunchEntry(const Entry &entry) {
++        auto do_launch_entry = true;
++
++        if(g_GlobalSettings.IsSuspended()) {
++            // Play animations, then resume the suspended hb/app
++            if(g_GlobalSettings.IsEntrySuspended(entry)) {
++                if(IsScreenCaptureBackgroundFocused()) {
++                    this->StartResume();
++                }
++                do_launch_entry = false;
++            }
++
++            // If the suspended entry is another one, ask the user to close it beforehand
++            // Homebrew launching code already does this checks later, this do this check only with apps
++            if(do_launch_entry && entry.Is<EntryType::Application>()) {
++                do_launch_entry = false;
++                this->HandleCloseSuspended();
++                do_launch_entry = !g_GlobalSettings.IsSuspended();
++            }
++        }
++
++        if(do_launch_entry && entry.Is<EntryType::Application>()) {
++            if(entry.app_info.NeedsVerify()) {
++                pu::audio::PlaySfx(this->error_sfx);
++
++                auto is_being_verified = false;
++                for(const auto app_id: g_GlobalSettings.in_verify_app_ids) {
++                    if(app_id == entry.app_info.app_id) {
++                        g_MenuApplication->ShowNotification(GetLanguageString("app_verify_wait"));
++                        is_being_verified = true;
++                        break;
++                    }
++                }
++
++                if(!is_being_verified) {
++                    const auto opt = g_MenuApplication->DisplayDialog(GetLanguageString("app_launch"), GetLanguageString("app_corrupted"), { GetLanguageString("yes"), GetLanguageString("cancel") }, true);
++                    if(opt == 0) {
++                        UL_RC_ASSERT(smi::StartVerifyApplication(entry.app_info.app_id));
++                        g_GlobalSettings.in_verify_app_ids.push_back(entry.app_info.app_id);
++                    }
++                }
++
++                do_launch_entry = false;
++            }
++            else if(entry.app_info.IsGameCardNotInserted()) {
++                pu::audio::PlaySfx(this->error_sfx);
++                g_MenuApplication->ShowNotification(GetLanguageString("app_no_gamecard"));
++                do_launch_entry = false;
++            }
++            else if(!entry.app_info.HasContents()) {
++                pu::audio::PlaySfx(this->error_sfx);
++                g_MenuApplication->ShowNotification(GetLanguageString("app_no_contents"));
++                do_launch_entry = false;
++            }
++            else if(!entry.app_info.CanBeLaunched()) {
++                UL_LOG_WARN("Tried to launch non-launchable application 0x%016lX with record last event %d and view flags 0x%D", entry.app_info.app_id, entry.app_info.record.last_event, entry.app_info.view.flags);
++                pu::audio::PlaySfx(this->error_sfx);
++                g_MenuApplication->ShowNotification(GetLanguageString("app_not_launchable"));
++                do_launch_entry = false;
++            }
++            else {
++                // Check if it can be launched
++                if(entry.app_info.IsNotUpdated()) {
++                    pu::audio::PlaySfx(this->error_sfx);
++                    const auto fail_rc = nsCheckApplicationLaunchVersion(entry.app_info.app_id);
++                    g_MenuApplication->ShowNotification(GetLanguageString("app_needs_update_cannot_launch") + ": " + util::FormatResultDisplay(fail_rc));
++                    do_launch_entry = false;
++                }
++                /*
++                else {
++                    const auto option = g_MenuApplication->DisplayDialog(GetLanguageString("app_launch"), GetLanguageString("app_needs_update_can_launch"), { GetLanguageString("ok"), GetLanguageString("cancel") }, true);
++                    do_launch_entry = option == 0;
++                }
++                */
++            }
++        }
++
++        if(do_launch_entry) {
++            if(entry.Is<EntryType::Homebrew>()) {
++                this->HandleHomebrewLaunch(entry);
++            }
++            else {
++                pu::audio::PlaySfx(this->launch_app_sfx);
++
++                g_MenuApplication->FadeOutToNonLibraryApplet();
++                return this->CompleteNativeApplicationLaunch(smi::LaunchApplication(entry.app_info.app_id));
++            }
++        }
++        return false;
++    }
++
++    bool MainMenuLayout::CompleteNativeApplicationLaunch(const Result rc) {
++        if(R_SUCCEEDED(rc)) {
++            g_MenuApplication->Finalize();
++            return true;
++        }
++        g_MenuApplication->FadeIn();
++        g_MenuApplication->ResetFade();
++        g_MenuApplication->ShowNotification(GetLanguageString("app_launch_error") + ": " + util::FormatResultDisplay(rc));
++        return false;
++    }
++
++    bool MainMenuLayout::CanLaunchCatalogApplication(const u64 app_id) {
++        smi::CatalogGameCardInfo info{};
++        return R_SUCCEEDED(smi::QueryCatalogGameCardApplication(app_id, info));
++    }
++
++    bool MainMenuLayout::TryLaunchCatalogApplication(const u64 app_id) {
++        smi::CatalogGameCardInfo info{};
++        if(R_FAILED(smi::QueryCatalogGameCardApplication(app_id, info))) {
++            g_MenuApplication->ShowNotification(GetLanguageString("exodus_catalog_title_unavailable"));
++            return false;
++        }
++        char id_text[17] = {};
++        std::snprintf(id_text, sizeof(id_text), "%016llX", static_cast<unsigned long long>(app_id));
++        const auto label = info.name[0] == '\0' ? std::string(id_text) : std::string(info.name) + "\n" + id_text;
++        const auto confirmed = g_MenuApplication->DisplayDialog(
++            GetLanguageString("exodus_catalog_launch"), label,
++            { GetLanguageString("exodus_catalog_launch"), GetLanguageString("cancel") }, true);
++        if(confirmed != 0) {
++            return false;
++        }
++        pu::audio::PlaySfx(this->launch_app_sfx);
++        g_MenuApplication->FadeOutToNonLibraryApplet();
++        return this->CompleteNativeApplicationLaunch(smi::LaunchCatalogGameCardApplication(app_id));
++    }
++
+@@ -156,95 +284,2 @@ namespace ul::menu::ui {
+-                        auto do_launch_entry = true;
+-
+-                        if(g_GlobalSettings.IsSuspended()) {
+-                            // Play animations, then resume the suspended hb/app
+-                            if(g_GlobalSettings.IsEntrySuspended(cur_entry)) {
+-                                if(IsScreenCaptureBackgroundFocused()) {
+-                                    this->StartResume();
+-                                }
+-                                do_launch_entry = false;
+-                            }
+-
+-                            // If the suspended entry is another one, ask the user to close it beforehand
+-                            // Homebrew launching code already does this checks later, this do this check only with apps
+-                            if(do_launch_entry && cur_entry.Is<EntryType::Application>()) {
+-                                do_launch_entry = false;
+-                                this->HandleCloseSuspended();
+-                                do_launch_entry = !g_GlobalSettings.IsSuspended();
+-                            }
+-                        }
+-
+-                        if(do_launch_entry && cur_entry.Is<EntryType::Application>()) {
+-                            if(cur_entry.app_info.NeedsVerify()) {
+-                                pu::audio::PlaySfx(this->error_sfx);
+-
+-                                auto is_being_verified = false;
+-                                for(const auto app_id: g_GlobalSettings.in_verify_app_ids) {
+-                                    if(app_id == cur_entry.app_info.app_id) {
+-                                        g_MenuApplication->ShowNotification(GetLanguageString("app_verify_wait"));
+-                                        is_being_verified = true;
+-                                        break;
+-                                    }
+-                                }
+-
+-                                if(!is_being_verified) {
+-                                    const auto opt = g_MenuApplication->DisplayDialog(GetLanguageString("app_launch"), GetLanguageString("app_corrupted"), { GetLanguageString("yes"), GetLanguageString("cancel") }, true);
+-                                    if(opt == 0) {
+-                                        UL_RC_ASSERT(smi::StartVerifyApplication(cur_entry.app_info.app_id));
+-                                        g_GlobalSettings.in_verify_app_ids.push_back(cur_entry.app_info.app_id);
+-                                    }
+-                                }
+-
+-                                do_launch_entry = false;
+-                            }
+-                            else if(cur_entry.app_info.IsGameCardNotInserted()) {
+-                                pu::audio::PlaySfx(this->error_sfx);
+-                                g_MenuApplication->ShowNotification(GetLanguageString("app_no_gamecard"));
+-                                do_launch_entry = false;
+-                            }
+-                            else if(!cur_entry.app_info.HasContents()) {
+-                                pu::audio::PlaySfx(this->error_sfx);
+-                                g_MenuApplication->ShowNotification(GetLanguageString("app_no_contents"));
+-                                do_launch_entry = false;
+-                            }
+-                            else if(!cur_entry.app_info.CanBeLaunched()) {
+-                                UL_LOG_WARN("Tried to launch non-launchable application 0x%016lX with record last event %d and view flags 0x%D", cur_entry.app_info.app_id, cur_entry.app_info.record.last_event, cur_entry.app_info.view.flags);
+-                                pu::audio::PlaySfx(this->error_sfx);
+-                                g_MenuApplication->ShowNotification(GetLanguageString("app_not_launchable"));
+-                                do_launch_entry = false;
+-                            }
+-                            else {
+-                                // Check if it can be launched
+-                                if(cur_entry.app_info.IsNotUpdated()) {
+-                                    pu::audio::PlaySfx(this->error_sfx);
+-                                    const auto fail_rc = nsCheckApplicationLaunchVersion(cur_entry.app_info.app_id);
+-                                    g_MenuApplication->ShowNotification(GetLanguageString("app_needs_update_cannot_launch") + ": " + util::FormatResultDisplay(fail_rc));
+-                                    do_launch_entry = false;
+-                                }
+-                                /*
+-                                else {
+-                                    const auto option = g_MenuApplication->DisplayDialog(GetLanguageString("app_launch"), GetLanguageString("app_needs_update_can_launch"), { GetLanguageString("ok"), GetLanguageString("cancel") }, true);
+-                                    do_launch_entry = option == 0;
+-                                }
+-                                */
+-                            }
+-                        }
+-
+-                        if(do_launch_entry) {
+-                            if(cur_entry.Is<EntryType::Homebrew>()) {
+-                                this->HandleHomebrewLaunch(cur_entry);
+-                            }
+-                            else {
+-                                pu::audio::PlaySfx(this->launch_app_sfx);
+-
+-                                g_MenuApplication->FadeOutToNonLibraryApplet();
+-                                const auto rc = smi::LaunchApplication(cur_entry.app_info.app_id);
+-                                if(R_SUCCEEDED(rc)) {
+-                                    g_MenuApplication->Finalize();
+-                                    return;
+-                                }
+-                                else {
+-                                    g_MenuApplication->FadeIn();
+-                                    g_MenuApplication->ResetFade();
+-                                    g_MenuApplication->ShowNotification(GetLanguageString("app_launch_error") + ": " + util::FormatResultDisplay(rc));
+-                                }
+-                            }
++                        if(this->HandleLaunchEntry(cur_entry)) {
++                            return;
+diff --git a/projects/uMenu/source/ul/menu/ui/ui_QuickMenu.cpp b/projects/uMenu/source/ul/menu/ui/ui_QuickMenu.cpp
+index 075eb97..80ca142 100755
+--- a/projects/uMenu/source/ul/menu/ui/ui_QuickMenu.cpp
++++ b/projects/uMenu/source/ul/menu/ui/ui_QuickMenu.cpp
+@@ -4,0 +5 @@
++#include "catalog.hpp"
+@@ -80,0 +82,5 @@ namespace ul::menu::ui {
++
++        auto catalog_menu_item = pu::ui::elm::MenuItem::New(exodus::home::CatalogLabel());
++        catalog_menu_item->SetColor(g_MenuApplication->GetTextColor());
++        catalog_menu_item->AddOnKey(&exodus::home::ShowCatalog);
++        this->options_menu->AddItem(catalog_menu_item);
+diff --git a/projects/uSystem/source/main.cpp b/projects/uSystem/source/main.cpp
+index 2d6aca3..c9956ca 100644
+--- a/projects/uSystem/source/main.cpp
++++ b/projects/uSystem/source/main.cpp
+@@ -16,0 +17,4 @@
++#include "catalog_gamecard_policy.hpp"
++#include <algorithm>
++#include <array>
++#include <memory>
+@@ -77,0 +82 @@ namespace {
++        LaunchCatalogGameCardApplication,
+@@ -85,0 +91,4 @@ namespace {
++            struct {
++                u64 app_id;
++                AccountUid user;
++            } launch_catalog_gamecard;
+@@ -736,0 +746,67 @@ namespace {
++    bool CheckLocalCatalogGameCard(const u64 app_id, ul::smi::CatalogGameCardInfo *info = nullptr) {
++        using namespace exodus::home;
++        if(!IsApplicationProgramId(app_id) || app::IsActive()) {
++            return false;
++        }
++
++        bool inserted = false;
++        std::array<u64, 64> card_ids{};
++        s32 card_count = 0;
++        if(R_FAILED(nsIsGameCardInserted(&inserted)) || !inserted ||
++            R_FAILED(nsListApplicationIdOnGameCard(card_ids.data(), static_cast<s32>(card_ids.size()), &card_count)) ||
++            card_count <= 0 || static_cast<size_t>(card_count) > card_ids.size()) {
++            return false;
++        }
++        const auto card_end = card_ids.begin() + card_count;
++        const auto card_id = std::find(card_ids.begin(), card_end, app_id);
++        if(card_id == card_end) {
++            return false;
++        }
++
++        const auto records = ul::os::ListApplicationRecords();
++        const auto record = std::find_if(records.begin(), records.end(),
++            [app_id](const NsExtApplicationRecord &item) { return item.id == app_id; });
++        NsApplicationView view{};
++        if(record == records.end() || R_FAILED(nsGetApplicationView(&view, &app_id, 1)) ||
++            view.application_id != app_id) {
++            return false;
++        }
++
++        constexpr u32 required = NsExtApplicationViewFlag_IsValid | NsExtApplicationViewFlag_HasMainContents |
++            NsExtApplicationViewFlag_IsGameCard | NsExtApplicationViewFlag_IsGameCardInserted |
++            NsExtApplicationViewFlag_CanLaunch;
++        constexpr u32 blocked = NsExtApplicationViewFlag_IsDownloading | NsExtApplicationViewFlag_NeedsUpdate |
++            NsExtApplicationViewFlag_NeedsVerify | NsExtApplicationViewFlag_IsWaitingCommit1 |
++            NsExtApplicationViewFlag_IsWaitingCommit2 | NsExtApplicationViewFlag_IsWaitingCommit3 |
++            NsExtApplicationViewFlag_IsApplyingDelta;
++        if((view.flags & required) != required || (view.flags & blocked) != 0 ||
++            R_FAILED(nsCheckApplicationLaunchVersion(app_id))) {
++            return false;
++        }
++
++        const auto control = std::make_unique<NsApplicationControlData>();
++        u64 size = 0;
++        if(R_FAILED(nsGetApplicationControlData(NsApplicationControlSource_StorageOnly, app_id,
++            control.get(), sizeof(*control), &size)) || size < sizeof(NacpStruct) || size > sizeof(*control)) {
++            return false;
++        }
++        const auto license = control->nacp.required_network_service_license_on_launch == 0
++            ? StartupLicense::Local : StartupLicense::NetworkRequired;
++        const GameCardLaunchEvidence evidence{record->id, *card_id, view.application_id, true,
++            app::IsActive(), license, control->nacp.startup_user_account};
++        if(!MayLaunchCatalogGameCard(app_id, evidence)) {
++            return false;
++        }
++        if(info != nullptr) {
++            *info = {.application_id = app_id, .name = {}};
++            NacpLanguageEntry *language = nullptr;
++            if(R_SUCCEEDED(nacpGetLanguageEntry(&control->nacp, &language)) && language != nullptr) {
++                const auto *begin = language->name;
++                const auto *end = std::find(begin, begin + sizeof(language->name), '\0');
++                const auto count = std::min(static_cast<size_t>(end - begin), sizeof(info->name) - 1);
++                memcpy(info->name, begin, count);
++            }
++        }
++        return true;
++    }
++
+@@ -739,0 +816 @@ namespace {
++            ul::smi::CatalogGameCardInfo catalog_gamecard{};
+@@ -768,0 +846,20 @@ namespace {
++                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication:
++                        case ul::smi::SystemMessage::LaunchCatalogGameCardApplication: {
++                            u64 app_id;
++                            UL_RC_TRY(reader.Pop(app_id));
++                            if(!accountUidIsValid(&g_SelectedUser) || !CheckLocalCatalogGameCard(app_id, &catalog_gamecard)) {
++                                return ul::ResultCatalogLaunchDenied;
++                            }
++                            if(msg == ul::smi::SystemMessage::LaunchCatalogGameCardApplication) {
++                                if(std::any_of(g_ActionQueue.begin(), g_ActionQueue.end(), [](const Action &item) {
++                                        return item.type == ActionType::LaunchCatalogGameCardApplication;
++                                    })) {
++                                    return ul::ResultAlreadyQueued;
++                                }
++                                g_ActionQueue.push_back({
++                                    .type = ActionType::LaunchCatalogGameCardApplication,
++                                    .launch_catalog_gamecard = { app_id, g_SelectedUser }
++                                });
++                            }
++                            break;
++                        }
+@@ -979,0 +1077,3 @@ namespace {
++                        case ul::smi::SystemMessage::QueryCatalogGameCardApplication: {
++                            return writer.Push(catalog_gamecard);
++                        }
+@@ -1038,0 +1139,22 @@ namespace {
++            case ActionType::LaunchCatalogGameCardApplication: {
++                if(!la::IsActive()) {
++                    const auto &request = action.launch_catalog_gamecard;
++                    Result rc = ul::ResultCatalogLaunchDenied;
++                    if(accountUidIsValid(&g_SelectedUser) &&
++                        memcmp(&request.user, &g_SelectedUser, sizeof(g_SelectedUser)) == 0 &&
++                        CheckLocalCatalogGameCard(request.app_id)) {
++                        rc = app::Start(request.app_id, false, g_SelectedUser);
++                    }
++                    if(R_FAILED(rc)) {
++                        UL_LOG_WARN("Catalog game card launch stopped with %s", ul::util::FormatResultDisplay(rc).c_str());
++                        if(!app::IsActive()) {
++                            const auto mode = accountUidIsValid(&g_SelectedUser)
++                                ? ul::smi::MenuStartMode::MainMenu : ul::smi::MenuStartMode::StartupMenu;
++                            UL_RC_ASSERT(LaunchMenu(mode));
++                            PushSimpleMenuMessage(ul::smi::MenuMessage::PreviousLaunchFailure);
++                        }
++                    }
++                    return true;
++                }
++                break;
++            }

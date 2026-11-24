@@ -22,8 +22,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pages-readiness:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: read
+    outputs:
+      deploy: ${{ steps.site.outputs.result }}
+    steps:
+      - name: Check Pages publishing source
+        id: site
+        uses: actions/github-script@v8
+        with:
+          result-encoding: string
+          script: |
+            let site;
+            try {
+              ({ data: site } = await github.rest.repos.getPages(context.repo));
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+              // A 404 alone does not establish that Pages is disabled.
+              const { data: repository } = await github.rest.repos.get(context.repo);
+              if (repository.has_pages !== false) {
+                throw error;
+              }
+              core.notice('GitHub Pages is disabled for this repository. Skipping deployment.');
+              return 'false';
+            }
+
+            switch (site.build_type) {
+              case 'workflow':
+                return 'true';
+              case 'legacy':
+                core.notice('GitHub Pages uses branch publishing. Skipping deployment.');
+                return 'false';
+              default:
+                throw new Error('Unexpected GitHub Pages build type.');
+            }
+
   # Build job
   build:
+    needs: pages-readiness
+    if: needs.pages-readiness.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

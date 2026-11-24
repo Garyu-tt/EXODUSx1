@@ -24,7 +24,7 @@ def token_text(token):
 
 
 def parse_keyvalues(text):
-    """Parse key/value pairs, keeping nested objects separate from AppState."""
+    """Parse nested KeyValues with case-insensitive first-match lookup."""
     root = {}
     stack = [root]
     key = None
@@ -40,13 +40,14 @@ def parse_keyvalues(text):
             if key is None:
                 raise ValueError("object is missing a key")
             child = {}
-            stack[-1][key] = child
+            # Parse repeated blocks even after the first value has been retained.
+            stack[-1].setdefault(key, child)
             stack.append(child)
             key = None
         elif key is None:
             key = token_text(token).lower()
         else:
-            stack[-1][key] = token_text(token)
+            stack[-1].setdefault(key, token_text(token))
             key = None
     if len(stack) != 1 or key is not None:
         raise ValueError("incomplete key/value object")
@@ -90,30 +91,36 @@ def catalog_entry(manifest, expected_id):
     flags = optional_uint32(state, "stateflags")
     if flags is not None:
         installation = "reported_installed" if flags & FULLY_INSTALLED else "not_fully_installed"
+    return steam_entry(app_id, name.strip(), installation, optional_uint32(state, "lastplayed") or None)
+
+
+def steam_entry(app_id, name, installation="unknown", last_played=None):
     return {
         "provider": "steam",
         "provider_id": app_id,
-        "name": name.strip(),
+        "name": name,
         "artwork": None,
         "installation_state": installation,
-        "last_played": optional_uint32(state, "lastplayed") or None,
+        "last_played": last_played,
         "compatibility_state": "unknown",
         "launch_mode": None,
     }
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Read local Steam app manifests and write an offline metadata catalog to stdout."
-    )
-    parser.add_argument("libraries", metavar="LIBRARY", type=Path, nargs="+",
-                        help="Steam library root containing steamapps, or the steamapps directory itself")
+def scan_libraries(libraries):
     entries = {}
     errors = False
-    for library in parser.parse_args().libraries:
-        steamapps = library if library.name.lower() == "steamapps" else library / "steamapps"
+    for library in libraries:
+        nested = library / "steamapps"
+        steamapps = library if library.name.lower() == "steamapps" else nested
         try:
             manifests = sorted(steamapps.iterdir())
+            # A library root can share the name of its manifest directory.
+            if (steamapps == library
+                    and not any(MANIFEST.fullmatch(path.name) for path in manifests)
+                    and nested.is_dir()):
+                steamapps = nested
+                manifests = sorted(steamapps.iterdir())
         except OSError as exc:
             print(f"{steamapps}: {exc.strerror}", file=sys.stderr)
             errors = True
@@ -134,9 +141,24 @@ def main():
             if previous is None or rank > STATE_PRIORITY[previous["installation_state"]]:
                 entries[app_id] = entry
 
-    catalog = {"schema_version": 1, "entries": [entries[k] for k in sorted(entries, key=int)]}
-    json.dump(catalog, sys.stdout, ensure_ascii=True, indent=2)
-    print()
+    return [entries[k] for k in sorted(entries, key=int)], errors
+
+
+def write_catalog(entries, stream=None):
+    stream = sys.stdout if stream is None else stream
+    catalog = {"schema_version": 1, "entries": entries}
+    json.dump(catalog, stream, ensure_ascii=True, indent=2)
+    stream.write("\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Read local Steam app manifests and write an offline metadata catalog to stdout."
+    )
+    parser.add_argument("libraries", metavar="LIBRARY", type=Path, nargs="+",
+                        help="Steam library root containing steamapps, or the steamapps directory itself")
+    entries, errors = scan_libraries(parser.parse_args().libraries)
+    write_catalog(entries)
     return int(errors)
 
 

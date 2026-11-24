@@ -1,0 +1,26 @@
+#ifndef EXODUS_PAGE_STORE_H
+#define EXODUS_PAGE_STORE_H
+
+#include "page_codec.h"
+
+/* Initialize with separate caller-owned payload and page_ends buffers and
+ * their capacities. Leave the counters at zero. Serialize access and let
+ * the store functions update the contents and counters. */
+struct exodus_page_store {
+    uint8_t *payload;
+    size_t payload_capacity;
+    size_t *page_ends;
+    size_t page_capacity;
+    size_t payload_used;
+    size_t page_count;
+};
+
+/* Append one readable EXODUS_PAGE_BYTES page. A capacity failure leaves
+ * the store unchanged. */
+bool exodus_page_store_append(struct exodus_page_store *store, const uint8_t *page);
+
+/* Restore into a separate EXODUS_PAGE_BYTES buffer. Invalid indices or
+ * malformed sparse encodings leave the destination unchanged. */
+bool exodus_page_store_restore(const struct exodus_page_store *store, size_t index, uint8_t *page);
+
+#endif
