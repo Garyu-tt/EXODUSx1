@@ -10,11 +10,19 @@ enum class Error { ok, invalid_path, unavailable, denied, invalid_buffer, backen
 enum class Op : unsigned { read=1, list=2, stat=4, write=8, mkdir=16, remove=32, rename=64 };
 constexpr unsigned mask(Op op) { return static_cast<unsigned>(op); }
 struct ReadResult { Error error; std::size_t count; };
+enum class EntryType { file, directory };
+struct Metadata { EntryType type=EntryType::directory; std::uint64_t size=0; };
+struct StatResult { Error error; Metadata metadata{}; };
+struct DirectoryEntry { std::string name; Metadata metadata; };
+struct ListResult { Error error; std::vector<DirectoryEntry> entries{}; bool truncated=false; };
+constexpr std::size_t max_list_entries=64;
 struct Provider {
     virtual ~Provider() = default;
     // Relative path, never an OS path. Provider must independently confine access.
     virtual ReadResult read(std::string_view path, std::uint64_t offset,
                             std::uint8_t* buffer, std::size_t capacity) = 0;
+    virtual StatResult stat(std::string_view) { return {Error::denied}; }
+    virtual ListResult list(std::string_view, std::size_t) { return {Error::denied}; }
 };
 struct Mount {
     std::string name;
@@ -62,6 +70,33 @@ public:
         if(op!=Op::read && op!=Op::list && op!=Op::stat) return fail(Error::denied);
         if(!(chosen->operations & mask(op))) return fail(Error::denied);
         return {Error::ok,chosen,relative};
+    }
+    StatResult stat(std::string_view path) const {
+        auto r=route(path,Op::stat);
+        if(r.error!=Error::ok) return {r.error};
+        auto result=r.mount->provider->stat(r.relative);
+        if(result.error!=Error::ok) return {result.error};
+        if(result.metadata.type!=EntryType::file && result.metadata.type!=EntryType::directory)
+            return {Error::backend_error};
+        if(result.metadata.type==EntryType::directory && result.metadata.size!=0)
+            return {Error::backend_error};
+        return result;
+    }
+    ListResult list(std::string_view path,std::size_t limit) const {
+        auto r=route(path,Op::list);
+        if(r.error!=Error::ok) return {r.error};
+        if(!limit || limit>max_list_entries) return {Error::invalid_buffer};
+        auto result=r.mount->provider->list(r.relative,limit);
+        if(result.error!=Error::ok) return {result.error};
+        if(result.entries.size()>limit || (result.truncated && result.entries.size()!=limit))
+            return {Error::backend_error};
+        for(const auto& e:result.entries) {
+            if(!component(e.name) || e.name.find('/')!=std::string::npos ||
+               (e.metadata.type!=EntryType::file && e.metadata.type!=EntryType::directory) ||
+               (e.metadata.type==EntryType::directory && e.metadata.size!=0))
+                return {Error::backend_error};
+        }
+        return result;
     }
     ReadResult read(std::string_view path, std::uint64_t offset, std::uint8_t* buffer, std::size_t capacity) const {
         auto r=route(path,Op::read);
