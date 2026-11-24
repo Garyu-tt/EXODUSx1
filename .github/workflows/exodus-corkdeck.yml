@@ -92,6 +92,15 @@ jobs:
           cd /tmp/exodus-build
           sha256sum exodus-shell.nro > SHA256SUMS
           cat SHA256SUMS
+      - name: Publish tested native shell
+        uses: actions/upload-artifact@v4
+        with:
+          name: exodus-shell-switch-arm64
+          path: |
+            /tmp/exodus-build/exodus-shell.nro
+            /tmp/exodus-build/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
 
 
 
