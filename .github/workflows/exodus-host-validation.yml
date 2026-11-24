@@ -1,0 +1,40 @@
+name: EXODUS host validation
+
+on:
+  pull_request:
+    paths:
+      - 'exodus/**'
+      - 'tests/**'
+      - '.github/workflows/exodus-host-validation.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -B -m unittest discover -v
+
+  memory:
+    name: Memory codec and probe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: make -C exodus/memory check
