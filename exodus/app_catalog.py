@@ -7,7 +7,7 @@ import struct
 import sys
 import zlib
 
-from .steam_catalog import scan_libraries, write_catalog
+from .steam_catalog import CatalogLimitError, scan_libraries, write_catalog
 
 
 # Layouts from libnx's switch/nro.h and switch/nacp.h.
@@ -141,7 +141,11 @@ def main():
 
     steam, steam_errors = scan_libraries(args.steam_library, steam_installs=args.steam_install)
     homebrew, homebrew_errors = scan_homebrew(args.switch_sd) if args.switch_sd else ([], False)
-    write_catalog(steam + homebrew)
+    try:
+        write_catalog(steam + homebrew)
+    except CatalogLimitError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     return int(steam_errors or homebrew_errors)
 
 

@@ -39,6 +39,12 @@ Supply either source on its own or repeat `--steam-library` for additional Steam
 
 The homebrew scan reads `.nro` metadata under `switch` and uses the first nonempty UTF-8 title from the embedded NACP data. It supports both plain and DEFLATE-compressed NACP title tables. Files without a title use their filename stem. A readable NRO is marked `reported_installed` based on its presence on the SD card, with compatibility unknown and launch mode unset. The scan emits readable entries and returns 1 if it encounters unreadable inputs or malformed metadata.
 
+## Catalog output limits
+
+Both offline commands check the complete combined catalog against HOME's limits of 4,096 entries and 2 MiB before writing any output. The byte budget includes JSON formatting, Unicode escapes and the final newline. The commands emit ASCII JSON with LF line endings on both Windows and Linux, so Windows text-mode newline expansion cannot push an otherwise valid document over the limit.
+
+An oversized catalog produces a diagnostic on stderr, exits with code 1 and writes no JSON to stdout. No entries are silently dropped. Select fewer source libraries or correct oversized source metadata before exporting again. Ordinary partial scans still emit their readable entries with exit code 1 when the resulting catalog fits these limits. Steam sign-in refreshes use the same output check before staging a replacement, preserving the existing output file if the combined library is too large.
+
 ## Refresh Steam titles after browser sign-in
 
 On a PC, supply your Steam Web API key in the command's `STEAM_WEB_API_KEY` environment variable and run the sync from the checkout root. The system browser opens Steam Community for sign-in. Steam handles credentials and Steam Guard on its own page. [Steam Web API keys](https://partner.steamgames.com/doc/webapi_auth) · [Steam OpenID](https://partner.steamgames.com/doc/features/auth)
