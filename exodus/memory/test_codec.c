@@ -1,4 +1,5 @@
 #include "page_codec.h"
+#include "page_store.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,6 +46,68 @@ static void check_layout(uint64_t present)
     CHECK(decoded[0] == 0xc5 && decoded[sizeof(decoded) - 1] == 0xc5);
 }
 
+static void check_page_store(void)
+{
+    uint8_t pages[3][EXODUS_PAGE_BYTES] = {0};
+    pages[1][EXODUS_PAGE_BYTES - 1] = 0x9a;
+    memset(pages[2], 0x5b, sizeof(pages[2]));
+
+    uint8_t payload[8 + 72 + EXODUS_PAGE_BYTES + 2];
+    memset(payload, 0xa3, sizeof(payload));
+    size_t ends[] = {0, 0, 0, SIZE_MAX};
+    struct exodus_page_store store = {
+        .payload = payload + 1,
+        .payload_capacity = sizeof(payload) - 2,
+        .page_ends = ends,
+        .page_capacity = sizeof(ends) / sizeof(ends[0])
+    };
+    CHECK(exodus_page_store_append(&store, pages[0]));
+    CHECK(exodus_page_store_append(&store, pages[1]));
+    CHECK(exodus_page_store_append(&store, pages[2]));
+    CHECK(ends[0] == 8 && ends[1] == 80 && ends[2] == store.payload_capacity);
+    CHECK(store.payload_used == store.payload_capacity && store.page_count == 3);
+
+    CHECK(!exodus_page_store_append(&store, pages[0]));
+    CHECK(store.payload_used == store.payload_capacity && store.page_count == 3);
+    CHECK(ends[3] == SIZE_MAX);
+    CHECK(payload[0] == 0xa3 && payload[sizeof(payload) - 1] == 0xa3);
+
+    uint8_t restored[EXODUS_PAGE_BYTES];
+    for (size_t i = store.page_count; i > 0; --i) {
+        CHECK(exodus_page_store_restore(&store, i - 1, restored));
+        CHECK(memcmp(restored, pages[i - 1], sizeof(restored)) == 0);
+    }
+    memset(restored, 0xc5, sizeof(restored));
+    CHECK(!exodus_page_store_restore(&store, store.page_count, restored));
+    ends[1] = ends[0] - 1;
+    CHECK(!exodus_page_store_restore(&store, 1, restored));
+    ends[1] = store.payload_used + 1;
+    CHECK(!exodus_page_store_restore(&store, 1, restored));
+    ends[1] = 16;
+    CHECK(!exodus_page_store_restore(&store, 1, restored));
+    for (size_t i = 0; i < sizeof(restored); ++i)
+        CHECK(restored[i] == 0xc5);
+}
+
+static void check_page_store_index_capacity(void)
+{
+    uint8_t page[EXODUS_PAGE_BYTES] = {0};
+    uint8_t payload[16];
+    memset(payload, 0xa3, sizeof(payload));
+    size_t end = 0;
+    struct exodus_page_store store = {
+        .payload = payload,
+        .payload_capacity = sizeof(payload),
+        .page_ends = &end,
+        .page_capacity = 1
+    };
+    CHECK(exodus_page_store_append(&store, page));
+    CHECK(!exodus_page_store_append(&store, page));
+    CHECK(store.payload_used == 8 && store.page_count == 1 && end == 8);
+    for (size_t i = store.payload_used; i < sizeof(payload); ++i)
+        CHECK(payload[i] == 0xa3);
+}
+
 int main(void)
 {
     check_layout(0);
@@ -72,6 +135,9 @@ int main(void)
     CHECK(!exodus_page_decode(encoded, 8 + 63 * BLOCK_BYTES, decoded));
     for (size_t i = 0; i < sizeof(decoded); ++i)
         CHECK(decoded[i] == 0x6a);
-    puts("Codec round-trip and malformed-input tests passed");
+
+    check_page_store();
+    check_page_store_index_capacity();
+    puts("Codec and packed page store tests passed");
     return 0;
 }
