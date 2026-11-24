@@ -3,6 +3,7 @@
 #include "../home/corkdeck/evcs_discovery.h"
 #include "../home/corkdeck/evcs_pfs0.h"
 #include "../home/corkdeck/evcs_graph.h"
+#include "../home/corkdeck/evcs_manifest.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -83,8 +84,32 @@ static void graph_fixture(void)
     assert(evcs_graph_validate(NULL,1)==EVCS_GRAPH_INVALID);
     assert(evcs_graph_validate(NULL,0)==EVCS_GRAPH_OK);
 }
+static void manifest_fixture(void)
+{
+    struct evcs_content item;
+    assert(evcs_manifest_parse("EVCS1 0000000000000001 0000000000000002 4294967295 update",&item));
+    assert(item.application_id==1 && item.content_id==2 && item.version==UINT32_MAX && item.role==EVCS_UPDATE);
+    assert(!evcs_manifest_parse("EVCS1 0000000000000001 0000000000000002 4294967296 update",&item));
+    assert(!evcs_manifest_parse("EVCS1 0000000000000001 0000000000000002 1 base",&item));
+    assert(!evcs_manifest_parse("EVCS1 1 2 1 update",&item));
+    assert(!evcs_manifest_parse("EVCS1 0000000000000001 0000000000000002 1 update extra",&item));
+    char dir[]="/tmp/evcs-manifest-XXXXXX", archive[512], path[520];
+    assert(mkdtemp(dir));
+    assert(snprintf(archive,sizeof(archive),"%s/game.nsp",dir)>0);
+    assert(snprintf(path,sizeof(path),"%s.evcs",archive)>0);
+    assert(evcs_manifest_read(archive,&item)==EVCS_MANIFEST_MISSING);
+    FILE *f=fopen(path,"wb");
+    assert(f && fputs("EVCS1 0000000000000001 0000000000000001 0 base\r\n",f)>=0 && !fclose(f));
+    assert(evcs_manifest_read(archive,&item)==EVCS_MANIFEST_OK && item.role==EVCS_BASE);
+    f=fopen(path,"ab"); assert(f && fputc(0,f)!=EOF && !fclose(f));
+    assert(evcs_manifest_read(archive,&item)==EVCS_MANIFEST_INVALID);
+    assert(unlink(path)==0 && symlink("/etc/passwd",path)==0);
+    assert(evcs_manifest_read(archive,&item)==EVCS_MANIFEST_INVALID);
+    assert(unlink(path)==0 && rmdir(dir)==0);
+}
 int main(void)
 {
+    manifest_fixture();
     pfs0_fixture();
     graph_fixture();
     char dir[] = "/tmp/evcs-r01-XXXXXX";
