@@ -78,6 +78,17 @@ class TerminalTests(unittest.TestCase):
             result = self.run_commands("basename /usr/bin/sh\ndirname /usr/bin/sh\nbasename ////\ndirname ////\nbasename file\ndirname file\nbasename /a/b///\ndirname /a/b///\nbasename\ndirname\n", d)
             self.assertEqual(result.splitlines(), ["sh", "/usr/bin", "/", "/", "file", ".", "b", "/a", ".", "."])
 
+    def test_abi_smoke(self):
+        with tempfile.TemporaryDirectory() as d:
+            result = self.run_commands("abi\n", d)
+            self.assertIn("PASS host process identity", result)
+            self.assertIn("PASS monotonic clock", result)
+            self.assertIn("PASS cwd stat", result)
+            self.assertIn("PASS directory read", result)
+            self.assertIn("ABI smoke: 4 passed, 0 failed", result)
+            self.assertIn("process/pipe/signal semantics not tested", result)
+            self.assertEqual(list(Path(d).iterdir()), [])
+
     def test_long_line_and_unknown(self):
         with tempfile.TemporaryDirectory() as d:
             result = self.run_commands("echo " + "x"*700 + "\necho ok\nunknown\nstatus\n", d)
