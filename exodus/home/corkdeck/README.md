@@ -148,7 +148,7 @@ cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/check_shell_nro.c exodus/
 /tmp/check-shell-nro /tmp/exodus-native/exodus-shell.nro
 ```
 
-The script restricts pkg-config to the Switch portlibs. Set JSON_INCLUDE if json.hpp is elsewhere; SWITCH_EXTRA_LIBS is available for SDK-specific static linking requirements. The workflow runs portable tests, the host SDL smoke, and a separate native compilation and structural NRO check. The donor is pinned; the CI toolchain image and package versions are not yet locked. CI records the NRO checksum. Linked binary distribution follows the provenance and license review above.
+The script restricts pkg-config to the Switch portlibs. Set JSON_INCLUDE if json.hpp is elsewhere; SWITCH_EXTRA_LIBS is available for SDK-specific static linking requirements. The workflow runs portable tests, the host SDL smoke, and a separate native compilation and structural NRO check. The donor and the shell's native CI image are pinned. CI uses the Switch portlibs from that image and records their versions and the NRO checksum. Linked binary distribution follows the provenance and license review above.
 
 ### Safe first deployment
 
