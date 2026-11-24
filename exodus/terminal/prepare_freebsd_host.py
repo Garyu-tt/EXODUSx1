@@ -7,7 +7,7 @@ from audit_freebsd import LOCK, blob_id
 
 def stage(checkout, output, module="expand"):
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    if module not in ("expand", "input", "trap"):
+    if module not in ("expand", "input", "trap", "main"):
         raise ValueError("unsupported module")
     path = "bin/sh/" + module + ".c"
     expected = next(x["blob"] for x in lock["files"] if x["path"] == path)
@@ -22,6 +22,10 @@ def stage(checkout, output, module="expand"):
         # A host without FreeBSD verification must refuse verified opens.
         old = b"oflags |= O_VERIFY;"
         new = b'errorwithstatus(126, "verified script open unavailable on host");'
+    elif module == "main":
+        # A verified profile must not be executed without verification.
+        old = b"oflags |= O_VERIFY;"
+        new = b'errorwithstatus(126, "verified profile open unavailable on host");'
     else:
         # Host signal numbers and abbreviations must come from host libc.
         if data.count(b"sys_nsig") != 4 or data.count(b"sys_signame[n]") != 5 or data.count(b"sys_signame[signo]") != 2:
@@ -38,6 +42,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--checkout", required=True, type=Path)
     p.add_argument("--out", required=True, type=Path)
-    p.add_argument("--module", choices=("expand", "input", "trap"), default="expand")
+    p.add_argument("--module", choices=("expand", "input", "trap", "main"), default="expand")
     args = p.parse_args()
     stage(args.checkout, args.out, args.module)
