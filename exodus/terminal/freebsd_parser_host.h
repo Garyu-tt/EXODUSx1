@@ -9,6 +9,7 @@
 #include <stdio.h>
 /* Host-only implementations in freebsd_stdio_host.c. */
 int eaccess(const char *, int);
+const char *nxbsd_signal_name(int);
 FILE *fwopen(void *, int (*)(void *, const char *, int));
 #include <sys/param.h>
 /* FreeBSD sys/sys/param.h at the locked revision: length includes NUL. */
