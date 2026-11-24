@@ -213,10 +213,30 @@ int exodus_library_archive_detail(const struct exodus_library *library, size_t i
     const auto &entry = library->catalog.entries[index];
     enum evcs_kind kind;
     if (entry.provider != Provider::Other ||
-        !evcs_kind_of(entry.id.c_str(), &kind) || kind != EVCS_NSP) return 0;
+        !evcs_kind_of(entry.id.c_str(), &kind) || (kind != EVCS_NSP && kind != EVCS_XCI)) return 0;
+    const char *format=kind==EVCS_NSP ? "NSP" : "XCI";
     struct stat st;
-    if (lstat(entry.id.c_str(), &st) || !S_ISREG(st.st_mode) || st.st_size <= 0) {
-        snprintf(out, cap, "NSP unavailable. Not launchable.");
+    if (lstat(entry.id.c_str(), &st)) {
+        snprintf(out,cap,"%s unavailable. Not launchable.",format);
+        return 1;
+    }
+    if (S_ISDIR(st.st_mode)) {
+        unsigned visited=0;
+        struct evcs_split_info info;
+        const auto split=evcs_split_probe(entry.id.c_str(),&visited,EVCS_MAX_VISITED,&info);
+        if (split==EVCS_SPLIT_OK)
+            snprintf(out,cap,"Split %s: %u contiguous parts, %llu bytes.\nCompleteness unverified. Not launchable.",
+                     format,info.parts,(unsigned long long)info.bytes);
+        else
+            snprintf(out,cap,"Split %s unavailable or invalid. Not launchable.",format);
+        return 1;
+    }
+    if (!S_ISREG(st.st_mode) || st.st_size <= 0) {
+        snprintf(out,cap,"%s unavailable. Not launchable.",format);
+        return 1;
+    }
+    if (kind==EVCS_XCI) {
+        snprintf(out,cap,"XCI discovered. No verified launch backend.");
         return 1;
     }
     FILE *f = fopen(entry.id.c_str(), "rb");
@@ -246,10 +266,31 @@ int exodus_library_archive_detail(const struct exodus_library *library, size_t i
     }
     return 1;
 }
+size_t exodus_library_group_representative(const struct exodus_library *library, size_t index)
+{
+    if (!library || index>=library->catalog.entries.size()) return SIZE_MAX;
+    return library->representatives.empty() ? index : library->representatives[index];
+}
 int exodus_library_is_group_card(const struct exodus_library *library, size_t index)
 {
-    if (!library || index>=library->catalog.entries.size()) return 0;
-    return library->representatives.empty() || library->representatives[index]==index;
+    return exodus_library_group_representative(library,index)==index && index!=SIZE_MAX;
+}
+/* Owner-declared grouping key, distinct from a registered/launchable title ID. */
+int exodus_library_declared_group_key(const struct exodus_library *library, size_t index, char *out, size_t cap)
+{
+    if (!out || !cap) return 0;
+    out[0]=0;
+    if (!library || !library->graph_valid || index>=library->catalog.entries.size()) return 0;
+    for (size_t j=0;j<library->graph_indices.size();++j) {
+        if (library->graph_indices[j]!=index) continue;
+        const auto &item=library->graph[j];
+        const auto group=evcs_graph_group(library->graph.data(),library->graph.size(),item.application_id);
+        if (group.base==SIZE_MAX) return 0;
+        int n=snprintf(out,cap,"evcs-declared:%016llx",(unsigned long long)item.application_id);
+        if (n<0 || (size_t)n>=cap) { out[0]=0; return 0; }
+        return 1;
+    }
+    return 0;
 }
 int exodus_library_is_discovered(const struct exodus_library *library, size_t index)
 {
