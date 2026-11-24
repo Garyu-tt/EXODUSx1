@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -31,6 +32,8 @@ namespace exodus::home {
         Provider provider;
         std::string title;
         std::string id;
+        std::string artwork;
+        std::uint64_t last_played = 0;
     };
 
     struct Catalog {
