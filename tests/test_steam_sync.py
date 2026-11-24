@@ -436,7 +436,7 @@ class SteamSyncTests(unittest.TestCase):
 
     def test_failed_atomic_replace_preserves_output_and_cleans_stage(self):
         self.output.write_bytes(b"prior snapshot")
-        with patch("exodus.steam_sync.os.replace", side_effect=PermissionError), self.assertRaisesRegex(
+        with patch("exodus.steam_catalog.os.replace", side_effect=PermissionError), self.assertRaisesRegex(
                 sync.SteamSyncError, "previous output was preserved"):
             sync.save_catalog(self.output, [steam_entry("10", "Test")])
         self.assertEqual(self.output.read_bytes(), b"prior snapshot")

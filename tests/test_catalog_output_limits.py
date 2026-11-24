@@ -101,6 +101,30 @@ class CatalogOutputLimitTests(unittest.TestCase):
             with self.subTest(combined=combined):
                 self.assert_limit_error(self.command(combined), "size")
 
+    def test_standalone_file_output_respects_exact_byte_limit(self):
+        output = self.root / "selected catalog.json"
+        output.write_bytes(b"previous snapshot")
+        entries = byte_boundary_entries()
+        self.manifest(42, entries[0]["name"])
+        result = self.command(False, "--output", output)
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (0, b"", b""))
+        self.assertEqual(output.stat().st_size, BYTE_LIMIT)
+        self.assertEqual(output.read_bytes(), reference_bytes(entries))
+
+        self.manifest(42, byte_boundary_entries(1)[0]["name"])
+        self.assert_limit_error(self.command(False, "--output", output), "size")
+        self.assertEqual(output.read_bytes(), reference_bytes(entries))
+
+    def test_standalone_file_publish_failure_cleans_stage(self):
+        self.manifest(42, "Readable game")
+        output = self.root / "catalog.json"
+        output.mkdir()
+        result = self.command(False, "--output", output)
+        self.assertEqual((result.returncode, result.stdout), (1, b""))
+        self.assertIn(b"Could not write the catalog. The previous output was preserved.", result.stderr)
+        self.assertTrue(output.is_dir())
+        self.assertEqual(list(self.root.glob(".exodus-catalog-*")), [])
+
     def test_windows_stdout_translation_cannot_expand_an_exact_limit_catalog(self):
         entries = byte_boundary_entries()
         binary = BytesIO()
@@ -132,8 +156,8 @@ class CatalogOutputLimitTests(unittest.TestCase):
             ([catalog.steam_entry(str(index + 1), "App") for index in range(ENTRY_LIMIT + 1)], "entry"),
             (byte_boundary_entries(1), "size"),
         ):
-            with self.subTest(kind=kind), patch.object(sync, "NamedTemporaryFile") as stage, \
-                    patch.object(sync.os, "replace") as replace:
+            with self.subTest(kind=kind), patch.object(catalog, "NamedTemporaryFile") as stage, \
+                    patch.object(catalog.os, "replace") as replace:
                 with self.assertRaisesRegex(sync.SteamSyncError, f"{kind} limit"):
                     sync.save_catalog(output, entries)
                 stage.assert_not_called()
@@ -157,6 +181,12 @@ class CatalogOutputLimitTests(unittest.TestCase):
                 self.assertEqual([entry["provider_id"] for entry in json.loads(result.stdout)["entries"]],
                                  ["42"])
                 self.assertIn(b"appmanifest_43.acf", result.stderr)
+
+        output = self.root / "partial catalog.json"
+        result = self.command(False, "--output", output)
+        self.assertEqual((result.returncode, result.stdout), (1, b""))
+        self.assertEqual([entry["provider_id"] for entry in json.loads(output.read_bytes())["entries"]], ["42"])
+        self.assertIn(b"appmanifest_43.acf", result.stderr)
 
 
 if __name__ == "__main__":
