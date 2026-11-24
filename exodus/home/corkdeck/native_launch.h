@@ -1,10 +1,11 @@
 /* Experimental native launch adapter. Explicit confirmation required by caller. */
 #ifndef EXODUS_NATIVE_LAUNCH_H
 #define EXODUS_NATIVE_LAUNCH_H
-#include "launch_route.h"
+#include "runtime_handoff.h"
 #ifdef __SWITCH__
 #include <switch.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 static inline int exodus_registered_title(uint64_t id)
 {
@@ -58,6 +59,40 @@ static inline int exodus_launch(enum exodus_route route, const char *id, char me
         if (!ok) { snprintf(message, 256, "Invalid NRO header."); return 0; }
         snprintf(args, sizeof(args), "\"%s\"", path);
         rc = envSetNextLoad(path, args);
+    } else if (route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
+        char args[EXODUS_RUNTIME_ARGS_CAP];
+        struct stat st;
+        if (appletGetAppletType() != AppletType_Application || !envHasNextLoad()) {
+            snprintf(message, 256, "Runtime requires application mode and next-load support.");
+            return 0;
+        }
+        if (!exodus_runtime_args(route, id, args)) {
+            snprintf(message, 256, "Invalid target or unsupported storage path.");
+            return 0;
+        }
+        if (exodus_autorun_probe(EXODUS_AUTORUN_PATH) != EXODUS_AUTORUN_READY) {
+            snprintf(message, 256, "Runtime NRO missing or invalid.");
+            return 0;
+        }
+        /* CorkDeck prioritizes pending run-next.txt over argv[1]. Never
+         * overwrite or consume a queued runtime job from this shell. */
+        if (!stat("sdmc:/switch/wine/run-next.txt", &st) || errno != ENOENT) {
+            snprintf(message, 256, "Pending runtime job or inaccessible queue; open CorkDeck manually.");
+            return 0;
+        }
+        if (route == EXODUS_ROUTE_WINDOWS) {
+            if (stat(id, &st) || !S_ISREG(st.st_mode)) {
+                snprintf(message, 256, "Windows executable unavailable.");
+                return 0;
+            }
+            FILE *exe = fopen(id, "rb");
+            unsigned char mz[2];
+            if (!exe) { snprintf(message, 256, "Cannot open executable."); return 0; }
+            int ok = fread(mz, 1, sizeof(mz), exe) == sizeof(mz) && !memcmp(mz, "MZ", 2);
+            fclose(exe);
+            if (!ok) { snprintf(message, 256, "Invalid executable header."); return 0; }
+        }
+        rc = envSetNextLoad(EXODUS_AUTORUN_PATH, args);
     } else {
         snprintf(message, 256, "%s", exodus_route_name(route));
         return 0;

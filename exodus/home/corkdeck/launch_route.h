@@ -67,8 +67,8 @@ static inline const char *exodus_route_name(enum exodus_route route)
     switch (route) {
         case EXODUS_ROUTE_SWITCH: return "Horizon application";
         case EXODUS_ROUTE_HOMEBREW: return "Homebrew loader";
-        case EXODUS_ROUTE_WINDOWS: return "CorkDeck runtime (not connected)";
-        case EXODUS_ROUTE_STEAM: return "Steam runtime (not connected)";
+        case EXODUS_ROUTE_WINDOWS: return "CorkDeck runtime";
+        case EXODUS_ROUTE_STEAM: return "Open CorkDeck library (select Steam game there)";
         case EXODUS_ROUTE_INVALID: return "Invalid target";
         default: return "Unsupported provider";
     }

@@ -23,7 +23,7 @@ trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
 json_include="${JSON_INCLUDE:-/usr/include/nlohmann}"
 # shellcheck disable=SC2046
-for file in "$here/settings_preview.c" "$src/launcher_ui.c" "$src/launcher_audio.c" "$src/launcher_svg.c"; do
+for file in "$here/settings_preview.c" "$here/../../runtime/autorun_probe.c" "$src/launcher_ui.c" "$src/launcher_audio.c" "$src/launcher_svg.c"; do
     "${CC:-cc}" -std=gnu11 -O2 -Wall -Wextra -I "$src" \
         $(pkg-config --cflags sdl2 SDL2_ttf) -c "$file" -o "$tmp/$(basename "$file").o"
 done
