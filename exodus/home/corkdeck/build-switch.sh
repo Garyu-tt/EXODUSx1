@@ -32,12 +32,38 @@ export PKG_CONFIG_LIBDIR="$port/lib/pkgconfig:$port/share/pkgconfig"
 unset PKG_CONFIG_SYSROOT_DIR
 packages="sdl2 SDL2_ttf libpng libturbojpeg"
 pkg-config --exists $packages || { echo "Missing Switch portlibs: $packages" >&2; exit 1; }
-cflags=$(pkg-config --cflags $packages)
-libs=$(pkg-config --static --libs $packages)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
 tmp=$(CDPATH= cd -- "$tmp" && pwd -P)
+
+# Decode pkg-config quoting into argv without evaluating it as shell code.
+# Direct argv also lets MSYS translate SDK paths for the Windows compiler.
+write_pkg_config_flags() {
+    pkg_config_flags=$(pkg-config "$@")
+    printf '%s\n' "$pkg_config_flags" | "${PYTHON:-python3}" -c '
+import os
+import shlex
+import sys
+
+for flag in shlex.split(os.fsdecode(sys.stdin.buffer.read())):
+    if "\n" in flag:
+        sys.exit("Unexpected newline in Switch portlib flags")
+    sys.stdout.buffer.write(os.fsencode(flag) + b"\n")
+'
+}
+
+run_with_pkg_config_flags() {
+    flag_file=$1
+    shift
+    while IFS= read -r flag; do
+        set -- "$@" "$flag"
+    done < "$flag_file"
+    "$@"
+}
+
+write_pkg_config_flags --cflags $packages > "$tmp/compile.flags"
+write_pkg_config_flags --static --libs $packages > "$tmp/link.flags"
 "${PYTHON:-python3}" "$here/prepare-donor.py" "$donor" "$tmp/corkdeck-donor"
 src="$tmp/corkdeck-donor/horizon-wine/source"
 # nlohmann uses <nlohmann/...> internally. Stage only its header tree;
@@ -55,8 +81,9 @@ for file in "$here/settings_preview.c" "$here/windows_pe.c" "$here/../../runtime
     "$here/focus_adapter.c" "$here/focus_indicator.c" \
     "$src/launcher_ui.c" "$src/launcher_audio.c" "$src/launcher_svg.c" "$src/launcher_image.c"; do
     object="$(basename "$file").o"
-    "$cc" $arch -D__SWITCH__ -D_REENTRANT -std=gnu11 -O2 -Wall -Wextra "$@" "-frandom-seed=$object" \
-        -ffunction-sections -fdata-sections -I"$nx/include" -I"$src" $cflags \
+    run_with_pkg_config_flags "$tmp/compile.flags" "$cc" \
+        $arch -D__SWITCH__ -D_REENTRANT -std=gnu11 -O2 -Wall -Wextra "$@" "-frandom-seed=$object" \
+        -ffunction-sections -fdata-sections -I"$nx/include" -I"$src" \
         -c "$file" -o "$tmp/$object"
 done
 for file in "$here/library_catalog.cpp" "$here/../ulaunch/catalog.cpp"; do
@@ -65,9 +92,12 @@ for file in "$here/library_catalog.cpp" "$here/../ulaunch/catalog.cpp"; do
         -ffunction-sections -fdata-sections -I"$tmp/json-headers" -I"$tmp/json-headers/nlohmann" -I"$nx/include" \
         -c "$file" -o "$tmp/$object"
 done
-"$cxx" $arch -specs="$nx/switch.specs" -Wl,--gc-sections "$tmp"/*.o \
-    -L"$port/lib" -L"$nx/lib" -Wl,--start-group $libs ${SWITCH_EXTRA_LIBS:-} -lnx -lm -Wl,--end-group \
-    -Wl,--build-id=sha1 -o "$tmp/exodus-shell.elf"
+link_switch() {
+    "$cxx" $arch -specs="$nx/switch.specs" -Wl,--gc-sections "$tmp"/*.o \
+        -L"$port/lib" -L"$nx/lib" -Wl,--start-group "$@" ${SWITCH_EXTRA_LIBS:-} -lnx -lm -Wl,--end-group \
+        -Wl,--build-id=sha1 -o "$tmp/exodus-shell.elf"
+}
+run_with_pkg_config_flags "$tmp/link.flags" link_switch
 "$nacp" --create "EXODUS Shell" "EXODUSx1" "0.10.0" "$tmp/exodus-shell.nacp"
 "$nro" "$tmp/exodus-shell.elf" "$tmp/exodus-shell.nro" \
     --nacp="$tmp/exodus-shell.nacp"
