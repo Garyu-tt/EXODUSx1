@@ -27,7 +27,63 @@ static size_t find(size_t skip,size_t n){
  if(skip<s.page_count && st[skip]<=CAP-n){size_t j=0;while(j<n&&!occupancy[st[skip]+j])j++;if(j==n)return st[skip];}
  size_t run=0;for(size_t i=0;i<CAP;i++){run=occupancy[i]?0:run+1;if(run==n)return i+1-n;}return SIZE_MAX;
 }
+/* Exercise stable-start updates in both index layouts; preserve full
+ * validation and the first-fit policy when a relocation is required. */
+static void check_stable_extent(bool compact){
+ uint8_t bytes[64]={0},v[16],saved[64];
+ memset(v,0x53,sizeof v);
+ size_t starts[4]={0},ends[4]={0};
+ uint32_t cs[4]={0},order[4]={0},oldorder[4];
+ uint16_t cl[4]={0};
+ struct exodus_page_store p={.payload=bytes,.payload_capacity=sizeof bytes,
+  .page_capacity=4,.page_order=order};
+ if(compact){p.starts32=cs;p.lengths16=cl;}
+ else{p.page_starts=starts;p.page_ends=ends;}
+ for(size_t i=0;i<3;i++)assert(exodus_page_store_pool_put(&p,i,v,8));
+ memcpy(oldorder,order,sizeof order);
+ assert(exodus_page_store_pool_can_put(&p,1,8));
+ assert(exodus_page_store_pool_put(&p,1,v,8));
+ assert(!memcmp(order,oldorder,sizeof order));
+ assert(exodus_page_store_pool_put(&p,1,v,4));
+ size_t a,b;assert(exodus_page_store_extent(&p,1,&a,&b)&&a==8&&b==12);
+ assert(!memcmp(order,oldorder,sizeof order)&&p.payload_used==20);
+ assert(exodus_page_store_pool_put(&p,1,v,6));
+ assert(exodus_page_store_extent(&p,1,&a,&b)&&a==8&&b==14);
+ assert(!memcmp(order,oldorder,sizeof order)&&p.payload_used==22);
+ /* An append reuses the two-byte interior gap. */
+ assert(exodus_page_store_pool_put(&p,3,v,2));
+ assert(exodus_page_store_extent(&p,3,&a,&b)&&a==14&&b==16);
+ assert(order[0]==0&&order[1]==1&&order[2]==3&&order[3]==2);
+ /* Growth cannot fit there: relocate by first fit after the tail. */
+ assert(exodus_page_store_pool_put(&p,1,v,12));
+ assert(exodus_page_store_extent(&p,1,&a,&b)&&a==24&&b==36);
+ assert(order[0]==0&&order[1]==3&&order[2]==2&&order[3]==1);
+ assert(exodus_page_store_validate(&p)&&p.payload_used==30);
+ /* Even a shrinking replacement must reject a corrupt ordered index. */
+ order[1]=order[0];
+ memcpy(saved,bytes,sizeof bytes);memcpy(oldorder,order,sizeof order);
+ assert(!exodus_page_store_pool_can_put(&p,1,1));
+ assert(!exodus_page_store_pool_put(&p,1,v,1));
+ assert(!memcmp(saved,bytes,sizeof bytes)&&!memcmp(oldorder,order,sizeof order));
+ assert(p.payload_used==30&&p.page_count==4);
+ order[1]=3;assert(exodus_page_store_validate(&p));
+ /* Physical indices now differ from address order. Exercise removal,
+  * tail growth, relocation to the head, and insertion into the middle. */
+ assert(exodus_page_store_pool_remove(&p,0));
+ assert(order[0]==2&&order[1]==1&&order[2]==0);
+ assert(exodus_page_store_pool_put(&p,0,v,16));
+ assert(exodus_page_store_extent(&p,0,&a,&b)&&a==24&&b==40);
+ assert(exodus_page_store_pool_put(&p,2,v,8));
+ assert(exodus_page_store_extent(&p,2,&a,&b)&&a==0&&b==8);
+ assert(exodus_page_store_pool_put(&p,3,v,8));
+ assert(exodus_page_store_extent(&p,3,&a,&b)&&a==8&&b==16);
+ assert(order[0]==2&&order[1]==3&&order[2]==1&&order[3]==0);
+ assert(exodus_page_store_pool_remove(&p,1));
+ assert(order[0]==1&&order[1]==2&&order[2]==0);
+ assert(exodus_page_store_validate(&p)&&p.payload_used==32);
+}
 int main(void){
+ check_stable_extent(false);check_stable_extent(true);
  size_t puts_ok=0,fails=0,removes=0,compacts=0,actual_moved=0;
  for(size_t step=0;step<30000;step++){
   size_t count=s.page_count, op=rnd()%10;memcpy(before,arena,CAP);memcpy(oldst,st,sizeof st);memcpy(olden,en,sizeof en);memcpy(oldord,ord,sizeof ord);
