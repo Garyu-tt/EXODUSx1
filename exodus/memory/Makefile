@@ -16,15 +16,19 @@ page_probe$(EXEEXT): page_codec.c page_codec.h page_probe_stats.c page_probe_sta
 test_codec$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h test_codec.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c test_codec.c $(LDLIBS)
 
+test_page_store$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h test_page_store.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c test_page_store.c $(LDLIBS)
+
 test_snapshot$(EXEEXT): page_snapshot.c page_snapshot.h page_codec.c page_codec.h test_snapshot.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_snapshot.c page_codec.c test_snapshot.c $(LDLIBS)
 
-check: test_codec$(EXEEXT) test_snapshot$(EXEEXT) page_probe$(EXEEXT)
+check: test_codec$(EXEEXT) test_page_store$(EXEEXT) test_snapshot$(EXEEXT) page_probe$(EXEEXT)
 	./test_codec$(EXEEXT)
+	./test_page_store$(EXEEXT)
 	./test_snapshot$(EXEEXT)
 	$(PYTHON) test_probe.py ./page_probe$(EXEEXT)
 
 clean:
-	$(RM) test_codec$(EXEEXT) test_snapshot$(EXEEXT) page_probe$(EXEEXT)
+	$(RM) test_codec$(EXEEXT) test_page_store$(EXEEXT) test_snapshot$(EXEEXT) page_probe$(EXEEXT)
 
 .PHONY: all check clean

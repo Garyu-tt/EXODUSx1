@@ -19,6 +19,7 @@ namespace exodus::steam_switch {
         constexpr std::size_t SessionBodyLimit = 512;
         constexpr std::string_view SessionsPath = "/v1/steam/sessions";
         constexpr std::string_view SnapshotPath = "/v1/steam/catalog";
+        constexpr std::string_view CancelPath = "/v1/steam/cancel";
 
         std::string_view Trim(std::string_view text, std::string_view characters) {
             const auto start = text.find_first_not_of(characters);
@@ -187,13 +188,22 @@ namespace exodus::steam_switch {
         const auto session = ReadSession(created.body);
         if (!session)
             return {SyncStatus::InvalidSession, {}};
-        if (!open_login(origin.url + "/v1/steam/login/" + *session, origin.url + "/v1/steam/done"))
+        const auto proof = JSON{{"session", *session}, {"verifier", verifier}}.dump();
+        const auto cancel = [&] {
+            // Cleanup is best effort; a failed request leaves the expiry fallback
+            // in place and must not change the original sign-in result.
+            post(CancelPath, proof, SessionBodyLimit);
+        };
+        if (!open_login(origin.url + "/v1/steam/login/" + *session, origin.url + "/v1/steam/done")) {
+            cancel();
             return {SyncStatus::BrowserUnavailable, {}};
+        }
 
-        auto fetched = post(SnapshotPath, JSON{{"session", *session}, {"verifier", verifier}}.dump(),
-                            home::CatalogByteLimit);
-        if (fetched.status == 409)
+        auto fetched = post(SnapshotPath, proof, home::CatalogByteLimit);
+        if (fetched.status == 409) {
+            cancel();
             return {SyncStatus::SignInIncomplete, {}};
+        }
         if (fetched.status == 404)
             return {SyncStatus::SessionExpired, {}};
         if (fetched.status != 200)
