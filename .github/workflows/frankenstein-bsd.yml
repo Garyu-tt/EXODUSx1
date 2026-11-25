@@ -1,0 +1,33 @@
+name: Frankenstein FreeBSD ARM64 reference
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/**'
+      - '.github/workflows/frankenstein-bsd.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install isolated VM build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
+      - name: Validate scripts and build upstream Wayland on FreeBSD
+        run: |
+          sh -n exodus/frankenstein/guest-build.sh
+          sh -n exodus/frankenstein/run-reference.sh
+          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results"
+      - name: Publish boot and build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frankenstein-bsd-r01-evidence
+          path: ${{ runner.temp }}/frankenstein-results/
+          if-no-files-found: warn

@@ -1,0 +1,166 @@
+{
+  "schema": 1,
+  "target": {
+    "os": "FreeBSD",
+    "release": "15.1-RELEASE",
+    "arch": "aarch64",
+    "cpu": "cortex-a57",
+    "ports_commit": "98796bd539ea8f03adb7c9d6f9f3a3d54dcca553"
+  },
+  "nodes": [
+    {
+      "id": "kernel",
+      "origin": null,
+      "state": "reference-image",
+      "depends": []
+    },
+    {
+      "id": "wayland",
+      "origin": "graphics/wayland",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "drm",
+      "origin": "graphics/libdrm",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "mesa",
+      "origin": "graphics/mesa-libs",
+      "state": "source-recipe",
+      "depends": [
+        "drm",
+        "wayland"
+      ]
+    },
+    {
+      "id": "mesa-dri",
+      "origin": "graphics/mesa-dri",
+      "state": "source-recipe",
+      "depends": [
+        "mesa"
+      ]
+    },
+    {
+      "id": "vulkan",
+      "origin": "graphics/vulkan-loader",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "input",
+      "origin": "x11/libinput",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "xwayland",
+      "origin": "x11-servers/xwayland",
+      "state": "source-recipe",
+      "depends": [
+        "wayland",
+        "mesa"
+      ]
+    },
+    {
+      "id": "pipewire",
+      "origin": "multimedia/pipewire",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "gamescope",
+      "origin": "x11-wm/gamescope",
+      "state": "source-recipe",
+      "depends": [
+        "vulkan",
+        "drm",
+        "wayland",
+        "xwayland",
+        "input"
+      ]
+    },
+    {
+      "id": "plasma",
+      "origin": "x11/plasma6-plasma",
+      "state": "source-recipe",
+      "depends": [
+        "wayland",
+        "mesa",
+        "input"
+      ]
+    },
+    {
+      "id": "ssh",
+      "origin": "security/openssh-portable",
+      "state": "source-recipe",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "steam-utils",
+      "origin": "games/linux-steam-utils",
+      "state": "amd64-only",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "wine-proton",
+      "origin": "emulators/wine-proton",
+      "state": "amd64-only",
+      "depends": [
+        "mesa"
+      ]
+    },
+    {
+      "id": "steam-client",
+      "origin": null,
+      "state": "closed-binary-unverified",
+      "depends": [
+        "gamescope",
+        "pipewire"
+      ]
+    },
+    {
+      "id": "session",
+      "origin": null,
+      "state": "needs-port",
+      "depends": [
+        "gamescope",
+        "steam-client"
+      ]
+    },
+    {
+      "id": "horizon-bridge",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "gaming-mode",
+      "origin": null,
+      "state": "blocked",
+      "depends": [
+        "session",
+        "horizon-bridge"
+      ]
+    }
+  ],
+  "evidence": "Port Makefiles inspected at the pinned commit; edges are functional integration dependencies, not the complete transitive Ports graph. No ARM64 compile or hardware support implied."
+}
