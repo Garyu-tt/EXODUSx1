@@ -29,6 +29,18 @@ static void verify_games_inventory(const char *fixture)
         assert(exodus_library_execution_target(lib,n).backend==EXODUS_BACKEND_NONE);
     }
     assert(!exodus_library_is_discovered(lib,0));
+    char detail[512];
+    assert(!exodus_library_archive_detail(lib,0,detail,sizeof(detail)));
+    size_t split=5;
+    if (std::string(exodus_library_id(lib,split))!=root+"/Game.nsp") split=6;
+    assert(exodus_library_archive_detail(lib,split,detail,sizeof(detail)));
+    assert(strstr(detail,"2 contiguous parts, 6 bytes") && strstr(detail,"Not launchable"));
+    assert(fs::remove(root+"/Game.nsp/01"));
+    assert(exodus_library_archive_detail(lib,split,detail,sizeof(detail)));
+    assert(strstr(detail,"invalid"));
+    { std::ofstream f(root+"/Game.nsp/01"); f<<"12"; }
+    assert(exodus_library_archive_detail(lib,split==5?6:5,detail,sizeof(detail)));
+    assert(strstr(detail,"No verified launch backend"));
     exodus_library_close(lib);
     lib=exodus_library_open_with_games(fixture,(root+"/absent").c_str());
     assert(lib && exodus_library_count(lib)==5);

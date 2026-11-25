@@ -5,6 +5,7 @@
 #include <utility>
 #ifndef _WIN32
 #include "evcs_discovery.h"
+#include "evcs_pfs0.h"
 #endif
 #ifdef __SWITCH__
 #include "live_inventory.hpp"
@@ -108,6 +109,50 @@ const char *exodus_library_discovery_status(const struct exodus_library *library
 int exodus_library_is_discovered(const struct exodus_library *library,size_t index)
 {
     return library && index>=library->first_game && index<library->catalog.entries.size();
+}
+int exodus_library_archive_detail(const struct exodus_library *library,size_t index,char *out,size_t cap)
+{
+    if (!out || !cap) return 0;
+    out[0]=0;
+    if (!exodus_library_is_discovered(library,index)) return 0;
+#ifndef _WIN32
+    const auto &entry=library->catalog.entries[index];
+    enum evcs_kind kind;
+    if (!evcs_kind_of(entry.id.c_str(),&kind)) return 0;
+    const char *format=kind==EVCS_NSP?"NSP":kind==EVCS_XCI?"XCI":kind==EVCS_NRO?"NRO":"NCA";
+    struct stat st{};
+    if (lstat(entry.id.c_str(),&st)) {
+        snprintf(out,cap,"%s unavailable. Not launchable.",format); return 1;
+    }
+    if (S_ISDIR(st.st_mode) && (kind==EVCS_NSP || kind==EVCS_XCI)) {
+        unsigned visited=0;
+        struct evcs_split_info info{};
+        if (evcs_split_probe(entry.id.c_str(),&visited,EVCS_MAX_VISITED,&info)==EVCS_SPLIT_OK)
+            snprintf(out,cap,"Split %s: %u contiguous parts, %llu bytes.\nCompleteness unverified. Not launchable.",
+                format,info.parts,(unsigned long long)info.bytes);
+        else snprintf(out,cap,"Split %s unavailable or invalid. Not launchable.",format);
+        return 1;
+    }
+    if (!S_ISREG(st.st_mode) || st.st_size<=0) {
+        snprintf(out,cap,"%s unavailable or invalid. Not launchable.",format); return 1;
+    }
+    if (kind!=EVCS_NSP) {
+        snprintf(out,cap,"%s discovered: %llu bytes.\nNo verified launch backend.",format,(unsigned long long)st.st_size);
+        return 1;
+    }
+    FILE *stream=fopen(entry.id.c_str(),"rb");
+    struct evcs_pfs0_info info{};
+    auto rc=stream?evcs_pfs0_probe(stream,(uint64_t)st.st_size,&info):EVCS_PFS0_IO;
+    if (stream && fclose(stream)) rc=EVCS_PFS0_IO;
+    if (rc==EVCS_PFS0_OK)
+        snprintf(out,cap,"NSP directory: %u files, %u NCA, %u metadata candidates.\nNo verified launch backend.",
+            (unsigned)info.entries,(unsigned)info.nca,(unsigned)info.meta_nca);
+    else snprintf(out,cap,"NSP directory %s. Not launchable.",
+        rc==EVCS_PFS0_LIMIT?"exceeds scan limits":rc==EVCS_PFS0_IO?"unreadable":"invalid");
+    return 1;
+#else
+    return 0;
+#endif
 }
 void exodus_library_close(struct exodus_library *library) { delete library; }
 const char *exodus_library_status(const struct exodus_library *library)
