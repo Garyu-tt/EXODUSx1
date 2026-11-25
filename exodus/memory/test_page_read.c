@@ -8,7 +8,41 @@ static void reject(const uint8_t *p, size_t n, size_t w) {
     CHECK(!exodus_page_read_word(p,n,w,out));
     CHECK(memcmp(out,"\1\2\3\4",4)==0);
 }
+/* Exercise every possible mask byte in every position, with other
+ * groups occupied too. Compare first/last words against an independent
+ * bytewise page construction, and reject malformed late mask bits. */
+static void check_sparse_rank(void) {
+    uint8_t storage[4097], expected[4096], out[4];
+    uint8_t *encoded=storage+1;
+    for(size_t group=0;group<8;group++){
+        for(unsigned mask=0;mask<256;mask++){
+            for(size_t i=0;i<8;i++)encoded[i]=(uint8_t)(i%2?0xa5:0x5a);
+            encoded[group]=(uint8_t)mask;
+            memset(expected,0,sizeof expected);
+            size_t n=8;
+            for(size_t block=0;block<64;block++){
+                if(!(encoded[block/8]&(1u<<(block%8))))continue;
+                for(size_t j=0;j<64;j++)
+                    expected[block*64+j]=(uint8_t)(1+block*13+j);
+                memcpy(encoded+n,expected+block*64,64);
+                n+=64;
+            }
+            for(size_t block=0;block<64;block++){
+                size_t w=block*16;
+                CHECK(exodus_page_read_word(encoded,n,w,out));
+                CHECK(!memcmp(out,expected+w*4,4));
+                w+=15;
+                CHECK(exodus_page_read_word(encoded,n,w,out));
+                CHECK(!memcmp(out,expected+w*4,4));
+            }
+            encoded[7]^=0x80;
+            reject(encoded,n,0);
+            reject(encoded,n,1023);
+        }
+    }
+}
 int main(void) {
+    check_sparse_rank();
     uint8_t payload[4096+72+17+41+8], expected[4096], out[4];
     size_t ends[5]={4096,4168,4185,4226,4234};
     size_t refs[6]={0,1,2,3,4,2}; uint64_t fingerprints[5]={0};
