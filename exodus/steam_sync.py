@@ -257,7 +257,11 @@ def fetch_library(opener, key, steam_id):
     params = urlencode({
         "key": key,
         "format": "json",
-        "input_json": json.dumps({"steamid": int(steam_id), "include_appinfo": True}),
+        "input_json": json.dumps({
+            "steamid": int(steam_id),
+            "include_appinfo": True,
+            "include_played_free_games": True,
+        }),
     })
     request = Request(OWNED_GAMES + "?" + params, headers={"Accept": "application/json"})
     body = request_steam(opener, request, 8 * 1024 * 1024, "library sync")
