@@ -62,6 +62,44 @@ static void native_merge_fixture()
     assert(huge.entries.size()==1 && huge.entries[0].title.size()==CatalogByteLimit);
 }
 #ifndef _WIN32
+static void verify_games_inventory(const char *fixture)
+{
+    namespace fs=std::filesystem;
+    const std::string root=std::string(fixture)+".games";
+    assert(fs::create_directory(root));
+    { std::ofstream f(root+"/tool.NRO"); f<<"fixture"; }
+    assert(fs::create_directory(root+"/Game.nsp"));
+    { std::ofstream f(root+"/Game.nsp/00"); f<<"1234"; }
+    { std::ofstream f(root+"/Game.nsp/01"); f<<"12"; }
+    { std::ofstream f(root+"/unfinished.xci.part"); f<<"partial"; }
+    auto *lib=exodus_library_open_with_games(fixture,root.c_str());
+    assert(lib && exodus_library_count(lib)==7);
+    assert(!strcmp(exodus_library_discovery_status(lib),"Games scan complete"));
+    for(size_t n=5;n<7;++n) {
+        assert(exodus_library_is_discovered(lib,n));
+        assert(!strcmp(exodus_library_provider(lib,n),"Other"));
+        assert(exodus_library_execution_target(lib,n).backend==EXODUS_BACKEND_NONE);
+    }
+    assert(!exodus_library_is_discovered(lib,0));
+    char detail[512];
+    assert(!exodus_library_archive_detail(lib,0,detail,sizeof(detail)));
+    size_t split=5;
+    if (std::string(exodus_library_id(lib,split))!=root+"/Game.nsp") split=6;
+    assert(exodus_library_archive_detail(lib,split,detail,sizeof(detail)));
+    assert(strstr(detail,"2 contiguous parts, 6 bytes") && strstr(detail,"Not launchable"));
+    assert(fs::remove(root+"/Game.nsp/01"));
+    assert(exodus_library_archive_detail(lib,split,detail,sizeof(detail)));
+    assert(strstr(detail,"invalid"));
+    { std::ofstream f(root+"/Game.nsp/01"); f<<"12"; }
+    assert(exodus_library_archive_detail(lib,split==5?6:5,detail,sizeof(detail)));
+    assert(strstr(detail,"No verified launch backend"));
+    exodus_library_close(lib);
+    lib=exodus_library_open_with_games(fixture,(root+"/absent").c_str());
+    assert(lib && exodus_library_count(lib)==5);
+    assert(!strcmp(exodus_library_discovery_status(lib),"Games folder unavailable"));
+    exodus_library_close(lib);
+    assert(fs::remove_all(root)==6);
+}
 static void verify_default_catalog_refresh(const char *fixture)
 {
     namespace fs = std::filesystem;
@@ -176,6 +214,9 @@ int main(int argc, char **argv)
     assert(!strcmp(exodus_library_title(lib, 5), ""));
     assert(!strcmp(exodus_library_provider(lib, 5), "Unknown"));
     exodus_library_close(lib);
+#ifndef _WIN32
+    verify_games_inventory(argv[1]);
+#endif
     { std::ofstream f(argv[1]); f << "{}"; }
     lib = exodus_library_open(argv[1]);
     assert(lib && !strcmp(exodus_library_status(lib), "Invalid catalog"));
