@@ -56,7 +56,8 @@ static inline int exodus_launch(enum exodus_route route, const char *id, char me
         }
         snprintf(args, sizeof(args), "\"%s\"", path);
         rc = envSetNextLoad(path, args);
-    } else if (route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
+    } else if (route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM ||
+               route == EXODUS_ROUTE_RUNTIME_LIBRARY) {
         char args[EXODUS_RUNTIME_ARGS_CAP];
         struct stat st;
         if (appletGetAppletType() != AppletType_Application || !envHasNextLoad()) {
