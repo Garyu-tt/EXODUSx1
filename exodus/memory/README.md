@@ -84,3 +84,24 @@ A duplicate can be appended when the physical page or payload buffer is full, pr
 For `U` unique pages and `L` logical pages, active storage is `unique.payload_used + U * (sizeof(size_t) + sizeof(uint64_t)) + L * sizeof(size_t)`, plus the wrapper descriptor. Reserved storage instead uses the caller's payload, unique-index, fingerprint and logical-index **capacities**. The host test's two equal raw pages use 4096 payload bytes instead of 8192; on a 64-bit host the complete reserved backing, metadata and descriptor total 4208 bytes instead of the ordinary store's 8256. These totals exclude caller staging and temporary append/restore workspace, which can require up to two additional 4096-byte page buffers during append. Reducing used bytes inside an existing allocation does not release RAM.
 
 The fingerprint index uses a bounded linear scan: append checks up to `U` fingerprints and restores only matching candidates. Building an all-unique group can therefore require quadratic index work; use bounded cold-page groups and measure the workload. This is CPU-side storage, without GPU residency changes, automatic write-back, or a physical Switch performance claim. `make check` covers sharing, collision checks, capacity failure preservation and mixed-page round trips.
+
+## Direct word reads (Memory Lab integration)
+
+Link `page_read.c` and include `page_read.h`. The codec-level
+`exodus_page_read_word`, ordinary-store `exodus_page_store_read_word`,
+and immutable dedup-store `exodus_page_dedup_store_read_word` APIs read a
+zero-based 4-byte word (0–1023), in original byte order, without allocating or
+materializing a 4096-byte output page. They support existing raw, sparse,
+word-run and repeated-tile encodings. Word-run records are scanned and
+structurally validated completely before returning a word; this is not a
+constant-time lookup for all formats. The output must not overlap any backing
+buffer. On failure it is left unchanged. Callers must serialize access.
+
+This is the first integration of Memory Lab's direct-access approach with the
+accepted EX-005 store, not a second dedup engine. The on-wire format and
+existing append/restore/replace APIs are unchanged. Shared dedup backing
+remains immutable: mutable block pools, BDI encoding, and copy-on-write
+require a further integrated change. No automatic RAM/VRAM mapping or
+Switch performance claim. Run `make check-direct-read` for direct-read
+regression fixtures (raw, sparse, tiles, word runs, zero and shared logical
+references, malformed records and indices).
