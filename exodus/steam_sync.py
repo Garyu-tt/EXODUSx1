@@ -53,20 +53,34 @@ class NoSteamRedirect(HTTPRedirectHandler):
         return None
 
 
-def request_steam(opener, request, limit, operation):
+def _remaining_sign_in_time(deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise SteamSyncError("Timed out waiting for Steam sign-in.")
+    return remaining
+
+
+def request_steam(opener, request, limit, operation, *, deadline=None):
+    timeout = 10 if deadline is None else min(10, _remaining_sign_in_time(deadline))
     try:
-        with opener.open(request, timeout=10) as response:
+        with opener.open(request, timeout=timeout) as response:
             body = response.read(limit + 1)
     except HTTPError as error:
         status = error.code
         error.close()
+        if deadline is not None:
+            _remaining_sign_in_time(deadline)
         if operation == "library sync" and status in (401, 403):
             raise SteamSyncError(
                 "Steam Web API rejected library access. Check the key and its permissions."
             ) from None
         raise SteamSyncError(f"Steam {operation} failed (HTTP {status}).") from None
     except (OSError, HTTPException):
+        if deadline is not None:
+            _remaining_sign_in_time(deadline)
         raise SteamSyncError(f"Could not reach Steam for {operation}.") from None
+    if deadline is not None:
+        _remaining_sign_in_time(deadline)
     if len(body) > limit:
         raise SteamSyncError(f"Steam {operation} response exceeded the size limit.")
     return body
@@ -84,7 +98,7 @@ def parse_openid_response(query):
     return fields
 
 
-def verify_openid(fields, return_to, opener):
+def verify_openid(fields, return_to, opener, *, deadline=None):
     if fields.get("openid.mode") == "cancel":
         raise SteamSyncError("Steam sign-in was cancelled.")
     if (fields.get("openid.ns") != OPENID_NS or fields.get("openid.mode") != "id_res"
@@ -115,7 +129,8 @@ def verify_openid(fields, return_to, opener):
     request = Request(OPENID_PROVIDER, data=data, headers={
         "Content-Type": "application/x-www-form-urlencoded",
     })
-    response = request_steam(opener, request, MAX_CALLBACK_BYTES, "identity verification")
+    response = request_steam(opener, request, MAX_CALLBACK_BYTES, "identity verification",
+                             deadline=deadline)
     verdict = {}
     for line in response.splitlines():
         key, separator, value = line.partition(b":")
@@ -124,6 +139,8 @@ def verify_openid(fields, return_to, opener):
         verdict[key] = value
     if verdict.get(b"ns") != OPENID_NS.encode("ascii") or verdict.get(b"is_valid") != b"true":
         raise SteamSyncError("Steam could not verify this sign-in.")
+    if deadline is not None:
+        _remaining_sign_in_time(deadline)
     return match[1]
 
 
@@ -148,8 +165,11 @@ class SteamCallbackHandler(BaseHTTPRequestHandler):
             self.reply(404, "Callback not found.")
             return
         try:
+            if self.server.deadline is not None:
+                _remaining_sign_in_time(self.server.deadline)
             fields = parse_openid_response(callback.query)
-            self.server.outcome = verify_openid(fields, self.server.return_to, self.server.opener)
+            self.server.outcome = verify_openid(fields, self.server.return_to, self.server.opener,
+                                                deadline=self.server.deadline)
         except SteamSyncError as error:
             self.server.outcome = error
             self.reply(400, "Steam sign-in did not complete. See the terminal for details.")
@@ -181,6 +201,7 @@ class SteamCallbackServer(HTTPServer):
         self.callback_path = "/steam/callback/" + secrets.token_urlsafe(32)
         self.return_to = self.realm.rstrip("/") + self.callback_path
         self.outcome = None
+        self.deadline = None
 
 
 def sign_in(opener, open_browser, timeout):
@@ -209,7 +230,7 @@ def sign_in(opener, open_browser, timeout):
                 launch.set_result(opened)
 
         # A foreground launcher can wait for the browser to exit. Keep serving its callback.
-        deadline = time.monotonic() + timeout
+        server.deadline = time.monotonic() + timeout
         Thread(target=launch_browser, daemon=True).start()
         while server.outcome is None:
             if launch.done():
@@ -218,9 +239,7 @@ def sign_in(opener, open_browser, timeout):
                         raise SteamSyncError("Could not open the system browser for Steam sign-in.")
                 except (OSError, webbrowser.Error):
                     raise SteamSyncError("Could not open the system browser for Steam sign-in.") from None
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise SteamSyncError("Timed out waiting for Steam sign-in.")
+            remaining = _remaining_sign_in_time(server.deadline)
             server.timeout = min(remaining, 0.5)
             server.handle_request()
         if isinstance(server.outcome, SteamSyncError):

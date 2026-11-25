@@ -20,6 +20,8 @@ On a page with Steam games that have a valid AppID, select **Steam status** and 
 
 uMenu sends the AppID to the matching uSystem through read-only commands. uSystem checks `/switch/exodus-steam/steamapps/appmanifest_<AppID>.acf` on the SD card. It matches the manifest AppID and checks for the declared game folder under `steamapps/common/` when `StateFlags` has the FullyInstalled bit set. The dialog reports absent, invalid or incomplete manifests, missing game folders and matching manifest and folder evidence. It displays a separate launch status. [Steam library layout](https://help.steampowered.com/en/faqs/view/4BD4-4528-6B2E-8327)
 
+The declared game folder must be one safe UTF-8 component. Admission rejects control characters, traversal and path separators, trailing spaces or dots, and Windows device aliases, including `CONIN$`, `CONOUT$` and COM/LPT names ending in superscript 1, 2 or 3. These checks match the trusted-reference path restrictions even when a host filesystem contains such a directory. Ordinary Unicode names and non-device names such as `COM10` remain supported.
+
 A matching manifest and folder establish local disk evidence only. Actual launch requires an approved local Switch runtime, verification of installed game files and an official Steam entitlement path. [Steamworks installation and entitlement](https://partner.steamgames.com/doc/api/ISteamApps#BIsAppInstalled) · [EX-006 tracker](https://github.com/Garyu-tt/EXODUSx1/pull/3) · [Nintendo Safe Mode #55](https://github.com/Garyu-tt/EXODUSx1/issues/55)
 
 The Steam File Check homebrew application compares the listed game files on SD with a retained reference. Its own README covers reference generation and on-device verification. [Steam File Check](../../steam_integrity/README.md)

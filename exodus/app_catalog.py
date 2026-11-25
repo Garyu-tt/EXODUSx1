@@ -1,4 +1,4 @@
-"""Combine mounted Switch homebrew and local Steam manifests in a catalog."""
+"""Combine Steam, mounted Switch homebrew and CorkDeck libraries in a catalog."""
 
 import argparse
 import os
@@ -8,6 +8,7 @@ import struct
 import sys
 import zlib
 
+from .corkdeck_catalog import program_path_key, read_catalog as read_corkdeck_catalog
 from .steam_catalog import (
     CatalogLimitError,
     CatalogOutputError,
@@ -151,9 +152,25 @@ def scan_homebrew(sd_root):
     return entries, errors
 
 
+def scan_corkdeck_catalogs(catalogs):
+    """Keep the first metadata record for each CorkDeck program identity."""
+    entries = {}
+    errors = False
+    for path in catalogs:
+        try:
+            source = read_corkdeck_catalog(path)
+        except (ValueError, OSError) as exc:
+            print(f"{path}: {exc}", file=sys.stderr)
+            errors = True
+            continue
+        for entry in source:
+            entries.setdefault(program_path_key(entry["provider_id"]), entry)
+    return list(entries.values()), errors
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Write an offline catalog from Steam libraries and a mounted Switch SD card."
+        description="Write an offline catalog from Steam, Switch homebrew and CorkDeck libraries."
     )
     parser.add_argument("--steam-library", metavar="LIBRARY", type=Path, action="append", default=[],
                         help="Steam library root or steamapps directory. May be repeated.")
@@ -161,15 +178,18 @@ def main():
                         help="Steam installation root whose libraryfolders.vdf lists libraries to scan. May be repeated.")
     parser.add_argument("--switch-sd", metavar="ROOT", type=Path,
                         help="Mounted Switch SD card root containing the switch directory.")
+    parser.add_argument("--corkdeck-catalog", metavar="FILE", type=Path, action="append", default=[],
+                        help="CorkDeck v2/v3 launcher-library-v2.ini to import. May be repeated.")
     parser.add_argument("--output", metavar="FILE", type=Path,
                         help="Write the catalog directly to FILE. Defaults to stdout.")
     args = parser.parse_args()
-    if not args.steam_library and not args.steam_install and args.switch_sd is None:
-        parser.error("supply at least one --steam-library, --steam-install or --switch-sd")
+    if not args.steam_library and not args.steam_install and args.switch_sd is None and not args.corkdeck_catalog:
+        parser.error("supply at least one --steam-library, --steam-install, --switch-sd or --corkdeck-catalog")
 
     steam, steam_errors = scan_libraries(args.steam_library, steam_installs=args.steam_install)
     homebrew, homebrew_errors = scan_homebrew(args.switch_sd) if args.switch_sd else ([], False)
-    entries = steam + homebrew
+    corkdeck, corkdeck_errors = scan_corkdeck_catalogs(args.corkdeck_catalog)
+    entries = steam + homebrew + corkdeck
     try:
         if args.output is None:
             write_catalog(entries)
@@ -178,7 +198,7 @@ def main():
     except (CatalogLimitError, CatalogOutputError) as exc:
         print(exc, file=sys.stderr)
         return 1
-    return int(steam_errors or homebrew_errors)
+    return int(steam_errors or homebrew_errors or corkdeck_errors)
 
 
 if __name__ == "__main__":
