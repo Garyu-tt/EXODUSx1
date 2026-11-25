@@ -76,6 +76,10 @@ if [ "$mode" = native ]; then
     for f in sessiond.c sessiond-dbus.inc test_sessiond.py test_sessiond_dbus.sh; do
         mcopy -i seed.img "$here/$f" ::
     done
+    # Carry exactly the accepted Task Center modules and tests, not an installed package.
+    for f in exodus/task_center.py exodus/task_center_child.py tests/test_task_center.py tests/test_task_center_child.py; do
+        mcopy -i seed.img "$here/../../$f" ::
+    done
 fi
 # Emulate the Tegra CPU ISA baseline; no KVM/host CPU assumption.
 efi=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
@@ -116,6 +120,9 @@ if [ "$rc" -ne 0 ]; then
 fi
 grep -F "$gate" "$out/serial.log"
 grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
+if [ "$mode" = native ]; then
+    tr -d '\r' < "$out/serial.log" | grep -Fx EXODUS_TASK_CENTER_FREEBSD_PASS
+fi
 
 # The upstream manager workload deliberately preserves compiler diagnostics
 # and exits cleanly even when the full daemon does not compile. A completed
