@@ -201,6 +201,51 @@ class MtpProbeTests(unittest.TestCase):
         self.assertEqual(report["reconnect"]["state"], "baseline_not_ready")
         sample.assert_called_once_with(USB_ID)
 
+    def test_reconnect_keeps_progress_when_enumeration_fails(self):
+        driver_problem = [node(PARENT), node(PORTABLE, "WPD", problem=28,
+                                            compatible=[MTP_ID], parent=PARENT)]
+        for error, reason in ((mtp_probe.ProbeError("enumeration failed"), "query_failed"),
+                              (mtp_probe.ProbeTimeout("timed out"), "query_timeout")):
+            for progress, disconnected, last_state, problems in (
+                ([], False, "wpd_ready", []),
+                ([[]], True, "not_present", []),
+                ([[], driver_problem], True, "driver_problem", [28]),
+            ):
+                with self.subTest(reason=reason, last_state=last_state):
+                    sample = Mock(side_effect=[*snapshots(self.ready, *progress), error])
+                    code, report, errors = self.run_probe(sample, "--reconnect", "120")
+                    self.assertEqual(code, 2)
+                    self.assertIn(str(error), errors)
+                    self.assertIsNotNone(report)
+                    self.assertEqual(report["initial"]["state"], "wpd_ready")
+                    self.assertNotIn("observation", report)
+                    reconnect = report["reconnect"]
+                    self.assertEqual(reconnect["state"], reason)
+                    self.assertEqual(reconnect["disconnect_seen"], disconnected)
+                    self.assertEqual(reconnect["last"]["state"], last_state)
+                    self.assertEqual(reconnect["last"]["problem_codes"], problems)
+                    self.assertEqual(sample.call_count, len(progress) + 2)
+                    sample.assert_called_with(USB_ID, timeout=mtp_probe.QUERY_TIMEOUT)
+
+    def test_reconnect_window_timeout_retains_observed_disconnect(self):
+        sample = Mock(side_effect=[*snapshots(self.ready, []), mtp_probe.ProbeTimeout("timed out")])
+        code, report, errors = self.run_probe(sample, "--reconnect", "5")
+        self.assertEqual(code, 1)
+        self.assertEqual(report["reconnect"]["state"], "timed_out")
+        self.assertTrue(report["reconnect"]["disconnect_seen"])
+        self.assertEqual(report["reconnect"]["last"]["state"], "not_present")
+        self.assertNotIn("MTP probe:", errors)
+        sample.assert_called_with(USB_ID, timeout=3)
+
+    def test_reconnect_requires_a_successful_baseline_for_an_error_report(self):
+        for failure in (mtp_probe.ProbeError("enumeration failed"), mtp_probe.ProbeTimeout("timed out")):
+            with self.subTest(failure=type(failure).__name__):
+                sample = Mock(side_effect=failure)
+                code, report, errors = self.run_probe(sample, "--reconnect", "120")
+                self.assertEqual((code, report), (2, None))
+                self.assertIn(str(failure), errors)
+                sample.assert_called_once_with(USB_ID)
+
     def test_invalid_windows_data_stays_distinct_from_absent_device(self):
         def malformed_sample(usb_id):
             return mtp_probe.classify([node(PARENT, problem="unknown")], usb_id)

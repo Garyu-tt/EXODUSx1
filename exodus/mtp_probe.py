@@ -58,6 +58,14 @@ class ObservationError(ProbeError):
         self.observation = observation
 
 
+class ReconnectError(ProbeError):
+    """Enumeration failed after a reconnect baseline was recorded."""
+
+    def __init__(self, message, reconnect):
+        super().__init__(message)
+        self.reconnect = reconnect
+
+
 @dataclass(frozen=True)
 class Snapshot:
     state: str
@@ -189,10 +197,13 @@ def check_reconnect(usb_id, initial, seconds, sample):
             break
         try:
             current = sample(usb_id, timeout=min(remaining, QUERY_TIMEOUT))
-        except ProbeTimeout:
-            if remaining > QUERY_TIMEOUT:
-                raise
-            break
+        except ProbeError as exc:
+            timed_out = isinstance(exc, ProbeTimeout)
+            if timed_out and remaining <= QUERY_TIMEOUT:
+                break
+            partial = {"state": "query_timeout" if timed_out else "query_failed",
+                       "disconnect_seen": disconnected, "last": last.report()}
+            raise ReconnectError(str(exc), partial) from exc
         if time.monotonic() >= deadline:
             break
         last = current
@@ -277,9 +288,12 @@ def main(argv=None, sample=read_windows):
         exit_code = 0 if success else 1
     except ProbeError as exc:
         print(f"MTP probe: {exc}", file=sys.stderr)
-        if not isinstance(exc, ObservationError):
+        if isinstance(exc, ObservationError):
+            observation = exc.observation
+        elif isinstance(exc, ReconnectError):
+            reconnect = exc.reconnect
+        else:
             return 2
-        observation = exc.observation
         exit_code = 2
 
     report = {"schema_version": 1, "usb_id": usb_id, "initial": initial.report(), "reconnect": reconnect}
