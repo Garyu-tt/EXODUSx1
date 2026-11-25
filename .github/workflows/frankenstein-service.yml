@@ -80,7 +80,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install ARMv7 reference tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf libc6-dev-armhf-cross binutils-arm-linux-gnueabihf qemu-user
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf libc6-dev-armhf-cross binutils-arm-linux-gnueabihf qemu-user gcc-aarch64-linux-gnu libc6-dev-arm64-cross
       - name: Test heartbeat and mailbox on emulated Cortex-A9
         shell: bash
         run: |
@@ -96,6 +96,56 @@ jobs:
             timeout 30s qemu-arm -cpu cortex-a9 "$bin"
           done
           echo TUMOR_ARMV7_IPC_REFERENCE_PASS
+
+      - name: Test mixed ARMv7 and AArch64 mailbox ABI in shared host RAM
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(mktemp -d)"
+          trap 'rm -rf "$out"' EXIT
+          src="$GITHUB_WORKSPACE/exodus/frankenstein"
+          cat > "$out/mixed.c" <<'EOF'
+          #define TMR_MAILBOX_SELFTEST
+          #define main mailbox_selftest_main
+          #include "ipc_mailbox.c"
+          #undef main
+          #include <fcntl.h>
+          #include <sys/stat.h>
+
+          int main(int argc, char **argv) {
+              if (argc != 3 || strlen(argv[1]) != 1) return 10;
+              char mode = argv[1][0];
+              if (mode != 'i' && mode != '1' && mode != '2') return 11;
+              int fd = open(argv[2], mode == 'i' ? O_RDWR | O_CREAT | O_EXCL : O_RDWR, 0600);
+              if (fd < 0) return 12;
+              if (mode == 'i' && ftruncate(fd, sizeof(tmr_mailbox))) return 13;
+              struct stat st;
+              if (fstat(fd, &st) || st.st_size != (off_t)sizeof(tmr_mailbox)) return 14;
+              tmr_mailbox *m = mmap(NULL, sizeof(*m), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+              if (m == MAP_FAILED) return 15;
+              int rc = mode == 'i' ? !mailbox_init(m) : exchange(m, (uint8_t)(mode - '0'));
+              if (munmap(m, sizeof(*m)) || close(fd)) return 16;
+              return rc;
+          }
+          EOF
+          common=(-std=c11 -O2 -Wall -Wextra -Werror -pedantic -static -I"$src")
+          arm-linux-gnueabihf-gcc "${common[@]}" -mcpu=cortex-a9 -mfpu=vfpv3-d16 -mfloat-abi=hard "$out/mixed.c" -o "$out/peer32"
+          aarch64-linux-gnu-gcc "${common[@]}" -mcpu=cortex-a57 "$out/mixed.c" -o "$out/peer64"
+          for role32 in 1 2; do
+            role64=$((3-role32))
+            file="$out/mailbox-$role32"
+            qemu-aarch64 -cpu cortex-a57 "$out/peer64" i "$file"
+            timeout 30s qemu-arm -cpu cortex-a9 "$out/peer32" "$role32" "$file" &
+            p32=$!
+            timeout 30s qemu-aarch64 -cpu cortex-a57 "$out/peer64" "$role64" "$file" &
+            p64=$!
+            rc32=0; rc64=0
+            wait "$p32" || rc32=$?
+            wait "$p64" || rc64=$?
+            echo "mixed role32=$role32 rc32=$rc32 rc64=$rc64"
+            test "$rc32" -eq 0 && test "$rc64" -eq 0
+          done
+          echo TUMOR_MIXED_WIDTH_IPC_REFERENCE_PASS
 
   reference-el:
     runs-on: ubuntu-24.04
