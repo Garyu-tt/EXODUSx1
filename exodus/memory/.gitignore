@@ -10,3 +10,5 @@
 /test_snapshot.exe
 /page_snapshot_probe
 /page_snapshot_probe.exe
+/test_page_dedup_store
+/test_page_dedup_store.exe
