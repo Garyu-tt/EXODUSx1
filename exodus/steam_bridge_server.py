@@ -1,6 +1,8 @@
 """One-connection server boundary for a trusted local EXODUS backend adapter."""
 import json
+import math
 import re
+import time
 
 from .steam_bridge import MAX_FRAME, BridgeError
 from .steam_compat import invocation, unique
@@ -12,24 +14,43 @@ def serve_connection(conn, adapter=None, request_timeout=5):
     Listener ownership, concurrency and actual backend lifecycle are caller duties.
     No default adapter, shell execution, remote endpoint or automatic retries.
     """
-    conn.settimeout(request_timeout)
-    with conn.makefile('rb') as stream:
-        raw = stream.readline(MAX_FRAME + 1)
-        if not raw.endswith(b'\n') or len(raw) > MAX_FRAME:
-            raise BridgeError('invalid request frame')
+    if not math.isfinite(request_timeout) or not 0 < request_timeout <= 86400:
+        raise ValueError('invalid request timeout')
+    deadline = time.monotonic() + request_timeout
+    pending = bytearray()
+    while b'\n' not in pending:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise BridgeError('request deadline exceeded before adapter')
+        conn.settimeout(remaining)
         try:
-            req = json.loads(raw, object_pairs_hook=unique)
-            if (not isinstance(req, dict) or set(req) != {'version', 'request_id', 'backend', 'kind', 'id', 'verb', 'requires_confirmation'}
-                    or type(req['version']) is not int or req['version'] != 1
-                    or not isinstance(req['request_id'], str) or not re.fullmatch('[0-9a-f]{32}', req['request_id'])
-                    or req['backend'] != 'horizon' or req['requires_confirmation'] is not True):
-                raise ValueError('invalid request schema')
-            target = {'version': 1, 'backend': req['backend'], 'kind': req['kind'], 'id': req['id']}
-            plan = invocation('exodus-horizon', req['verb'], target)
-            if plan['argv'][-1] != req['id']:
-                raise ValueError('noncanonical target')
-        except (ValueError, TypeError, RecursionError) as exc:
-            raise BridgeError('request rejected before adapter') from exc
+            chunk = conn.recv(MAX_FRAME - len(pending))
+        except TimeoutError as exc:
+            raise BridgeError('request deadline exceeded before adapter') from exc
+        if not chunk:
+            raise BridgeError('incomplete request frame')
+        pending.extend(chunk)
+        if len(pending) >= MAX_FRAME and b'\n' not in pending:
+            raise BridgeError('request exceeds frame limit')
+    raw, _, extra = pending.partition(b'\n')
+    if extra or time.monotonic() >= deadline:
+        raise BridgeError('invalid or expired request frame')
+    # Request deadline is separate from the trusted adapter's lifetime.
+    # Preserve the existing bounded response-write timeout.
+    conn.settimeout(request_timeout)
+    try:
+        req = json.loads(raw, object_pairs_hook=unique)
+        if (not isinstance(req, dict) or set(req) != {'version', 'request_id', 'backend', 'kind', 'id', 'verb', 'requires_confirmation'}
+                or type(req['version']) is not int or req['version'] != 1
+                or not isinstance(req['request_id'], str) or not re.fullmatch('[0-9a-f]{32}', req['request_id'])
+                or req['backend'] != 'horizon' or req['requires_confirmation'] is not True):
+            raise ValueError('invalid request schema')
+        target = {'version': 1, 'backend': req['backend'], 'kind': req['kind'], 'id': req['id']}
+        plan = invocation('exodus-horizon', req['verb'], target)
+        if plan['argv'][-1] != req['id']:
+            raise ValueError('noncanonical target')
+    except (ValueError, TypeError, RecursionError) as exc:
+        raise BridgeError('request rejected before adapter') from exc
 
     def send(state, code=None):
         event = {'version': 1, 'request_id': req['request_id'], 'state': state}

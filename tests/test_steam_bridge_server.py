@@ -2,6 +2,7 @@ import json
 import socket
 import threading
 import unittest
+from unittest.mock import patch
 
 from exodus.steam_bridge import BridgeError
 from exodus.steam_bridge_server import serve_connection
@@ -31,6 +32,32 @@ class ServerTest(unittest.TestCase):
         thread.join(3)
         self.assertFalse(thread.is_alive())
         return events, failures
+
+    def test_absolute_request_deadline(self):
+        class Drip:
+            def __init__(self):
+                self.timeouts = []
+            def settimeout(self, value):
+                self.timeouts.append(value)
+            def recv(self, size):
+                return b'{'
+        conn = Drip()
+        with patch('exodus.steam_bridge_server.time.monotonic', side_effect=[0, 0, 2, 4, 6]):
+            with self.assertRaisesRegex(BridgeError, 'deadline exceeded'):
+                serve_connection(conn, lambda plan: self.fail('adapter reached'), request_timeout=5)
+        self.assertEqual(conn.timeouts, [5, 3, 1])
+
+    def test_oversized_and_multiple_frames(self):
+        class Frame:
+            def __init__(self, value):
+                self.value = value
+            def settimeout(self, value):
+                pass
+            def recv(self, size):
+                return self.value[:size]
+        for frame in (b'x' * 4096, b'{}\n{}\n', b''):
+            with self.subTest(frame=frame[:10]), self.assertRaises(BridgeError):
+                serve_connection(Frame(frame), lambda plan: self.fail('adapter reached'))
 
     def test_no_adapter(self):
         events, errors = self.run_peer(None)
