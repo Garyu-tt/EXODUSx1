@@ -47,7 +47,8 @@ bool exodus_page_store_restore(const struct exodus_page_store *store, size_t ind
     return exodus_page_decode(store->payload + start, end - start, page);
 }
 
-bool exodus_page_store_replace(struct exodus_page_store *store, size_t index, const uint8_t *page)
+static bool replace_page(struct exodus_page_store *store, size_t index,
+                         const uint8_t *page, bool adaptive)
 {
     if (!store || !page || !store->payload || !store->page_ends ||
         index >= store->page_count || store->page_count > store->page_capacity ||
@@ -70,7 +71,8 @@ bool exodus_page_store_replace(struct exodus_page_store *store, size_t index, co
     size_t end = store->page_ends[index];
     size_t old_size = end - start;
     uint8_t encoded[EXODUS_PAGE_BYTES];
-    size_t size = exodus_page_encode(page, encoded);
+    size_t size = adaptive ? exodus_page_encode_adaptive(page, encoded)
+                           : exodus_page_encode(page, encoded);
     size_t other_bytes = store->payload_used - old_size;
     if (size > store->payload_capacity - other_bytes)
         return false;
@@ -85,4 +87,15 @@ bool exodus_page_store_replace(struct exodus_page_store *store, size_t index, co
     }
     store->payload_used = other_bytes + size;
     return true;
+}
+
+bool exodus_page_store_replace(struct exodus_page_store *store, size_t index, const uint8_t *page)
+{
+    return replace_page(store, index, page, false);
+}
+
+bool exodus_page_store_replace_adaptive(struct exodus_page_store *store, size_t index,
+                                        const uint8_t *page)
+{
+    return replace_page(store, index, page, true);
 }
