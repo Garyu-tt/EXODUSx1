@@ -5,6 +5,15 @@ enum { WORD_BYTES = 4, WORDS = EXODUS_PAGE_BYTES / WORD_BYTES,
        BLOCK_BYTES = 64, BLOCKS = EXODUS_PAGE_BYTES / BLOCK_BYTES,
        MASK_BYTES = BLOCKS / 8 };
 
+/* Bytewise population count, independent of host endianness and alignment.
+ * The sparse bitmap stores eight blocks in each byte. */
+static unsigned mask_popcount(unsigned x)
+{
+    x-= (x>>1)&0x55u;
+    x=(x&0x33u)+((x>>2)&0x33u);
+    return (x+(x>>4))&0x0fu;
+}
+
 bool exodus_page_read_word(const uint8_t *encoded, size_t size, size_t word,
                            uint8_t out[4])
 {
@@ -42,15 +51,22 @@ bool exodus_page_read_word(const uint8_t *encoded, size_t size, size_t word,
     } else {
         if (size < MASK_BYTES || (size - MASK_BYTES) % BLOCK_BYTES != 0)
             return false;
-        size_t expected = MASK_BYTES, target = byte / BLOCK_BYTES, location = 0;
-        bool present = false;
-        for (size_t block = 0; block < BLOCKS; ++block) {
-            if (!(encoded[block / 8] & (1u << (block % 8)))) continue;
-            if (block == target) { location = expected + byte % BLOCK_BYTES; present = true; }
-            expected += BLOCK_BYTES;
+        size_t target=byte/BLOCK_BYTES, group=target/8;
+        unsigned bit=1u<<(target%8);
+        size_t total=0,rank=0;
+        /* Count the full mask before reading any payload, even when the
+         * requested block is absent or corruption occurs after it. */
+        for(size_t i=0;i<MASK_BYTES;i++){
+            unsigned count=mask_popcount(encoded[i]);
+            total+=count;
+            if(i<group)rank+=count;
         }
-        if (expected != size) return false;
-        if (present) memcpy(result, encoded + location, WORD_BYTES);
+        if(MASK_BYTES+total*BLOCK_BYTES!=size)return false;
+        if(encoded[group]&bit){
+            rank+=mask_popcount(encoded[group]&(bit-1u));
+            size_t location=MASK_BYTES+rank*BLOCK_BYTES+byte%BLOCK_BYTES;
+            memcpy(result,encoded+location,WORD_BYTES);
+        }
     }
     memcpy(out, result, WORD_BYTES);
     return true;
