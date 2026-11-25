@@ -63,11 +63,16 @@ class TerminalTests(unittest.TestCase):
             (p / "short.nro").write_bytes(image[:128])
             struct.pack_into("<I", image, 40, 0)
             (p / "overlap.nro").write_bytes(image)
-            result = self.run_commands("nro valid.nro\nnro short.nro\nnro overlap.nro\nnro missing\napps\nrun ssh\nrun unknown\nps\nsvc\necho still-running\n", d)
+            result = self.run_commands("nro valid.nro\nnro short.nro\nnro overlap.nro\nnro missing\napps\nrun ssh\nrun autorun\nrun unknown\nps\nsvc\necho still-running\n", d)
             self.assertEqual(result.count("NRO structural preflight passed"), 1)
             self.assertEqual(result.count("NRO missing or invalid"), 3)
             self.assertIn("native loader unavailable", result)
-            self.assertIn("sdmc:/switch/exodus-ssh.nro", result)
+            self.assertIn("run: native loader unavailable (host reference); "
+                          "target=sdmc:/switch/exodus-ssh/exodus-ssh.nro",
+                          result.splitlines())
+            self.assertIn("run: native loader unavailable (host reference); "
+                          "target=sdmc:/switch/wine/wine-nx-runtime.nro",
+                          result.splitlines())
             self.assertIn("unknown app", result)
             self.assertIn("Current process only", result)
             self.assertIn("service state unknown", result)
@@ -97,6 +102,50 @@ class TerminalTests(unittest.TestCase):
             self.assertIn("unknown command", result)
             self.assertIn("host reference", result)
             self.assertNotIn("x"*100, result)
+
+
+class ToolReturnTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.build = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.build.cleanup)
+        cls.bin = Path(cls.build.name) / "return-marker"
+        source = Path(cls.build.name) / "return-marker.c"
+        source.write_text('''#include <stdio.h>
+#include "tool_return.h"
+int main(int argc, char **argv) {
+    char *missing_marker[] = {"terminal", NULL};
+    if (exodus_return_requested(0, NULL) ||
+        exodus_return_requested(2, NULL) ||
+        exodus_return_requested(2, missing_marker)) return 1;
+    printf("%d\\n", exodus_return_requested(argc, argv));
+    return 0;
+}
+''')
+        subprocess.run([os.environ.get("CC", "cc"), "-std=gnu11", "-Wall", "-Wextra",
+                        "-Werror", "-I", str(Path(__file__).parent), str(source),
+                        "-o", str(cls.bin)], check=True)
+
+    def requested(self, *args):
+        return subprocess.run([str(self.bin), *args], text=True,
+                              capture_output=True, timeout=5, check=True).stdout.strip()
+
+    def test_exact_opt_in(self):
+        self.assertEqual(self.requested("--exodus-return-home"), "1")
+
+    def test_missing_or_inexact_marker(self):
+        for args in [(), ("",), ("--exodus-return",), ("--exodus-return-home=1",),
+                     ("--exodus-return-home ",), ("sdmc:/switch/other.nro",)]:
+            with self.subTest(args=args):
+                self.assertEqual(self.requested(*args), "0")
+
+    def test_marker_must_be_only_argument(self):
+        for args in [("--exodus-return-home", "sdmc:/switch/other.nro"),
+                     ("sdmc:/switch/other.nro", "--exodus-return-home"),
+                     ("--exodus-return-home", "--exodus-return-home")]:
+            with self.subTest(args=args):
+                self.assertEqual(self.requested(*args), "0")
+
 
 if __name__ == "__main__":
     unittest.main()

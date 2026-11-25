@@ -11,6 +11,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include "bsd_path.h"
+#include "tool_return.h"
 #ifdef __SWITCH__
 #include <switch.h>
 #endif
@@ -156,7 +157,7 @@ static int run_app(const char *name) {
     /* Explicit known aliases avoid loader argv quoting ambiguity and implicit
        path search. User chooses locally installed code; no download or install. */
     const char *path = NULL;
-    if (!strcmp(name, "ssh")) path = "sdmc:/switch/exodus-ssh.nro";
+    if (!strcmp(name, "ssh")) path = "sdmc:/switch/exodus-ssh/exodus-ssh.nro";
     else if (!strcmp(name, "autorun")) path = "sdmc:/switch/wine/wine-nx-runtime.nro";
     else { puts("unknown app; use apps"); return 0; }
 #ifdef __SWITCH__
@@ -248,7 +249,7 @@ static int dispatch(char *line) {
     } else if (!strcmp(cmd, "nro")) {
         if (!valid_path(arg)) puts("invalid path");
         else puts(nro_valid(arg) ? "NRO structural preflight passed" : "NRO missing or invalid");
-    } else if (!strcmp(cmd, "run")) return run_app(arg);
+    } else if (!strcmp(cmd, "run")) return run_app(arg) ? 2 : 0;
     else if (!strcmp(cmd, "basename") || !strcmp(cmd, "dirname")) {
         /* The terminal passes one literal path, not the full BSD utility argv. */
         safe_text(!strcmp(cmd, "basename") ? exbsd_basename(arg) : exbsd_dirname(arg));
@@ -274,7 +275,8 @@ static int dispatch(char *line) {
 }
 
 #ifdef __SWITCH__
-int main(void) {
+int main(int argc, char **argv) {
+    int return_home = exodus_return_requested(argc, argv), explicit_exit = 0;
     consoleInit(NULL);
     if (chdir("sdmc:/")) {
         report_error("sdmc"); consoleUpdate(NULL);
@@ -283,11 +285,12 @@ int main(void) {
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     PadState pad;
     padInitializeDefault(&pad);
-    puts("EXODUS Terminal R04\nA: enter command | +: exit | help: commands");
+    puts("EXODUS Terminal R05\nA: enter command | +: exit | help: commands");
+    if (return_home) puts("Exit returns to EXODUS Home if available.");
     while (appletMainLoop()) {
         padUpdate(&pad);
         u64 buttons = padGetButtonsDown(&pad);
-        if (buttons & HidNpadButton_Plus) break;
+        if (buttons & HidNpadButton_Plus) { explicit_exit = 1; break; }
         if (buttons & HidNpadButton_A) {
             SwkbdConfig cfg;
             char line[LINE_CAP] = {0};
@@ -301,11 +304,13 @@ int main(void) {
             line[sizeof(line)-1] = 0;
             if (R_SUCCEEDED(rc)) {
                 fputs("> ", stdout); safe_text(line); putchar('\n');
-                if (dispatch(line)) break;
+                int action = dispatch(line);
+                if (action) { explicit_exit = action == 1; break; }
             }
         }
         consoleUpdate(NULL);
     }
+    if (return_home && explicit_exit) exodus_return_home();
     consoleExit(NULL);
     return 0;
 }
