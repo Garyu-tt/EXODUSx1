@@ -23,14 +23,7 @@ static bool metadata_valid(const struct exodus_page_integrity_store *store)
         store->pages.payload_used > store->pages.payload_capacity)
         return false;
 
-    size_t previous = 0;
-    for (size_t index = 0; index < store->pages.page_count; ++index) {
-        size_t end = store->pages.page_ends[index];
-        if (end <= previous || end > store->pages.payload_used)
-            return false;
-        previous = end;
-    }
-    return previous == store->pages.payload_used;
+    return exodus_page_store_validate(&store->pages);
 }
 
 static bool append_page(struct exodus_page_integrity_store *store,

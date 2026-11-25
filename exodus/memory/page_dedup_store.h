@@ -6,7 +6,7 @@
 /* A caller-owned group of logical pages sharing immutable backing.
  * Initialize both page counts and unique.payload_used to zero. Supply separate,
  * non-overlapping buffers for unique.payload, unique.page_ends, fingerprints,
- * and page_refs. fingerprints has unique.page_capacity uint64_t entries;
+ * and page_refs (and optional unique.page_starts). fingerprints has unique.page_capacity uint64_t entries;
  * these are runtime v2 indices, not serialized FNV-1a values. Rebuild old
  * groups from decoded pages; do not reuse old fingerprint arrays.
  * page_refs has page_capacity size_t entries. The unique store belongs to this

@@ -3,11 +3,11 @@
 
 #include "page_store.h"
 
-/* Optional integrity sidecar for an ordinary packed page store.
+/* Optional integrity sidecar for an ordinary packed or extent-pool page store.
  *
  * Initialize pages exactly as for exodus_page_store, provide a separate
  * caller-owned array of at least checksum_capacity uint32_t entries, and
- * leave every counter at zero. The payload, end offsets and checksums are one
+ * leave every counter at zero. The payload, start/end offsets and checksums are one
  * group managed exclusively through this wrapper. Serialize all access.
  */
 struct exodus_page_integrity_store {

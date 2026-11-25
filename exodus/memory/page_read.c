@@ -62,8 +62,8 @@ bool exodus_page_store_read_word(const struct exodus_page_store *s,
     if (!s || !s->payload || !s->page_ends || index >= s->page_count ||
         s->page_count > s->page_capacity || s->payload_used > s->payload_capacity)
         return false;
-    size_t start = index ? s->page_ends[index - 1] : 0, end = s->page_ends[index];
-    if (start >= end || end > s->payload_used) return false;
+    size_t start,end;
+    if(!exodus_page_store_extent(s,index,&start,&end))return false;
     return exodus_page_read_word(s->payload + start, end - start, word, out);
 }
 
@@ -75,7 +75,7 @@ bool exodus_page_dedup_store_read_word(const struct exodus_page_dedup_store *s,
         !s->unique.page_count || s->unique.page_count > s->unique.page_capacity ||
         s->unique.page_count > s->page_count || !s->unique.payload_used ||
         s->unique.payload_used > s->unique.payload_capacity ||
-        s->unique.page_ends[s->unique.page_count - 1] != s->unique.payload_used)
+        (!s->unique.page_starts && s->unique.page_ends[s->unique.page_count - 1] != s->unique.payload_used))
         return false;
     return exodus_page_store_read_word(&s->unique, s->page_refs[index], word, out);
 }

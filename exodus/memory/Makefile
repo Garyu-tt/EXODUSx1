@@ -58,8 +58,8 @@ clean-compact-index:
 
 .PHONY: check-compact-index clean-compact-index
 
-test_page_read$(EXEEXT): page_codec.c page_read.c page_read.h page_codec.h page_store.h page_dedup_store.h test_page_read.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_read.c test_page_read.c $(LDLIBS)
+test_page_read$(EXEEXT): page_store.c page_codec.c page_read.c page_read.h page_codec.h page_store.h page_dedup_store.h test_page_read.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_store.c page_codec.c page_read.c test_page_read.c $(LDLIBS)
 
 check: check-direct-read
 check-direct-read: test_page_read$(EXEEXT)
@@ -96,3 +96,16 @@ clean-page-bdi:
 	$(RM) test_page_bdi$(EXEEXT)
 
 .PHONY: check-page-bdi clean-page-bdi
+
+test_page_pool$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h page_dedup_store.c page_dedup_store.h page_read.c page_read.h page_compact_index.c page_compact_index.h page_integrity_store.c page_integrity_store.h test_page_pool.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c page_read.c page_compact_index.c page_integrity_store.c test_page_pool.c $(LDLIBS)
+
+check: check-page-pool
+check-page-pool: test_page_pool$(EXEEXT)
+	./test_page_pool$(EXEEXT)
+
+clean: clean-page-pool
+clean-page-pool:
+	$(RM) test_page_pool$(EXEEXT)
+
+.PHONY: check-page-pool clean-page-pool

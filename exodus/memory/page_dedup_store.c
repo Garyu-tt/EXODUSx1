@@ -12,7 +12,7 @@ static bool valid_store(const struct exodus_page_dedup_store *store)
         ((store->unique.page_count == 0) == (store->page_count == 0)) &&
         store->unique.payload_used <= store->unique.payload_capacity &&
         ((store->unique.page_count == 0) == (store->unique.payload_used == 0)) &&
-        (store->unique.page_count == 0 ||
+        (store->unique.page_starts || store->unique.page_count == 0 ||
          store->unique.page_ends[store->unique.page_count - 1] == store->unique.payload_used);
 }
 
@@ -25,14 +25,7 @@ static bool append_page(struct exodus_page_dedup_store *store,
     /* Appending must not extend an inconsistent physical index, even
      * when no fingerprint matches or an early match would skip its tail.
      * Restore keeps its indexed, single-record validation path. */
-    size_t previous = 0;
-    for (size_t i = 0; i < store->unique.page_count; ++i) {
-        size_t end = store->unique.page_ends[i];
-        if (end <= previous || end > store->unique.payload_used ||
-            end - previous > EXODUS_PAGE_BYTES)
-            return false;
-        previous = end;
-    }
+    if(!exodus_page_store_validate(&store->unique))return false;
 
     uint64_t hash = exodus_page_fingerprint(page);
     size_t physical = store->unique.page_count;
@@ -84,12 +77,7 @@ static bool replacement_context(const struct exodus_page_dedup_store *s,size_t i
                                 size_t *old,size_t *owners)
 {
     if(!valid_store(s)||index>=s->page_count)return false;
-    size_t previous=0;
-    for(size_t i=0;i<s->unique.page_count;i++){
-        size_t end=s->unique.page_ends[i];
-        if(end<=previous||end>s->unique.payload_used||end-previous>EXODUS_PAGE_BYTES)return false;
-        previous=end;
-    }
+    if(!exodus_page_store_validate(&s->unique))return false;
     *old=s->page_refs[index];*owners=0;
     if(*old>=s->unique.page_count)return false;
     for(size_t i=0;i<s->page_count;i++){
@@ -106,6 +94,24 @@ static bool commit_replacement(struct exodus_page_dedup_store *s,size_t index,
                                const uint8_t *encoded,size_t size)
 {
     struct exodus_page_store *u=&s->unique;
+    if(u->page_starts){
+        if(match==u->page_count){
+            size_t target=owners==1?old:match;
+            if(owners>1&&u->page_count>=s->page_count)return false;
+            if(!exodus_page_store_pool_put(u,target,encoded,size))return false;
+            s->fingerprints[target]=hash;
+            s->page_refs[index]=target;
+        }else{
+            if(owners==1){
+                if(!exodus_page_store_pool_remove(u,old))return false;
+                for(size_t i=old;i<u->page_count;i++)s->fingerprints[i]=s->fingerprints[i+1];
+                for(size_t i=0;i<s->page_count;i++)if(s->page_refs[i]>old)--s->page_refs[i];
+                if(match>old)--match;
+            }
+            s->page_refs[index]=match;
+        }
+        return true;
+    }
     size_t start=old?u->page_ends[old-1]:0,end=u->page_ends[old],bytes=end-start;
     if(match==u->page_count){
         if(!encoded||!size||size>EXODUS_PAGE_BYTES)return false;
@@ -176,8 +182,9 @@ static bool write_bdi(struct exodus_page_dedup_store *s,size_t index,size_t word
     size_t old,owners;
     *handled=true;
     if(!replacement_context(s,index,&old,&owners))return false;
-    size_t start=old?s->unique.page_ends[old-1]:0;
-    size_t size=s->unique.page_ends[old]-start;
+    size_t start,end;
+    if(!exodus_page_store_extent(&s->unique,old,&start,&end))return false;
+    size_t size=end-start;
     const uint8_t *src=s->unique.payload+start;
     if(size==EXODUS_PAGE_BYTES||!(size&1u)||src[0]!=EXODUS_PAGE_BDI_VERSION){
         *handled=false;return false;
