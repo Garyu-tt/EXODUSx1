@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "repository": "rashevskyv/4ifir-checker",
+  "tag": "v2026.11.23-10.23",
+  "published_at": "2026-11-23T09:23:25Z",
+  "asset": {
+    "name": "4IFIR.zip",
+    "bytes": 65798460,
+    "sha256": "89b4668d86491a31f9a2a247a5dea7dbf7148e548af17771a996e8067518014f",
+    "url": "https://github.com/rashevskyv/4ifir-checker/releases/download/v2026.11.23-10.23/4IFIR.zip"
+  },
+  "evidence": "GitHub Releases metadata; archive bytes not independently downloaded or verified",
+  "legacy_index": {
+    "url": "https://github.com/rashevskyv/4ifir-checker/blob/main/4IFIR_output/old_checksums.json",
+    "archive_modified_at": "2026-04-26T07:07:06+03:00",
+    "usable_for_pinned_release": false
+  }
+}
