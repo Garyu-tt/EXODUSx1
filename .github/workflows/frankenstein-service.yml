@@ -267,17 +267,25 @@ jobs:
           ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/mount"
           ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/ifconfig"
           ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/sleep"
+          for tool in cat id chmod; do ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/$tool"; done
           python3 "$src/prepare_bao_ssh_root.py" "$out/ssh-base" "$out/ssh-root"
-          mkdir -p "$out/ssh-root/etc/ssh" "$out/ssh-root/var/empty"
+          mkdir -p "$out/ssh-root/etc/ssh" "$out/ssh-root/var/empty" "$out/ssh-root/root" "$out/ssh-root/home/tumor-probe"
           install -m 0755 "$src/bao-freebsd-ssh-rc.sh" "$out/ssh-root/etc/rc"
           sh -n "$out/ssh-root/etc/rc"
           sed -i 's/^root::/root:*:/' "$out/ssh-root/etc/master.passwd"
+          # Unique nonprivileged account; no usable password, no password auth.
+          ! grep -Eq '^([^:]+:){2}60001:|^tumor-probe:' "$out/ssh-root/etc/master.passwd"
+          ! grep -Eq '^([^:]+:){2}60001:|^tumor-probe:' "$out/ssh-root/etc/group"
+          printf '%s\n' 'tumor-probe:x:60001:60001::0:0:Tumor probe:/home/tumor-probe:/bin/sh' >> "$out/ssh-root/etc/master.passwd"
+          printf '%s\n' 'tumor-probe:*:60001:' >> "$out/ssh-root/etc/group"
           chmod 0600 "$out/ssh-root/etc/master.passwd"
-          printf '%s\n' 'Port 2222' 'ListenAddress 127.0.0.1' 'AddressFamily inet' 'HostKey /etc/ssh/ssh_host_ed25519_key' 'PidFile /var/run/tumor-sshd.pid' 'PermitRootLogin no' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PubkeyAuthentication no' 'UsePAM no' 'PermitEmptyPasswords no' 'AllowTcpForwarding no' 'AllowAgentForwarding no' 'X11Forwarding no' 'PermitTunnel no' 'AllowUsers tumor-no-login' > "$out/ssh-root/etc/ssh/tumor-test.conf"
+          printf '%s\n' 'Port 2222' 'ListenAddress 127.0.0.1' 'AddressFamily inet' 'HostKey /etc/ssh/ssh_host_ed25519_key' 'PidFile /var/run/tumor-sshd.pid' 'PermitRootLogin no' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PubkeyAuthentication yes' 'AuthorizedKeysFile /etc/ssh/tumor-authorized-keys' 'UsePAM no' 'PermitEmptyPasswords no' 'AllowTcpForwarding no' 'AllowAgentForwarding no' 'X11Forwarding no' 'PermitTunnel no' 'AllowUsers tumor-probe' 'PermitTTY no' 'PermitUserRC no' > "$out/ssh-root/etc/ssh/tumor-test.conf"
           chmod 0755 "$out/ssh-root/var/empty"
           # Only the disposable generated root is affected. sshd verifies
           # root ownership of its privilege-separation directory.
           sudo chown -R 0:0 "$out/ssh-root"
+          sudo chown 60001:60001 "$out/ssh-root/home/tumor-probe"
+          sudo chmod 0755 "$out/ssh-root/home/tumor-probe"
           sudo makefs -t ffs -o version=1 -B little -s 64m "$out/ssh.ufs" "$out/ssh-root"
           sudo chown "$(id -u):$(id -g)" "$out/ssh.ufs"
           cp "$out/guest-A.bin" "$out/ssh-images/guest-A.bin"
@@ -288,7 +296,7 @@ jobs:
           test -s "$bao_ssh"
           sha256sum "$out/ssh.ufs" "$out/ssh-images/guest-B.bin" "$bao_ssh"
           rc=0
-          timeout 240s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_ssh,addr=0x50000000,force-raw=on" > "$out/bao-ssh.log" 2>&1 || rc=$?
+          timeout 300s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_ssh,addr=0x50000000,force-raw=on" > "$out/bao-ssh.log" 2>&1 || rc=$?
           cat "$out/bao-ssh.log"
           test "$rc" -eq 124
           tr -d '\r' < "$out/bao-ssh.log" > "$out/bao-ssh.normalized"
@@ -297,4 +305,6 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LISTENER_READY$' "$out/bao-ssh.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LOOPBACK_KEX$' "$out/bao-ssh.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
-          echo 'R29 UFS1 control: loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_AUTH_COMMAND$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_REMOTE_EXIT_23$' "$out/bao-ssh.normalized")" -eq 1
+          echo 'R30 UFS1 control: guest-local public-key authentication, nonprivileged command and remote exit code; no external network, stock rc.d or physical coexistence claim'
