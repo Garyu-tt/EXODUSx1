@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "library_catalog.h"
-#include "../ulaunch/catalog.hpp"
+#include "../ulaunch/catalog_refresh.hpp"
 #include <new>
 #include <utility>
 #ifdef __SWITCH__
@@ -13,12 +13,13 @@ struct exodus_library *exodus_library_open(const char *path)
 {
     if (!path) return nullptr;
     try {
-        auto catalog = ReadCatalog(path);
+        auto catalog = std::string_view(path) == HomeCatalogPath
 #ifdef __SWITCH__
-        if (catalog.status == CatalogStatus::Unavailable &&
-            std::string_view(path) == "sdmc:/ulaunch/exodus-catalog.json")
-            catalog = exodus_live_inventory();
+            ? ReadRefreshedCatalog(path, SteamSnapshotsPath, exodus_live_inventory)
+#else
+            ? ReadRefreshedCatalog(path, SteamSnapshotsPath)
 #endif
+            : ReadCatalog(path);
         return new exodus_library{std::move(catalog)};
     }
     catch (...) { return nullptr; }

@@ -57,6 +57,7 @@ Bridge test (use a disposable file path):
 c++ -std=c++17 -Wall -Wextra -Werror -I "${JSON_INCLUDE:-/usr/include/nlohmann}" \
   exodus/home/corkdeck/test_library_catalog.cpp \
   exodus/home/corkdeck/library_catalog.cpp exodus/home/ulaunch/catalog.cpp \
+  exodus/home/ulaunch/catalog_refresh.cpp \
   -o /tmp/exodus-catalog-check
 scratch=$(mktemp)
 /tmp/exodus-catalog-check "$scratch"
@@ -107,6 +108,8 @@ For device acceptance, start EXODUS Shell in full application mode with no catal
 ## R07: offline artwork and library filters
 
 Y cycles All, Switch, Homebrew, Steam, CorkDeck, Other, Favorites and Recently played. X toggles a session-only favorite. Recent uses the snapshot's nonzero last_played values, descending; it is not a log of confirmed launches. Favorites are not persisted. Empty filters stay navigable. The selected filtered row always resolves to the original catalog index before launch confirmation.
+
+When opening the default SD catalog, the shell reads Steam Sync generations through the shared HOME refresh logic. The refresh replaces Steam rows and preserves the other entries from the base catalog or live inventory. An explicitly supplied catalog opens as a standalone snapshot.
 
 The shared parser retains artwork paths and last_played. The original CorkDeck launcher_image.c decoder handles PNG/JPEG files in sdmc:/switch/wine/ or sdmc:/ulaunch/ only. No URL fetch, arbitrary paths or SteamGridDB credentials are used. Missing/invalid art leaves a text card. Only eight visible thumbnails are kept, scaled to at most 256 pixels per side (at most 2 MiB RGBA pixel payload excluding driver overhead). Decoding remains synchronous on page changes, so device latency and transient allocations still need measurement. The host build additionally requires pkg-config packages libpng and libturbojpeg.
 
@@ -179,6 +182,6 @@ R11 also replaces the visible donor product label on the shell-owned headers and
 
 Operator photos confirm R10 on Switch Lite running firmware reported as 20.5.0: Settings System, Connectivity and Hardware panels rendered; Library reports Catalog unavailable; Terminal and SSH display the expected missing/invalid NRO dialog. Native platform text is now explicit rather than SDL's unknown string.
 
-When the default SD catalog is unavailable, the native shell attempts a read-only live inventory of registered application IDs and localized names via NS (adapted from #15) and scans /switch plus one subdirectory level for structurally valid NRO files. The scan caps records at 4096 and directory entries visited at 4096. It skips the shell's own standard path. A failed NS scan discards partial NS records; discovered homebrew may still be shown. A valid existing catalog remains authoritative; an invalid catalog is not silently replaced. No export, network request, file deletion, or automatic launch occurs. The live list does not yet include artwork, Steam sync, or CorkDeck Windows catalog import. On-device service permissions, scan completeness, latency, and launch handoffs remain to be tested.
+When the default SD catalog is absent, the native shell attempts a read-only live inventory of registered application IDs and localized names via NS (adapted from #15) and scans /switch plus one subdirectory level for structurally valid NRO files. The scan caps records at 4096 and directory entries visited at 4096. It skips the shell's own standard path. A failed NS scan discards partial NS records; discovered homebrew may still be shown. A valid existing catalog supplies the base rows; an invalid catalog is not silently replaced. No export, network request, file deletion, or automatic launch occurs. The live list does not yet include artwork or CorkDeck Windows catalog import. On-device service permissions, scan completeness, latency, and launch handoffs remain to be tested.
 
 The workflow also builds two independent optional NRO tools from fixed revisions of #43 (terminal) and #37 (SSH), packages them under the shell's expected SD paths, and publishes each artifact only after structural validation. These are the current terminal and one-shot SSH implementations, not a complete FreeBSD userspace or an interactive SSH PTY. Build results and hardware execution must be checked separately. Do not install unverified artifacts.

@@ -44,12 +44,11 @@ namespace exodus::home {
             return ReadCatalog(path);
         }
 
-        std::optional<std::size_t> SteamSlots(const Catalog &base, const char *path) {
-            if (base.status != CatalogStatus::Ready) {
-                if (base.status == CatalogStatus::Unavailable && PathMissing(path))
-                    return CatalogEntryLimit;
+        std::optional<std::size_t> SteamSlots(const Catalog &base) {
+            if (base.status == CatalogStatus::Unavailable && base.entries.empty())
+                return CatalogEntryLimit;
+            if (base.status != CatalogStatus::Ready || base.entries.size() > CatalogEntryLimit)
                 return std::nullopt;
-            }
             const auto non_steam = std::count_if(base.entries.begin(), base.entries.end(),
                 [](const Entry &entry) { return entry.provider != Provider::Steam; });
             return CatalogEntryLimit - static_cast<std::size_t>(non_steam);
@@ -174,7 +173,10 @@ namespace exodus::home {
 
     std::optional<std::uint64_t> PublishSteamSnapshot(const char *directory, std::string_view steam,
                                                       const char *base_path) {
-        const auto slots = SteamSlots(ReadBaseCatalog(base_path), base_path);
+        const auto base = ReadBaseCatalog(base_path);
+        if (base.status == CatalogStatus::Unavailable && !PathMissing(base_path))
+            return std::nullopt;
+        const auto slots = SteamSlots(base);
         if (!slots || !FitsSteamSlots(ParseCatalog(steam), *slots))
             return std::nullopt;
         if (mkdir(directory, 0755) != 0 && (errno != EEXIST || !IsDirectory(directory)))
@@ -204,9 +206,8 @@ namespace exodus::home {
         return std::nullopt;
     }
 
-    Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory) {
-        auto current = ReadBaseCatalog(base_path);
-        const auto slots = SteamSlots(current, base_path);
+    Catalog ApplySteamSnapshots(Catalog current, const char *snapshot_directory) {
+        const auto slots = SteamSlots(current);
         if (!slots)
             return current;
         const auto generations = ListSnapshots(snapshot_directory);
@@ -226,6 +227,18 @@ namespace exodus::home {
             return steam;
         }
         return current;
+    }
+
+    Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory,
+                                 Catalog (*missing_base)()) {
+        auto current = ReadBaseCatalog(base_path);
+        if (current.status == CatalogStatus::Unavailable) {
+            if (!PathMissing(base_path))
+                return current;
+            if (missing_base)
+                current = missing_base();
+        }
+        return ApplySteamSnapshots(std::move(current), snapshot_directory);
     }
 
 }
