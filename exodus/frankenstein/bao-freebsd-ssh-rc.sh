@@ -86,6 +86,8 @@ client() {
 result=$(client 'test "$(/rescue/id -u)" = 60001 && printf "%s" TUMOR_AUTH_COMMAND_OK')
 test "$result" = TUMOR_AUTH_COMMAND_OK
 printf '%s\n' 'TUMOR_BAO_REF: FREEBSD_OPENSSH_AUTH_COMMAND' > /dev/console
+# Give the reference host a bounded observation window before the next command.
+/rescue/sleep 8
 remote_rc=0
 client 'exit 23' > /tmp/tumor-exit-output || remote_rc=$?
 test "$remote_rc" -eq 23
