@@ -30,4 +30,6 @@ The report includes the initial and last states and whether a disconnect was obs
 
 Use `--observe 120` to record changes over two minutes, including when the device starts disconnected. A completed observation exits with `0`. If Windows enumeration fails after the first sample, stdout still contains the initial state and all recorded transitions. The observation has `complete: false` and a `reason` of `query_timeout` or `query_failed`. A query that exhausts the remaining window exits with `1`. A probe error exits with `2` and writes its diagnostic to stderr. If the first sample fails, there is no JSON report.
 
+Both timed modes use only samples returned before the window ends. A result received at or after the deadline counts as a timeout. The report keeps the last reconnect state or observation transitions recorded within the window.
+
 See [Microsoft's PnP codes and device properties](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-pnpentity), [PnP parent property](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-parent) and [supported WPD protocols](https://learn.microsoft.com/en-us/windows-hardware/drivers/portable/wpd-drivers-overview).
