@@ -61,4 +61,10 @@ bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *store,
  * Same copy budget contract as exodus_page_store_pool_compact. */
 bool exodus_page_dedup_store_compact(struct exodus_page_dedup_store *store,
                                      size_t budget,size_t *moved);
+/* Release only free granules in the shared physical pool. Same mapping,
+ * budget and partial-failure contract as page_store_pool_discard_free. */
+bool exodus_page_dedup_store_discard_free(struct exodus_page_dedup_store *store,
+                                         size_t granule,size_t budget,
+                                         exodus_page_discard_fn discard,void *context,
+                                         size_t *discarded);
 #endif

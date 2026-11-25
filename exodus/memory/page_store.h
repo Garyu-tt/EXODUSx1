@@ -71,4 +71,19 @@ bool exodus_page_store_pool_stats(const struct exodus_page_store *store,
  * Requires an indexed pool and serialized access. */
 bool exodus_page_store_pool_compact(struct exodus_page_store *store,
                                     size_t budget,size_t *moved);
+/* A platform callback discards physical backing for a free aligned range.
+ * It MUST keep the virtual mapping writable and usable without explicit
+ * recommit (e.g. Linux MADV_DONTNEED on private anonymous memory).
+ * It must not reenter the store or modify metadata or live bytes. */
+typedef bool (*exodus_page_discard_fn)(void *context,void *address,size_t bytes);
+/* Indexed pool only. Base must be granule-aligned. Discard only full granules
+ * entirely free, up to budget bytes. No logical metadata changes. On invalid
+ * input, output unchanged. On callback failure, return false and report bytes
+ * accepted by prior callbacks. Free bytes have unspecified contents. Counts
+ * successful discard requests, not measured RSS; repeated calls may revisit
+ * ranges. Serialize access and use a dedicated compatible mapping. */
+bool exodus_page_store_pool_discard_free(struct exodus_page_store *store,
+                                        size_t granule,size_t budget,
+                                        exodus_page_discard_fn discard,void *context,
+                                        size_t *discarded);
 #endif

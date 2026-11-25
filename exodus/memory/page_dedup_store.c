@@ -229,3 +229,14 @@ bool exodus_page_dedup_store_compact(struct exodus_page_dedup_store *s,
         if(s->page_refs[i]>=s->unique.page_count)return false;
     return exodus_page_store_pool_compact(&s->unique,budget,moved);
 }
+
+bool exodus_page_dedup_store_discard_free(struct exodus_page_dedup_store *s,
+                                         size_t granule,size_t budget,
+                                         exodus_page_discard_fn discard,void *context,
+                                         size_t *discarded)
+{
+    if(!valid_store(s))return false;
+    for(size_t i=0;i<s->page_count;i++)
+        if(s->page_refs[i]>=s->unique.page_count)return false;
+    return exodus_page_store_pool_discard_free(&s->unique,granule,budget,discard,context,discarded);
+}

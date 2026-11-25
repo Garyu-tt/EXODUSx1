@@ -126,3 +126,16 @@ clean-extent-index:
 	$(RM) test_extent_index$(EXEEXT) test_dedup_index$(EXEEXT)
 
 .PHONY: check-extent-index clean-extent-index
+
+test_page_discard$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h page_dedup_store.c page_dedup_store.h test_page_discard.c
+	$(CC) $(CPPFLAGS) -D_DEFAULT_SOURCE $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c test_page_discard.c $(LDLIBS)
+
+check: check-page-discard
+check-page-discard: test_page_discard$(EXEEXT)
+	./test_page_discard$(EXEEXT)
+
+clean: clean-page-discard
+clean-page-discard:
+	$(RM) test_page_discard$(EXEEXT)
+
+.PHONY: check-page-discard clean-page-discard

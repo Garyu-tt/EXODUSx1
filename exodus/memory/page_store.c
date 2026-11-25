@@ -276,3 +276,41 @@ bool exodus_page_store_replace_adaptive(struct exodus_page_store *store, size_t 
 {
     return replace_page(store, index, page, true);
 }
+
+/* Visit only whole granules in validated free gaps. The backing mapping
+ * remains writable; the platform adapter may discard its physical pages. */
+static bool discard_gap(struct exodus_page_store *s,size_t a,size_t b,
+                        size_t granule,size_t budget,
+                        exodus_page_discard_fn discard,void *context,size_t *total)
+{
+    size_t rem=a%granule;
+    if(rem){size_t padding=granule-rem;if(padding>b-a)return true;a+=padding;}
+    b-=b%granule;
+    if(b<=a)return true;
+    size_t n=b-a,remaining=budget-*total;
+    if(n>remaining)n=remaining-remaining%granule;
+    if(!n)return true;
+    if(!discard(context,s->payload+a,n))return false;
+    *total+=n;
+    return true;
+}
+
+bool exodus_page_store_pool_discard_free(struct exodus_page_store *s,
+                                        size_t granule,size_t budget,
+                                        exodus_page_discard_fn discard,void *context,
+                                        size_t *discarded)
+{
+    if(!discarded||!discard||!granule||!s||!s->page_order||
+       !exodus_page_store_validate(s)||(uintptr_t)s->payload%granule)return false;
+    size_t cursor=0,total=0;
+    for(size_t k=0;k<s->page_count;k++){
+        size_t i=s->page_order[k];
+        if(!discard_gap(s,cursor,s->page_starts[i],granule,budget,discard,context,&total)){
+            *discarded=total;return false;
+        }
+        if(budget-total<granule){*discarded=total;return true;}
+        cursor=s->page_ends[i];
+    }
+    bool ok=discard_gap(s,cursor,s->payload_capacity,granule,budget,discard,context,&total);
+    *discarded=total;return ok;
+}
