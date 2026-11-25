@@ -19,6 +19,8 @@ on:
       - 'exodus/frankenstein/pack_bao_freebsd_root.py'
       - 'exodus/frankenstein/bao_freebsd_init_probe.S'
       - 'exodus/frankenstein/bao-freebsd-rescue-rc.sh'
+      - 'exodus/frankenstein/bao-freebsd-ssh-rc.sh'
+      - 'exodus/frankenstein/prepare_bao_ssh_root.py'
       - 'exodus/frankenstein/test_ipc_process.py'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/test_sessiond.py'
@@ -87,7 +89,7 @@ jobs:
 
   bao-reference-build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -250,3 +252,40 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_STOCK_INIT_RC$' "$out/bao-stock.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-stock.normalized"; then exit 1; fi
           echo 'R28 original rescue init and custom rc only; stock rc.d, SSH, resident peer and physical coexistence remain unverified'
+
+          # R29: actual release OpenSSH binaries on a separate RAM root.
+          # All networking remains inside the guest, with no QEMU NIC.
+          mkdir "$out/ssh-root" "$out/ssh-base" "$out/ssh-images"
+          tar -xJf "$out/base.txz" -C "$out/ssh-base" --no-same-owner
+          cp -a "$out/stock-root/." "$out/ssh-root/"
+          ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/ifconfig"
+          ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/sleep"
+          python3 "$src/prepare_bao_ssh_root.py" "$out/ssh-base" "$out/ssh-root"
+          mkdir -p "$out/ssh-root/etc/ssh" "$out/ssh-root/var/empty"
+          install -m 0755 "$src/bao-freebsd-ssh-rc.sh" "$out/ssh-root/etc/rc"
+          sh -n "$out/ssh-root/etc/rc"
+          sed -i 's/^root::/root:*:/' "$out/ssh-root/etc/master.passwd"
+          chmod 0600 "$out/ssh-root/etc/master.passwd"
+          printf '%s\n' 'Port 2222' 'ListenAddress 127.0.0.1' 'AddressFamily inet' 'HostKey /etc/ssh/ssh_host_ed25519_key' 'PidFile /var/run/tumor-sshd.pid' 'PermitRootLogin no' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PubkeyAuthentication no' 'UsePAM no' 'PermitEmptyPasswords no' 'AllowTcpForwarding no' 'AllowAgentForwarding no' 'X11Forwarding no' 'PermitTunnel no' 'AllowUsers tumor-no-login' > "$out/ssh-root/etc/ssh/tumor-test.conf"
+          chmod 0755 "$out/ssh-root/var/empty"
+          # Only the disposable generated root is affected. sshd verifies
+          # root ownership of its privilege-separation directory.
+          sudo chown -R 0:0 "$out/ssh-root"
+          sudo makefs -t ffs -o version=2 -B little -s 64m "$out/ssh.ufs" "$out/ssh-root"
+          sudo chown "$(id -u):$(id -g)" "$out/ssh.ufs"
+          cp "$out/guest-A.bin" "$out/ssh-images/guest-A.bin"
+          python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/ssh.ufs" "$out/ssh-images/guest-B.bin"
+          cp "$src/bao_freebsd_reference.c" "$out/config/tumor_ssh.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_ssh CPPFLAGS="-DTUMOR_IMAGES=$out/ssh-images"
+          bao_ssh="$out/bao/bin/qemu-aarch64-virt/tumor_ssh/bao.bin"
+          test -s "$bao_ssh"
+          sha256sum "$out/ssh.ufs" "$out/ssh-images/guest-B.bin" "$bao_ssh"
+          rc=0
+          timeout 180s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_ssh,addr=0x50000000,force-raw=on" > "$out/bao-ssh.log" 2>&1 || rc=$?
+          cat "$out/bao-ssh.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-ssh.log" > "$out/bao-ssh.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LOOPBACK_KEX$' "$out/bao-ssh.normalized")" -eq 1
+          if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
+          echo 'R29 loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
