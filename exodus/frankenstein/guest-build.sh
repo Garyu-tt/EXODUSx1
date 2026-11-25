@@ -54,9 +54,28 @@ for port in graphics/wayland graphics/mesa-libs graphics/mesa-dri graphics/vulka
         make -C "/usr/ports/$port" -V "$v"
     done
 done
+# The pinned Ports framework has separate work-directory and repository
+# package paths. Expand make variables explicitly and admit only the exact
+# freshly built package, never a downloaded substitute.
+built_package() {
+    target_port=$1
+    expected=$(make -C "$target_port" -V '${PKGNAME}')
+    work_pkg=$(make -C "$target_port" -V '${WRKDIR_PKGFILE}')
+    repo_pkg=$(make -C "$target_port" -V '${PKGFILE}')
+    printf 'EXODUS_PACKAGE_LOOKUP name=%s work=%s repository=%s\n' \
+        "$expected" "$work_pkg" "$repo_pkg" >&2
+    for candidate in "$work_pkg" "$repo_pkg"; do
+        if [ -n "$candidate" ] && [ -f "$candidate" ] && [ -s "$candidate" ]; then
+            test "$(pkg query -F "$candidate" '%n-%v')" = "$expected" || return 1
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    echo "EXODUS_PACKAGE_MISSING $target_port" >&2
+    return 1
+}
 make -C /usr/ports/graphics/wayland BATCH=yes USE_PACKAGE_DEPENDS=yes USE_PACKAGE_DEPENDS_ONLY=yes package
-wayland_package=$(make -C /usr/ports/graphics/wayland -V PKGFILE)
-test -s "$wayland_package"
+wayland_package=$(built_package /usr/ports/graphics/wayland)
 sha256 "$wayland_package"
 # Use the locally built Wayland in the subsequent Gamescope build.
 pkg add -f "$wayland_package"
@@ -70,8 +89,7 @@ test -z "$(make -C "$port" -V IGNORE)"
 make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes USE_PACKAGE_DEPENDS_ONLY=yes all-depends-list
 make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes USE_PACKAGE_DEPENDS_ONLY=yes checksum
 make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes USE_PACKAGE_DEPENDS_ONLY=yes package
-package=$(make -C "$port" -V PKGFILE)
-test -s "$package"
+package=$(built_package "$port")
 sha256 "$package"
 pkg add -f "$package"
 pkg info -d gamescope
