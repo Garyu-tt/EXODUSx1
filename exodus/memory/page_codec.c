@@ -207,10 +207,17 @@ size_t exodus_bdi_block_encode(const uint8_t *block,uint8_t *out)
         uint32_t v=bdi_load(block+i*4);
         if(v<lo)lo=v;
         if(v>hi)hi=v;
+        /* The observed range never shrinks. RAW is now inevitable. */
+        if(hi-lo>255){
+            if(out)memcpy(out,block,BLOCK_BYTES);
+            return BLOCK_BYTES;
+        }
     }
-    if(hi-lo>255){memcpy(out,block,BLOCK_BYTES);return BLOCK_BYTES;}
-    bdi_put(out,lo);
-    for(size_t i=0;i<16;i++)out[4+i]=(uint8_t)(bdi_load(block+i*4)-lo);
+    /* A size-only preflight needs neither the base nor the deltas written. */
+    if(out){
+        bdi_put(out,lo);
+        for(size_t i=0;i<16;i++)out[4+i]=(uint8_t)(bdi_load(block+i*4)-lo);
+    }
     return BDI_BYTES;
 }
 bool exodus_bdi_block_decode(const uint8_t *encoded,size_t n,uint8_t *out)
