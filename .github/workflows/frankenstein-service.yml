@@ -15,6 +15,8 @@ on:
       - 'exodus/frankenstein/bao_reference.c'
       - 'exodus/frankenstein/bao_freebsd_boot.S'
       - 'exodus/frankenstein/bao_freebsd_guest.dts'
+      - 'exodus/frankenstein/bao_freebsd_headless.dts'
+      - 'exodus/frankenstein/bao_freebsd_peer_init.S'
       - 'exodus/frankenstein/bao_freebsd_reference.c'
       - 'exodus/frankenstein/pack_bao_freebsd.py'
       - 'exodus/frankenstein/pack_bao_freebsd_root.py'
@@ -317,3 +319,40 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_AUTH_COMMAND$' "$out/bao-ssh.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_REMOTE_EXIT_23$' "$out/bao-ssh.normalized")" -eq 1
           echo 'R31 control: synthetic EL1 peer counter progresses across authenticated FreeBSD commands; not two real OS kernels or physical coexistence'
+
+          # R32: two original release FreeBSD kernels, separate RAM roots.
+          # Guest A has no UART or other shared device; PID 1 proves kernel
+          # syscall liveness via EL0 register samples. Guest B retains R31 SSH.
+          mkdir -p "$out/dual-images" "$out/peer-root/sbin" "$out/peer-root/dev" "$out/peer-root/etc"
+          clang --target=aarch64-unknown-freebsd -c "$src/bao_freebsd_peer_init.S" -o "$out/peer-init.o"
+          ld.lld -static --no-undefined -e _start -Ttext=0x400000 "$out/peer-init.o" -o "$out/peer-root/sbin/init"
+          chmod 0755 "$out/peer-root/sbin/init"
+          readelf -h "$out/peer-root/sbin/init" | grep FreeBSD
+          readelf -h "$out/peer-root/sbin/init" | grep -E 'Entry point address:.*0x400000$'
+          test -z "$(nm -u "$out/peer-root/sbin/init")"
+          makefs -t ffs -o version=1 -B little -s 8m "$out/peer.ufs" "$out/peer-root"
+          dtc -I dts -O dtb -o "$out/headless.dtb" "$src/bao_freebsd_headless.dts"
+          clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DTUMOR_HEADLESS_PEER -DTUMOR_FREEBSD_NATIVE_METADATA -c "$src/bao_freebsd_boot.S" -o "$out/headless.o"
+          ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/headless.o" -o "$out/headless.bin"
+          python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/headless.bin" "$out/headless.dtb" "$out/peer.ufs" "$out/dual-images/guest-A.bin"
+          cp "$out/ssh-images/guest-B.bin" "$out/dual-images/guest-B.bin"
+          cp "$src/bao_freebsd_reference.c" "$out/config/tumor_dual.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_dual CPPFLAGS="-DTUMOR_IMAGES=$out/dual-images -DTUMOR_DUAL_FREEBSD"
+          bao_dual="$out/bao/bin/qemu-aarch64-virt/tumor_dual/bao.bin"
+          test -s "$bao_dual"
+          sha256sum "$out/dual-images/guest-A.bin" "$out/dual-images/guest-B.bin" "$bao_dual"
+          rc=0
+          timeout 300s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -qmp "unix:$out/dual-qmp.sock,server=on,wait=off" -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_dual,addr=0x50000000,force-raw=on" > "$out/bao-dual.log" 2>&1 &
+          qemu_pid=$!
+          peer_rc=0
+          python3 "$src/verify_bao_peer.py" "$out/dual-qmp.sock" "$out/bao-dual.log" --headless-pid1 || peer_rc=$?
+          wait "$qemu_pid" || rc=$?
+          cat "$out/bao-dual.log"
+          test "$peer_rc" -eq 0
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-dual.log" > "$out/bao-dual.normalized"
+          for marker in FREEBSD_HANDOFF_AFTER_PEER_IPC FREEBSD_RAMROOT_WRITABLE FREEBSD_OPENSSH_LISTENER_READY FREEBSD_OPENSSH_LOOPBACK_KEX FREEBSD_OPENSSH_AUTH_COMMAND FREEBSD_OPENSSH_REMOTE_EXIT_23; do
+            test "$(grep -ac "^TUMOR_BAO_REF: $marker$" "$out/bao-dual.normalized")" -eq 1
+          done
+          if grep -aiE 'panic:|fatal exception' "$out/bao-dual.normalized"; then exit 1; fi
+          echo 'R32 reference: two FreeBSD kernel instances, headless PID 1 and authenticated SSH; no Horizon or physical-device claim'
