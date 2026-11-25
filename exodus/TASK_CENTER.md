@@ -15,3 +15,7 @@ Suspend, resume and graceful termination are admitted only for fresh, non-foregr
 ## Uncertain lifecycle recovery
 
 A timed-out, lost or ambiguous command is quarantined: even fresh backend snapshots or foreground reconciliation alone do not prove that the old command cannot execute later. Block new lifecycle requests and foreground handoffs until the trusted adapter explicitly attests quiescence of the exact old token and target. The recorded result remains unknown, not success. Loss of known foreground ownership during a lifecycle operation also quarantines it. This is a conservative global gate in the reference model, not an implemented transport or proof of adapter quiescence.
+
+## Local child reference adapter (R03)
+
+`task_center_child.py` demonstrates real POSIX process transitions using `posix_spawn`, `waitpid` and signals. Only an explicitly spawned direct child from trusted configuration is managed; no arbitrary PIDs, shell commands from UI, process-tree control or forced termination. The adapter requires exclusive serialized ownership and a sole reaper. Signal acceptance is not state confirmation: a subsequent waitpid observation establishes suspended, running or exited. Running means a live non-stopped child, not measured CPU execution. A lost reaper marks the child unknown and permanently forbids signaling it. Suspended children expose resume only. No automatic uncertainty resolution, hardware claim, sessiond wiring or native FreeBSD acceptance yet. Host POSIX tests use a disposable child; Windows skips these tests.
