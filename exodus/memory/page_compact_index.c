@@ -11,7 +11,7 @@ bool exodus_page_compact_build(const struct exodus_page_store *store,
                                uint16_t *lengths, size_t length_capacity,
                                size_t *checkpoints, size_t checkpoint_capacity)
 {
-    if (!store || !index || store->page_starts || store->page_count > store->page_capacity ||
+    if (!store || !index || exodus_page_store_is_pool(store) || store->page_count > store->page_capacity ||
         store->payload_used > store->payload_capacity ||
         store->page_count > length_capacity ||
         exodus_page_compact_checkpoints(store->page_count) > checkpoint_capacity)

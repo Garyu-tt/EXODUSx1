@@ -139,3 +139,16 @@ clean-page-discard:
 	$(RM) test_page_discard$(EXEEXT)
 
 .PHONY: check-page-discard clean-page-discard
+
+test_pool_compact32$(EXEEXT): page_codec.c page_store.c page_dedup_store.c page_read.c test_pool_compact32.c page_store.h page_dedup_store.h page_read.h page_codec.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c page_read.c test_pool_compact32.c $(LDLIBS)
+
+check: check-pool-compact32
+check-pool-compact32: test_pool_compact32$(EXEEXT)
+	./test_pool_compact32$(EXEEXT)
+
+clean: clean-pool-compact32
+clean-pool-compact32:
+	$(RM) test_pool_compact32$(EXEEXT)
+
+.PHONY: check-pool-compact32 clean-pool-compact32

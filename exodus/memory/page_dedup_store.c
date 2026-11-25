@@ -5,14 +5,14 @@
 static bool valid_store(const struct exodus_page_dedup_store *store)
 {
     return store && store->fingerprints && store->page_refs &&
-        store->unique.payload && store->unique.page_ends &&
+        store->unique.payload && exodus_page_store_has_index(&store->unique) &&
         store->page_count <= store->page_capacity &&
         store->unique.page_count <= store->unique.page_capacity &&
         store->unique.page_count <= store->page_count &&
         ((store->unique.page_count == 0) == (store->page_count == 0)) &&
         store->unique.payload_used <= store->unique.payload_capacity &&
         ((store->unique.page_count == 0) == (store->unique.payload_used == 0)) &&
-        (store->unique.page_starts || store->unique.page_count == 0 ||
+        (exodus_page_store_is_pool(&store->unique) || store->unique.page_count == 0 ||
          store->unique.page_ends[store->unique.page_count - 1] == store->unique.payload_used);
 }
 
@@ -94,7 +94,7 @@ static bool commit_replacement(struct exodus_page_dedup_store *s,size_t index,
                                const uint8_t *encoded,size_t size)
 {
     struct exodus_page_store *u=&s->unique;
-    if(u->page_starts){
+    if(exodus_page_store_is_pool(u)){
         if(match==u->page_count){
             size_t target=owners==1?old:match;
             if(owners>1&&u->page_count>=s->page_count)return false;

@@ -59,7 +59,7 @@ bool exodus_page_read_word(const uint8_t *encoded, size_t size, size_t word,
 bool exodus_page_store_read_word(const struct exodus_page_store *s,
                                  size_t index, size_t word, uint8_t out[4])
 {
-    if (!s || !s->payload || !s->page_ends || index >= s->page_count ||
+    if (!s || !s->payload || !exodus_page_store_has_index(s) || index >= s->page_count ||
         s->page_count > s->page_capacity || s->payload_used > s->payload_capacity)
         return false;
     size_t start,end;
@@ -70,12 +70,12 @@ bool exodus_page_store_read_word(const struct exodus_page_store *s,
 bool exodus_page_dedup_store_read_word(const struct exodus_page_dedup_store *s,
                                        size_t index, size_t word, uint8_t out[4])
 {
-    if (!s || !s->fingerprints || !s->page_refs || !s->unique.payload || !s->unique.page_ends ||
+    if (!s || !s->fingerprints || !s->page_refs || !s->unique.payload || !exodus_page_store_has_index(&s->unique) ||
         index >= s->page_count || s->page_count > s->page_capacity ||
         !s->unique.page_count || s->unique.page_count > s->unique.page_capacity ||
         s->unique.page_count > s->page_count || !s->unique.payload_used ||
         s->unique.payload_used > s->unique.payload_capacity ||
-        (!s->unique.page_starts && s->unique.page_ends[s->unique.page_count - 1] != s->unique.payload_used))
+        (!exodus_page_store_is_pool(&s->unique) && s->unique.page_ends[s->unique.page_count - 1] != s->unique.payload_used))
         return false;
     return exodus_page_store_read_word(&s->unique, s->page_refs[index], word, out);
 }

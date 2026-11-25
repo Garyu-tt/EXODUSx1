@@ -17,7 +17,7 @@ static uint32_t page_crc32(const uint8_t *page)
 
 static bool metadata_valid(const struct exodus_page_integrity_store *store)
 {
-    if (!store || !store->pages.payload || !store->pages.page_ends ||
+    if (!store || !store->pages.payload || !exodus_page_store_has_index(&store->pages) ||
         !store->checksums || store->pages.page_count > store->pages.page_capacity ||
         store->pages.page_count > store->checksum_capacity ||
         store->pages.payload_used > store->pages.payload_capacity)

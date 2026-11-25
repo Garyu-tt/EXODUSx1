@@ -5,18 +5,36 @@
 
 static bool basic(const struct exodus_page_store *s)
 {
-    return s && s->payload && s->page_ends &&
-           s->page_count<=s->page_capacity && s->payload_used<=s->payload_capacity &&
-           (!s->page_order||(s->page_starts&&s->page_capacity<=UINT32_MAX));
+    if(!s||!s->payload||s->page_count>s->page_capacity||s->payload_used>s->payload_capacity)return false;
+    if(s->starts32||s->lengths16)
+        return s->starts32&&s->lengths16&&!s->page_ends&&!s->page_starts&&s->page_order&&
+               s->payload_capacity<=UINT32_MAX&&s->page_capacity<=UINT32_MAX;
+    return s->page_ends&&(!s->page_order||(s->page_starts&&s->page_capacity<=UINT32_MAX));
+}
+
+static size_t start_at(const struct exodus_page_store *s,size_t i)
+{
+    if(s->starts32)return s->starts32[i];
+    return s->page_starts?s->page_starts[i]:(i?s->page_ends[i-1]:0);
+}
+static size_t end_at(const struct exodus_page_store *s,size_t i)
+{
+    return s->starts32?(size_t)s->starts32[i]+s->lengths16[i]:s->page_ends[i];
+}
+static void set_extent(struct exodus_page_store *s,size_t i,size_t a,size_t b)
+{
+    if(s->starts32){s->starts32[i]=(uint32_t)a;s->lengths16[i]=(uint16_t)(b-a);}
+    else{s->page_starts[i]=a;s->page_ends[i]=b;}
 }
 
 bool exodus_page_store_extent(const struct exodus_page_store *s,size_t i,
                               size_t *start,size_t *end)
 {
     if(!basic(s)||!start||!end||i>=s->page_count)return false;
-    size_t a=s->page_starts?s->page_starts[i]:(i?s->page_ends[i-1]:0);
-    size_t b=s->page_ends[i];
-    size_t limit=s->page_starts?s->payload_capacity:s->payload_used;
+    size_t a=start_at(s,i);
+    if(s->starts32&&(a>s->payload_capacity||s->lengths16[i]>s->payload_capacity-a))return false;
+    size_t b=end_at(s,i);
+    size_t limit=exodus_page_store_is_pool(s)?s->payload_capacity:s->payload_used;
     if(a>=b||b>limit||b-a>EXODUS_PAGE_BYTES)return false;
     *start=a;*end=b;
     return true;
@@ -54,8 +72,8 @@ static size_t conflict(const struct exodus_page_store *s,size_t skip,size_t a,si
     size_t next=a;
     for(size_t i=0;i<s->page_count;i++){
         if(i==skip)continue;
-        if(a<s->page_ends[i]&&s->page_starts[i]<a+n&&s->page_ends[i]>next)
-            next=s->page_ends[i];
+        if(a<end_at(s,i)&&start_at(s,i)<a+n&&end_at(s,i)>next)
+            next=end_at(s,i);
     }
     return next;
 }
@@ -69,8 +87,8 @@ static bool ordered_gap(const struct exodus_page_store *s,size_t skip,size_t n,s
     for(size_t k=0;k<s->page_count;k++){
         size_t i=s->page_order[k];
         if(i==skip)continue;
-        if(s->page_starts[i]-a>=n){*out=a;return true;}
-        a=s->page_ends[i];
+        if(start_at(s,i)-a>=n){*out=a;return true;}
+        a=end_at(s,i);
     }
     if(s->payload_capacity-a<n)return false;
     *out=a;return true;
@@ -85,7 +103,7 @@ static void order_remove(struct exodus_page_store *s,size_t i)
 static void order_insert(struct exodus_page_store *s,size_t count,size_t i)
 {
     size_t k=count;
-    while(k&&s->page_starts[s->page_order[k-1]]>s->page_starts[i]){
+    while(k&&start_at(s,s->page_order[k-1])>start_at(s,i)){
         s->page_order[k]=s->page_order[k-1];--k;
     }
     s->page_order[k]=(uint32_t)i;
@@ -98,10 +116,10 @@ bool exodus_page_store_pool_stats(const struct exodus_page_store *s,
     r.free_bytes=s->payload_capacity-s->payload_used;
     size_t cursor=0;
     for(size_t k=0;k<s->page_count;k++){
-        size_t i=s->page_order[k],gap=s->page_starts[i]-cursor;
+        size_t i=s->page_order[k],gap=start_at(s,i)-cursor;
         if(gap)++r.holes;
         if(gap>r.largest_gap)r.largest_gap=gap;
-        cursor=s->page_ends[i];
+        cursor=end_at(s,i);
     }
     r.tail_free=s->payload_capacity-cursor;
     if(r.tail_free>r.largest_gap)r.largest_gap=r.tail_free;
@@ -112,11 +130,11 @@ bool exodus_page_store_pool_compact(struct exodus_page_store *s,size_t budget,si
     if(!moved||!s||!s->page_order||!exodus_page_store_validate(s))return false;
     size_t cursor=0,total=0;
     for(size_t k=0;k<s->page_count;k++){
-        size_t i=s->page_order[k],a=s->page_starts[i],n=s->page_ends[i]-a;
+        size_t i=s->page_order[k],a=start_at(s,i),n=end_at(s,i)-a;
         if(a!=cursor){
             if(n>budget-total)break;
             memmove(s->payload+cursor,s->payload+a,n);
-            s->page_starts[i]=cursor;s->page_ends[i]=cursor+n;
+            set_extent(s,i,cursor,cursor+n);
             total+=n;
         }
         cursor+=n;
@@ -127,15 +145,15 @@ bool exodus_page_store_pool_compact(struct exodus_page_store *s,size_t budget,si
 bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
                                 const uint8_t *encoded,size_t n)
 {
-    if(!s||!s->page_starts||!encoded||!n||n>EXODUS_PAGE_BYTES||
+    if(!s||!exodus_page_store_is_pool(s)||!encoded||!n||n>EXODUS_PAGE_BYTES||
        !exodus_page_store_validate(s)||i>s->page_count||
        (i==s->page_count&&i==s->page_capacity))return false;
     bool append=i==s->page_count;
-    size_t old=append?0:s->page_ends[i]-s->page_starts[i];
+    size_t old=append?0:end_at(s,i)-start_at(s,i);
     size_t other=s->payload_used-old;
     if(n>s->payload_capacity-other)return false;
     size_t limit=s->payload_capacity-n;
-    size_t a=append?0:s->page_starts[i];
+    size_t a=append?0:start_at(s,i);
     if(a>limit||conflict(s,i,a,n)!=a){
         if(s->page_order){
             if(!ordered_gap(s,i,n,&a))return false;
@@ -151,7 +169,7 @@ bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
     }
     if(s->page_order&&!append)order_remove(s,i);
     memcpy(s->payload+a,encoded,n);
-    s->page_starts[i]=a;s->page_ends[i]=a+n;s->payload_used=other+n;
+    set_extent(s,i,a,a+n);s->payload_used=other+n;
     if(s->page_order)order_insert(s,s->page_count-(append?0:1),i);
     if(append)++s->page_count;
     return true;
@@ -159,15 +177,14 @@ bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
 
 bool exodus_page_store_pool_remove(struct exodus_page_store *s,size_t i)
 {
-    if(!s||!s->page_starts||!exodus_page_store_validate(s)||i>=s->page_count)return false;
-    size_t bytes=s->page_ends[i]-s->page_starts[i];
+    if(!s||!exodus_page_store_is_pool(s)||!exodus_page_store_validate(s)||i>=s->page_count)return false;
+    size_t bytes=end_at(s,i)-start_at(s,i);
     if(s->page_order){
         order_remove(s,i);
         for(size_t k=0;k+1<s->page_count;k++)if(s->page_order[k]>i)--s->page_order[k];
     }
     for(size_t j=i+1;j<s->page_count;j++){
-        s->page_starts[j-1]=s->page_starts[j];
-        s->page_ends[j-1]=s->page_ends[j];
+        set_extent(s,j-1,start_at(s,j),end_at(s,j));
     }
     --s->page_count;s->payload_used-=bytes;
     return true;
@@ -175,7 +192,7 @@ bool exodus_page_store_pool_remove(struct exodus_page_store *s,size_t i)
 
 static bool append_page(struct exodus_page_store *store, const uint8_t *page, bool adaptive)
 {
-    if (!store || !page || !store->payload || !store->page_ends ||
+    if (!store || !page || !basic(store) ||
         store->page_count >= store->page_capacity ||
         store->payload_used > store->payload_capacity)
         return false;
@@ -183,7 +200,7 @@ static bool append_page(struct exodus_page_store *store, const uint8_t *page, bo
     uint8_t encoded[EXODUS_PAGE_BYTES];
     size_t size = adaptive ? exodus_page_encode_adaptive(page, encoded)
                            : exodus_page_encode(page, encoded);
-    if (store->page_starts)
+    if (exodus_page_store_is_pool(store))
         return exodus_page_store_pool_put(store,store->page_count,encoded,size);
     if (size > store->payload_capacity - store->payload_used)
         return false;
@@ -207,7 +224,7 @@ bool exodus_page_store_append_adaptive(struct exodus_page_store *store, const ui
 
 bool exodus_page_store_restore(const struct exodus_page_store *store, size_t index, uint8_t *page)
 {
-    if (!store || !page || !store->payload || !store->page_ends ||
+    if (!store || !page || !basic(store) ||
         index >= store->page_count || store->page_count > store->page_capacity ||
         store->payload_used > store->payload_capacity)
         return false;
@@ -221,12 +238,12 @@ bool exodus_page_store_restore(const struct exodus_page_store *store, size_t ind
 static bool replace_page(struct exodus_page_store *store, size_t index,
                          const uint8_t *page, bool adaptive)
 {
-    if (!store || !page || !store->payload || !store->page_ends ||
+    if (!store || !page || !basic(store) ||
         index >= store->page_count || store->page_count > store->page_capacity ||
         store->payload_used > store->payload_capacity)
         return false;
 
-    if(store->page_starts){
+    if(exodus_page_store_is_pool(store)){
         uint8_t encoded[EXODUS_PAGE_BYTES];
         size_t n=adaptive?exodus_page_encode_adaptive(page,encoded):exodus_page_encode(page,encoded);
         return exodus_page_store_pool_put(store,index,encoded,n);
@@ -305,11 +322,11 @@ bool exodus_page_store_pool_discard_free(struct exodus_page_store *s,
     size_t cursor=0,total=0;
     for(size_t k=0;k<s->page_count;k++){
         size_t i=s->page_order[k];
-        if(!discard_gap(s,cursor,s->page_starts[i],granule,budget,discard,context,&total)){
+        if(!discard_gap(s,cursor,start_at(s,i),granule,budget,discard,context,&total)){
             *discarded=total;return false;
         }
         if(budget-total<granule){*discarded=total;return true;}
-        cursor=s->page_ends[i];
+        cursor=end_at(s,i);
     }
     bool ok=discard_gap(s,cursor,s->payload_capacity,granule,budget,discard,context,&total);
     *discarded=total;return ok;

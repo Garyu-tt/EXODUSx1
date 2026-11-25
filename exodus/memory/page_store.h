@@ -21,6 +21,11 @@ struct exodus_page_store {
      * Stores physical record indices sorted by start; all arrays disjoint.
      * Requires page_capacity <= UINT32_MAX. NULL retains legacy pool. */
     uint32_t *page_order;
+    /* Compact pool: use starts32 + lengths16 instead of page_starts/page_ends.
+     * Requires page_order and capacity <= UINT32_MAX bytes. Arrays separate.
+     * Initialize on an empty store. Lengths are 1..4096. */
+    uint32_t *starts32;
+    uint16_t *lengths16;
 };
 
 /* Append one readable EXODUS_PAGE_BYTES page using the legacy sparse/raw
@@ -47,6 +52,12 @@ bool exodus_page_store_replace_adaptive(struct exodus_page_store *store, size_t 
 /* Restore into a separate EXODUS_PAGE_BYTES buffer. Invalid indices or
  * malformed compressed encodings leave the destination unchanged. */
 bool exodus_page_store_restore(const struct exodus_page_store *store, size_t index, uint8_t *page);
+
+/* Layout predicates do not validate metadata. */
+static inline bool exodus_page_store_is_pool(const struct exodus_page_store *s)
+{ return s && (s->page_starts || s->starts32); }
+static inline bool exodus_page_store_has_index(const struct exodus_page_store *s)
+{ return s && (s->page_ends || (s->starts32 && s->lengths16)); }
 
 /* Validate all active extents, including overlap and live byte accounting.
  * Indexed pool mode is linear; unindexed pool mode is quadratic. */
