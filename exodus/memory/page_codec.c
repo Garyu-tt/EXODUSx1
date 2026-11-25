@@ -103,10 +103,19 @@ static size_t encode_page(const uint8_t *page, uint8_t *encoded, bool adaptive)
 
     memcpy(encoded, mask, MASK_BYTES);
     size_t offset = MASK_BYTES;
-    for (size_t i = 0; i < BLOCKS; ++i) {
-        if (mask[i / 8] & (1u << (i % 8))) {
-            memcpy(encoded + offset, page + i * BLOCK_BYTES, BLOCK_BYTES);
-            offset += BLOCK_BYTES;
+    for (size_t group = 0; group < MASK_BYTES; ++group) {
+        unsigned bits = mask[group];
+        const uint8_t *src = page + group * 8 * BLOCK_BYTES;
+        if (bits == 0xffu) {
+            memcpy(encoded + offset, src, 8 * BLOCK_BYTES);
+            offset += 8 * BLOCK_BYTES;
+        } else if (bits) {
+            for (size_t i = 0; i < 8; ++i) {
+                if (bits & (1u << i)) {
+                    memcpy(encoded + offset, src + i * BLOCK_BYTES, BLOCK_BYTES);
+                    offset += BLOCK_BYTES;
+                }
+            }
         }
     }
     return offset;
@@ -438,13 +447,24 @@ bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *pa
     }
 
     size_t offset = MASK_BYTES;
-    for (size_t i = 0; i < BLOCKS; ++i) {
-        uint8_t *block = page + i * BLOCK_BYTES;
-        if (encoded[i / 8] & (1u << (i % 8))) {
-            memcpy(block, encoded + offset, BLOCK_BYTES);
-            offset += BLOCK_BYTES;
+    for (size_t group = 0; group < MASK_BYTES; ++group) {
+        unsigned bits = encoded[group];
+        uint8_t *dst = page + group * 8 * BLOCK_BYTES;
+        if (bits == 0xffu) {
+            memcpy(dst, encoded + offset, 8 * BLOCK_BYTES);
+            offset += 8 * BLOCK_BYTES;
+        } else if (!bits) {
+            memset(dst, 0, 8 * BLOCK_BYTES);
         } else {
-            memset(block, 0, BLOCK_BYTES);
+            for (size_t i = 0; i < 8; ++i) {
+                uint8_t *block = dst + i * BLOCK_BYTES;
+                if (bits & (1u << i)) {
+                    memcpy(block, encoded + offset, BLOCK_BYTES);
+                    offset += BLOCK_BYTES;
+                } else {
+                    memset(block, 0, BLOCK_BYTES);
+                }
+            }
         }
     }
     return true;
