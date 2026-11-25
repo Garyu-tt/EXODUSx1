@@ -59,3 +59,29 @@ deadline, configurable up to 24 hours; expiration does not cancel a game.
 
 Local socket tests use simulated adapters. They do not prove the native
 Horizon bridge, process lifetime or Steam discovery on target hardware.
+
+## R18 listener and native observation
+
+The host can now create an owner-only Unix socket using
+`steam_bridge_listener.listener(path)` and dispatch one connection at a
+time with `serve_once(server, adapter)`. No default adapter is installed.
+Existing endpoints are not replaced or removed. The caller must supply
+a private canonical directory and a trusted local adapter.
+
+The native shell exposes `--native-observe` before UI initialization.
+It reads the application process ID from pm:dmnt and resolves the program
+ID through pm:info. It checks the PID again to reject an inconsistent
+sample and closes initialized services on all paths. Host builds and
+service failures report unknown, not an exit. A newly observed matching
+PID is evidence of process presence only; a matching preexisting process
+does not establish a new launch. No debug attach, privilege changes,
+termination, or automatic fallback.
+
+A persistent trusted native observer and supported application-accessor
+lifecycle events are still required before the bridge can report a real
+game's exit. libnx documents appletCreateApplication as SystemApplet-only:
+https://switchbrew.github.io/libnx/applet_8h.html
+Do not assume that an ordinary NRO can obtain that role. Homebrew NRO
+handoff also requires separate observation because the host process
+can persist across loader transitions. Local PM test shims do not prove
+hardware permissions or SDK compatibility.
