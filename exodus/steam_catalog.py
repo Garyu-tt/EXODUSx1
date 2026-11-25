@@ -181,14 +181,18 @@ def scan_libraries(libraries, *, steam_installs=()):
         nested = library / "steamapps"
         steamapps = nested
         try:
-            directory_name = library.name
-            if directory_name in ("", ".."):
-                # Check the supplied path before resolving its name can collapse "..".
-                library.stat()
-                directory_name = library.resolve(strict=True).name
-            named_steamapps = directory_name.lower() == "steamapps"
-            if named_steamapps:
+            # Check the supplied path before strict resolution can collapse an
+            # inaccessible intermediary such as "missing/..".  Use the resolved
+            # basename so Win32 trailing-dot/space aliases are classified like
+            # the directory they actually select.
+            if library.name.lower() == "steamapps":
                 steamapps = library
+            library.stat()
+            canonical_library = library.resolve(strict=True)
+            directory_name = canonical_library.name
+            named_steamapps = directory_name.lower() == "steamapps"
+            nested = canonical_library / "steamapps"
+            steamapps = canonical_library if named_steamapps else nested
             candidate_path = steamapps.resolve()
             # A steamapps input can select a deeper directory than an ordinary root.
             checked = checked_steamapps_paths if named_steamapps else scanned
