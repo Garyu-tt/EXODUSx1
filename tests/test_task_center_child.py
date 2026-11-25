@@ -117,6 +117,33 @@ class ManagedChildTests(unittest.TestCase):
         self.assertEqual(self.child.last_token, p.token)
         self.assertFalse(self.child.dispatch(p))
 
+    def test_snapshot_interrupt_budget_and_recovery(self):
+        from exodus.task_center_child import POLL_BUDGET
+        with patch("exodus.task_center_child.os.waitpid",
+                   side_effect=InterruptedError) as wait:
+            _, _, _, rows = self.child.snapshot()
+            self.assertEqual(wait.call_count, POLL_BUDGET)
+        self.assertEqual(rows[0].state, UNKNOWN)
+        self.assertFalse(rows[0].capabilities)
+        self.assertFalse(self.child.terminal)
+        with patch("exodus.task_center_child.os.waitpid", return_value=(0, 0)):
+            self.assertEqual(self.child.poll(), "running")
+
+    def test_dispatch_event_budget_no_signal_and_recovery(self):
+        from exodus.task_center_child import POLL_BUDGET
+        p = self.center.request_lifecycle(self.child.key, "suspend")
+        stopped = (self.child.pid, (signal.SIGSTOP << 8) | 0x7f)
+        with patch("exodus.task_center_child.os.waitpid", return_value=stopped) as wait, \
+                patch("exodus.task_center_child.os.kill") as kill:
+            self.assertFalse(self.child.dispatch(p))
+            self.assertEqual(wait.call_count, POLL_BUDGET)
+            kill.assert_not_called()
+        self.assertEqual(self.child.state, UNKNOWN)
+        self.assertFalse(self.child.terminal)
+        self.assertEqual(self.child.last_token, p.token)
+        with patch("exodus.task_center_child.os.waitpid", return_value=(0, 0)):
+            self.assertEqual(self.child.poll(), "suspended")
+
     def test_lost_reaper_never_signals_pid(self):
         p = self.center.request_lifecycle(self.child.key, "suspend")
         # Simulate lost child authority without losing the test fixture cleanup.
