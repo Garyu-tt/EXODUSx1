@@ -85,7 +85,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install isolated cross toolchain
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu clang lld
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross clang lld libssl-dev qemu-system-arm
       - name: Build synthetic guests and pinned Bao reference
         run: |
           set -eu
@@ -109,4 +109,23 @@ jobs:
           test -s "$elf"
           readelf -h "$elf" | grep AArch64
           sha256sum "$elf" "$out/bao/bin/qemu-aarch64-virt/tumor/bao.bin"
-          echo "Reference build only: no runtime or hardware admission"
+          echo "BAO_BUILD_OK"
+          # Minimal reference BL33; QEMU virt only. No physical target payload.
+          printf '.text\n.global _start\n_start:\n mov x0, #0x50000000\n br x0\n' > "$out/ref-bl33.S"
+          aarch64-linux-gnu-gcc -ffreestanding -c "$out/ref-bl33.S" -o "$out/ref-bl33.o"
+          aarch64-linux-gnu-objcopy -O binary -j .text "$out/ref-bl33.o" "$out/ref-bl33.bin"
+          git init "$out/tfa"
+          git -C "$out/tfa" remote add origin https://github.com/bao-project/arm-trusted-firmware.git
+          git -C "$out/tfa" fetch --depth=1 origin e4ffdd76c3c4b1488eb9c290e5b5c676f68f6b38
+          git -C "$out/tfa" checkout --detach FETCH_HEAD
+          test "$(git -C "$out/tfa" rev-parse HEAD)" = e4ffdd76c3c4b1488eb9c290e5b5c676f68f6b38
+          make -C "$out/tfa" -j2 PLAT=qemu CROSS_COMPILE=aarch64-linux-gnu- QEMU_USE_GIC_DRIVER=QEMU_GICV3 BL33="$out/ref-bl33.bin" bl1 fip
+          cp "$out/tfa/build/qemu/release/bl1.bin" "$out/ref-flash.bin"
+          dd if="$out/tfa/build/qemu/release/fip.bin" of="$out/ref-flash.bin" seek=64 bs=4096 conv=notrunc status=none
+          rc=0
+          timeout 15s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$out/bao/bin/qemu-aarch64-virt/tumor/bao.bin,addr=0x50000000,force-raw=on" > "$out/bao-boot.log" 2>&1 || rc=$?
+          cat "$out/bao-boot.log"
+          test "$rc" -eq 124
+          test "$(grep -ac '^TUMOR_BAO_REF: TWO_EL1_GUESTS_IPC
+ "$out/bao-boot.log")" -eq 1
+          echo "QEMU reference IPC admission only; physical target and OS guests unverified"
