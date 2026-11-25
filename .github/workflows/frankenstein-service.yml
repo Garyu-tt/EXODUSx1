@@ -7,6 +7,8 @@ on:
       - 'exodus/frankenstein/partition_contract.py'
       - 'exodus/frankenstein/ipc_contract.py'
       - 'exodus/frankenstein/ipc_native.c'
+      - 'exodus/frankenstein/el_probe.S'
+      - 'exodus/frankenstein/el_probe.ld'
       - 'exodus/frankenstein/test_ipc_process.py'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/test_sessiond.py'
@@ -45,3 +47,29 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -O2 -DEXODUS_DBUS exodus/frankenstein/sessiond.c $(pkg-config --cflags --libs gio-2.0) -o /tmp/exodus-sessiond-dbus
           dbus-run-session -- sh exodus/frankenstein/test_sessiond_dbus.sh /tmp/exodus-sessiond-dbus
           dbus-run-session -- python3 exodus/frankenstein/test_dbus_contract.py /tmp/exodus-sessiond-dbus
+
+  reference-el:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install reference tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang lld qemu-system-arm
+      - name: Build and check reference privilege contexts
+        run: |
+          set -eu
+          clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -c exodus/frankenstein/el_probe.S -o /tmp/el-probe.o
+          ld.lld --no-undefined -T exodus/frankenstein/el_probe.ld /tmp/el-probe.o -o /tmp/el-probe.elf
+          test -z "$(nm -u /tmp/el-probe.elf)"
+          for mode in on off; do
+            rc=0
+            timeout 12s qemu-system-aarch64 -machine "virt,virtualization=$mode,gic-version=2,secure=off" -cpu cortex-a57 -smp 1 -m 128 -display none -monitor none -serial stdio -no-reboot -kernel /tmp/el-probe.elf > "/tmp/el-$mode.log" 2>&1 || rc=$?
+            cat "/tmp/el-$mode.log"
+            test "$rc" -eq 124
+            expected=EL2
+            if [ "$mode" = off ]; then expected=EL1_BLOCKED; fi
+            test "$(grep -c '^TUMOR_REF:' "/tmp/el-$mode.log")" -eq 1
+            grep -qx "TUMOR_REF: $expected" "/tmp/el-$mode.log"
+          done
