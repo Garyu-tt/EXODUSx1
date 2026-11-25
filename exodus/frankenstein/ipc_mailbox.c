@@ -210,6 +210,32 @@ int main(void) {
     assert(send_frame(&a,3)==TMR_OK && recv_frame(&b,3)==TMR_OK);
     assert(b.peer.sequence==2);
     puts("PASS: bidirectional delivery and backpressure");
+
+    /* Deliberately seed the completed prefix in a quiescent test fixture.
+     * Both generations have nonzero high words; each direction crosses the
+     * 32-bit sequence boundary without changing the existing wire format. */
+    const uint64_t ga=UINT64_C(0x1234567800000064);
+    const uint64_t gb=UINT64_C(0x87654321000000c8);
+    const uint64_t before=UINT64_C(0xffffffff);
+    assert(mailbox_init(&m));
+    assert(attach(&a,&m,1,ga,gb,0)==TMR_OK);
+    assert(attach(&b,&m,2,gb,ga ^ (UINT64_C(1)<<32),0)==TMR_FAULT);
+    assert(atomic_load(&m.direction[1].claimed)==0);
+    assert(attach(&b,&m,2,gb,ga,0)==TMR_OK);
+    for (unsigned i=0;i<2;++i) {
+        atomic_store(&m.direction[i].published,before);
+        atomic_store(&m.direction[i].consumed,before);
+    }
+    a.sent=b.sent=a.peer.sequence=b.peer.sequence=before;
+    assert(send_frame(&a,1)==TMR_OK && send_frame(&b,1)==TMR_OK);
+    assert(recv_frame(&a,2)==TMR_OK && recv_frame(&b,2)==TMR_OK);
+    assert(a.peer.sequence==before+1 && b.peer.sequence==before+1);
+    assert(a.sent==before+1 && b.sent==before+1);
+    assert(atomic_load(&m.direction[0].consumed)==before+1);
+    assert(atomic_load(&m.direction[1].consumed)==before+1);
+    assert(send_frame(&a,3)==TMR_OK && recv_frame(&b,4)==TMR_OK);
+    assert(b.peer.sequence==before+2);
+    puts("PASS: full-width mailbox generations and counters across 32-bit boundary");
     fresh(&m,&a,&b);
     assert(send_frame(&a,1)==TMR_OK);
     atomic_fetch_xor(&m.direction[0].words[0],UINT64_C(1));
