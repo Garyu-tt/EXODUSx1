@@ -20,6 +20,7 @@ struct exodus_library {
     size_t first_game=SIZE_MAX;
     std::vector<size_t> representatives{};
     std::vector<size_t> group_sizes{};
+    std::vector<uint64_t> declared_ids{};
 };
 #ifndef _WIN32
 struct InventoryPending {
@@ -76,14 +77,19 @@ static void group_declared_inventory(exodus_library &lib)
     }
     if (bases.empty()) return;
     std::vector<size_t> reps(entries.size()),sizes(entries.size(),0);
+    std::vector<uint64_t> ids(entries.size(),0);
     for (size_t i=0;i<entries.size();++i) reps[i]=i;
     for (size_t j=0;j<records.size();++j) {
         const auto found=bases.find(records[j].application_id);
-        if (found!=bases.end()) reps[indices[j]]=indices[found->second];
+        if (found!=bases.end()) {
+            reps[indices[j]]=indices[found->second];
+            ids[indices[j]]=records[j].application_id;
+        }
     }
     for (size_t r:reps) ++sizes[r];
     lib.representatives=std::move(reps);
     lib.group_sizes=std::move(sizes);
+    lib.declared_ids=std::move(ids);
 }
 static void merge_games_inventory(exodus_library &lib,const char *base_path,const char *root)
 {
@@ -167,6 +173,11 @@ size_t exodus_library_group_size(const struct exodus_library *library,size_t ind
     const size_t rep=exodus_library_group_representative(library,index);
     if (rep==SIZE_MAX) return 0;
     return library->group_sizes.empty()?1:library->group_sizes[rep];
+}
+uint64_t exodus_library_declared_group_id(const struct exodus_library *library,size_t index)
+{
+    if (!library || index>=library->declared_ids.size()) return 0;
+    return library->declared_ids[index];
 }
 int exodus_library_archive_detail(const struct exodus_library *library,size_t index,char *out,size_t cap)
 {

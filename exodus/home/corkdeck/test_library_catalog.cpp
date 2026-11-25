@@ -118,14 +118,26 @@ static void verify_games_inventory(const char *fixture)
         assert(exodus_library_execution_target(lib,n).backend==EXODUS_BACKEND_NONE);
         assert(exodus_library_group_representative(lib,n)==(n==orphan_index?n:base_index));
         assert(exodus_library_group_size(lib,n)==(n==orphan_index?1:3));
+        assert(exodus_library_declared_group_id(lib,n)==(n==orphan_index?0:1));
     }
     assert(exodus_library_group_representative(lib,99)==SIZE_MAX);
+    exodus_library_close(lib);
+    const auto moved=root+"/Renamed.nsp";
+    fs::rename(base,moved);
+    fs::rename(base+".evcs",moved+".evcs");
+    lib=exodus_library_open_with_games(fixture,root.c_str());
+    assert(lib && exodus_library_count(lib)==9);
+    for(size_t n=5;n<9;++n)
+        assert(exodus_library_declared_group_id(lib,n)==(orphan==exodus_library_id(lib,n)?0:1));
     exodus_library_close(lib);
     { std::ofstream f(patch+".evcs"); f<<"EVCS1 0000000000000001 0000000000000001 0 base\n"; }
     lib=exodus_library_open_with_games(fixture,root.c_str());
     assert(lib && exodus_library_count(lib)==9);
     assert(strstr(exodus_library_discovery_status(lib),"metadata rejected"));
-    for(size_t n=5;n<9;++n) assert(exodus_library_group_representative(lib,n)==n);
+    for(size_t n=5;n<9;++n) {
+        assert(exodus_library_group_representative(lib,n)==n);
+        assert(!exodus_library_declared_group_id(lib,n));
+    }
     exodus_library_close(lib);
     assert(fs::remove_all(root)==9);
 }
