@@ -9,7 +9,7 @@ import re
 import sys
 import time
 
-from .mtp_probe import POLL_INTERVAL, ProbeError
+from .mtp_probe import POLL_INTERVAL, ProbeError, ProbeTimeout
 
 
 CM_GETIDLIST_FILTER_ENUMERATOR = 0x1
@@ -77,6 +77,7 @@ def discover(seconds, scan):
             break
         sampled_at = time.monotonic()
         if sampled_at >= deadline:
+            error = ProbeTimeout("Windows USB enumeration exceeded the discovery window.")
             break
         elapsed_ms = int((sampled_at - start) * 1000)
         for usb_id in sorted(current - baseline):

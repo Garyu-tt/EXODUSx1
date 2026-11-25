@@ -14,6 +14,8 @@ Discovery records each newly visible VID/PID once, with the time of the first ma
 
 Use a candidate with the targeted probe to inspect WPD readiness.
 
+A discovery query that returns at or after the observation deadline is excluded from the candidates and reports `complete: false` with exit code `2`. Earlier candidates remain in the JSON. Ordinary expiry while waiting for the next sample still completes normally. Windows Configuration Manager calls are synchronous, so this deadline check does not interrupt a query in progress.
+
 ```powershell
 python exodus/mtp_probe.py --usb-id 1234:abcd
 ```
