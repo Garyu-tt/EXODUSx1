@@ -51,6 +51,25 @@ def parse_identifier(value, maximum):
     return None
 
 
+def publisher_configuration_status(app_id, publisher_app_id, publisher_key):
+    """Return a configuration error for a canonical AppID, or None."""
+    publisher_app_id = parse_identifier(publisher_app_id, MAX_APP_ID)
+    if publisher_app_id is None:
+        return LicenseStatus.PUBLISHER_NOT_CONFIGURED
+    if app_id != publisher_app_id:
+        return LicenseStatus.UNSUPPORTED_APP
+    if type(publisher_key) is not str or PUBLISHER_KEY.fullmatch(publisher_key) is None:
+        return LicenseStatus.PUBLISHER_NOT_CONFIGURED
+    return None
+
+
+def take_publisher_configuration():
+    """Read publisher configuration and remove Steam keys before browser launch."""
+    publisher_key = os.environ.pop(PUBLISHER_KEY_ENV, None)
+    os.environ.pop(LIBRARY_KEY_ENV, None)
+    return os.environ.get(PUBLISHER_APP_ID_ENV), publisher_key
+
+
 def _status_from_reply(document, app_id, steam_id):
     unavailable = LicenseStatus.OWNERSHIP_UNAVAILABLE
     if type(document) is not dict or "response" in document or "error" in document:
@@ -105,13 +124,9 @@ def check_entitlement(app_id, *, publisher_app_id, publisher_key, expected_steam
                       timeout=180, opener=None, open_browser=None):
     """Return a live license status for an identity confirmed through Steam OpenID."""
     app_id = parse_identifier(app_id, MAX_APP_ID)
-    publisher_app_id = parse_identifier(publisher_app_id, MAX_APP_ID)
-    if publisher_app_id is None:
-        return LicenseStatus.PUBLISHER_NOT_CONFIGURED
-    if app_id != publisher_app_id:
-        return LicenseStatus.UNSUPPORTED_APP
-    if type(publisher_key) is not str or PUBLISHER_KEY.fullmatch(publisher_key) is None:
-        return LicenseStatus.PUBLISHER_NOT_CONFIGURED
+    configuration_error = publisher_configuration_status(app_id, publisher_app_id, publisher_key)
+    if configuration_error is not None:
+        return configuration_error
     if expected_steam_id is not None:
         expected_steam_id = parse_identifier(expected_steam_id, MAX_STEAM_ID)
         if expected_steam_id is None:
@@ -163,11 +178,9 @@ def main(argv=None):
     if not 1 <= args.timeout <= 900:
         parser.error("--timeout must be between 1 and 900 seconds")
 
-    # Keep the API keys out of the environment inherited by the browser.
-    publisher_key = os.environ.pop(PUBLISHER_KEY_ENV, None)
-    os.environ.pop(LIBRARY_KEY_ENV, None)
+    publisher_app_id, publisher_key = take_publisher_configuration()
     try:
-        status = check_entitlement(app_id, publisher_app_id=os.environ.get(PUBLISHER_APP_ID_ENV),
+        status = check_entitlement(app_id, publisher_app_id=publisher_app_id,
                                    publisher_key=publisher_key, expected_steam_id=expected_steam_id, timeout=args.timeout)
     except KeyboardInterrupt:
         status = LicenseStatus.OWNERSHIP_UNAVAILABLE

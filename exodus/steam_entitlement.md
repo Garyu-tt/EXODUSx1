@@ -34,8 +34,19 @@ On the secure host, configure an authorized publisher key and choose test accoun
 | Unlicensed test account entered and verified | `no_active_license` | 0 |
 | First test account expected and second test account verified | `account_mismatch` | 1 |
 
-The host tests use synthetic Steam replies and a loopback OpenID callback and verify that the mismatch stops at identity verification.
+Run all three cases with the same publisher configuration and two distinct test accounts.
 
 ```sh
-python -B -m unittest tests.test_steam_entitlement
+python -m exodus.steam_entitlement_acceptance --app-id <publisher-app-id> \
+  --licensed-steam-id <licensed-steam-id64> --unlicensed-steam-id <unlicensed-steam-id64>
+```
+
+The runner prompts on stderr before each browser sign-in. Press Enter when ready and choose the prompted account in Steam. Complete Steam Guard in the browser if required. Enter `q` to stop. The runner stops at the first unexpected result or canceled prompt and includes the completed cases in its report.
+
+Stdout contains one JSON object with the AppID, the run status and the expected and observed status for each completed case. Results and prompts omit account IDs and keys. Exit code 0 requires all three cases to match, including `account_mismatch` in the last case. Exit code 1 indicates a partial or failed run, and 2 indicates invalid usage. The report records that acceptance run under the launch policy described above.
+
+The host tests use synthetic Steam replies and a loopback OpenID callback. The runner fixture observes all three verified sign-ins and two Steamworks ownership requests. The wrong-account case stops at identity verification.
+
+```sh
+python -B -m unittest tests.test_steam_entitlement tests.test_steam_entitlement_acceptance
 ```
