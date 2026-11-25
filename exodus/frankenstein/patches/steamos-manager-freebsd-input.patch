@@ -1,0 +1,263 @@
+diff --git a/input-linux-sys-0.9.0/src/input.rs b/input-linux-sys-0.9.0/src/input.rs
+index 0305c29..d202ac3 100644
+--- a/input-linux-sys-0.9.0/src/input.rs
++++ b/input-linux-sys-0.9.0/src/input.rs
+@@ -9,13 +9,21 @@ use nix::{
+ };
+ use libc::{c_char, c_int, c_uint, clockid_t, ioctl};
+ 
++pub use libc::timeval;
++
++#[cfg(not(target_os = "freebsd"))]
+ pub use libc::{
+-    timeval,
+     input_event, input_id, input_absinfo, input_keymap_entry, input_mask,
+     ff_replay, ff_trigger, ff_envelope, ff_effect, ff_constant_effect,
+     ff_ramp_effect, ff_condition_effect, ff_periodic_effect, ff_rumble_effect,
+ };
+ 
++#[cfg(target_os = "freebsd")]
++#[path = "freebsd.rs"]
++mod freebsd;
++#[cfg(target_os = "freebsd")]
++pub use self::freebsd::*;
++
+ /// Protocol version.
+ pub const EV_VERSION: c_int = 0x010001;
+ 
+@@ -329,11 +337,13 @@ ioctl_write_int! {
+     ev_revoke, b'E', 0x91
+ }
+ 
++#[cfg(not(target_os = "freebsd"))]
+ ioctl_read! {
+     /// Retrieve current event mask
+     ev_get_mask, b'E', 0x92, input_mask
+ }
+ 
++#[cfg(not(target_os = "freebsd"))]
+ ioctl_write_ptr! {
+     /// Set event mask
+     ev_set_mask, b'E', 0x93, input_mask
+diff --git a/input-linux-sys-0.9.0/src/freebsd.rs b/input-linux-sys-0.9.0/src/freebsd.rs
+new file mode 100644
+index 0000000..99581f9
+--- /dev/null
++++ b/input-linux-sys-0.9.0/src/freebsd.rs
+@@ -0,0 +1,177 @@
++// Copyright (c) 2016 Oleksandr Tymoshenko <gonzo@FreeBSD.org>
++// Copyright (c) 2015-2016 Vladimir Kondratyev <wulf@FreeBSD.org>
++// SPDX-License-Identifier: BSD-2-Clause
++
++//! FreeBSD 15 evdev/uinput ABI types.
++//!
++//! FreeBSD installs these definitions from `<dev/evdev/input.h>`, but the
++//! Rust `libc` crate intentionally does not expose them.  Keep this module a
++//! layout-only binding: ioctl request numbers continue to come from `nix`,
++//! which uses the target's native `_IO*` encoding.
++
++use libc::timeval;
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct input_event {
++    pub time: timeval,
++    pub type_: u16,
++    pub code: u16,
++    pub value: i32,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct input_id {
++    pub bustype: u16,
++    pub vendor: u16,
++    pub product: u16,
++    pub version: u16,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct input_absinfo {
++    pub value: i32,
++    pub minimum: i32,
++    pub maximum: i32,
++    pub fuzz: i32,
++    pub flat: i32,
++    pub resolution: i32,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct input_keymap_entry {
++    pub flags: u8,
++    pub len: u8,
++    pub index: u16,
++    pub keycode: u32,
++    pub scancode: [u8; 32],
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_replay {
++    pub length: u16,
++    pub delay: u16,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_trigger {
++    pub button: u16,
++    pub interval: u16,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_envelope {
++    pub attack_length: u16,
++    pub attack_level: u16,
++    pub fade_length: u16,
++    pub fade_level: u16,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_constant_effect {
++    pub level: i16,
++    pub envelope: ff_envelope,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_ramp_effect {
++    pub start_level: i16,
++    pub end_level: i16,
++    pub envelope: ff_envelope,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_condition_effect {
++    pub right_saturation: u16,
++    pub left_saturation: u16,
++    pub right_coeff: i16,
++    pub left_coeff: i16,
++    pub deadband: u16,
++    pub center: i16,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_periodic_effect {
++    pub waveform: u16,
++    pub period: u16,
++    pub magnitude: i16,
++    pub offset: i16,
++    pub phase: u16,
++    pub envelope: ff_envelope,
++    pub custom_len: u32,
++    pub custom_data: *mut i16,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_rumble_effect {
++    pub strong_magnitude: u16,
++    pub weak_magnitude: u16,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_haptic_effect {
++    pub hid_usage: u16,
++    pub vendor_id: u16,
++    pub vendor_waveform_page: u8,
++    pub intensity: u16,
++    pub repeat_count: u16,
++    pub retrigger_period: u16,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub union ff_effect_data {
++    pub constant: ff_constant_effect,
++    pub ramp: ff_ramp_effect,
++    pub periodic: ff_periodic_effect,
++    pub condition: [ff_condition_effect; 2],
++    pub rumble: ff_rumble_effect,
++    pub haptic: ff_haptic_effect,
++}
++
++#[repr(C)]
++#[derive(Copy, Clone)]
++pub struct ff_effect {
++    pub type_: u16,
++    pub id: i16,
++    pub direction: u16,
++    pub trigger: ff_trigger,
++    pub replay: ff_replay,
++    pub u: ff_effect_data,
++}
++
++// The reference workload is FreeBSD/ARM64.  Reject accidental layout drift at
++// compile time before the uinput ioctl boundary can be exercised.
++#[cfg(target_pointer_width = "64")]
++const _: () = {
++    use core::mem::{align_of, size_of};
++
++    assert!(size_of::<input_event>() == 24);
++    assert!(size_of::<input_id>() == 8);
++    assert!(size_of::<input_absinfo>() == 24);
++    assert!(size_of::<input_keymap_entry>() == 40);
++    assert!(size_of::<ff_replay>() == 4);
++    assert!(size_of::<ff_trigger>() == 4);
++    assert!(size_of::<ff_envelope>() == 8);
++    assert!(size_of::<ff_constant_effect>() == 10);
++    assert!(size_of::<ff_ramp_effect>() == 12);
++    assert!(size_of::<ff_condition_effect>() == 12);
++    assert!(size_of::<ff_periodic_effect>() == 32);
++    assert!(size_of::<ff_rumble_effect>() == 4);
++    assert!(size_of::<ff_haptic_effect>() == 12);
++    assert!(size_of::<ff_effect_data>() == 32);
++    assert!(align_of::<ff_effect_data>() == 8);
++    assert!(size_of::<ff_effect>() == 48);
++};
+diff --git a/input-linux-0.7.1/src/evdev.rs b/input-linux-0.7.1/src/evdev.rs
+index a554018..ebcc38a 100644
+--- a/input-linux-0.7.1/src/evdev.rs
++++ b/input-linux-0.7.1/src/evdev.rs
+@@ -297,6 +297,7 @@ impl<F: AsRawFd> EvdevHandle<F> {
+     }
+ 
+     /// `EVIOCGMASK`
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn event_mask_raw(&self, kind: EventKind, buffer: &mut [u8]) -> io::Result<()> {
+         unsafe {
+             let mut mask = sys::input_mask {
+@@ -312,6 +313,7 @@ impl<F: AsRawFd> EvdevHandle<F> {
+     }
+ 
+     /// `EVIOCSMASK`
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn set_event_mask_raw(&self, kind: EventKind, buffer: &[u8]) -> io::Result<()> {
+         unsafe {
+             let mask = sys::input_mask {
+diff --git a/input-linux-0.7.1/src/macros.rs b/input-linux-0.7.1/src/macros.rs
+index 7991bdf..6a4aab8 100644
+--- a/input-linux-0.7.1/src/macros.rs
++++ b/input-linux-0.7.1/src/macros.rs
+@@ -170,12 +170,14 @@ macro_rules! ioctl_impl {
+ macro_rules! impl_bitmasks {
+     { $kind:path, $event: expr, $name_mask:ident, $name_mask_set:ident, $name_bits:ident } => {
+         /// `EVIOCGMASK`
++        #[cfg(not(target_os = "freebsd"))]
+         pub fn $name_mask(&self) -> io::Result<crate::bitmask::Bitmask<$kind>> {
+             let mut bitmask = crate::bitmask::Bitmask::default();
+             self.event_mask_raw($event, &mut bitmask).map(|_| bitmask)
+         }
+ 
+         /// `EVIOCSMASK`
++        #[cfg(not(target_os = "freebsd"))]
+         pub fn $name_mask_set(&self, bitmask: &crate::bitmask::Bitmask<$kind>) -> io::Result<()> {
+             self.set_event_mask_raw($event, bitmask)
+         }

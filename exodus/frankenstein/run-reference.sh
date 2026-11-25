@@ -36,7 +36,14 @@ mkfs.vfat -n CIDATA seed.img
 truncate -s 128M export.img
 mkfs.vfat -n EXODUSOUT export.img
 printf 'instance-id: exodus-frankenstein-%s\nlocal-hostname: exodus-reference\n' "$mode" > meta-data
-cp "$here/$guest" user-data
+if [ "$mode" = manager ]; then
+    python3 "$here/prepare_manager_user_data.py" \
+        "$here/$guest" \
+        "$here/patches/steamos-manager-freebsd-input.patch" \
+        user-data
+else
+    cp "$here/$guest" user-data
+fi
 mcopy -i seed.img meta-data user-data ::
 if [ "$mode" = linuxabi ]; then
     test "$(uname -m)" = aarch64
