@@ -13,14 +13,16 @@ static inline enum exodus_route exodus_native_target(const char *provider, const
         uint64_t title;
         if (!exodus_title_id(id,&title)) return EXODUS_ROUTE_INVALID;
         snprintf(canonical,512,"%016llx",(unsigned long long)title);
-        return EXODUS_ROUTE_SWITCH;
+        const struct exodus_execution_target target={EXODUS_BACKEND_HORIZON,EXODUS_TARGET_TITLE_ID};
+        return exodus_backend_route(target,canonical);
     }
     if (!strcmp(provider,"homebrew")) {
         char path[512];
         if (!exodus_nro_path(id,path)) return EXODUS_ROUTE_INVALID;
         /* The current native adapter accepts only relative switch/ IDs. */
         snprintf(canonical,512,"%s",id);
-        return EXODUS_ROUTE_HOMEBREW;
+        const struct exodus_execution_target target={EXODUS_BACKEND_HORIZON,EXODUS_TARGET_NRO};
+        return exodus_backend_route(target,canonical);
     }
     return EXODUS_ROUTE_INVALID;
 }
