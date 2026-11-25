@@ -1,4 +1,6 @@
 import hashlib
+import json
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -190,6 +192,29 @@ class TransferTest(unittest.TestCase):
                             self.assertEqual((games / source.name / name).read_bytes(), (source / name).read_bytes())
                     else:
                         self.assertEqual((games / source.name).read_bytes(), source.read_bytes())
+
+    def test_cli_preflight_rejects_undiscoverable_path(self):
+        container = self.games / 'Container.nsp'
+        container.mkdir()
+        nested = container / 'nested.nro'
+        nested.write_bytes(b'fixture')
+        command = [sys.executable, '-m', 'exodus.evcs_transfer',
+                   str(nested), str(self.games)]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['status'], 'unsupported_catalog_path')
+        result = subprocess.run(command + ['--execute'], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertEqual(nested.read_bytes(), b'fixture')
+        self.assertEqual(list(self.games.iterdir()), [container])
+
+    def test_cli_success_statuses(self):
+        command = [sys.executable, '-m', 'exodus.evcs_transfer',
+                   str(self.src), str(self.games)]
+        for flags, status in (([], 'copy_preflight_ok'), (['--execute'], 'published_verified')):
+            result = subprocess.run(command + flags, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)['status'], status)
 
     def test_already_discoverable(self):
         self.src.rename(self.dest)

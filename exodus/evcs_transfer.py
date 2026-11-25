@@ -195,7 +195,8 @@ def main():
     except (OSError, ValueError) as exc:
         p.exit(2, f'transfer stopped: {exc}\n')
     print(json.dumps(result, indent=2))
-    return 1 if result['status'] in {'destination_exists', 'fat32_file_too_large', 'insufficient_copy_space'} else 0
+    # Only explicitly successful statuses may report success to automation.
+    return 0 if result['status'] in {'already_discoverable', 'copy_preflight_ok', 'published_verified'} else 1
 
 
 if __name__ == '__main__':
