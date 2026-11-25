@@ -38,3 +38,24 @@ determine backend selection.
 R17 implements the typed backend/target dispatch and regression cases,
 not a working Steam compatibility-tool package. Existing UI categories
 are preserved until their separate Applications presentation is wired.
+
+## R18 local bridge transport
+
+`python -m exodus.steam_bridge --socket /private/runtime/bridge.sock exodus-horizon waitforexitandrun game.exodus-target`
+
+Client and one-connection server library use bounded newline-delimited
+JSON over an owner-only Unix socket, with a random request ID, typed
+Horizon target and mandatory confirmation. Both run verbs wait for
+observed accepted -> running -> exited events; cancellation/rejection/
+failure are distinct terminal states. Disconnect, deadline or invalid
+event never implies exit. No retry or termination of an unknown target.
+
+The server validates again before invoking its injected trusted adapter.
+Without a real adapter it rejects. Listener creation, endpoint ownership,
+same-user trust, lifecycle observation, concurrency and the actual Horizon
+handoff are platform integration responsibilities. No network endpoint or
+arbitrary executable command is exposed. The client defaults to a one-hour
+deadline, configurable up to 24 hours; expiration does not cancel a game.
+
+Local socket tests use simulated adapters. They do not prove the native
+Horizon bridge, process lifetime or Steam discovery on target hardware.
