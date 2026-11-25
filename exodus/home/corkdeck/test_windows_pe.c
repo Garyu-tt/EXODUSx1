@@ -134,6 +134,22 @@ int main(void)
     assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
 
     make_executable(image, false);
+    write_le16(image + PE_OFFSET + 6, 2);
+    write_le32(image + PE32_TABLE_OFFSET + 16, 256);
+    memcpy(image + PE32_TABLE_OFFSET + 40, ".data", 5);
+    write_le32(image + PE32_TABLE_OFFSET + 40 + 16, 256);
+    write_le32(image + PE32_TABLE_OFFSET + 40 + 20, 640);
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID); /* Overlap. */
+    write_le16(image + PE_OFFSET + 4, 0x01c4);
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID); /* Structural error takes priority. */
+    write_le16(image + PE_OFFSET + 4, 0x014c);
+    write_le32(image + PE32_TABLE_OFFSET + 40 + 20, 768);
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_READY); /* Adjacent. */
+    write_le32(image + PE32_TABLE_OFFSET + 20, 768);
+    write_le32(image + PE32_TABLE_OFFSET + 40 + 20, 512);
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_READY); /* Out of order. */
+
+    make_executable(image, false);
     write_le16(image + PE_OFFSET + 6, 2); /* An uninitialized section has no raw bytes. */
     memcpy(image + PE32_TABLE_OFFSET + 40, ".bss", 4);
     assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_READY);
