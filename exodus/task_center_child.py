@@ -12,6 +12,9 @@ import time
 from .task_center import Lifecycle, Session, UNKNOWN, LIMIT, OPERATIONS, positive, valid_key
 
 
+POLL_BUDGET = 64  # nonblocking waitpid calls per serialized observation
+
+
 class ManagedChild:
     def __init__(self, epoch, session_id, instance, argv):
         if (not valid_key(("freebsd", epoch, session_id, instance))
@@ -26,7 +29,7 @@ class ManagedChild:
         self.key = ("freebsd", epoch, session_id, instance)
         self.sequence = 0
         self.last_token = 0
-        self.state = "running"
+        self.state = self._observed_state = "running"
         self.pid = os.posix_spawn(argv[0], argv, os.environ.copy(),
                                   setsigmask=(), setsigdef=(signal.SIGTERM, signal.SIGINT))
         self.terminal = False
@@ -34,9 +37,9 @@ class ManagedChild:
     def poll(self, deadline=None):
         if self.terminal:
             return self.state
-        while True:
-            # Dispatch must stop observing at its deadline even if waitpid
-            # repeatedly reports interruptions or state changes.
+        for _ in range(POLL_BUDGET):
+            # Bound snapshots as well as dispatch. The deadline is an
+            # additional limit, never a substitute for the event budget.
             if deadline is not None and time.monotonic() >= deadline:
                 break
             try:
@@ -46,16 +49,20 @@ class ManagedChild:
             except ChildProcessError:
                 # A lost reaper contract means we must never signal this PID.
                 self.state, self.terminal = UNKNOWN, True
-                break
+                return self.state
             if pid == 0:
-                break
+                self.state = self._observed_state
+                return self.state
             if os.WIFEXITED(status) or os.WIFSIGNALED(status):
                 self.state, self.terminal = "exited", True
-                break
+                return self.state
             if os.WIFSTOPPED(status):
-                self.state = "suspended"
+                self._observed_state = "suspended"
             elif os.WIFCONTINUED(status):
-                self.state = "running"
+                self._observed_state = "running"
+        # Incomplete observation is not a terminal state. Keep exclusive
+        # reaper ownership, hide capabilities and recover on a later drain.
+        self.state = UNKNOWN
         return self.state
 
     def capabilities(self):
