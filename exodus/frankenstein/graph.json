@@ -21,10 +21,16 @@
     {
       "id": "wayland",
       "origin": "graphics/wayland",
-      "state": "source-recipe",
+      "state": "qemu-source-package-verified",
       "depends": [
         "kernel"
-      ]
+      ],
+      "evidence": {
+        "run": 45678629911,
+        "job": 139432868045,
+        "artifact": 15058370774,
+        "scope": "FreeBSD ARM64 source-built wayland-1.26.0_1; package installed, SHA256 verified on host."
+      }
     },
     {
       "id": "drm",
@@ -87,14 +93,20 @@
     {
       "id": "gamescope",
       "origin": "x11-wm/gamescope",
-      "state": "source-recipe",
+      "state": "qemu-source-package-verified",
       "depends": [
         "vulkan",
         "drm",
         "wayland",
         "xwayland",
         "input"
-      ]
+      ],
+      "evidence": {
+        "run": 45678629911,
+        "job": 139432868045,
+        "artifact": 15058370774,
+        "scope": "FreeBSD ARM64 source-built gamescope-3.13.8_11; native ELF, --help executed, exported package SHA256 verified. No rendered compositor, Steam session or physical GPU evidence."
+      }
     },
     {
       "id": "plasma",
@@ -231,7 +243,8 @@
       "depends": [
         "cpu-memory-isolation",
         "irq-dma-arbitration",
-        "device-arbitration"
+        "device-arbitration",
+        "dual-kernel-reference"
       ],
       "gate": "Genuine independent kernel liveness concurrently on physical Switch."
     },
@@ -349,7 +362,7 @@
       "depends": [
         "dual-kernel"
       ],
-      "gate": "Versioned bounded bridge, fail closed, shared memory isolation and restart tests."
+      "gate": "Versioned bounded bridge, fail closed, shared memory isolation and restart tests. R32 only proves pre-kernel IPC and concurrent post-boot liveness; runtime shared channel remains unverified."
     },
     {
       "id": "resident-network",
@@ -413,8 +426,21 @@
         "native-game-resident"
       ],
       "gate": "Physical end-to-end acceptance, budgets, recovery, display/HID transitions and save integrity."
+    },
+    {
+      "id": "dual-kernel-reference",
+      "origin": "exodus/frankenstein/bao_freebsd_reference.c",
+      "state": "qemu-dual-freebsd-tested",
+      "depends": [
+        "kernel"
+      ],
+      "evidence": {
+        "run": 45690774623,
+        "job": 139475322473,
+        "scope": "R32 QEMU virt Cortex-A53/GICv3: two stock FreeBSD 15.1 kernels, disjoint configured guest RAM, independent PID1 getpid progress (13008882 to 16690836) during authenticated loopback SSH in other guest. No runtime IPC after boot, independent DMA isolation or physical Horizon/Tegra evidence."
+      }
     }
   ],
-  "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. No physical Switch execution or full SteamOS runtime proven. R17 physical gates reflect canonical issue #103; all new nodes are unproven.",
+  "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. Reference evidence does not satisfy physical gates. No physical Switch execution or full SteamOS runtime proven.",
   "name": "EXODUS Tumor"
 }
