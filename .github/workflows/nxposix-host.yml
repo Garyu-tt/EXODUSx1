@@ -45,9 +45,10 @@ jobs:
           docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > nxposix-results/sdk-image.json
           docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -ec '
             make -C exodus/nxposix -f Makefile.switch clean all
-            aarch64-none-elf-readelf -h exodus/nxposix/build-switch/exodus-nxposix-smoke.elf > nxposix-results/elf-header.txt
-            cp exodus/nxposix/build-switch/exodus-nxposix-smoke.nro nxposix-results/
           '
+          # GNU readelf on the host can inspect AArch64 ELF headers without the cross-toolchain.
+          LC_ALL=C readelf -h exodus/nxposix/build-switch/exodus-nxposix-smoke.elf > nxposix-results/elf-header.txt
+          cp exodus/nxposix/build-switch/exodus-nxposix-smoke.nro nxposix-results/
           grep -E 'Machine:.*AArch64' nxposix-results/elf-header.txt
           python3 -c 'from pathlib import Path; import struct; b=Path("nxposix-results/exodus-nxposix-smoke.nro").read_bytes(); assert len(b)>=128 and b[16:20]==b"NRO0" and 128<=struct.unpack_from("<I",b,24)[0]<=len(b)'
           (cd nxposix-results && sha256sum exodus-nxposix-smoke.nro sdk-image.json elf-header.txt > SHA256SUMS)
