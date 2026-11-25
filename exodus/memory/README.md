@@ -1,6 +1,6 @@
 # EX-005 memory page compression
 
-Use this C99 codec to store cold 4096-byte pages in smaller buffers when they contain aligned regions of zeros runs of identical four-byte words, or full-page repeating 8- or 16-byte texels. A solid RGBA8 staging page uses 41 payload bytes. Repeated wide texels can use 9 or 17 bytes. Pass regular CPU-readable memory or a caller-owned CPU staging copy. The caller controls page lifetime, GPU transfer and synchronization.
+Use this C99 codec to store cold 4096-byte pages in smaller buffers when they contain aligned regions of zeros, runs of identical four-byte words, or full-page repeating 8- or 16-byte texels. A solid RGBA8 staging page uses 41 payload bytes. Repeated wide texels can use 9 or 17 bytes. Pass regular CPU-readable memory or a caller-owned CPU staging copy. The caller controls page lifetime, GPU transfer and synchronization.
 
 ## Build and measure
 
@@ -57,3 +57,28 @@ bool restored = exodus_snapshot_decode(frame, size, previous_page, output_page);
 Tag `0` precedes one standalone adaptive payload and allows a null reference during decode. Tag `1` precedes the reference's IEEE CRC-32 in four little-endian bytes and an adaptive XOR payload. Each frame needs at most 4097 bytes. Keep the exact reference for the lifetime of each dependent frame. The checksum detects accidental reference mismatches and has a finite collision probability. The caller controls frame integrity, reference lifetime and CPU/GPU synchronization. An in-place restore can replace the reference once no other frame needs it. Encoding uses two temporary 4096-byte arrays. Relative decoding uses one.
 
 `make check` builds and runs the byte-for-byte snapshot tests. On the included synthetic inputs, changing one byte of a dense RAM page takes 56 bytes versus 4097 standalone. Changing a 4×4 region of a 32×32 RGBA staging page takes 134 versus 4066 bytes. An unrelated dense page takes 4097 bytes and decodes independently. These frame sizes exclude the retained reference and allocator metadata.
+
+## Share identical cold pages
+
+Link `page_dedup_store.c`, `page_store.c` and `page_codec.c` for an append-only group that shares identical pages. `exodus_page_dedup_store_append` assigns a logical index for every successful append; `exodus_page_dedup_store_restore` restores that index into a separate writable page. The wrapper stores each unique page through the existing sparse/raw codec. A 64-bit fingerprint filters candidates, and a full restored-byte comparison decides sharing, including when fingerprints collide.
+
+Initialize the wrapper's `unique` store as above, then supply `fingerprints` with `unique.page_capacity` elements of `uint64_t`, `page_refs` with `page_capacity` elements of `size_t`, and zero both page counts and `unique.payload_used`. All four backing buffers, source pages and restore outputs must be separate. For example, two identical raw pages fit in this group:
+
+```c
+uint8_t payload[EXODUS_PAGE_BYTES];
+size_t ends[1], references[2];
+uint64_t fingerprints[1];
+struct exodus_page_dedup_store group = {
+    .unique = { .payload = payload, .payload_capacity = sizeof(payload),
+                .page_ends = ends, .page_capacity = 1 },
+    .fingerprints = fingerprints, .page_refs = references, .page_capacity = 2
+};
+/* After checking each append's return value, release or reuse its source page.
+ * Restore logical indices 0 and 1 into separate writable page buffers. */
+```
+
+A duplicate can be appended when the physical page or payload buffer is full, provided a logical index remains. Capacity failures leave all buffers and counters unchanged. The wrapper exclusively owns its physical store: callers must not append to it, replace shared pages, edit its metadata or free its buffers independently. Calls must be serialized. Editing a restored copy does not affect either logical page. Updating an existing logical page and copy-on-write are not provided by this API; keep a changed copy outside the group or append it at a new logical index.
+
+For `U` unique pages and `L` logical pages, active storage is `unique.payload_used + U * (sizeof(size_t) + sizeof(uint64_t)) + L * sizeof(size_t)`, plus the wrapper descriptor. Reserved storage instead uses the caller's payload, unique-index, fingerprint and logical-index **capacities**. The host test's two equal raw pages use 4096 payload bytes instead of 8192; on a 64-bit host the complete reserved backing, metadata and descriptor total 4208 bytes instead of the ordinary store's 8256. These totals exclude caller staging and temporary append/restore workspace, which can require up to two additional 4096-byte page buffers during append. Reducing used bytes inside an existing allocation does not release RAM.
+
+The fingerprint index uses a bounded linear scan: append checks up to `U` fingerprints and restores only matching candidates. Building an all-unique group can therefore require quadratic index work; use bounded cold-page groups and measure the workload. This is CPU-side storage, without GPU residency changes, automatic write-back, or a physical Switch performance claim. `make check` covers sharing, collision checks, capacity failure preservation and mixed-page round trips.
