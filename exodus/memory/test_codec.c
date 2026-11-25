@@ -17,6 +17,51 @@ static uint32_t next_random(void)
     return seed;
 }
 
+/* Every byte value in every mask group, independently constructed mixed
+ * BDI/RAW records. Exercise rank boundaries and rejection of late corruption. */
+static void check_bdi_mask_rank(void)
+{
+    uint8_t storage[EXODUS_PAGE_BYTES+2], page[EXODUS_PAGE_BYTES], out[4];
+    uint8_t *p=storage+1;
+    p[0]=EXODUS_PAGE_BDI_VERSION;
+    for(size_t group=0;group<8;group++){
+        for(unsigned mask=0;mask<256;mask++){
+            for(size_t i=0;i<8;i++)p[1+i]=(uint8_t)(i%2?0xa5:0x5a);
+            p[1+group]=(uint8_t)mask;
+            size_t pos=9;
+            for(size_t block=0;block<64;block++){
+                bool packed=(p[1+block/8]&(1u<<(block%8)))!=0;
+                uint8_t *logical=page+block*64;
+                for(size_t w=0;w<16;w++){
+                    /* Include wraparound for packed words. */
+                    uint32_t v=packed?UINT32_MAX+(uint32_t)(block+w):
+                                      (uint32_t)(block*65537+w*257);
+                    for(unsigned k=0;k<4;k++)logical[4*w+k]=(uint8_t)(v>>(8*k));
+                }
+                if(packed){
+                    memset(p+pos,0xff,4);
+                    for(size_t w=0;w<16;w++)p[pos+4+w]=(uint8_t)(block+w);
+                    pos+=20;
+                }else{memcpy(p+pos,logical,64);pos+=64;}
+            }
+            for(size_t block=0;block<64;block++){
+                size_t w=block*16;
+                CHECK(exodus_page_bdi_read_word(p,pos,w,out));
+                CHECK(!memcmp(out,page+4*w,4));
+                w+=15;
+                CHECK(exodus_page_bdi_read_word(p,pos,w,out));
+                CHECK(!memcmp(out,page+4*w,4));
+            }
+            p[8]^=0x80;
+            memset(out,0xa5,4);
+            CHECK(!exodus_page_bdi_read_word(p,pos,0,out));
+            CHECK(!memcmp(out,"\xa5\xa5\xa5\xa5",4));
+            CHECK(!exodus_page_bdi_read_word(p,pos,1023,out));
+            CHECK(!memcmp(out,"\xa5\xa5\xa5\xa5",4));
+        }
+    }
+}
+
 static size_t check_adaptive_round_trip(const uint8_t *page, uint8_t *encoded)
 {
     uint8_t decoded[EXODUS_PAGE_BYTES + 2];
@@ -245,6 +290,7 @@ static void check_page_store_index_capacity(void)
 
 int main(void)
 {
+    check_bdi_mask_rank();
     check_adaptive();
     check_repeated_tiles();
     check_word_run_lengths();
