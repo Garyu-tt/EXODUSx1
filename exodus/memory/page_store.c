@@ -285,6 +285,12 @@ static bool replace_page(struct exodus_page_store *store, size_t index,
     if (size > store->payload_capacity - other_bytes)
         return false;
 
+    /* An equal-length replacement cannot move any extent or change the
+     * used-byte total. The complete index was already validated above. */
+    if(size==old_size){
+        memcpy(store->payload+start,encoded,size);
+        return true;
+    }
     memmove(store->payload + start + size, store->payload + end, store->payload_used - end);
     memcpy(store->payload + start, encoded, size);
     for (size_t i = index; i < store->page_count; ++i) {
