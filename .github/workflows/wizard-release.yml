@@ -1,27 +1,68 @@
-name: "Wizard Update"
+name: Wizard Update
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/wizard-release.yml'
+      - 'Old files/4ifir Wizard source code/**'
+      - 'Old files/4IFIR-Wizard-update/4IFIR Wizard/**'
+      - 'exodus/build_wizard_release.py'
+      - 'tests/test_wizard_release.py'
   workflow_dispatch:
+    inputs:
+      verify_only:
+        description: Build and upload the package for verification
+        type: boolean
+        default: false
 
 jobs:
-  Wizard-Update:
-    name: "Release"
-    runs-on: "ubuntu-latest"
+  build:
+    name: Build and verify legacy Wizard package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.package.outputs.version }}
+      archive: ${{ steps.package.outputs.archive }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Test archive layout and contents
+        run: python -m unittest discover -s tests -p test_wizard_release.py -v
+      - name: Build release archive
+        id: package
+        run: |
+          version=$(date -u '+%y.%m.%d.%H')
+          archive=$(python exodus/build_wizard_release.py --version "$version" --output-dir dist)
+          printf 'version=%s\narchive=%s\n' "$version" "$archive" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: wizard-update
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+          overwrite: true
+
+  draft-release:
+    name: Create legacy Wizard release draft
+    if: github.event_name == 'workflow_dispatch' && !inputs.verify_only
+    needs: build
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Build
-        run: sed -i "s/;version='[0-9.]*'/;version='$(date "+%y.%m.%d.%H")'/g" 4ifir\ Wizard\ source\ code/config.ini && sed -i "s/;version='[0-9.]*'/;version='$(date "+%y.%m.%d.%H")'/g" 4ifir\ Wizard\ source\ code/4Advanced/Full\ Assist/inis/Start.ini && cd 4ifir\ Wizard\ source\ code/ && zip -r ../4IFIR-Wizard-update/4IFIR\ Wizard/files.zip ./* && cd ../4IFIR-Wizard-update && zip -r "4IFIR-Wizard-update-$(date "+%y.%m.%d.%H").zip" ./4IFIR\ Wizard
-      - id: tag_name
-        run: echo "version=$(date "+%y.%m.%d.%H")" >> "$GITHUB_OUTPUT"
-        env:
-          TAG_NAME: test
-      - name: Release
-        uses: softprops/action-gh-release@v1
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: wizard-update
+          path: dist
+      - uses: softprops/action-gh-release@v3.0.4
         with:
           draft: true
-          tag_name: ${{ steps.tag_name.outputs.version }}
+          tag_name: ${{ needs.build.outputs.version }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
-          files: 4IFIR-Wizard-update/4IFIR-Wizard-update-*.zip
+          files: ${{ needs.build.outputs.archive }}
+          fail_on_unmatched_files: true
