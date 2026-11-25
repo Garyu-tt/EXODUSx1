@@ -201,6 +201,7 @@ namespace exodus::home {
                 if (entry.provider != Provider::Steam)
                     steam.entries.push_back(std::move(entry));
             }
+            steam.steam_snapshot_applied = true;
             return steam;
         }
         return current;

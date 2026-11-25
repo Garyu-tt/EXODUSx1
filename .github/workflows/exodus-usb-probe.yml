@@ -1,0 +1,37 @@
+name: EXODUS Windows USB and MTP probe
+
+on:
+  pull_request:
+    paths:
+      - 'exodus/mtp_probe.py'
+      - 'tests/test_mtp_probe.py'
+      - '.github/workflows/exodus-usb-probe.yml'
+  push:
+    branches:
+      - 'feat/ex004-usb-lifecycle-observation'
+      - 'feat/ex004-mtp-host-probe'
+    paths:
+      - 'exodus/mtp_probe.py'
+      - 'tests/test_mtp_probe.py'
+      - '.github/workflows/exodus-usb-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-probe:
+    name: Windows USB probe (Python ${{ matrix.python }})
+    runs-on: windows-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -B -m unittest discover -s tests -p test_mtp_probe.py -v

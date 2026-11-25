@@ -416,9 +416,41 @@ class SteamSyncTests(unittest.TestCase):
         with self.assertRaisesRegex(sync.SteamSyncError, "Invalid JSON"):
             sync.fetch_library(FakeSteam(data), API_KEY, ACCOUNT)
 
+    def test_rejects_unusable_output_parent_before_sign_in(self):
+        missing = self.output.parent / "missing"
+        regular_file = self.output.parent / "regular-file"
+        regular_file.write_bytes(b"original")
+        provider = FakeSteam()
+        with patch("exodus.steam_sync.webbrowser.open", return_value=False) as browser:
+            for parent in (missing, regular_file):
+                with self.subTest(parent=parent.name), self.assertRaisesRegex(
+                        sync.SteamSyncError, "Catalog output requires an accessible directory"):
+                    sync.sync_library(parent / self.output.name, API_KEY, opener=provider)
+            with patch.object(Path, "is_dir", side_effect=PermissionError), self.assertRaisesRegex(
+                    sync.SteamSyncError, "Catalog output requires an accessible directory"):
+                sync.sync_library(self.output, API_KEY, opener=provider)
+        browser.assert_not_called()
+        self.assertEqual(provider.requests, [])
+        self.assertFalse(missing.exists())
+        self.assertEqual(regular_file.read_bytes(), b"original")
+
+    def test_cli_rejects_output_directory_before_sign_in(self):
+        self.output.mkdir()
+        existing = self.output / "keep.txt"
+        existing.write_bytes(b"original")
+        provider = FakeSteam()
+        with patch.dict(os.environ, {sync.KEY_ENV: API_KEY}), redirect_stderr(StringIO()) as stderr:
+            with patch.object(sync, "build_opener", return_value=provider), patch.object(
+                    sync.webbrowser, "open", return_value=False) as browser:
+                self.assertEqual(sync.main(["--output", str(self.output), "--timeout", "2"]), 1)
+        self.assertEqual(stderr.getvalue(), "Catalog output must be a file path.\n")
+        browser.assert_not_called()
+        self.assertEqual(provider.requests, [])
+        self.assertEqual(existing.read_bytes(), b"original")
+
     def test_failed_atomic_replace_preserves_output_and_cleans_stage(self):
         self.output.write_bytes(b"prior snapshot")
-        with patch("exodus.steam_sync.os.replace", side_effect=PermissionError), self.assertRaisesRegex(
+        with patch("exodus.steam_catalog.os.replace", side_effect=PermissionError), self.assertRaisesRegex(
                 sync.SteamSyncError, "previous output was preserved"):
             sync.save_catalog(self.output, [steam_entry("10", "Test")])
         self.assertEqual(self.output.read_bytes(), b"prior snapshot")

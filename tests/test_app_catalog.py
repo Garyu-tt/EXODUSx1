@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import stat
 import struct
 import subprocess
 import sys
@@ -22,7 +23,7 @@ def pack_titles(nacp, titles):
     nacp[0x3215] = 1
 
 
-def nro_image(title=None, *, locale=0, compressed=False):
+def nro_image(title=None, *, locale=0, compressed=False, invalid_first_title=False):
     code = bytearray(0x100)
     struct.pack_into("<4sII", code, 0x10, b"NRO0", 0, len(code))
     if title is None:
@@ -34,6 +35,8 @@ def nro_image(title=None, *, locale=0, compressed=False):
     start = locale * 0x300
     titles[start:start + len(name)] = name
     titles[start + 0x200:start + 0x206] = b"Author"
+    if invalid_first_title:
+        titles[0] = 0xFF
     if compressed:
         pack_titles(nacp, titles)
     else:
@@ -101,6 +104,101 @@ class AppCatalogTests(unittest.TestCase):
         self.assertNotIn(self.root.name, result.stdout)
         self.assertNotIn("Author", result.stdout)
 
+    def test_file_output_matches_mixed_stdout_and_keeps_readable_partial_rows(self):
+        self.add_steam_manifest()
+        self.add_nro("Tools.nro", nro_image("Local tools"))
+        args = ("--steam-library", self.steam, "--switch-sd", self.sd)
+        streamed = self.run_catalog(*args)
+        self.assertEqual((streamed.returncode, streamed.stderr), (0, ""))
+        self.assertEqual(
+            [(entry["provider"], entry["provider_id"]) for entry in json.loads(streamed.stdout)["entries"]],
+            [("steam", "42"), ("switch_homebrew", "Tools.nro")],
+        )
+        expected = streamed.stdout.encode("ascii")
+        output = self.root / "selected catalog.json"
+        output.write_bytes(b"previous snapshot")
+        result = self.run_catalog(*args, "--output", output)
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+        self.assertEqual(output.read_bytes(), expected)
+
+        self.add_nro("Broken.nro", b"NRO0")
+        output.write_bytes(b"previous snapshot")
+        partial = self.run_catalog(*args, "--output", output)
+        self.assertEqual((partial.returncode, partial.stdout), (1, ""))
+        self.assertIn("Broken.nro", partial.stderr)
+        self.assertEqual(output.read_bytes(), expected)
+
+    def test_size_error_preserves_existing_catalog_file(self):
+        title = "界" * 360000
+        (self.steam / "appmanifest_42.acf").write_text(
+            f'AppState {{ appid 42 name "{title}" }}', encoding="utf-8",
+        )
+        self.add_nro("Tools.nro", nro_image("Local tools"))
+        output = self.root / "catalog.json"
+        previous = b'{"schema_version":1,"entries":[]}\n'
+        output.write_bytes(previous)
+        result = self.run_catalog("--steam-library", self.steam, "--switch-sd", self.sd,
+                                  "--output", output)
+        self.assertEqual((result.returncode, result.stdout), (1, ""))
+        self.assertIn("HOME catalog size limit", result.stderr)
+        self.assertEqual(output.read_bytes(), previous)
+        self.assertEqual(list(self.root.glob(".exodus-catalog-*")), [])
+
+    def test_publish_failure_keeps_destination_and_cleans_stage(self):
+        self.add_nro("Tools.nro", nro_image("Local tools"))
+        output = self.root / "catalog.json"
+        output.mkdir()
+        result = self.run_catalog("--switch-sd", self.sd, "--output", output)
+        self.assertEqual((result.returncode, result.stdout), (1, ""))
+        self.assertIn("Could not write the catalog. The previous output was preserved.", result.stderr)
+        self.assertTrue(output.is_dir())
+        self.assertEqual(list(self.root.glob(".exodus-catalog-*")), [])
+
+    @unittest.skipUnless(os.name == "nt", "requires a Windows directory junction")
+    def test_windows_junction_does_not_duplicate_homebrew(self):
+        self.add_nro("Original/Helper.nro", nro_image("Local helper"))
+        switch_root = self.switch.resolve(strict=True)
+        original = switch_root / "Original"
+        mirror = switch_root / "Mirror"
+
+        def remove_junction():
+            try:
+                info = mirror.lstat()
+            except FileNotFoundError:
+                return
+            self.assertEqual(info.st_reparse_tag, stat.IO_REPARSE_TAG_MOUNT_POINT)
+            self.assertEqual(mirror.parent.resolve(strict=True), switch_root)
+            self.assertEqual(mirror.resolve(strict=True), original)
+            mirror.rmdir()
+
+        self.addCleanup(remove_junction)
+        environment = {
+            **os.environ,
+            "EXODUS_TEST_JUNCTION_PATH": str(mirror),
+            "EXODUS_TEST_JUNCTION_TARGET": str(original),
+        }
+        try:
+            created = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                 "$ErrorActionPreference = 'Stop'; "
+                 "New-Item -ItemType Junction -Path $env:EXODUS_TEST_JUNCTION_PATH "
+                 "-Target $env:EXODUS_TEST_JUNCTION_TARGET | Out-Null"],
+                env=environment, capture_output=True,
+            )
+        except FileNotFoundError:
+            self.skipTest("Windows PowerShell is unavailable")
+        if created.returncode:
+            self.skipTest("Windows directory junction unavailable: " + created.stderr.decode(errors="replace"))
+        self.assertEqual(mirror.lstat().st_reparse_tag, stat.IO_REPARSE_TAG_MOUNT_POINT)
+        self.assertTrue((mirror / "Helper.nro").samefile(original / "Helper.nro"))
+
+        result = self.run_catalog("--switch-sd", self.sd)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(
+            [item["provider_id"] for item in json.loads(result.stdout)["entries"]],
+            ["Original/Helper.nro"],
+        )
+
     def test_homebrew_filename_fallback_when_no_embedded_title_is_available(self):
         self.add_nro("Blank title.nro", nro_image(""))
         self.add_nro("No assets.nro", nro_image())
@@ -113,6 +211,24 @@ class AppCatalogTests(unittest.TestCase):
             ["Blank title", "No NACP", "No assets"],
         )
 
+    def test_steam_install_discovery_combines_with_homebrew_and_preserves_partial_results(self):
+        self.add_steam_manifest()
+        self.add_nro("Tools.nro", nro_image("Local tools"))
+        config = self.steam / "libraryfolders.vdf"
+        config.write_text("LibraryFolders {}", encoding="utf-8")
+        result = self.run_catalog("--steam-install", self.steam.parent, "--switch-sd", self.sd)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(
+            [(item["provider"], item["provider_id"]) for item in json.loads(result.stdout)["entries"]],
+            [("steam", "42"), ("switch_homebrew", "Tools.nro")],
+        )
+
+        config.unlink()
+        partial = self.run_catalog("--steam-install", self.steam.parent, "--switch-sd", self.sd)
+        self.assertEqual(partial.returncode, 1)
+        self.assertEqual(json.loads(partial.stdout), json.loads(result.stdout))
+        self.assertIn("libraryfolders.vdf", partial.stderr)
+
     def test_reads_compressed_nacp_title_in_extended_language_slot(self):
         self.add_nro("Compressed.nro", nro_image("拡張タイトル", locale=23, compressed=True))
         result = self.run_catalog("--switch-sd", self.sd)
@@ -120,6 +236,18 @@ class AppCatalogTests(unittest.TestCase):
         self.assertEqual(
             [item["name"] for item in json.loads(result.stdout)["entries"]],
             ["拡張タイトル"],
+        )
+
+    def test_reads_later_valid_titles_after_invalid_first_locale(self):
+        self.add_nro("Inline.nro", nro_image("Приклад", locale=6, invalid_first_title=True))
+        self.add_nro("Compressed.nro", nro_image(
+            "拡張タイトル", locale=23, compressed=True, invalid_first_title=True,
+        ))
+        result = self.run_catalog("--switch-sd", self.sd)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(
+            [(item["provider_id"], item["name"]) for item in json.loads(result.stdout)["entries"]],
+            [("Compressed.nro", "拡張タイトル"), ("Inline.nro", "Приклад")],
         )
 
     def test_malformed_nros_report_partial_success_without_hiding_other_entries(self):

@@ -5,14 +5,13 @@ from concurrent.futures import Future
 from datetime import datetime, timezone
 from http.client import HTTPException
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from io import StringIO
 import json
 import os
 from pathlib import Path
 import re
 import secrets
+from stat import S_ISDIR
 import sys
-from tempfile import NamedTemporaryFile
 from threading import Thread
 import time
 from urllib.error import HTTPError
@@ -20,7 +19,14 @@ from urllib.parse import parse_qsl, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import webbrowser
 
-from .steam_catalog import steam_entry, write_catalog
+from .steam_catalog import (
+    CatalogLimitError,
+    CatalogOutputError,
+    MAX_CATALOG_BYTES,
+    MAX_CATALOG_ENTRIES,
+    steam_entry,
+    write_catalog_file,
+)
 
 
 OPENID_PROVIDER = "https://steamcommunity.com/openid/login"
@@ -30,8 +36,6 @@ STEAM_ID = re.compile(r"https?://steamcommunity\.com/openid/id/([1-9][0-9]{0,19}
 KEY_ENV = "STEAM_WEB_API_KEY"
 MAX_CALLBACK_BYTES = 8192
 MAX_ASSERTION_AGE = 300
-MAX_CATALOG_BYTES = 2 * 1024 * 1024
-MAX_CATALOG_ENTRIES = 4096
 REQUIRED_SIGNATURE_FIELDS = {
     "op_endpoint", "claimed_id", "identity", "return_to", "response_nonce", "assoc_handle",
 }
@@ -333,31 +337,10 @@ def read_base_catalog(path):
 
 
 def save_catalog(path, entries):
-    if len(entries) > MAX_CATALOG_ENTRIES:
-        raise SteamSyncError("Combined library exceeds the HOME catalog entry limit.")
-    stream = StringIO()
-    write_catalog(entries, stream)
-    data = stream.getvalue().encode("ascii")
-    if len(data) > MAX_CATALOG_BYTES:
-        raise SteamSyncError("Combined library exceeds the HOME catalog size limit.")
-
-    staged = None
     try:
-        with NamedTemporaryFile(dir=path.parent, prefix=".exodus-catalog-", delete=False) as file:
-            staged = Path(file.name)
-            file.write(data)
-            file.flush()
-            os.fsync(file.fileno())
-        os.replace(staged, path)
-        staged = None
-    except OSError:
-        raise SteamSyncError("Could not write the catalog. The previous output was preserved.") from None
-    finally:
-        if staged is not None:
-            try:
-                staged.unlink(missing_ok=True)
-            except OSError:
-                pass
+        write_catalog_file(path, entries)
+    except (CatalogLimitError, CatalogOutputError) as exc:
+        raise SteamSyncError(str(exc)) from None
 
 
 def sync_library(output, key, *, base_catalog=None, timeout=180, open_browser=None, opener=None):
@@ -366,6 +349,19 @@ def sync_library(output, key, *, base_catalog=None, timeout=180, open_browser=No
     if opener is None:
         opener = build_opener(NoSteamRedirect)
     previous = read_base_catalog(base_catalog) if base_catalog is not None else []
+    try:
+        output_parent_is_directory = output.parent.is_dir()
+    except OSError:
+        output_parent_is_directory = False
+    if not output_parent_is_directory:
+        raise SteamSyncError("Catalog output requires an accessible directory.")
+    # Inspect the directory entry itself because atomic replacement uses the supplied path.
+    try:
+        output_is_directory = S_ISDIR(output.lstat().st_mode)
+    except OSError:
+        output_is_directory = False
+    if output_is_directory:
+        raise SteamSyncError("Catalog output must be a file path.")
     steam_id = sign_in(opener, open_browser or webbrowser.open, timeout)
     steam = fetch_library(opener, key, steam_id)
     save_catalog(output, steam + previous)

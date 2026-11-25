@@ -3,11 +3,18 @@
 import argparse
 import os
 from pathlib import Path
+import stat
 import struct
 import sys
 import zlib
 
-from .steam_catalog import scan_libraries, write_catalog
+from .steam_catalog import (
+    CatalogLimitError,
+    CatalogOutputError,
+    scan_libraries,
+    write_catalog,
+    write_catalog_file,
+)
 
 
 # Layouts from libnx's switch/nro.h and switch/nacp.h.
@@ -74,12 +81,27 @@ def homebrew_name(path):
             raise ValueError("truncated NACP section")
 
     titles = title_table(nacp)
+    decode_error = None
     for start in range(0, len(titles), NACP_LANGUAGE_SIZE):
         raw_name = titles[start:start + NACP_NAME_SIZE].split(b"\0", 1)[0]
-        name = raw_name.decode("utf-8").strip()
+        try:
+            name = raw_name.decode("utf-8").strip()
+        except UnicodeDecodeError as exc:
+            if decode_error is None:
+                decode_error = exc
+            continue
         if name:
             return name
+    if decode_error is not None:
+        raise decode_error
     return path.stem
+
+
+def _is_windows_junction(path):
+    try:
+        return path.lstat().st_reparse_tag == stat.IO_REPARSE_TAG_MOUNT_POINT
+    except OSError:
+        return False
 
 
 def scan_homebrew(sd_root):
@@ -93,9 +115,13 @@ def scan_homebrew(sd_root):
         errors = True
 
     for directory, subdirs, files in os.walk(switch_dir, onerror=report_error):
+        folder = Path(directory)
+        if os.name == "nt":
+            # The Windows walk can enter junctions with followlinks disabled.
+            subdirs[:] = [name for name in subdirs if not _is_windows_junction(folder / name)]
         subdirs.sort()
         for filename in sorted(files):
-            path = Path(directory) / filename
+            path = folder / filename
             if path.suffix.lower() != ".nro":
                 continue
             try:
@@ -131,15 +157,27 @@ def main():
     )
     parser.add_argument("--steam-library", metavar="LIBRARY", type=Path, action="append", default=[],
                         help="Steam library root or steamapps directory. May be repeated.")
+    parser.add_argument("--steam-install", metavar="ROOT", type=Path, action="append", default=[],
+                        help="Steam installation root whose libraryfolders.vdf lists libraries to scan. May be repeated.")
     parser.add_argument("--switch-sd", metavar="ROOT", type=Path,
                         help="Mounted Switch SD card root containing the switch directory.")
+    parser.add_argument("--output", metavar="FILE", type=Path,
+                        help="Write the catalog directly to FILE. Defaults to stdout.")
     args = parser.parse_args()
-    if not args.steam_library and args.switch_sd is None:
-        parser.error("supply at least one --steam-library or --switch-sd")
+    if not args.steam_library and not args.steam_install and args.switch_sd is None:
+        parser.error("supply at least one --steam-library, --steam-install or --switch-sd")
 
-    steam, steam_errors = scan_libraries(args.steam_library)
+    steam, steam_errors = scan_libraries(args.steam_library, steam_installs=args.steam_install)
     homebrew, homebrew_errors = scan_homebrew(args.switch_sd) if args.switch_sd else ([], False)
-    write_catalog(steam + homebrew)
+    entries = steam + homebrew
+    try:
+        if args.output is None:
+            write_catalog(entries)
+        else:
+            write_catalog_file(args.output, entries)
+    except (CatalogLimitError, CatalogOutputError) as exc:
+        print(exc, file=sys.stderr)
+        return 1
     return int(steam_errors or homebrew_errors)
 
 
