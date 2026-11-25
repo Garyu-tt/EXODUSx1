@@ -72,9 +72,16 @@ tmr_map_attach(device_t dev)
     struct tmr_map_softc *sc = device_get_softc(dev);
     struct resource_map_request req;
     int error;
-    /* Do not accept an arbitrary physical region even from a malformed FDT. */
+    rman_res_t start, count;
+    /* Validate the declared resource before reserving or mapping it. */
     sc->rid = 0;
-    sc->res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->rid, 0);
+    error = bus_get_resource(dev, SYS_RES_MEMORY, sc->rid, &start, &count);
+    if (error != 0)
+        return (error);
+    if (start != TMR_BASE || count != TMR_SIZE)
+        return (EINVAL);
+    sc->res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->rid,
+        RF_ACTIVE | RF_UNMAPPED);
     if (sc->res == NULL)
         return (ENXIO);
     if (rman_get_start(sc->res) != TMR_BASE ||
@@ -82,13 +89,6 @@ tmr_map_attach(device_t dev)
         (void)tmr_map_detach(dev);
         return (EINVAL);
     }
-    (void)tmr_map_detach(dev);
-    /* Deliberately reserve without a default Device-memory mapping. */
-    sc->rid = 0;
-    sc->res = bus_alloc_resource(dev, SYS_RES_MEMORY, &sc->rid,
-        TMR_BASE, TMR_BASE + TMR_SIZE - 1, TMR_SIZE, RF_ACTIVE | RF_UNMAPPED);
-    if (sc->res == NULL)
-        return (ENXIO);
     resource_init_map_request(&req);
     req.memattr = VM_MEMATTR_WRITE_BACK;
     req.length = TMR_SIZE;

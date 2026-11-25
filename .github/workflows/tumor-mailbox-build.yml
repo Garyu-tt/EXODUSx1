@@ -1,0 +1,28 @@
+name: Tumor mailbox native compile
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/tumor_mailbox/**'
+      - '.github/workflows/tumor-mailbox-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-module:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
+      - run: |
+          sh -n exodus/frankenstein/tumor_mailbox/guest-build.sh
+          sh -n exodus/frankenstein/tumor_mailbox/run-build.sh
+          sh exodus/frankenstein/tumor_mailbox/run-build.sh "$RUNNER_TEMP/mailbox-build"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mailbox-native-build-evidence
+          path: ${{ runner.temp }}/mailbox-build/
+          if-no-files-found: warn
