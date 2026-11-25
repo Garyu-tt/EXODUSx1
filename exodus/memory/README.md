@@ -36,6 +36,8 @@ Restore directly by index with `exodus_page_store_restore` and a separate writab
 
 Link `page_snapshot.c` and `page_codec.c` to retain successive versions of a 4096-byte page. Supply an immutable reference you already retain, such as a checkpointed RAM page or the previous CPU-readable RGBA staging page. The encoder compares adaptive compression of the new bytes with adaptive compression of their bytewise XOR and includes all frame overhead in the choice. Equal sizes select the standalone frame.
 
+Run `make`, then `./page_snapshot_probe previous.bin current.bin` on two equal-length binary snapshots. It reconstructs and verifies each complete current page. The JSON reports the standalone and selected frame totals, including the raw trailing fragment. `retained_reference_bytes` counts one full reference page per relative frame. `selected_plus_reference_bytes` includes that cost when the caller retains those pages solely for this snapshot. If the checkpoint already exists independently, `selected_frame_bytes` is the incremental payload cost.
+
 ```c
 uint8_t frame[EXODUS_SNAPSHOT_MAX_BYTES];
 size_t size = exodus_snapshot_encode(current_page, previous_page, frame);
