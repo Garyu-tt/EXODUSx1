@@ -9,6 +9,9 @@ on:
       - 'exodus/frankenstein/ipc_native.c'
       - 'exodus/frankenstein/el_probe.S'
       - 'exodus/frankenstein/el_probe.ld'
+      - 'exodus/frankenstein/bao_guest.S'
+      - 'exodus/frankenstein/bao_guest.ld'
+      - 'exodus/frankenstein/bao_reference.c'
       - 'exodus/frankenstein/test_ipc_process.py'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/test_sessiond.py'
@@ -73,3 +76,37 @@ jobs:
             test "$(grep -c '^TUMOR_REF:' "/tmp/el-$mode.log")" -eq 1
             grep -qx "TUMOR_REF: $expected" "/tmp/el-$mode.log"
           done
+
+  bao-reference-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install isolated cross toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu clang lld
+      - name: Build synthetic guests and pinned Bao reference
+        run: |
+          set -eu
+          src="$GITHUB_WORKSPACE/exodus/frankenstein"
+          out="$(mktemp -d /tmp/tumor-bao.XXXXXX)"
+          mkdir "$out/config"
+          cp "$src/bao_reference.c" "$out/config/tumor.c"
+          for role in A B; do
+            clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DGUEST_$role -c "$src/bao_guest.S" -o "$out/guest-$role.o"
+            ld.lld --no-undefined -T "$src/bao_guest.ld" "$out/guest-$role.o" -o "$out/guest-$role.elf"
+            ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/guest-$role.o" -o "$out/guest-$role.bin"
+            test -z "$(nm -u "$out/guest-$role.elf")"
+          done
+          git init "$out/bao"
+          git -C "$out/bao" remote add origin https://github.com/bao-project/bao-hypervisor.git
+          git -C "$out/bao" fetch --depth=1 origin 0af4a1ab558ad60c9658af4f43756c4536dd3141
+          git -C "$out/bao" checkout --detach FETCH_HEAD
+          test "$(git -C "$out/bao" rev-parse HEAD)" = 0af4a1ab558ad60c9658af4f43756c4536dd3141
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor CPPFLAGS="-DTUMOR_IMAGES=$out"
+          elf="$out/bao/bin/qemu-aarch64-virt/tumor/bao.elf"
+          test -s "$elf"
+          readelf -h "$elf" | grep AArch64
+          sha256sum "$elf" "$out/bao/bin/qemu-aarch64-virt/tumor/bao.bin"
+          echo "Reference build only: no runtime or hardware admission"
