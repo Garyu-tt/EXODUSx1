@@ -44,8 +44,12 @@ class CorkdeckHostBuildTests(unittest.TestCase):
             (shell / "settings_preview.c").write_text(
                 "#include <fixture.h>\nint measured(void) { return dependency() - 7; }\n", encoding="utf-8",
             )
+            (catalog / "catalog_refresh.cpp").write_text(
+                "int refresh_fixture() { return 11; }\n", encoding="utf-8",
+            )
             (shell / "library_catalog.cpp").write_text(
-                'extern "C" int measured(void);\nint main() { return measured(); }\n', encoding="utf-8",
+                'extern "C" int measured(void);\nint refresh_fixture();\n'
+                'int main() { return measured() || refresh_fixture() != 11; }\n', encoding="utf-8",
             )
             (include / "fixture.h").write_text("int dependency(void);\n", encoding="utf-8")
             dependency = root / "dependency.c"
