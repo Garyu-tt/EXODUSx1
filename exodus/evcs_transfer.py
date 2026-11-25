@@ -57,6 +57,13 @@ def sync_dir(path):
             os.close(fd)
 
 
+def sync_file(path):
+    # Resumed bytes can be readable even when their earlier fsync failed.
+    # Use a writable, non-truncating handle for Windows' flush operation.
+    with path.open('r+b') as stream:
+        os.fsync(stream.fileno())
+
+
 def publish(source, dest):
     # Never silently substitute POSIX rename(), which can overwrite a file.
     if os.name == 'nt':
@@ -112,6 +119,7 @@ def transfer(source, games, fat32=False, resume=False):
             raise ValueError('staging exists; explicit --resume required')
         if not staging_file(meta) or regular(meta).st_size > 65536 or json.loads(meta.read_text(encoding='utf-8')) != journal:
             raise ValueError('staging journal mismatch; no changes made')
+        sync_file(meta)
     else:
         if report['status'] != 'copy_preflight_ok':
             raise ValueError(report['status'])
@@ -151,6 +159,7 @@ def transfer(source, games, fat32=False, resume=False):
             if not resume or not staging_file(dst):
                 raise ValueError('unexpected staging file')
             if dst.stat().st_size and digest(dst) == expected:
+                sync_file(dst)
                 continue
             dst.unlink()
         if fingerprint(regular(src_part)) != original:

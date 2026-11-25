@@ -21,6 +21,9 @@ Explicit resume requires the exact same source/destination, source
 fingerprints and hashes. Verified staged parts are reused, incomplete
 journal-bound regular files are recopied. A matching already-published
 destination can be verified after interruption. The journal is retained.
+Resume retries file fsync for the validated journal and every reused staged
+payload before publication. Readable matching bytes alone do not prove that
+an earlier flush completed; a repeated fsync failure stops the transaction.
 An incomplete or mismatched journal stops safely; inspect it manually.
 Indirect staging directories, reparse points, and multiply linked staging
 files are rejected. Preflight refusal returns exit 1 without copying.
