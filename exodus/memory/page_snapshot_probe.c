@@ -1,11 +1,26 @@
+#if defined(_WIN32) && !defined(__CYGWIN__) && !defined(__MSYS__)
+#define SNAPSHOT_PROBE_NATIVE_WINDOWS 1
+#elif !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "page_snapshot.h"
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#if defined(SNAPSHOT_PROBE_NATIVE_WINDOWS)
+#include <io.h>
+#include <wchar.h>
 #if defined(_MSC_VER)
 #include <share.h>
+#endif
+#else
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 struct measurement {
@@ -53,24 +68,56 @@ static bool measure(FILE *base_file, FILE *current_file, struct measurement *res
     }
 }
 
-#if defined(_WIN32) && !defined(__CYGWIN__) && !defined(__MSYS__)
-#include <wchar.h>
+#if defined(SNAPSHOT_PROBE_NATIVE_WINDOWS)
 typedef wchar_t path_char;
 #define PROBE_MAIN wmain
 static FILE *open_input(const path_char *path)
 {
 #if defined(_MSC_VER)
-    return _wfsopen(path, L"rb", _SH_DENYNO);
+    FILE *input = _wfsopen(path, L"rb", _SH_DENYNO);
 #else
-    return _wfopen(path, L"rb");
+    FILE *input = _wfopen(path, L"rb");
 #endif
+    if (!input)
+        return NULL;
+
+    struct _stat64 info;
+    if (_fstat64(_fileno(input), &info) == 0) {
+        if ((info.st_mode & _S_IFMT) == _S_IFREG)
+            return input;
+        errno = EINVAL;
+    }
+
+    const int error = errno;
+    fclose(input);
+    errno = error;
+    return NULL;
 }
 #else
 typedef char path_char;
 #define PROBE_MAIN main
 static FILE *open_input(const path_char *path)
 {
-    return fopen(path, "rb");
+    /* Inspect a writerless FIFO without blocking while opening it. */
+    int fd = open(path, O_RDONLY | O_NONBLOCK);
+    if (fd < 0)
+        return NULL;
+
+    struct stat info;
+    if (fstat(fd, &info) == 0) {
+        if (S_ISREG(info.st_mode)) {
+            FILE *input = fdopen(fd, "rb");
+            if (input)
+                return input;
+        } else {
+            errno = EINVAL;
+        }
+    }
+
+    const int error = errno;
+    close(fd);
+    errno = error;
+    return NULL;
 }
 #endif
 
@@ -82,11 +129,13 @@ int PROBE_MAIN(int argc, path_char **argv)
     }
     FILE *base = open_input(argv[1]);
     if (!base) {
+        fputs("A readable regular snapshot file is required.\n", stderr);
         perror("Reference snapshot");
         return EXIT_FAILURE;
     }
     FILE *current = open_input(argv[2]);
     if (!current) {
+        fputs("A readable regular snapshot file is required.\n", stderr);
         perror("Current snapshot");
         fclose(base);
         return EXIT_FAILURE;
