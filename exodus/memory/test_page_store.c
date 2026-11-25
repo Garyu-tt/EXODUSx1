@@ -70,14 +70,20 @@ static void check_exact_adaptive_capacity(void)
 
 static void check_mixed_store(void)
 {
-    enum { PAGE_COUNT = 5, PAYLOAD_BYTES = 8 + 72 + WORD_RUN_BYTES + 2 * EXODUS_PAGE_BYTES };
+    enum {
+        PAGE_COUNT = 7,
+        PAYLOAD_BYTES = 8 + 72 + WORD_RUN_BYTES + 2 * EXODUS_PAGE_BYTES + 9 + 17
+    };
     uint8_t pages[PAGE_COUNT][EXODUS_PAGE_BYTES] = {{0}};
     for (size_t i = 0; i < 64; ++i)
         pages[1][i] = (uint8_t)(i + 1);
     fill_pixel_page(pages[2]);
     fill_pixel_page(pages[3]);
-    for (size_t i = 0; i < EXODUS_PAGE_BYTES; ++i)
+    for (size_t i = 0; i < EXODUS_PAGE_BYTES; ++i) {
         pages[4][i] = (uint8_t)i;
+        pages[5][i] = (uint8_t)(1 + i % 8);
+        pages[6][i] = (uint8_t)(1 + i % 16);
+    }
 
     uint8_t payload[PAYLOAD_BYTES + 2];
     memset(payload, 0xa3, sizeof(payload));
@@ -90,7 +96,7 @@ static void check_mixed_store(void)
         .page_ends = ends,
         .page_capacity = PAGE_COUNT
     };
-    const size_t sizes[] = {8, 72, WORD_RUN_BYTES, EXODUS_PAGE_BYTES, EXODUS_PAGE_BYTES};
+    const size_t sizes[] = {8, 72, WORD_RUN_BYTES, EXODUS_PAGE_BYTES, EXODUS_PAGE_BYTES, 9, 17};
     size_t used = 0;
     for (size_t i = 0; i < PAGE_COUNT; ++i) {
         CHECK(i == 3 ? exodus_page_store_append(&store, pages[i])

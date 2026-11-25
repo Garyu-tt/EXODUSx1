@@ -1,6 +1,6 @@
 # EX-005 memory page compression
 
-Use this C99 codec to store cold 4096-byte pages in smaller buffers when they contain aligned regions of zeros or runs of identical four-byte words. A solid RGBA staging page uses 41 payload bytes. Pass regular CPU-readable memory or a caller-owned CPU staging copy. The caller controls page lifetime, GPU transfer and synchronization.
+Use this C99 codec to store cold 4096-byte pages in smaller buffers when they contain aligned regions of zeros runs of identical four-byte words, or full-page repeating 8- or 16-byte texels. A solid RGBA8 staging page uses 41 payload bytes. Repeated wide texels can use 9 or 17 bytes. Pass regular CPU-readable memory or a caller-owned CPU staging copy. The caller controls page lifetime, GPU transfer and synchronization.
 
 ## Build and measure
 
@@ -8,15 +8,18 @@ From this directory, run `make` and then `./page_probe path/to/sample.bin`.
 The host probe accepts regular sample files, including empty files and links to regular files. It rejects devices, directories and named pipes.
 To run the C and Python 3 tests, use `make check`. On Windows with MSYS, set `EXEEXT=.exe`. You can compile `page_codec.c` directly into a target application using its C toolchain. The codec uses only the C standard library.
 
-The probe reads a binary sample one page at a time, reconstructs every full page, and checks each byte before reporting JSON. `sparse_pages` and `word_run_pages` count the pages encoded in each compressed format. `payload_bytes` includes format overhead and raw fallback pages. A final partial page is counted at its original size. Add `length_index_bytes` to estimate storage with a two-byte length per full page. Actual resident memory also depends on allocation strategy, offsets and staging buffers.
+The probe reads a binary sample one page at a time, reconstructs every full page, and checks each byte before reporting JSON. `sparse_pages`, `word_run_pages` and `repeated_tile_pages` count the pages encoded in each compressed format. `payload_bytes` includes format overhead and raw fallback pages. A final partial page is counted at its original size. Add `length_index_bytes` to estimate storage with a two-byte length per full page. Actual resident memory also depends on allocation strategy, offsets and staging buffers.
 
 To run the same verification on Nintendo Switch, build the [hbmenu probe](switch/README.md). It includes generated sample pages and can scan a binary file from the SD card.
 
 ## Adaptive encoding
 
-Call `exodus_page_encode_adaptive(page, scratch)` to select word runs when their payload is smaller than the original sparse or raw representation. It uses the same buffers as the legacy encoder below. Decode adaptive output with the current `exodus_page_decode`.
+Call `exodus_page_encode_adaptive(page, scratch)` to try a repeated tile or word runs when their payload is smaller than the original sparse or raw representation. It uses the same buffers as the legacy encoder below. Decode adaptive output with the current `exodus_page_decode`.
 
-Odd payload lengths select the word-run format. The first byte is version `1`. Each command byte stores the word count minus one in its low seven bits. A clear high bit means the next `count × 4` bytes are literal. A set high bit means the next four bytes repeat at least twice. Words stay in their original byte order on every target. After the 1024th word, a single zero byte pads an even payload length to odd. The decoder validates the entire stream before modifying the destination.
+Odd payload lengths select an adaptive format. The first byte identifies the encoding.
+
+- Version `1` stores word runs. Each command byte stores the word count minus one in its low seven bits. A clear high bit means the next `count × 4` bytes are literal. A set high bit means the next four bytes repeat at least twice. Words stay in their original byte order on every target. After the 1024th word, a single zero byte pads an even payload length to odd. The decoder validates the entire stream before modifying the destination.
+- Version `2` stores one 8- or 16-byte tile repeated until the page is full. Its only valid payload lengths are 9 and 17 bytes, including the version byte. The encoder checks the complete page and keeps existing 4-byte fills in version `1`. Version `2` records require the updated decoder.
 
 ## API and format
 
@@ -28,7 +31,7 @@ Sparse pages start with an eight-byte bitmap for 64 consecutive 64-byte blocks. 
 
 Link `page_store.c` and `page_codec.c` to append complete pages into a caller-owned payload buffer. Initialize an `exodus_page_store` with the buffer and its byte capacity, an array of `size_t` end offsets and its entry capacity, and zero counters. Each successful append assigns the next zero-based page index. If either buffer fills, the append returns false and keeps the existing pages intact. The caller can release the input page after a successful append.
 
-Use `exodus_page_store_append_adaptive(&store, page)` to retain the smallest of the codec's sparse, raw and word-run representations directly in the packed store. A solid RGBA page fits in a 41-byte payload buffer plus one `size_t` end offset. The capacity check uses the selected encoded length, so the store does not require 4096 free payload bytes for a compressible page. Encoding still uses a temporary 4096-byte stack buffer.
+Use `exodus_page_store_append_adaptive(&store, page)` to retain the adaptive encoder's output directly in the packed store. A solid RGBA8 page fits in a 41-byte payload buffer, and a page of identical wide texels can fit in 9 or 17 bytes. The store also needs one `size_t` end offset per page. The capacity check uses the selected encoded length. Encoding still uses a temporary 4096-byte stack buffer.
 
 The existing `exodus_page_store_append(&store, page)` keeps the legacy sparse/raw format. Both append functions can be used in the same store, and `exodus_page_store_restore` decodes each page by its recorded length. A failed append changes neither payload bytes, end offsets nor counters.
 

@@ -17,14 +17,20 @@ class ProbeTests(unittest.TestCase):
         sparse = bytes(range(1, 65)) + bytes(PAGE - 64)
         pixel_run = bytes.fromhex("44 77 aa ff") * (PAGE // 4)
         single_byte = b"x" + bytes(PAGE - 1)
-        for sample, pages, sparse_count, word_run_count, payload, tail in [
-            (b"", 0, 0, 0, 0, 0),
-            (b"abc", 0, 0, 0, 3, 3),
-            (bytes(PAGE), 1, 1, 0, 8, 0),
-            (dense, 1, 0, 0, PAGE, 0),
-            (single_byte, 1, 0, 1, 47, 0),
-            (bytes(PAGE) + sparse + dense + pixel_run + b"abc", 4, 2, 1, 8 + 72 + PAGE + 41 + 3, 3),
-            (sparse * 128 + pixel_run + b"end", 129, 128, 1, 128 * 72 + 41 + 3, 3),
+        tile8 = bytes(range(1, 9)) * (PAGE // 8)
+        tile16 = bytes(range(1, 17)) * (PAGE // 16)
+        for sample, pages, sparse_count, word_run_count, tile_count, payload, tail in [
+            (b"", 0, 0, 0, 0, 0, 0),
+            (b"abc", 0, 0, 0, 0, 3, 3),
+            (bytes(PAGE), 1, 1, 0, 0, 8, 0),
+            (dense, 1, 0, 0, 0, PAGE, 0),
+            (single_byte, 1, 0, 1, 0, 47, 0),
+            (tile8, 1, 0, 0, 1, 9, 0),
+            (tile16, 1, 0, 0, 1, 17, 0),
+            (bytes(PAGE) + sparse + dense + pixel_run + b"abc",
+             4, 2, 1, 0, 8 + 72 + PAGE + 41 + 3, 3),
+            (sparse * 128 + pixel_run + tile8 + tile16 + b"end",
+             131, 128, 1, 2, 128 * 72 + 41 + 9 + 17 + 3, 3),
         ]:
             with self.subTest(size=len(sample)), tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp) / "input with spaces.bin"
@@ -34,6 +40,7 @@ class ProbeTests(unittest.TestCase):
                     "pages": pages,
                     "sparse_pages": sparse_count,
                     "word_run_pages": word_run_count,
+                    "repeated_tile_pages": tile_count,
                     "input_bytes": len(sample),
                     "payload_bytes": payload,
                     "length_index_bytes": 2 * pages,

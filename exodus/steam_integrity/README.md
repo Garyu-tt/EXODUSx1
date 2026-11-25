@@ -12,6 +12,8 @@ python -m exodus.steam_integrity.reference --steamapps "D:/SteamLibrary/steamapp
 
 Keep the reported reference SHA-256 separately from the test SD. The checksum pins the exact reference you prepared. The export records the file state at that time, including local configuration files in the chosen directory. A later update or local file edit can change the result. The exporter creates a new `.files` document and leaves the game directory intact.
 
+Every selected source and output directory component must exist as a real directory. Parent components (`..`) are checked before normalization: an existing `directory/..` remains usable, while a missing component, regular file, symlink or Windows junction cannot be hidden by the following `..`.
+
 The exporter rejects sibling names that differ only by per-character case folding, including ASCII and Unicode aliases such as `Σ`/`σ`. It preserves character boundaries, so distinct names such as `Straße.dat` and `STRASSE.dat` can both be exported. This remains a conservative alias check, not a model of every destination filesystem's case table. Original UTF-8 path bytes, reference ordering and file hashes are preserved.
 
 ## Run the check

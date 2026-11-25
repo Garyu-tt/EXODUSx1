@@ -53,10 +53,12 @@ def _checked_type(path, is_type, expected):
 
 
 def _directory_path(path):
-    path = Path(os.path.abspath(path))
+    # Keep parent components until their prefixes have been checked. Collapsing
+    # "link/.." or "missing/.." first can select a different directory.
+    path = Path(path).absolute()
     for part in reversed((path, *path.parents)):
         _checked_type(part, stat.S_ISDIR, "directory")
-    return path
+    return Path(os.path.abspath(path))
 
 
 def _identity(info):

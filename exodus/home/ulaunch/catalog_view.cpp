@@ -13,7 +13,6 @@ namespace exodus::home {
     namespace {
 
         constexpr std::size_t ItemsPerPage = 6;
-        constexpr char CatalogPath[] = "sdmc:/ulaunch/exodus-catalog.json";
 
         std::string CatalogText(const char *key) {
             const auto &language = g_GlobalSettings.main_lang;
@@ -110,7 +109,7 @@ namespace exodus::home {
     }
 
     void ShowCatalog() {
-        const auto catalog = ReadRefreshedCatalog(CatalogPath, SteamSnapshotsPath);
+        const auto catalog = ReadRefreshedCatalog(HomeCatalogPath, SteamSnapshotsPath);
         const auto title = CatalogLabel();
         if (catalog.status != CatalogStatus::Ready || catalog.entries.empty()) {
             g_MenuApplication->DisplayDialog(

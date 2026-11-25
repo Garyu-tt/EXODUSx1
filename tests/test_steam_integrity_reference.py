@@ -1,6 +1,7 @@
 """Exercise trusted-library reference export without a Steam client."""
 
 import hashlib
+from contextlib import chdir
 import os
 from pathlib import Path
 import stat
@@ -50,6 +51,125 @@ class SteamIntegrityReferenceTests(unittest.TestCase):
 
     def export(self, output=None, app_id="42"):
         return reference.export_reference(self.steamapps, app_id, output or self.output)
+
+    def run_reference(self, steamapps, output):
+        return subprocess.run(
+            [sys.executable, "-B", "-X", "utf8", "-m", "exodus.steam_integrity.reference",
+             "--steamapps", str(steamapps), "--app-id", "42", "--output", str(output)],
+            cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8",
+        )
+
+    def test_parent_components_are_checked_before_source_or_output_normalization(self):
+        original = self.file("game.bin", b"trusted game bytes")
+        for location, directory in (("source", self.steamapps), ("output", self.root)):
+            (directory / "not-a-directory").write_bytes(b"ordinary file")
+            for component in ("missing", "not-a-directory"):
+                with self.subTest(location=location, component=component):
+                    selected = directory / component / ".."
+                    output = self.root / f"{location}-{component}.files"
+                    steamapps = selected if location == "source" else self.steamapps
+                    requested_output = selected / output.name if location == "output" else output
+                    result = self.run_reference(steamapps, requested_output)
+                    self.assertEqual((result.returncode, result.stdout), (1, ""))
+                    self.assertIn(component, result.stderr)
+                    self.assertNotIn("Traceback", result.stderr)
+                    self.assertFalse(output.exists())
+        self.assertEqual(original.read_bytes(), b"trusted game bytes")
+
+    def test_parent_paths_do_not_hide_directory_symlinks(self):
+        self.file("game.bin")
+        target = self.root / "elsewhere" / "child"
+        target.mkdir(parents=True)
+        linked = self.steamapps / "linked"
+        try:
+            linked.symlink_to(target, target_is_directory=True)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"creating symlinks unavailable: {exc}")
+        selected = linked / ".."
+        for location in ("source", "output"):
+            with self.subTest(location=location):
+                output = self.root / f"symlink-{location}.files"
+                requested_output = selected / output.name if location == "output" else output
+                result = self.run_reference(selected if location == "source" else self.steamapps,
+                                            requested_output)
+                self.assertEqual((result.returncode, result.stdout), (1, ""))
+                self.assertIn("without links or reparse points", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+                self.assertFalse(output.exists())
+                self.assertFalse((self.steamapps / output.name).exists())
+                self.assertFalse((target.parent / output.name).exists())
+
+    def test_existing_parent_traversal_preserves_relative_and_absolute_exports(self):
+        self.file("Данные/game.bin", b"trusted game bytes")
+        expected_pin = self.export(self.root / "baseline.files")
+        expected = (self.root / "baseline.files").read_bytes()
+        (self.steamapps / "parent space").mkdir()
+        destination = self.root / "Exports Ω"
+        (destination / "child").mkdir(parents=True)
+        variants = [(self.steamapps, destination), (Path("steamapps"), Path("Exports Ω"))]
+        if os.name == "nt":
+            # A drive-relative path must use that drive's current directory.
+            variants.append((Path(self.root.drive + "steamapps"), Path(self.root.drive + "Exports Ω")))
+        with chdir(self.root):
+            for index, (source, output_parent) in enumerate(variants):
+                with self.subTest(source=source, output_parent=output_parent):
+                    filename = f"valid-{index}.files"
+                    pin = reference.export_reference(source / "parent space" / "..", "42",
+                                                     output_parent / "child" / ".." / filename)
+                    self.assertEqual(pin, expected_pin)
+                    self.assertEqual((destination / filename).read_bytes(), expected)
+
+    @unittest.skipUnless(os.name == "nt", "requires a Windows directory junction")
+    def test_parent_paths_do_not_hide_windows_junctions(self):
+        self.file("game.bin")
+        target = self.root / "junction-target" / "child"
+        target.mkdir(parents=True)
+        junction = self.steamapps / "junction"
+
+        def remove_junction():
+            if not junction.exists():
+                return
+            self.assertEqual(junction.lstat().st_reparse_tag, stat.IO_REPARSE_TAG_MOUNT_POINT)
+            junction.rmdir()
+
+        self.addCleanup(remove_junction)
+        environment = {**os.environ, "EXODUS_TEST_JUNCTION_PATH": str(junction),
+                       "EXODUS_TEST_JUNCTION_TARGET": str(target)}
+        created = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+             "$ErrorActionPreference = 'Stop'; "
+             "New-Item -ItemType Junction -Path $env:EXODUS_TEST_JUNCTION_PATH "
+             "-Target $env:EXODUS_TEST_JUNCTION_TARGET | Out-Null"],
+            env=environment, capture_output=True, timeout=20,
+        )
+        self.assertEqual(created.returncode, 0, created.stderr.decode(errors="replace"))
+        self.assertEqual(junction.lstat().st_reparse_tag, stat.IO_REPARSE_TAG_MOUNT_POINT)
+        for location in ("source", "output"):
+            with self.subTest(location=location):
+                filename = f"junction-{location}.files"
+                selected = junction / ".."
+                output = selected / filename if location == "output" else self.root / filename
+                result = self.run_reference(selected if location == "source" else self.steamapps, output)
+                self.assertEqual((result.returncode, result.stdout), (1, ""))
+                self.assertIn("without links or reparse points", result.stderr)
+                self.assertFalse((self.root / filename).exists())
+                self.assertFalse((self.steamapps / filename).exists())
+                self.assertFalse((target.parent / filename).exists())
+
+    @unittest.skipUnless(os.name == "nt", "requires an accessible Windows UNC share")
+    def test_existing_parent_traversal_on_a_windows_unc_share(self):
+        if len(self.root.drive) != 2 or self.root.drive[1] != ":":
+            self.skipTest("the temporary directory is not on a drive-letter volume")
+        unc_root = Path("\\\\localhost\\" + self.root.drive[0] + "$", *self.root.parts[1:])
+        if not unc_root.is_dir():
+            self.skipTest("the existing local administrative UNC share is unavailable")
+        self.file("game.bin")
+        expected_pin = self.export(self.root / "baseline.files")
+        (self.steamapps / "child").mkdir()
+        pin = reference.export_reference(unc_root / "steamapps" / "child" / "..", "42",
+                                         unc_root / "steamapps" / ".." / "unc.files")
+        self.assertEqual(pin, expected_pin)
+        self.assertEqual((self.root / "unc.files").read_bytes(), (self.root / "baseline.files").read_bytes())
 
     def test_exact_bytes_are_sorted_and_app_bound(self):
         self.manifest(flags="6")
