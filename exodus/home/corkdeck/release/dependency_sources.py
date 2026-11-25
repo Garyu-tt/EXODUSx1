@@ -61,22 +61,42 @@ def check_file(path, entry):
         raise ValueError(f"Size or SHA-256 mismatch: {path}")
 
 
+def _is_link_or_reparse(path):
+    if path.is_symlink():
+        return True
+    try:
+        return bool(getattr(path.lstat(), "st_reparse_tag", 0))
+    except OSError:
+        return False
+
+
 def list_files(root):
-    if root.is_symlink() or not root.is_dir():
+    if _is_link_or_reparse(root) or not root.is_dir():
         raise ValueError(f"Expected a directory: {root}")
     files = {}
     seen = set()
-    for path in sorted(root.rglob("*")):
-        name = relative_path(path.relative_to(root).as_posix())
-        folded = name.as_posix().casefold()
-        if folded in seen:
-            raise ValueError(f"Case-insensitive path collision: {name}")
-        seen.add(folded)
-        if path.is_symlink() or (not path.is_file() and not path.is_dir()):
-            raise ValueError(f"Unsupported file type: {path}")
-        if path.is_file():
-            files[name.as_posix()] = path
-    return files
+    # Path.rglob follows Windows directory junctions even with ordinary symlink
+    # traversal disabled, so inspect each entry before adding a directory.
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        subdirectories = []
+        for path in sorted(directory.iterdir()):
+            name = relative_path(path.relative_to(root).as_posix())
+            folded = name.as_posix().casefold()
+            if folded in seen:
+                raise ValueError(f"Case-insensitive path collision: {name}")
+            seen.add(folded)
+            if _is_link_or_reparse(path):
+                raise ValueError(f"Unsupported file type: {path}")
+            if path.is_file():
+                files[name.as_posix()] = path
+            elif path.is_dir():
+                subdirectories.append(path)
+            else:
+                raise ValueError(f"Unsupported file type: {path}")
+        pending.extend(reversed(subdirectories))
+    return dict(sorted(files.items()))
 
 
 @contextlib.contextmanager
