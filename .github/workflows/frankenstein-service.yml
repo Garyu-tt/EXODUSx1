@@ -11,6 +11,7 @@ on:
       - 'exodus/frankenstein/el_probe.S'
       - 'exodus/frankenstein/el_probe.ld'
       - 'exodus/frankenstein/bao_guest.S'
+      - 'exodus/frankenstein/bao_mailbox_guest.S'
       - 'exodus/frankenstein/verify_bao_peer.py'
       - 'exodus/frankenstein/bao_guest.ld'
       - 'exodus/frankenstein/bao_reference.c'
@@ -150,6 +151,28 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF:' "$out/bao-boot.normalized")" -eq 1
           grep -ax 'TUMOR_BAO_REF: TWO_EL1_GUESTS_IPC' "$out/bao-boot.normalized"
           echo "QEMU reference IPC admission only; physical target and OS guests unverified"
+
+          # R35: separate synthetic stage-2 stress control. No OS or stage-1
+          # cacheability claim; preserve the original R25/R32 binaries.
+          mkdir "$out/mailbox-images"
+          for role in A B; do
+            clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DGUEST_$role -c "$src/bao_mailbox_guest.S" -o "$out/mailbox-images/guest-$role.o"
+            ld.lld --no-undefined -T "$src/bao_guest.ld" "$out/mailbox-images/guest-$role.o" -o "$out/mailbox-images/guest-$role.elf"
+            ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/mailbox-images/guest-$role.o" -o "$out/mailbox-images/guest-$role.bin"
+            test -z "$(nm -u "$out/mailbox-images/guest-$role.elf")"
+          done
+          cp "$src/bao_reference.c" "$out/config/tumor_mailbox.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_mailbox CPPFLAGS="-DTUMOR_IMAGES=$out/mailbox-images"
+          mailbox_bao="$out/bao/bin/qemu-aarch64-virt/tumor_mailbox/bao.bin"
+          test -s "$mailbox_bao"
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$mailbox_bao,addr=0x50000000,force-raw=on" > "$out/bao-mailbox.log" 2>&1 || rc=$?
+          cat "$out/bao-mailbox.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-mailbox.log" > "$out/bao-mailbox.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF:' "$out/bao-mailbox.normalized")" -eq 1
+          grep -ax 'TUMOR_BAO_REF: STAGE2_MAILBOX_256_EACH' "$out/bao-mailbox.normalized"
+
 
           # R26: same reference firmware, real release FreeBSD guest, no root disk.
           # Archive and ELF are independently pinned; no physical boot payload.
