@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "shell_menu.h"
 #include <assert.h>
 #include <string.h>

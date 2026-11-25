@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* Experimental native launch adapter. Explicit confirmation required by caller. */
 #ifndef EXODUS_NATIVE_LAUNCH_H
 #define EXODUS_NATIVE_LAUNCH_H

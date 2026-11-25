@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* Read-only C boundary for the existing EXODUS catalog parser. */
 #ifndef EXODUS_LIBRARY_CATALOG_H
 #define EXODUS_LIBRARY_CATALOG_H

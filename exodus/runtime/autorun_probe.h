@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #ifndef EXODUS_AUTORUN_PROBE_H
 #define EXODUS_AUTORUN_PROBE_H
 

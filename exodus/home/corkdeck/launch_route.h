@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* Provider routing, independent of the donor UI. Never executes shell commands. */
 #ifndef EXODUS_LAUNCH_ROUTE_H
 #define EXODUS_LAUNCH_ROUTE_H

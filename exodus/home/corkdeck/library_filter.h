@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* Offline library presentation policy. No networking or filesystem writes. */
 #ifndef EXODUS_LIBRARY_FILTER_H
 #define EXODUS_LIBRARY_FILTER_H

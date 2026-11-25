@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 #include "library_filter.h"
 #include <assert.h>
 int main(void)

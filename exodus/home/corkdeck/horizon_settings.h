@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 /* EXODUS read-only Horizon settings adapter. Independent of SDL and Wine.
  * API signatures checked against libnx b156b4774fb2df7b93402169509266da7547fc4c.
  * Every service is optional; never substitute synthetic values on failure. */

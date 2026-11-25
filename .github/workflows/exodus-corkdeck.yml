@@ -8,6 +8,11 @@ on:
       - 'exodus/runtime/autorun_probe*'
       - '.github/workflows/exodus-corkdeck.yml'
   workflow_dispatch:
+    inputs:
+      package_release:
+        description: Prepare the checked shell binary and corresponding source
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -46,6 +51,10 @@ jobs:
             "$dir/test_library_catalog.cpp" "$dir/library_catalog.cpp" exodus/home/ulaunch/catalog.cpp \
             -o "$RUNNER_TEMP/test-catalog"
           "$RUNNER_TEMP/test-catalog" "$RUNNER_TEMP/catalog-fixture.json"
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
+            "$dir/test_focus_indicator.c" "$dir/focus_indicator.c" \
+            $(pkg-config --cflags --libs sdl2) -o "$RUNNER_TEMP/test-focus"
+          "$RUNNER_TEMP/test-focus"
       - name: Build and render home
         run: |
           sh exodus/home/corkdeck/build-host.sh "$RUNNER_TEMP/corkdeck" "$RUNNER_TEMP/exodus-shell"
@@ -55,6 +64,9 @@ jobs:
   native:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
+    env:
+      SOURCE_DATE_EPOCH: '0'
+      SWITCH_EXTRA_LIBS: ''
     steps:
       - uses: actions/checkout@v6
         with:
@@ -62,9 +74,12 @@ jobs:
       - name: Prepare host headers and verify the image's Switch portlibs
         run: |
           apt-get update
-          apt-get install -y git pkg-config nlohmann-json3-dev file
+          apt-get install -y git pkg-config nlohmann-json3-dev=3.11.2-2 file python3
           export PKG_CONFIG_PATH=
           export PKG_CONFIG_LIBDIR="$DEVKITPRO/portlibs/switch/lib/pkgconfig:$DEVKITPRO/portlibs/switch/share/pkgconfig"
+          dkp-pacman -Q devkita64-gcc devkita64-newlib devkita64-binutils switch-tools libnx \
+            switch-sdl2 switch-sdl2_ttf switch-mesa switch-libdrm_nouveau switch-freetype \
+            switch-harfbuzz switch-bzip2 switch-libjpeg-turbo switch-libpng switch-zlib
           pkg-config --modversion sdl2 SDL2_ttf libpng libturbojpeg
       - name: Checkout exact donor source
         run: |
@@ -73,11 +88,13 @@ jobs:
           git -C /tmp/corkdeck sparse-checkout set horizon-wine/source
           git -C /tmp/corkdeck fetch --depth=1 --filter=blob:none origin adc0b52284e9e57d18808427a770a2a162c76bf0
           git -C /tmp/corkdeck checkout --detach FETCH_HEAD
-      - name: Compile native shell and validate NRO
+      - name: Rebuild native shell and validate NRO
         run: |
-          sh exodus/home/corkdeck/build-switch.sh /tmp/corkdeck /tmp/exodus-build
+          set -eu
+          sh exodus/home/corkdeck/verify-repro.sh "$GITHUB_WORKSPACE" /tmp/corkdeck /tmp/exodus-build
           cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/check_shell_nro.c exodus/runtime/autorun_probe.c -o /tmp/check-shell-nro
           /tmp/check-shell-nro /tmp/exodus-build/exodus-shell.nro
+          python3 exodus/home/corkdeck/check-release-nro.py /tmp/exodus-build/exodus-shell.nro
           dd if=/dev/zero of=/tmp/magic-only.nro bs=128 count=1 status=none
           printf 'NRO0' | dd of=/tmp/magic-only.nro bs=1 seek=16 conv=notrunc status=none
           if /tmp/check-shell-nro /tmp/magic-only.nro; then
@@ -85,11 +102,46 @@ jobs:
             exit 1
           fi
           file /tmp/exodus-build/exodus-shell.elf
-          cd /tmp/exodus-build
-          sha256sum exodus-shell.nro > SHA256SUMS
-          cat SHA256SUMS
-
-
+          "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-nm" --defined-only \
+            /tmp/exodus-build/exodus-shell.elf > /tmp/exodus-symbols
+          grep -w exodus_draw_focus_frame /tmp/exodus-symbols
+          if grep -E ' (ui_animated_border|border_arc|border_tint)$' /tmp/exodus-symbols; then
+            echo 'Unexpected focus implementation in the linked shell' >&2
+            exit 1
+          fi
+          sha256sum /tmp/exodus-build/exodus-shell.nro
+      - name: Package shell and complete corresponding source
+        if: github.event_name == 'pull_request' || inputs.package_release
+        run: |
+          set -eu
+          dir=exodus/home/corkdeck
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0="$(pwd -P)" \
+            python3 "$dir/stage-release-source.py" "$GITHUB_SHA" /tmp/corkdeck /tmp/exodus-source
+          python3 "$dir/release/fetch-dependency-sources.py" \
+            --cache-dir /tmp/exodus-source-cache --output-dir /tmp/exodus-dependency-source
+          python3 "$dir/release/bundle-shell-release.py" \
+            --app-source /tmp/exodus-source --dependencies /tmp/exodus-dependency-source \
+            --main-sha "$GITHUB_SHA" --nro /tmp/exodus-build/exodus-shell.nro --output-dir /tmp/exodus-release
+          (cd /tmp/exodus-release && sha256sum -c SHA256SUMS)
+      - name: Rebuild the packaged source
+        if: github.event_name == 'pull_request' || inputs.package_release
+        run: |
+          set -eu
+          mkdir /tmp/exodus-release-source-check
+          tar -xzf /tmp/exodus-release/EXODUS-Shell-Source.tar.gz -C /tmp/exodus-release-source-check
+          source=$(find /tmp/exodus-release-source-check -name EXODUS-SHELL-COMMIT -type f)
+          test "$(cat "$source")" = "$GITHUB_SHA"
+          source=$(dirname "$source")
+          (cd "$source" && sh exodus/home/corkdeck/build-switch.sh "$source/corkdeck-donor" /tmp/exodus-source-rebuilt)
+          cmp /tmp/exodus-build/exodus-shell.elf /tmp/exodus-source-rebuilt/exodus-shell.elf
+          cmp /tmp/exodus-build/exodus-shell.nro /tmp/exodus-source-rebuilt/exodus-shell.nro
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.package_release
+        with:
+          name: exodus-shell-release-${{ github.sha }}
+          path: /tmp/exodus-release/
+          if-no-files-found: error
+          retention-days: 7
 
   tools:
     runs-on: ubuntu-latest

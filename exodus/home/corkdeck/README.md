@@ -1,10 +1,10 @@
-# EXODUS standalone CorkDeck UI R02
+# EXODUS Shell
 
-This is an experimental host build target for #18/#40, not a HOME replacement or a Switch binary. It links the original CorkDeck drawing, audio, SVG and input primitives, without linking launcher.c, shell.inc, Steam, FEX, Box64 or Wine. The settings preview uses the donor's real grouped settings widget rather than reproducing it.
+The standalone shell builds as an SDL host preview and a Switch NRO. It uses a pinned CorkDeck subset for widgets, input, audio and images, with an EXODUS focus frame. The settings preview uses CorkDeck's grouped settings widget.
 
 ## Reproduce
 
-Requires a C compiler, git, pkg-config, SDL2 (2.0.18 or later), SDL2_ttf, and a user-provided TTF font. From EXODUS root:
+Requires C and C++ compilers, git, Python 3, pkg-config, SDL2 (2.0.18 or later), SDL2_ttf, libpng, TurboJPEG, nlohmann/json headers and a user-provided TTF font. From EXODUS root:
 
 ```sh
 git clone https://github.com/Garyu-tt/CorkDeck.git
@@ -16,7 +16,7 @@ SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy /tmp/exodus-settings /path/to/font.t
 
 The smoke mode draws one frame and exits; it is not an input or hardware test. The normal mode uses donor focus navigation and grouped rows. Platform and battery are reported by SDL when available, not by a simulated Switch. On host, Horizon-only settings explicitly report unavailable. The native adapter is selected by __SWITCH__; there are no writes.
 
-The donor is pinned and referenced, not copied into EXODUS. Preserve CorkDeck/Wine LGPL notices and third-party notices; review per-file provenance (including the SVG and focus-border implementation) before shipping linked binaries. No distribution of donor assets or binaries is part of this change.
+The [release source and license notes](release-source.md) identify the prepared donor source, the EXODUS license and the pinned build environment.
 
 ## Gates
 
@@ -63,7 +63,7 @@ scratch=$(mktemp)
 rm -f "$scratch"
 ```
 
-The shared parser is GPL-2.0-only; verify combined donor licensing and notices before distribution. Build/tests and native execution have not been verified in this session.
+The shared parser carries GPL-2.0-only. Its source and license accompany the shell release.
 
 ## R05: explicit provider launch routing
 
@@ -140,7 +140,7 @@ Portable capacity arithmetic and unavailable fallback test passed GCC and Clang 
 
 ## R10: standalone native build and HOME admission
 
-Build using devkitPro with devkitA64, libnx, Switch SDL2/SDL2_ttf, PNG and TurboJPEG portlibs, and the nlohmann/json headers. Use the exact donor checkout from R02.
+Build using devkitPro with devkitA64, libnx, Switch SDL2/SDL2_ttf, PNG and TurboJPEG portlibs, Python 3 and the nlohmann/json headers. Pass the exact donor checkout or the prepared donor tree from the source archive.
 
 ```sh
 sh exodus/home/corkdeck/build-switch.sh /path/to/CorkDeck /tmp/exodus-native
@@ -148,16 +148,13 @@ cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/check_shell_nro.c exodus/
 /tmp/check-shell-nro /tmp/exodus-native/exodus-shell.nro
 ```
 
-The script restricts pkg-config to the Switch portlibs. Set JSON_INCLUDE if json.hpp is elsewhere; SWITCH_EXTRA_LIBS is available for SDK-specific static linking requirements. The workflow runs portable tests, the host SDL smoke, and a separate native compilation and structural NRO check. The donor and the shell's native CI image are pinned. CI uses the Switch portlibs from that image and records their versions and the NRO checksum. Linked binary distribution follows the provenance and license review above.
+The script restricts pkg-config to the Switch portlibs. Set JSON_INCLUDE if json.hpp is elsewhere. CI pins the donor, the native image and the JSON headers. It checks the binary and compares independent builds. The [release source notes](release-source.md) document the build inputs.
 
 ### Safe first deployment
 
 After successful compilation and preflight, copy only exodus-shell.nro into a new SD directory /switch/exodus-shell/. Place your own licensed TTF font as font.ttf in that directory. Use an existing EXODUS catalog at /ulaunch/exodus-catalog.json. Open the ordinary NRO from the existing Homebrew Menu (or an existing launcher that supports NROs). Do not install a title forwarder, overwrite qLaunch/uLaunch/Latitude files, or hook HOME at this stage.
 
 Rollback: exit the NRO and use the original menu. Removing the dedicated NRO directory removes this optional shell; do not delete the shared catalog, runtime or existing HOME files. Before considering HOME replacement, require on-device checks for startup, failure reporting, controls, handheld/dock, suspend/resume, memory budget, all handoffs, and return/exit. Only then implement a separately reviewed HOME adapter with an independently tested recovery path. HOS 4.9/older firmware support is not established.
-
-Local verification: sh -n passed on the exact build-switch.sh blob 2936478c2e1cd883296aa0c07bf658c0cbdb1f8a. Missing arguments and missing DEVKITPRO fail with exit 2 and no output. Local environment lacks devkitA64 and SDL2 and cannot resolve github.com. No native binary has been produced here; no console was changed.
-
 
 ## R11: first physical hardware checkpoint (2026-11-24)
 
