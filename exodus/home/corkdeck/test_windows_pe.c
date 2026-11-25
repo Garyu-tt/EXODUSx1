@@ -2,6 +2,7 @@
 #include "windows_pe.h"
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -46,70 +47,95 @@ static void make_executable(unsigned char image[IMAGE_SIZE], bool pe32_plus)
     write_le32(section + 20, 512);
 }
 
-static bool probe(const unsigned char *bytes, size_t length)
+static enum exodus_windows_pe_status probe(const unsigned char *bytes, size_t length)
 {
     FILE *image = tmpfile();
     assert(image);
     assert(fwrite(bytes, 1, length, image) == length);
-    bool valid = exodus_windows_pe_valid(image);
+    enum exodus_windows_pe_status status = exodus_windows_pe_probe(image);
     assert(fclose(image) == 0);
-    return valid;
+    return status;
+}
+
+static void check_machine_formats(void)
+{
+    const struct {
+        uint16_t machine;
+        enum exodus_windows_pe_status pe32;
+        enum exodus_windows_pe_status pe32_plus;
+    } cases[] = {
+        {0x014c, EXODUS_WINDOWS_PE_READY, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE}, /* x86 */
+        {0x8664, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE, EXODUS_WINDOWS_PE_READY}, /* x64 */
+        {0xaa64, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE, EXODUS_WINDOWS_PE_READY}, /* ARM64 */
+        {0x01c4, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE}, /* ARMNT */
+        {0xa641, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE}, /* ARM64EC */
+        {0x0200, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE}, /* Itanium */
+        {0x0000, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE, EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE}, /* Unknown */
+    };
+    unsigned char image[IMAGE_SIZE];
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        make_executable(image, false);
+        write_le16(image + PE_OFFSET + 4, cases[i].machine);
+        assert(probe(image, sizeof(image)) == cases[i].pe32);
+        make_executable(image, true);
+        write_le16(image + PE_OFFSET + 4, cases[i].machine);
+        assert(probe(image, sizeof(image)) == cases[i].pe32_plus);
+    }
 }
 
 int main(void)
 {
     unsigned char image[IMAGE_SIZE];
-    make_executable(image, false);
-    assert(probe(image, sizeof(image)));
-    make_executable(image, true);
-    assert(probe(image, sizeof(image)));
+    check_machine_formats();
 
     make_executable(image, false);
-    assert(!probe(image, 2)); /* MZ alone was previously accepted. */
-    assert(!probe(image, PE_OFFSET + 23));
-    assert(!probe(image, PE32_TABLE_OFFSET + 39));
-    assert(!probe(image, sizeof(image) - 1));
+    assert(probe(image, 2) == EXODUS_WINDOWS_PE_INVALID); /* MZ alone. */
+    assert(probe(image, PE_OFFSET + 23) == EXODUS_WINDOWS_PE_INVALID);
+    assert(probe(image, PE32_TABLE_OFFSET + 39) == EXODUS_WINDOWS_PE_INVALID);
+    assert(probe(image, sizeof(image) - 1) == EXODUS_WINDOWS_PE_INVALID);
+    write_le16(image + PE_OFFSET + 4, 0x01c4);
+    assert(probe(image, sizeof(image) - 1) == EXODUS_WINDOWS_PE_INVALID);
 
     image[PE_OFFSET] = 'N'; /* Legacy NE executable. */
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
     make_executable(image, false);
     write_le32(image + 0x3c, UINT32_MAX);
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
 
     make_executable(image, true);
     write_le16(image + PE_OFFSET + 20, 96); /* PE32 header too small for PE32+. */
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
     make_executable(image, false);
     write_le16(image + OPTIONAL_OFFSET, 0x107); /* ROM image. */
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
     make_executable(image, false);
     write_le32(image + OPTIONAL_OFFSET + 92, 17); /* Directory extends past header. */
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
     make_executable(image, false);
     write_le32(image + OPTIONAL_OFFSET + 60, PE32_TABLE_OFFSET + 39);
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
 
     make_executable(image, false);
     write_le16(image + PE_OFFSET + 22, 0x2002); /* DLL. */
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
     write_le16(image + PE_OFFSET + 22, 0);
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
     make_executable(image, false);
     write_le16(image + PE_OFFSET + 6, 0);
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
     write_le16(image + PE_OFFSET + 6, 97);
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
 
     make_executable(image, false);
     write_le32(image + PE32_TABLE_OFFSET + 16, UINT32_MAX);
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
     write_le32(image + PE32_TABLE_OFFSET + 16, 512);
     write_le32(image + PE32_TABLE_OFFSET + 20, 1);
-    assert(!probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_INVALID);
 
     make_executable(image, false);
     write_le16(image + PE_OFFSET + 6, 2); /* An uninitialized section has no raw bytes. */
     memcpy(image + PE32_TABLE_OFFSET + 40, ".bss", 4);
-    assert(probe(image, sizeof(image)));
+    assert(probe(image, sizeof(image)) == EXODUS_WINDOWS_PE_READY);
     return 0;
 }

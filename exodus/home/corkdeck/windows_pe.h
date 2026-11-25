@@ -2,10 +2,15 @@
 #ifndef EXODUS_WINDOWS_PE_H
 #define EXODUS_WINDOWS_PE_H
 
-#include <stdbool.h>
 #include <stdio.h>
 
-/* Check the file ranges of a PE32 or PE32+ application image on a seekable binary stream. */
-bool exodus_windows_pe_valid(FILE *image);
+enum exodus_windows_pe_status {
+    EXODUS_WINDOWS_PE_INVALID,
+    EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE,
+    EXODUS_WINDOWS_PE_READY,
+};
+
+/* Check a seekable PE application image against CorkDeck's supported machine/format pairs. */
+enum exodus_windows_pe_status exodus_windows_pe_probe(FILE *image);
 
 #endif

@@ -84,9 +84,13 @@ static inline int exodus_launch(enum exodus_route route, const char *id, char me
             }
             FILE *exe = fopen(id, "rb");
             if (!exe) { snprintf(message, 256, "Cannot open executable."); return 0; }
-            bool valid = exodus_windows_pe_valid(exe);
+            enum exodus_windows_pe_status status = exodus_windows_pe_probe(exe);
             fclose(exe);
-            if (!valid) {
+            if (status == EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE) {
+                snprintf(message, 256, "Unsupported Windows PE architecture or format.");
+                return 0;
+            }
+            if (status != EXODUS_WINDOWS_PE_READY) {
                 snprintf(message, 256, "Invalid or unreadable Windows PE executable.");
                 return 0;
             }
