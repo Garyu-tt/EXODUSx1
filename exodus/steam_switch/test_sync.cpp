@@ -117,6 +117,13 @@ namespace {
         assert(redeem(302, {}).status == SyncStatus::GatewayUnavailable);
         assert(redeem(200, "{invalid").status == SyncStatus::InvalidCatalog);
         assert(redeem(200, Catalog({Entry("switch", "9", "Not from Steam")})).status == SyncStatus::InvalidCatalog);
+        for (const auto *id : {"0", "0123", "123x", "4294967296"}) {
+            const auto unusable = redeem(200, Catalog({Entry("steam", id, "Invalid AppID")}));
+            assert(unusable.status == SyncStatus::InvalidCatalog && unusable.catalog.empty());
+        }
+        const auto largest = Catalog({Entry("steam", "4294967295", "Largest valid AppID")});
+        const auto largest_result = redeem(200, largest);
+        assert(largest_result.status == SyncStatus::Ready && largest_result.catalog == largest);
 
         const auto invalid = "{\"session\":\"" + Session + "\",\"session\":\"" + Session + "\"}";
         const auto refused = FetchSteamSnapshot(
