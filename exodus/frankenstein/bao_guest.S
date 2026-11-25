@@ -15,6 +15,15 @@ _start:
     b.ne 1b
     mov w2, #2
     stlr w2, [x1]
+#ifdef TUMOR_RESIDENT_PEER
+    /* QEMU register-observation fixture, no new physical mappings. */
+    ldr x10, =0x544d525045455231
+    mov x9, #0
+peer_tick:
+    add x9, x9, #1
+    yield
+    b peer_tick
+#endif
 #else
     add x3, x1, #64
 1:  ldar w4, [x1]
