@@ -29,7 +29,42 @@ static void verify(void){
  }
  for(size_t i=0;i<s.unique.page_count;i++)C(own[i]>0);
 }
+/* Independent bitwise IEEE CRC-32 oracle, not the production table. */
+static uint32_t reference_crc(const uint8_t *p){
+ uint32_t crc=UINT32_MAX;
+ for(size_t i=0;i<P;i++){
+  crc^=p[i];
+  for(unsigned bit=0;bit<8;bit++)
+   crc=(crc>>1)^((crc&1u)?UINT32_C(0xedb88320):0u);
+ }
+ return ~crc;
+}
+static void check_crc_compatibility(void){
+ uint8_t payload[P],input[P+1],restored[P];
+ size_t end=0;
+ uint32_t checksum=0,state=UINT32_C(0x5ca7a42b);
+ struct exodus_page_integrity_store store={
+  .pages={.payload=payload,.payload_capacity=sizeof payload,.page_ends=&end,.page_capacity=1},
+  .checksums=&checksum,.checksum_capacity=1};
+ for(size_t k=0;k<512;k++){
+  for(size_t i=0;i<P;i++){
+   state^=state<<13;state^=state>>17;state^=state<<5;
+   input[i+1]=(uint8_t)(k<256?k:state);
+  }
+  bool ok=k==0?exodus_page_integrity_store_append(&store,input+1):
+   (k&1u)?exodus_page_integrity_store_replace(&store,0,input+1):
+          exodus_page_integrity_store_replace_adaptive(&store,0,input+1);
+  C(ok&&checksum==reference_crc(input+1));
+  C(exodus_page_integrity_store_restore(&store,0,restored)&&!memcmp(input+1,restored,P));
+  checksum^=1u;
+  memset(restored,0xa5,sizeof restored);
+  C(!exodus_page_integrity_store_restore(&store,0,restored));
+  for(size_t i=0;i<P;i++)C(restored[i]==0xa5);
+  checksum^=1u;
+ }
+}
 int main(void){
+ check_crc_compatibility();
  /* Grow a BDI page while its neighbour stays byte-for-byte in place. */
  for(size_t i=0;i<P/4;i++)put(expected[0]+4*i,10000+(uint32_t)(i/16)*1000+(uint32_t)(i%16)*3);
  memset(expected[1],0x72,P);
