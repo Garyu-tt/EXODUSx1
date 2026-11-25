@@ -230,13 +230,16 @@ namespace exodus::home {
     }
 
     Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory,
-                                 Catalog (*missing_base)()) {
+                                 Catalog (*missing_base)(),
+                                 void (*merge_live)(Catalog &, const Catalog &)) {
         auto current = ReadBaseCatalog(base_path);
         if (current.status == CatalogStatus::Unavailable) {
             if (!PathMissing(base_path))
                 return current;
             if (missing_base)
                 current = missing_base();
+        } else if (current.status == CatalogStatus::Ready && missing_base && merge_live) {
+            merge_live(current, missing_base());
         }
         return ApplySteamSnapshots(std::move(current), snapshot_directory);
     }

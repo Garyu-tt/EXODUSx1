@@ -9,6 +9,7 @@
 #endif
 #ifdef __SWITCH__
 #include "live_inventory.hpp"
+#include "native_catalog_merge.hpp"
 #endif
 using namespace exodus::home;
 struct exodus_library {
@@ -87,7 +88,8 @@ struct exodus_library *exodus_library_open_with_games(const char *path,const cha
     try {
         auto catalog = std::string_view(path) == HomeCatalogPath
 #ifdef __SWITCH__
-            ? ReadRefreshedCatalog(path, SteamSnapshotsPath, exodus_live_inventory)
+            ? ReadRefreshedCatalog(path, SteamSnapshotsPath, exodus_live_inventory,
+                +[](Catalog &current, const Catalog &live) { (void)MergeNativeCatalog(current, live); })
 #else
             ? ReadRefreshedCatalog(path, SteamSnapshotsPath)
 #endif

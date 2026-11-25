@@ -15,8 +15,10 @@ namespace exodus::home {
     std::optional<std::uint64_t> PublishSteamSnapshot(const char *directory, std::string_view steam,
                                                       const char *base_path = HomeCatalogPath);
     Catalog ApplySteamSnapshots(Catalog current, const char *snapshot_directory);
-    // A fallback inventory is used only if the base path is genuinely absent.
+    // Without a merge callback, fallback inventory is used only if the base path is genuinely absent.
+    // Opt-in native merger receives a valid external catalog before Steam snapshot selection.
     Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory,
-                                 Catalog (*missing_base)() = nullptr);
+                                 Catalog (*missing_base)() = nullptr,
+                                 void (*merge_live)(Catalog &, const Catalog &) = nullptr);
 
 }
