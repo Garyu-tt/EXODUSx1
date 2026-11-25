@@ -181,9 +181,9 @@ static int show_library(struct ui *ui, const char *path)
             }
             if (input.button == UI_A) {
                 char detail[640];
-                const char *provider = exodus_library_provider(library, index);
                 const char *id = exodus_library_id(library, index);
-                enum exodus_route route = exodus_route_for(provider, id);
+                struct exodus_execution_target target = exodus_library_execution_target(library,index);
+                enum exodus_route route = exodus_backend_route(target,id);
 #ifdef __SWITCH__
                 char result[256];
                 if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW ||

@@ -56,6 +56,17 @@ const char *exodus_library_title(const struct exodus_library *library, size_t in
 {
     return index < exodus_library_count(library) ? library->catalog.entries[index].title.c_str() : "";
 }
+struct exodus_execution_target exodus_library_execution_target(const struct exodus_library *library, size_t index)
+{
+    if (index>=exodus_library_count(library)) return {EXODUS_BACKEND_NONE,EXODUS_TARGET_NONE};
+    switch (library->catalog.entries[index].provider) {
+        case Provider::Switch: return {EXODUS_BACKEND_HORIZON,EXODUS_TARGET_TITLE_ID};
+        case Provider::Homebrew: return {EXODUS_BACKEND_HORIZON,EXODUS_TARGET_NRO};
+        case Provider::CorkDeck: return {EXODUS_BACKEND_CORKDECK,EXODUS_TARGET_PE};
+        case Provider::Steam: return {EXODUS_BACKEND_CORKDECK,EXODUS_TARGET_STEAM_LIBRARY};
+        default: return {EXODUS_BACKEND_NONE,EXODUS_TARGET_NONE};
+    }
+}
 const char *exodus_library_provider(const struct exodus_library *library, size_t index)
 {
     if (index >= exodus_library_count(library)) return "Unknown";
