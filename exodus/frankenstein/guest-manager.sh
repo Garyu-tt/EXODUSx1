@@ -23,7 +23,7 @@ sysrc sshd_enable=NO
 export ASSUME_ALWAYS_YES=yes
 pkg bootstrap -y
 pkg update -f
-pkg install -y git-lite rust pkgconf dbus glib speech-dispatcher llvm19
+pkg install -y git-lite rust pkgconf dbus glib speech-dispatcher llvm19 libudev-devd
 # Rust bindgen needs a shared libclang, not just the base clang executable.
 # The pinned ports tree uses LLVM 19 and installs libclang here.
 export LIBCLANG_PATH=/usr/local/llvm19/lib
@@ -32,6 +32,40 @@ test -r /usr/local/include/speech-dispatcher/libspeechd.h
 export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/local/include -I/usr/local/include/speech-dispatcher"
 export LIBRARY_PATH="/usr/local/lib"
 echo EXODUS_MANAGER_LIBCLANG_READY
+
+# The pinned upstream daemon links libudev-sys and uses inotify-sys 0.1.5.
+# FreeBSD 15 provides inotify in libc; use the devd-compatible libudev port.
+# Test actual native C ABI and event delivery before expensive Cargo work.
+pkgconf --modversion libudev
+probe_dir=$(mktemp -d /var/tmp/exodus-manager-probe.XXXXXX)
+seed_dir=$(mktemp -d /var/tmp/exodus-manager-seed.XXXXXX)
+mount -t msdosfs /dev/msdosfs/CIDATA "$seed_dir"
+cp "$seed_dir/manager-inotify-probe.c" "$probe_dir/inotify.c"
+umount "$seed_dir"
+rmdir "$seed_dir"
+cc -std=gnu11 -Wall -Wextra -Werror "$probe_dir/inotify.c" -o "$probe_dir/inotify"
+mkdir "$probe_dir/events"
+"$probe_dir/inotify" "$probe_dir/events"
+echo EXODUS_MANAGER_INOTIFY_NATIVE_PASS
+cat > "$probe_dir/udev.c" <<'EOF'
+#include <libudev.h>
+int main(void) {
+    struct udev *u = udev_new();
+    if (!u) return 1;
+    struct udev_enumerate *e = udev_enumerate_new(u);
+    if (!e) { udev_unref(u); return 2; }
+    int rc = udev_enumerate_scan_devices(e);
+    udev_enumerate_unref(e);
+    udev_unref(u);
+    return rc < 0 ? 3 : 0;
+}
+EOF
+cc -std=gnu11 -Wall -Wextra -Werror $(pkgconf --cflags libudev) \
+    "$probe_dir/udev.c" $(pkgconf --libs libudev) -o "$probe_dir/udev"
+"$probe_dir/udev"
+echo EXODUS_MANAGER_DEVD_UDEV_ABI_PASS
+rm -rf "$probe_dir"
+
 for tool in git rustc cargo; do command -v "$tool"; done
 rustc -Vv
 cargo -V

@@ -7,6 +7,7 @@ on:
       - 'exodus/frankenstein/linux-abi-probe.S'
       - 'exodus/frankenstein/linux-dynamic-probe.c'
       - 'exodus/frankenstein/run-reference.sh'
+      - 'exodus/frankenstein/manager-inotify-probe.c'
       - 'exodus/frankenstein/verify-manager-evidence.sh'
       - 'exodus/frankenstein/test_manager_gate.py'
       - 'exodus/frankenstein/verify-guest-evidence.sh'

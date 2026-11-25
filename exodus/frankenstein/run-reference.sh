@@ -58,6 +58,9 @@ if [ "$mode" = linuxdynamic ]; then
     grep -Fx TUMOR_GLIBC_PTHREAD_OK "$out/linux-dynamic-host.txt"
     mcopy -i seed.img linux-dynamic ld-linux-aarch64.so.1 libc.so.6 ::
 fi
+if [ "$mode" = manager ]; then
+    mcopy -i seed.img "$here/manager-inotify-probe.c" ::
+fi
 if [ "$mode" = rcresident ]; then
     for f in sessiond.c sessiond-dbus.inc tumor_reference_bus tumor_reference_session; do mcopy -i seed.img "$here/$f" ::; done
 fi
