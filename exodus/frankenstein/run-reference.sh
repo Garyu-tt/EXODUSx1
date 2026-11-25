@@ -139,6 +139,8 @@ if [ "$mode" = manager ]; then
         printf 'Upstream manager daemon compile gate not passed (expected exactly one result=0)\n' >&2
         exit 1
     fi
+    grep -Fx EXODUS_MANAGER_EXECUTABLE_SMOKE_PASS "$out/manager-evidence.txt"
+    grep -Fx EXODUS_MANAGER_ARTIFACT_GUEST_PASS "$out/manager-evidence.txt"
     echo EXODUS_MANAGER_DAEMON_COMPILE_PASS
 fi
 
@@ -174,6 +176,7 @@ fi
 # Extract only known filenames after successful guest shutdown and validation.
 case "$mode" in
     graphics) files="wayland.pkg gamescope.pkg dependencies.txt" ;;
+    manager) files="steamos-manager steamosctl steamos-manager.ldd.txt steamosctl.ldd.txt steamos-manager.help.txt steamosctl.help.txt steamosctl.version.txt dependencies.txt freebsd-version.txt source-revision.txt cargo-tree.txt" ;;
     native) files="exodus-native.tar.gz dependencies.txt" ;;
     rcresident) files="tumor-resident-reference.tar.gz dependencies.txt" ;;
     *) exit 0 ;;
@@ -245,6 +248,27 @@ elf = payload["bin/exodus-sessiond-dbus"]
 if len(elf) < 64 or elf[:6] != b"\x7fELF\x02\x01" or struct.unpack_from("<H", elf, 18)[0] != 183:
     raise SystemExit("session daemon is not little-endian ELF64 AArch64")
 print("EXODUS_RC_ARCHIVE_CONTENT_PASS")
+PY
+fi
+if [ "$mode" = manager ]; then
+    python3 - extracted <<'PY'
+import pathlib
+import struct
+import sys
+root = pathlib.Path(sys.argv[1])
+for name in ("steamos-manager", "steamosctl"):
+    path = root / name
+    if not 64 <= path.stat().st_size <= 48 * 1024 * 1024:
+        raise SystemExit(f"invalid executable size: {name}")
+    with path.open("rb") as stream:
+        elf = stream.read(64)
+    if (elf[:6] != b"\x7fELF\x02\x01"
+            or struct.unpack_from("<H", elf, 18)[0] != 183
+            or struct.unpack_from("<H", elf, 16)[0] not in (2, 3)):
+        raise SystemExit(f"not an executable ELF64 AArch64: {name}")
+if (root / "source-revision.txt").read_text().strip() != "a0d399defebd60db30ba38325d9cf47dbda49bee":
+    raise SystemExit("unexpected manager source revision")
+print("EXODUS_MANAGER_ARTIFACT_HOST_PASS")
 PY
 fi
 mkdir -p "$out/packages"
