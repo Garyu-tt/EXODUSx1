@@ -310,6 +310,39 @@ class FileInventoryTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(xm.ManifestError):
                 xm.parse_manifest(encode(candidate))
 
+    def test_c1_controls_are_rejected_in_entrypoint_and_inventory(self):
+        for codepoint in range(0x80, 0xA0):
+            for entrypoint in (True, False):
+                value = manifest_object()
+                path = f"bin/tool{chr(codepoint)}.nro"
+                if entrypoint:
+                    value["entrypoint"] = value["files"][0]["path"] = path
+                else:
+                    value["files"].append({"path": path, "size": 1, "sha256": ZERO_DIGEST})
+                with self.subTest(codepoint=codepoint, entrypoint=entrypoint):
+                    with self.assertRaises(xm.ManifestError):
+                        xm.inspect_manifest(encode(value))
+
+    def test_file_records_reject_c1_controls(self):
+        for codepoint in range(0x80, 0xA0):
+            with self.subTest(codepoint=codepoint), self.assertRaises(xm.ManifestError):
+                xm.FileRecord(f"share/file{chr(codepoint)}.bin", 1, ZERO_DIGEST)
+
+    def test_non_control_unicode_paths_preserve_identity_and_canonical_bytes(self):
+        value = manifest_object()
+        value["entrypoint"] = value["files"][0]["path"] = "bin/\u00a0caf\u00e9.NRO"
+        value["files"][1]["path"] = "share/~.txt"
+        for path in ("share/\u00a1.txt", "share/\U0001f600.txt", "share/Stra\u00dfe.dat", "share/STRASSE.dat"):
+            value["files"].append({"path": path, "size": 1, "sha256": ZERO_DIGEST})
+        manifest = xm.inspect_manifest(encode(value)).manifest
+        self.assertEqual(manifest.entrypoint, value["entrypoint"])
+        self.assertEqual({record.path for record in manifest.files},
+                         {record["path"] for record in value["files"]})
+        self.assertEqual(xm.manifest_digest(manifest),
+                         "7530ac5366917df3327c73603064bf9f8c99b64f1864f0c5c29a58ab047fbebf")
+        canonical = xm.canonical_bytes(manifest)
+        self.assertEqual(xm.canonical_bytes(xm.parse_manifest(canonical)), canonical)
+
     def test_ascii_case_and_file_directory_aliases_are_rejected(self):
         case_alias = manifest_object()
         case_alias["files"].append({

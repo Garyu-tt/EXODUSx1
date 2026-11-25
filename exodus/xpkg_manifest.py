@@ -161,7 +161,8 @@ def _package_path(value: object, name: str) -> str:
             raise ManifestError(f"{name} component is too long")
         if component.endswith((" ", ".")):
             raise ManifestError(f"{name} is not portable to FAT-style storage")
-        if any(ord(ch) < 0x20 or ord(ch) == 0x7F or ch in '<>"|?*' for ch in component):
+        if any(ord(ch) < 0x20 or 0x7F <= ord(ch) <= 0x9F
+               or ch in '<>"|?*' for ch in component):
             raise ManifestError(f"{name} contains a reserved character")
         stem = _ascii_fold(component).split(".", 1)[0].rstrip(" .")
         if stem in _RESERVED_COMPONENTS:
