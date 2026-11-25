@@ -6,6 +6,8 @@
 #ifndef _WIN32
 #include "evcs_discovery.h"
 #include "evcs_pfs0.h"
+#include "evcs_manifest.h"
+#include <map>
 #endif
 #ifdef __SWITCH__
 #include "live_inventory.hpp"
@@ -16,6 +18,8 @@ struct exodus_library {
     Catalog catalog;
     const char *discovery="Not requested";
     size_t first_game=SIZE_MAX;
+    std::vector<size_t> representatives{};
+    std::vector<size_t> group_sizes{};
 };
 #ifndef _WIN32
 struct InventoryPending {
@@ -40,6 +44,46 @@ static int inventory_emit(const char *path, enum evcs_kind kind, uint64_t bytes,
         pending.bytes+=cost;
         return 1;
     } catch (...) { return 0; }
+}
+static void group_declared_inventory(exodus_library &lib)
+{
+    std::vector<evcs_content> records;
+    std::vector<size_t> indices;
+    const auto &entries=lib.catalog.entries;
+    for (size_t i=lib.first_game;i<entries.size();++i) {
+        enum evcs_kind kind;
+        if (!evcs_kind_of(entries[i].id.c_str(),&kind) ||
+            (kind!=EVCS_NSP && kind!=EVCS_XCI)) continue;
+        evcs_content item{};
+        auto rc=evcs_manifest_read(entries[i].id.c_str(),&item);
+        if (rc==EVCS_MANIFEST_MISSING) continue;
+        if (rc!=EVCS_MANIFEST_OK) {
+            lib.discovery="Games scan complete; metadata rejected"; return;
+        }
+        records.push_back(item);
+        indices.push_back(i);
+    }
+    if (evcs_graph_validate(records.data(),records.size())!=EVCS_GRAPH_OK) {
+        lib.discovery="Games scan complete; metadata rejected"; return;
+    }
+    std::map<uint64_t,size_t> bases;
+    for (size_t j=0;j<records.size();++j) {
+        const auto &item=records[j];
+        if (item.role!=EVCS_BASE) continue;
+        auto found=bases.find(item.application_id);
+        if (found==bases.end() || records[found->second].version<item.version)
+            bases[item.application_id]=j;
+    }
+    if (bases.empty()) return;
+    std::vector<size_t> reps(entries.size()),sizes(entries.size(),0);
+    for (size_t i=0;i<entries.size();++i) reps[i]=i;
+    for (size_t j=0;j<records.size();++j) {
+        const auto found=bases.find(records[j].application_id);
+        if (found!=bases.end()) reps[indices[j]]=indices[found->second];
+    }
+    for (size_t r:reps) ++sizes[r];
+    lib.representatives=std::move(reps);
+    lib.group_sizes=std::move(sizes);
 }
 static void merge_games_inventory(exodus_library &lib,const char *base_path,const char *root)
 {
@@ -71,6 +115,7 @@ static void merge_games_inventory(exodus_library &lib,const char *base_path,cons
     for (auto &entry:pending.entries) entries.push_back(std::move(entry));
     if (!entries.empty()) lib.catalog.status=CatalogStatus::Ready;
     lib.discovery="Games scan complete";
+    group_declared_inventory(lib);
 }
 #endif
 extern "C" {
@@ -111,6 +156,17 @@ const char *exodus_library_discovery_status(const struct exodus_library *library
 int exodus_library_is_discovered(const struct exodus_library *library,size_t index)
 {
     return library && index>=library->first_game && index<library->catalog.entries.size();
+}
+size_t exodus_library_group_representative(const struct exodus_library *library,size_t index)
+{
+    if (!library || index>=library->catalog.entries.size()) return SIZE_MAX;
+    return library->representatives.empty()?index:library->representatives[index];
+}
+size_t exodus_library_group_size(const struct exodus_library *library,size_t index)
+{
+    const size_t rep=exodus_library_group_representative(library,index);
+    if (rep==SIZE_MAX) return 0;
+    return library->group_sizes.empty()?1:library->group_sizes[rep];
 }
 int exodus_library_archive_detail(const struct exodus_library *library,size_t index,char *out,size_t cap)
 {

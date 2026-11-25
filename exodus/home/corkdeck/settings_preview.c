@@ -119,6 +119,7 @@ static size_t filter_cards(const struct exodus_library *library, enum exodus_fil
     for (size_t n = 0; n < exodus_library_count(library); ++n) {
         const char *provider=exodus_library_provider(library,n);
         if (!exodus_section_matches(section,provider)) continue;
+        if (filter!=FILTER_FILES && exodus_library_group_representative(library,n)!=n) continue;
         uint64_t recent = exodus_library_last_played(library, n);
         if (filter==FILTER_FILES ? exodus_library_is_discovered(library,n) :
             exodus_filter_matches(filter, provider, favorites[n], recent))
@@ -167,6 +168,8 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
     }
 #endif
     count = filter_cards(library, filter, section, favorites, cards);
+    if (section==SECTION_LIBRARY && strstr(exodus_library_discovery_status(library),"metadata rejected"))
+        ui_message(ui,heading,"Owner metadata rejected. Individual game files remain visible.");
     const struct ui_hint hints[] = {
         {UI_A, "A: Open"}, {UI_B, "B: Back"}, {UI_L, "L: Previous"}, {UI_R, "R: Next"},
         {UI_X, "X: Favorite"}, {UI_Y, "Y: Filter"}
@@ -187,7 +190,10 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
             if (!count) continue;
             size_t index = cards[selection].index;
             if (input.button == UI_X) {
-                favorites[index] = !favorites[index];
+                size_t rep=exodus_library_group_representative(library,index);
+                unsigned char value=!favorites[rep];
+                for (size_t n=0;n<total;++n)
+                    if (exodus_library_group_representative(library,n)==rep) favorites[n]=value;
 #ifdef __SWITCH__
                 if (state.writable) {
                     char canonical[17];
@@ -267,6 +273,12 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
             ui_text_fit(ui, ui->small, x + 12, y + 12, 200,
                         exodus_library_provider(library, index), ui->dim, 0);
             if (favorites[index]) ui_text(ui, ui->small, x + 230, y + 12, "*", ui->text);
+            size_t group_size=exodus_library_group_size(library,index);
+            if (filter!=FILTER_FILES && group_size>1) {
+                char label[48];
+                snprintf(label,sizeof(label),"%zu declared files",group_size);
+                ui_text_fit(ui,ui->small,x+12,y+192,240,label,ui->dim,0);
+            }
             struct cover_slot *cover = &covers[n - first];
             if (cover->texture) {
                 float scale = 116.0f / cover->height;
