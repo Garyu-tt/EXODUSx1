@@ -2,6 +2,12 @@
 #define EXODUS_PAGE_DEDUP_STORE_H
 
 #include "page_store.h"
+#include "bdi_slab.h"
+
+struct exodus_hot_entry {
+    size_t physical;
+    struct exodus_bdi_slab_page page;
+};
 
 /* A caller-owned group of logical pages sharing immutable backing.
  * Initialize both page counts and unique.payload_used to zero. Supply separate,
@@ -19,6 +25,10 @@ struct exodus_page_dedup_store {
     size_t *page_refs;
     size_t page_capacity;
     size_t page_count;
+    /* Optional bounded hot table; entries initially zero, indexed pool only. */
+    struct exodus_bdi_slab *slab;
+    struct exodus_hot_entry *hot;
+    size_t hot_capacity;
 };
 
 /* Append one readable EXODUS_PAGE_BYTES source page, assigning the next logical
@@ -67,4 +77,16 @@ bool exodus_page_dedup_store_discard_free(struct exodus_page_dedup_store *store,
                                          size_t granule,size_t budget,
                                          exodus_page_discard_fn discard,void *context,
                                          size_t *discarded);
+/* Migrate the physical page shared by this logical index. All aliases retain
+ * their identity. Hot records reserve an eight-byte cold placeholder.
+ * On failure logical contents and mappings remain unchanged. */
+bool exodus_page_dedup_store_promote(struct exodus_page_dedup_store *,size_t);
+bool exodus_page_dedup_store_demote(struct exodus_page_dedup_store *,size_t);
+static inline const struct exodus_hot_entry *exodus_hot_find(const struct exodus_page_dedup_store *s,size_t physical)
+{
+    if(!s->slab||!s->hot)return NULL;
+    for(size_t i=0;i<s->hot_capacity;i++)
+        if(s->hot[i].page.active&&s->hot[i].physical==physical)return &s->hot[i];
+    return NULL;
+}
 #endif

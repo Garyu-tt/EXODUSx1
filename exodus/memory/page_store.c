@@ -142,10 +142,10 @@ bool exodus_page_store_pool_compact(struct exodus_page_store *s,size_t budget,si
     *moved=total;return true;
 }
 
-bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
-                                const uint8_t *encoded,size_t n)
+static bool pool_plan(const struct exodus_page_store *s,size_t i,size_t n,
+                      size_t *dest,size_t *live)
 {
-    if(!s||!exodus_page_store_is_pool(s)||!encoded||!n||n>EXODUS_PAGE_BYTES||
+    if(!s||!exodus_page_store_is_pool(s)||!n||n>EXODUS_PAGE_BYTES||
        !exodus_page_store_validate(s)||i>s->page_count||
        (i==s->page_count&&i==s->page_capacity))return false;
     bool append=i==s->page_count;
@@ -167,9 +167,23 @@ bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
         }
         }
     }
+    *dest=a;*live=other+n;return true;
+}
+
+bool exodus_page_store_pool_can_put(const struct exodus_page_store *s,size_t i,size_t n)
+{
+    size_t a,live;return pool_plan(s,i,n,&a,&live);
+}
+
+bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
+                                const uint8_t *encoded,size_t n)
+{
+    size_t a,live;
+    if(!encoded||!pool_plan(s,i,n,&a,&live))return false;
+    bool append=i==s->page_count;
     if(s->page_order&&!append)order_remove(s,i);
     memcpy(s->payload+a,encoded,n);
-    set_extent(s,i,a,a+n);s->payload_used=other+n;
+    set_extent(s,i,a,a+n);s->payload_used=live;
     if(s->page_order)order_insert(s,s->page_count-(append?0:1),i);
     if(append)++s->page_count;
     return true;

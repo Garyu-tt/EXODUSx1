@@ -77,5 +77,9 @@ bool exodus_page_dedup_store_read_word(const struct exodus_page_dedup_store *s,
         s->unique.payload_used > s->unique.payload_capacity ||
         (!exodus_page_store_is_pool(&s->unique) && s->unique.page_ends[s->unique.page_count - 1] != s->unique.payload_used))
         return false;
-    return exodus_page_store_read_word(&s->unique, s->page_refs[index], word, out);
+    size_t physical=s->page_refs[index];
+    if(physical>=s->unique.page_count)return false;
+    const struct exodus_hot_entry *h=exodus_hot_find(s,physical);
+    if(h)return exodus_bdi_slab_read(s->slab,&h->page,word,out);
+    return exodus_page_store_read_word(&s->unique, physical, word, out);
 }

@@ -67,6 +67,8 @@ bool exodus_page_store_extent(const struct exodus_page_store *store,size_t index
                               size_t *start,size_t *end);
 /* Internal pool operations for an already encoded, separate source buffer.
  * Do not use directly on a dedup/integrity store outside its own wrapper. */
+/* Preflight under the same serialized access as the ensuing put. */
+bool exodus_page_store_pool_can_put(const struct exodus_page_store *,size_t,size_t);
 bool exodus_page_store_pool_put(struct exodus_page_store *store,size_t index,
                                 const uint8_t *encoded,size_t size);
 bool exodus_page_store_pool_remove(struct exodus_page_store *store,size_t index);

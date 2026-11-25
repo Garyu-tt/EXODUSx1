@@ -2,9 +2,34 @@
 
 #include <string.h>
 
+static const uint8_t placeholder[8]={0};
+static struct exodus_hot_entry *hot_find(struct exodus_page_dedup_store *s,size_t physical)
+{
+    return (struct exodus_hot_entry *)exodus_hot_find(s,physical);
+}
+static struct exodus_hot_entry *hot_free(struct exodus_page_dedup_store *s)
+{
+    if(!s->slab||!s->hot)return NULL;
+    for(size_t i=0;i<s->hot_capacity;i++)if(!s->hot[i].page.active)return &s->hot[i];
+    return NULL;
+}
+static bool restore_physical(const struct exodus_page_dedup_store *s,size_t i,uint8_t *out)
+{
+    if(i>=s->unique.page_count)return false;
+    const struct exodus_hot_entry *h=exodus_hot_find(s,i);
+    return h?exodus_bdi_slab_restore(s->slab,&h->page,out):exodus_page_store_restore(&s->unique,i,out);
+}
+static void hot_shift(struct exodus_page_dedup_store *s,size_t old)
+{
+    for(size_t i=0;i<s->hot_capacity;i++)
+        if(s->hot[i].page.active&&s->hot[i].physical>old)--s->hot[i].physical;
+}
+
 static bool valid_store(const struct exodus_page_dedup_store *store)
 {
     return store && store->fingerprints && store->page_refs &&
+        ((!store->slab&&!store->hot&&!store->hot_capacity)||
+         (store->slab&&store->hot&&store->hot_capacity&&store->unique.page_order)) &&
         store->unique.payload && exodus_page_store_has_index(&store->unique) &&
         store->page_count <= store->page_capacity &&
         store->unique.page_count <= store->unique.page_capacity &&
@@ -33,7 +58,7 @@ static bool append_page(struct exodus_page_dedup_store *store,
         if (store->fingerprints[i] != hash)
             continue;
         uint8_t restored[EXODUS_PAGE_BYTES];
-        if (!exodus_page_store_restore(&store->unique, i, restored))
+        if (!restore_physical(store,i,restored))
             return false;
         if (memcmp(restored, page, sizeof(restored)) == 0) {
             physical = i;
@@ -69,7 +94,7 @@ bool exodus_page_dedup_store_restore(const struct exodus_page_dedup_store *store
 {
     if (!page || !valid_store(store) || index >= store->page_count)
         return false;
-    return exodus_page_store_restore(&store->unique, store->page_refs[index], page);
+    return restore_physical(store,store->page_refs[index],page);
 }
 
 /* Validate all offsets and logical references before any replacement. */
@@ -95,15 +120,19 @@ static bool commit_replacement(struct exodus_page_dedup_store *s,size_t index,
 {
     struct exodus_page_store *u=&s->unique;
     if(exodus_page_store_is_pool(u)){
+        struct exodus_hot_entry *h=hot_find(s,old);
         if(match==u->page_count){
             size_t target=owners==1?old:match;
             if(owners>1&&u->page_count>=s->page_count)return false;
             if(!exodus_page_store_pool_put(u,target,encoded,size))return false;
+            if(owners==1&&h)exodus_bdi_slab_release(s->slab,&h->page);
             s->fingerprints[target]=hash;
             s->page_refs[index]=target;
         }else{
             if(owners==1){
                 if(!exodus_page_store_pool_remove(u,old))return false;
+                if(h)exodus_bdi_slab_release(s->slab,&h->page);
+                hot_shift(s,old);
                 for(size_t i=old;i<u->page_count;i++)s->fingerprints[i]=s->fingerprints[i+1];
                 for(size_t i=0;i<s->page_count;i++)if(s->page_refs[i]>old)--s->page_refs[i];
                 if(match>old)--match;
@@ -158,13 +187,13 @@ bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *s,
     size_t old,owners;
     if(!page||!replacement_context(s,index,&old,&owners))return false;
     uint8_t restored[EXODUS_PAGE_BYTES];
-    if(!exodus_page_store_restore(&s->unique,old,restored))return false;
+    if(!restore_physical(s,old,restored))return false;
     if(memcmp(restored,page,sizeof(restored))==0)return true;
     uint64_t hash=exodus_page_fingerprint(page);
     size_t match=s->unique.page_count;
     for(size_t i=0;i<s->unique.page_count;i++){
         if(i==old||s->fingerprints[i]!=hash)continue;
-        if(!exodus_page_store_restore(&s->unique,i,restored))return false;
+        if(!restore_physical(s,i,restored))return false;
         if(memcmp(restored,page,sizeof(restored))==0){match=i;break;}
     }
     if(match!=s->unique.page_count)
@@ -182,6 +211,7 @@ static bool write_bdi(struct exodus_page_dedup_store *s,size_t index,size_t word
     size_t old,owners;
     *handled=true;
     if(!replacement_context(s,index,&old,&owners))return false;
+    if(hot_find(s,old)){*handled=false;return false;}
     size_t start,end;
     if(!exodus_page_store_extent(&s->unique,old,&start,&end))return false;
     size_t size=end-start;
@@ -202,7 +232,7 @@ static bool write_bdi(struct exodus_page_dedup_store *s,size_t index,size_t word
     for(size_t i=0;i<s->unique.page_count;i++){
         if(i==old||s->fingerprints[i]!=hash)continue;
         uint8_t candidate[EXODUS_PAGE_BYTES];
-        if(!exodus_page_store_restore(&s->unique,i,candidate))return false;
+        if(!restore_physical(s,i,candidate))return false;
         /* Compare candidate with the prospective page without copying it:
          * undo the single edited word in the candidate scratch buffer. */
         if(memcmp(candidate+4*word,value,4)!=0)continue;
@@ -223,13 +253,87 @@ static bool write_bdi(struct exodus_page_dedup_store *s,size_t index,size_t word
     return commit_replacement(s,index,old,owners,match,hash,encoded,n);
 }
 
+/* Hot writes retain the global fingerprint index and exact equality check. */
+static bool write_hot(struct exodus_page_dedup_store *s,size_t index,size_t word,
+                      const uint8_t value[4],bool *handled)
+{
+    *handled=false;
+    if(!valid_store(s)||index>=s->page_count)return false;
+    struct exodus_hot_entry *h=hot_find(s,s->page_refs[index]);
+    if(!h)return false;
+    *handled=true;
+    size_t old,owners;
+    if(!replacement_context(s,index,&old,&owners))return false;
+    uint8_t before[4];
+    if(!exodus_bdi_slab_read(s->slab,&h->page,word,before))return false;
+    if(!memcmp(before,value,4))return true;
+    uint64_t hash;
+    if(!exodus_page_fingerprint_update(s->fingerprints[old],word,before,value,&hash))return false;
+    for(size_t i=0;i<s->unique.page_count;i++){
+        if(i==old||s->fingerprints[i]!=hash)continue;
+        uint8_t a[EXODUS_PAGE_BYTES],b[EXODUS_PAGE_BYTES];
+        if(!restore_physical(s,old,a)||!restore_physical(s,i,b))return false;
+        memcpy(a+4*word,value,4);
+        if(!memcmp(a,b,sizeof a))return commit_replacement(s,index,old,owners,i,hash,NULL,0);
+    }
+    if(owners==1){
+        if(!exodus_bdi_slab_write(s->slab,&h->page,word,value)){*handled=false;return false;}
+        s->fingerprints[old]=hash;return true;
+    }
+    struct exodus_hot_entry *dst=hot_free(s);
+    size_t target=s->unique.page_count;
+    if(!dst||target>=s->page_count||!exodus_page_store_pool_can_put(&s->unique,target,sizeof placeholder)){
+        *handled=false;return false;
+    }
+    struct exodus_bdi_slab_page clone={0};
+    if(!exodus_bdi_slab_clone(s->slab,&clone,&h->page)){*handled=false;return false;}
+    if(!exodus_bdi_slab_write(s->slab,&clone,word,value)){
+        exodus_bdi_slab_release(s->slab,&clone);*handled=false;return false;
+    }
+    /* Same preflight, serialized and unchanged cold pool: put cannot fail. */
+    if(!exodus_page_store_pool_put(&s->unique,target,placeholder,sizeof placeholder)){
+        exodus_bdi_slab_release(s->slab,&clone);return false;
+    }
+    dst->physical=target;dst->page=clone;
+    s->fingerprints[target]=hash;s->page_refs[index]=target;return true;
+}
+
+bool exodus_page_dedup_store_promote(struct exodus_page_dedup_store *s,size_t index)
+{
+    size_t old,owners;
+    if(!replacement_context(s,index,&old,&owners)||!s->slab)return false;
+    if(hot_find(s,old))return true;
+    struct exodus_hot_entry *h=hot_free(s);
+    uint8_t page[EXODUS_PAGE_BYTES];
+    if(!h||!restore_physical(s,old,page)||!exodus_page_store_pool_can_put(&s->unique,old,sizeof placeholder))return false;
+    struct exodus_bdi_slab_page tmp={0};
+    if(!exodus_bdi_slab_import(s->slab,&tmp,page))return false;
+    if(!exodus_page_store_pool_put(&s->unique,old,placeholder,sizeof placeholder)){
+        exodus_bdi_slab_release(s->slab,&tmp);return false;
+    }
+    h->physical=old;h->page=tmp;return true;
+}
+
+bool exodus_page_dedup_store_demote(struct exodus_page_dedup_store *s,size_t index)
+{
+    size_t old,owners;
+    if(!replacement_context(s,index,&old,&owners))return false;
+    struct exodus_hot_entry *h=hot_find(s,old);
+    if(!h)return true;
+    uint8_t page[EXODUS_PAGE_BYTES];
+    if(!restore_physical(s,old,page)||!exodus_page_store_replace_adaptive(&s->unique,old,page))return false;
+    return exodus_bdi_slab_release(s->slab,&h->page);
+}
+
 bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *s,
                                        size_t index, size_t word,
                                        const uint8_t value[4])
 {
     if (!value || word >= EXODUS_PAGE_BYTES / 4) return false;
     bool handled;
-    bool result=write_bdi(s,index,word,value,&handled);
+    bool result=write_hot(s,index,word,value,&handled);
+    if(handled)return result;
+    result=write_bdi(s,index,word,value,&handled);
     if(handled)return result;
     uint8_t page[EXODUS_PAGE_BYTES];
     if(!exodus_page_dedup_store_restore(s,index,page))return false;
