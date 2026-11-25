@@ -1,0 +1,65 @@
+name: EXODUS page integrity store
+
+on:
+  pull_request:
+    paths:
+      - 'exodus/memory/page_codec.c'
+      - 'exodus/memory/page_codec.h'
+      - 'exodus/memory/page_store.c'
+      - 'exodus/memory/page_store.h'
+      - 'exodus/memory/page_integrity_store.c'
+      - 'exodus/memory/page_integrity_store.h'
+      - 'exodus/memory/test_page_integrity_store.c'
+      - 'exodus/memory/PAGE_INTEGRITY_STORE_R01.md'
+      - '.github/workflows/page-integrity-store.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'exodus/memory/page_codec.c'
+      - 'exodus/memory/page_codec.h'
+      - 'exodus/memory/page_store.c'
+      - 'exodus/memory/page_store.h'
+      - 'exodus/memory/page_integrity_store.c'
+      - 'exodus/memory/page_integrity_store.h'
+      - 'exodus/memory/test_page_integrity_store.c'
+      - 'exodus/memory/PAGE_INTEGRITY_STORE_R01.md'
+      - '.github/workflows/page-integrity-store.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    name: GCC and Clang integrity checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Strict C99 and C11 tests
+        working-directory: exodus/memory
+        run: |
+          for compiler in gcc clang; do
+            for standard in c99 c11; do
+              "$compiler" -std="$standard" -O2 -Wall -Wextra -Wpedantic -Werror \
+                page_codec.c page_store.c page_integrity_store.c test_page_integrity_store.c \
+                -o "test_page_integrity_store_${compiler}_${standard}"
+              "./test_page_integrity_store_${compiler}_${standard}"
+            done
+          done
+      - name: Clang ASan and UBSan
+        working-directory: exodus/memory
+        env:
+          ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: |
+          clang -std=c11 -O1 -g -Wall -Wextra -Wpedantic -Werror \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            page_codec.c page_store.c page_integrity_store.c test_page_integrity_store.c \
+            -o test_page_integrity_store_san
+          ./test_page_integrity_store_san
