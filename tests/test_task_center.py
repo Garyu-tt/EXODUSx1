@@ -33,6 +33,27 @@ class TaskCenterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.center.acknowledge(handoff.token, "acquire", self.b.key)
 
+    def test_noncanonical_phase_cannot_skip_release(self):
+        class Alias(str):
+            def __ne__(self, other):
+                return False
+
+        self.center.reconcile(self.a.key)
+        h = self.center.begin(self.b.key)
+        for phase in (Alias("acquire"), Alias("release"), None, []):
+            with self.subTest(phase=phase):
+                with self.assertRaises(ValueError):
+                    self.center.acknowledge(h.token, phase, self.b.key)
+                self.assertEqual(self.center.owner, self.a.key)
+                self.assertEqual(self.center.pending, h)
+        h = self.center.acknowledge(h.token, "release", None)
+        with self.assertRaises(ValueError):
+            self.center.acknowledge(h.token, Alias("acquire"), self.b.key)
+        self.assertIsNone(self.center.owner)
+        self.assertEqual(self.center.pending, h)
+        self.center.acknowledge(h.token, "acquire", self.b.key)
+        self.assertEqual(self.center.owner, self.b.key)
+
     def test_disconnect_never_releases_device(self):
         self.center.reconcile(self.a.key)
         self.center.disconnect("horizon")

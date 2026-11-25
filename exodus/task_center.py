@@ -245,7 +245,8 @@ class TaskCenter:
         now = self.clock()
         self._tick(now)
         p = self.pending
-        if not p or type(token) is not int or token != p.token or phase != p.phase:
+        if (not p or type(token) is not int or token != p.token
+                or type(phase) is not str or phase != p.phase):
             raise ValueError("stale or unexpected acknowledgment")
         expected = None if phase == "release" else p.target
         if (expected is None and observed_owner is not None) or (expected is not None and
