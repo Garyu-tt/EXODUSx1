@@ -243,8 +243,47 @@ static void check_page_store_index_capacity(void)
         CHECK(payload[i] == 0xa3);
 }
 
+/* Exhaust every group mask with neighbors alternately full/empty.
+ * Check exact wire bytes against independent per-block construction,
+ * unaligned buffers, guard bytes, and late-mask rejection. */
+static void check_sparse_groups(void)
+{
+    uint8_t page[EXODUS_PAGE_BYTES], wire_storage[EXODUS_PAGE_BYTES+2];
+    uint8_t expected[EXODUS_PAGE_BYTES], dst_storage[EXODUS_PAGE_BYTES+2];
+    uint8_t *wire=wire_storage+1, *dst=dst_storage+1;
+    for(size_t group=0;group<8;group++){
+        for(unsigned bits=0;bits<256;bits++){
+            for(size_t i=0;i<8;i++)expected[i]=(uint8_t)(i%2?0xff:0);
+            expected[group]=(uint8_t)bits;
+            memset(page,0,sizeof page);
+            size_t pos=8;
+            for(size_t block=0;block<64;block++){
+                if(!(expected[block/8]&(1u<<(block%8))))continue;
+                for(size_t j=0;j<64;j++)
+                    page[64*block+j]=(uint8_t)(block*17+j+1);
+                page[64*block+63]|=1;
+                memcpy(expected+pos,page+64*block,64);
+                pos+=64;
+            }
+            memset(wire_storage,0xa5,sizeof wire_storage);
+            CHECK(exodus_page_encode(page,wire)==pos);
+            CHECK(!memcmp(wire,expected,pos));
+            CHECK(wire_storage[0]==0xa5&&wire[pos]==0xa5);
+            memset(dst_storage,0xc5,sizeof dst_storage);
+            CHECK(exodus_page_decode(wire,pos,dst));
+            CHECK(!memcmp(dst,page,sizeof page));
+            CHECK(dst_storage[0]==0xc5&&dst_storage[sizeof dst_storage-1]==0xc5);
+            wire[7]^=0x80;
+            memset(dst_storage,0xc5,sizeof dst_storage);
+            CHECK(!exodus_page_decode(wire,pos,dst));
+            for(size_t j=0;j<sizeof dst_storage;j++)CHECK(dst_storage[j]==0xc5);
+        }
+    }
+}
+
 int main(void)
 {
+    check_sparse_groups();
     check_adaptive();
     check_repeated_tiles();
     check_word_run_lengths();
