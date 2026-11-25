@@ -21,6 +21,7 @@ namespace exodus::steam_integrity {
         HashMismatch,
         ReadFailure,
         Cancelled,
+        ChangedDuringCheck,
     };
 
     struct VerificationResult {
