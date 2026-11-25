@@ -1,5 +1,6 @@
 /* QEMU Bao reference only. Reserve and map the dedicated FDT resource.
- * No userspace device, raw physical access, reset, or mailbox writes.
+ * No userspace device or arbitrary physical access.
+ * Explicit disposable roundtrip fixture uses three fixed 32-bit words only.
  * Mapping-only control is non-cacheable and never dereferences the window.
  * Coherent mode requires a separate mediator proof before enabling it.
  */
@@ -33,12 +34,16 @@ tmr_map_mode(phandle_t node)
 {
     int control = OF_hasprop(node, "exodus,mapping-only");
     int coherent = OF_hasprop(node, "exodus,coherent-normal-memory");
+    int roundtrip = OF_hasprop(node, "exodus,roundtrip-control");
+    if (roundtrip && (!control || coherent ||
+        OF_getproplen(node, "exodus,roundtrip-control") != 0))
+        return (0);
     if (control == coherent)
         return (0);
     if (OF_getproplen(node, control ? "exodus,mapping-only" :
         "exodus,coherent-normal-memory") != 0)
         return (0);
-    return (control ? 1 : 2);
+    return (roundtrip ? 3 : (control ? 1 : 2));
 }
 
 static int
@@ -55,7 +60,7 @@ tmr_map_probe(device_t dev)
         !ofw_bus_is_compatible(dev, "exodus,tumor-mailbox-reference-v1") ||
         OF_getencprop(node, "exodus,role", &role, sizeof(role)) != sizeof(role) ||
         (role != 1 && role != 2) ||
-        tmr_map_mode(node) == 0)
+        tmr_map_mode(node) == 0 || (tmr_map_mode(node) == 3 && role != 2))
         return (ENXIO);
     device_set_desc(dev, "Tumor dedicated reference mailbox resource");
     return (BUS_PROBE_DEFAULT);
@@ -79,6 +84,47 @@ tmr_map_detach(device_t dev)
         sc->res = NULL;
     }
     return (0);
+}
+
+/* Non-cacheable QEMU reference transaction. One owner per word, no retry
+ * or reset on a live mapping. Not the coherent R33 transport. */
+#define TMR_CHALLENGE 0x52433831u
+#define TMR_RESPONSE  0x52433832u
+#define TMR_ACK       0x52433833u
+#define TMR_TEST_OFFSET 0x2000u
+static void
+tmr_barrier(void)
+{
+    __asm __volatile("dsb sy" ::: "memory");
+}
+static int
+tmr_wait_word(volatile uint32_t *word, uint32_t expected)
+{
+    for (unsigned i = 0; i < 2000; ++i) {
+        uint32_t observed = *word;
+        tmr_barrier();
+        if (observed == expected)
+            return (0);
+        if (observed != 0)
+            return (EINVAL);
+        DELAY(100);
+    }
+    return (ETIMEDOUT);
+}
+static int
+tmr_roundtrip(struct tmr_map_softc *sc)
+{
+    volatile uint32_t *words = (volatile uint32_t *)
+        ((char *)sc->map.r_vaddr + TMR_TEST_OFFSET);
+    int error = tmr_wait_word(&words[0], TMR_CHALLENGE);
+    if (error != 0)
+        return (error);
+    if (words[1] != 0 || words[2] != 0)
+        return (EINVAL);
+    tmr_barrier();
+    words[1] = TMR_RESPONSE;
+    tmr_barrier();
+    return (tmr_wait_word(&words[2], TMR_ACK));
 }
 
 static int
@@ -108,7 +154,7 @@ tmr_map_attach(device_t dev)
         return (EINVAL);
     }
     resource_init_map_request(&req);
-    req.memattr = mode == 1 ? VM_MEMATTR_UNCACHEABLE : VM_MEMATTR_WRITE_BACK;
+    req.memattr = mode == 2 ? VM_MEMATTR_WRITE_BACK : VM_MEMATTR_UNCACHEABLE;
     req.length = TMR_SIZE;
     error = bus_map_resource(dev, sc->res, &req, &sc->map);
     if (error != 0) {
@@ -119,6 +165,16 @@ tmr_map_attach(device_t dev)
     if (sc->map.r_vaddr == NULL || sc->map.r_size != TMR_SIZE) {
         (void)tmr_map_detach(dev);
         return (ENXIO);
+    }
+    if (mode == 3) {
+        error = tmr_roundtrip(sc);
+        if (error != 0) {
+            device_printf(dev, "TMR_ROUNDTRIP_FAILED error=%d\n", error);
+            (void)tmr_map_detach(dev);
+            return (error);
+        }
+        device_printf(dev, "TMR_ROUNDTRIP_CONTROL_PASS\n");
+        return (0);
     }
     device_printf(dev, "%s; no shared-memory access performed\n",
         mode == 1 ? "TMR_MAPPING_ONLY_ATTACHED" : "TMR_COHERENT_MAPPING_ATTACHED");
