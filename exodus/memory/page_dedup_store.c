@@ -183,14 +183,12 @@ static bool commit_replacement(struct exodus_page_dedup_store *s,size_t index,
     return true;
 }
 
-static bool replace_adaptive(struct exodus_page_dedup_store *s,
-                                             size_t index,const uint8_t *page)
+/* The caller has validated the store and established that the logical
+ * page actually changed. Candidate comparison and commit remain exact. */
+static bool replace_changed(struct exodus_page_dedup_store *s,size_t index,
+                            size_t old,size_t owners,const uint8_t *page)
 {
-    size_t old,owners;
-    if(!page||!replacement_context(s,index,&old,&owners))return false;
     uint8_t restored[EXODUS_PAGE_BYTES];
-    if(!restore_physical(s,old,restored))return false;
-    if(memcmp(restored,page,sizeof(restored))==0)return true;
     uint64_t hash=exodus_page_fingerprint(page);
     size_t match=s->unique.page_count;
     for(size_t i=0;i<s->unique.page_count;i++){
@@ -203,6 +201,17 @@ static bool replace_adaptive(struct exodus_page_dedup_store *s,
     uint8_t encoded[EXODUS_PAGE_BYTES];
     size_t size=exodus_page_encode_adaptive(page,encoded);
     return commit_replacement(s,index,old,owners,match,hash,encoded,size);
+}
+
+static bool replace_adaptive(struct exodus_page_dedup_store *s,
+                                             size_t index,const uint8_t *page)
+{
+    size_t old,owners;
+    if(!page||!replacement_context(s,index,&old,&owners))return false;
+    uint8_t restored[EXODUS_PAGE_BYTES];
+    if(!restore_physical(s,old,restored))return false;
+    if(memcmp(restored,page,sizeof(restored))==0)return true;
+    return replace_changed(s,index,old,owners,page);
 }
 
 /* Fast path: only patch one BDI block. The logical hash is updated in O(1), and
@@ -337,10 +346,13 @@ static bool write_word(struct exodus_page_dedup_store *s,
     if(handled)return result;
     result=write_bdi(s,index,word,value,&handled);
     if(handled)return result;
+    size_t old,owners;
+    if(!replacement_context(s,index,&old,&owners))return false;
     uint8_t page[EXODUS_PAGE_BYTES];
-    if(!exodus_page_dedup_store_restore(s,index,page))return false;
-    memcpy(page + word * 4, value, 4);
-    return replace_adaptive(s, index, page);
+    if(!restore_physical(s,old,page))return false;
+    if(!memcmp(page+word*4,value,4))return true;
+    memcpy(page+word*4,value,4);
+    return replace_changed(s,index,old,owners,page);
 }
 
 /* Successful write requests, including no-ops, count once. */
