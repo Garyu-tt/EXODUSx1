@@ -29,6 +29,12 @@ struct exodus_page_dedup_store {
 bool exodus_page_dedup_store_append(struct exodus_page_dedup_store *store,
                                    const uint8_t *page);
 
+/* Same immutable sharing contract, with adaptive encoding of new unique pages.
+ * Existing logical and physical pages are never re-encoded. Both append
+ * variants may share a group; equality is always checked on decoded bytes. */
+bool exodus_page_dedup_store_append_adaptive(struct exodus_page_dedup_store *store,
+                                            const uint8_t *page);
+
 /* Restore a logical page into a separate writable EXODUS_PAGE_BYTES buffer.
  * The output must not overlap any store buffer. Invalid indices, mappings, or
  * malformed stored encodings leave the output unchanged. There is no mutation

@@ -39,6 +39,8 @@ Restore directly by index with `exodus_page_store_restore` and a separate writab
 
 To write back a changed page, call `exodus_page_store_replace(store, index, page)` with a readable 4096-byte page. The page keeps its index and the group keeps its page count. A larger or smaller encoding shifts the following payloads and updates their offsets; all other pages retain their contents and indices. A failed capacity or index check leaves both buffers and the counters unchanged, so retain the changed source page until replacement succeeds. A smaller replacement makes capacity available for a later replacement or append.
 
+Use `exodus_page_store_replace_adaptive` for the same replacement contract with the adaptive encoder. Legacy replacement remains unchanged. Neither function may modify the backing store of immutable deduplication groups.
+
 Replacement uses one 4096-byte scratch buffer without heap allocation. It validates the offset array and may move the entire following payload, so its cost grows with the group size. Serialize replacement, append and restore operations. These operations manage caller-owned CPU storage; they do not update active GPU resources or provide runtime memory hooks.
 
 ## Compress successive snapshots of a page
@@ -60,7 +62,7 @@ Tag `0` precedes one standalone adaptive payload and allows a null reference dur
 
 ## Share identical cold pages
 
-Link `page_dedup_store.c`, `page_store.c` and `page_codec.c` for an append-only group that shares identical pages. `exodus_page_dedup_store_append` assigns a logical index for every successful append; `exodus_page_dedup_store_restore` restores that index into a separate writable page. The wrapper stores each unique page through the existing sparse/raw codec. A 64-bit fingerprint filters candidates, and a full restored-byte comparison decides sharing, including when fingerprints collide.
+Link `page_dedup_store.c`, `page_store.c` and `page_codec.c` for an append-only group that shares identical pages. `exodus_page_dedup_store_append` assigns a logical index for every successful append; `exodus_page_dedup_store_restore` restores that index into a separate writable page. The legacy wrapper stores each unique page through the existing sparse/raw codec. Use `exodus_page_dedup_store_append_adaptive` to encode new unique pages with the adaptive codec. Both entry points may share the same group and match existing pages regardless of encoding; already stored pages are never re-encoded. For example, one zero page and two distinct repeating 8/16-byte tiles use 34 payload bytes in total, before metadata, regardless of the number of logical references. A 64-bit fingerprint filters candidates, and a full restored-byte comparison decides sharing, including when fingerprints collide.
 
 Initialize the wrapper's `unique` store as above, then supply `fingerprints` with `unique.page_capacity` elements of `uint64_t`, `page_refs` with `page_capacity` elements of `size_t`, and zero both page counts and `unique.payload_used`. All four backing buffers, source pages and restore outputs must be separate. For example, two identical raw pages fit in this group:
 

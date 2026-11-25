@@ -262,8 +262,51 @@ static void check_many_logical_pages(void)
     }
 }
 
+static void check_adaptive_sharing(void)
+{
+    struct fixture f;
+    init_fixture(&f);
+    uint8_t pages[4][EXODUS_PAGE_BYTES] = {{0}};
+    uint8_t restored[EXODUS_PAGE_BYTES];
+    /* 8- and 16-byte tiles, neither reducible to four-byte word fills. */
+    for (size_t i = 0; i < EXODUS_PAGE_BYTES; ++i) {
+        pages[1][i] = (uint8_t)(1 + i % 8);
+        pages[2][i] = (uint8_t)(17 + i % 16);
+        pages[3][i] = (uint8_t)(33 + i % 8);
+    }
+    f.store.unique.payload_capacity = 8 + 9 + 17;
+    f.store.unique.page_capacity = 3;
+    CHECK(exodus_page_dedup_store_append(&f.store, pages[0]));
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store, pages[1]));
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store, pages[2]));
+    CHECK(f.store.unique.payload_used == 34);
+    CHECK(f.ends[0] == 8 && f.ends[1] == 17 && f.ends[2] == 34);
+    /* The legacy entry point can share adaptive pages and vice versa. */
+    CHECK(exodus_page_dedup_store_append(&f.store, pages[1]));
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store, pages[0]));
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store, pages[2]));
+    const size_t expected[] = {0, 1, 2, 1, 0, 2};
+    CHECK(f.store.page_count == 6 && f.store.unique.page_count == 3);
+    CHECK(f.store.unique.payload_used == 34);
+    for (size_t i = 0; i < 6; ++i) {
+        CHECK(f.refs[i] == expected[i]);
+        CHECK(exodus_page_dedup_store_restore(&f.store, i, restored));
+        CHECK(memcmp(restored, pages[expected[i]], sizeof(restored)) == 0);
+    }
+    struct fixture before = f;
+    CHECK(!exodus_page_dedup_store_append_adaptive(&f.store, pages[3]));
+    CHECK(memcmp(&f, &before, sizeof(f)) == 0);
+    /* A corrupt adaptive candidate cannot be treated as a duplicate. */
+    f.payload[8] = 0xff;
+    before = f;
+    CHECK(!exodus_page_dedup_store_append_adaptive(&f.store, pages[1]));
+    CHECK(memcmp(&f, &before, sizeof(f)) == 0);
+    check_restore_failure_unchanged(&f.store, 1);
+}
+
 int main(void)
 {
+    check_adaptive_sharing();
     check_raw_sharing_and_memory_budget();
     check_mixed_pages_and_full_physical_capacity();
     check_capacity_failures();

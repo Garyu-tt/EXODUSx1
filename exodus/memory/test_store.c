@@ -200,8 +200,40 @@ static void check_operation_sequences(void)
     CHECK(count == PAGE_CAPACITY && replacements > 100 && rejected > 10);
 }
 
+static void check_adaptive_replacement(void)
+{
+    struct fixture fixture;
+    initialize(&fixture, 8 + 17 + 8);
+    uint8_t pages[PAGE_CAPACITY][EXODUS_PAGE_BYTES] = {{0}};
+    for (size_t i = 0; i < 3; ++i)
+        CHECK(exodus_page_store_append(&fixture.store, pages[i]));
+    for (size_t i = 0; i < EXODUS_PAGE_BYTES; ++i)
+        pages[1][i] = (uint8_t)(1 + i % 16);
+    CHECK(exodus_page_store_replace_adaptive(&fixture.store, 1, pages[1]));
+    CHECK(fixture.store.payload_used == 33);
+    CHECK(fixture.store.page_ends[0] == 8);
+    CHECK(fixture.store.page_ends[1] == 25);
+    CHECK(fixture.store.page_ends[2] == 33);
+    check_pages(&fixture, pages, 3);
+    struct fixture before = fixture;
+    CHECK(!exodus_page_store_replace_adaptive(&fixture.store, 0, pages[1]));
+    check_unchanged(&fixture, &before);
+    CHECK(!exodus_page_store_replace_adaptive(&fixture.store, 3, pages[1]));
+    check_unchanged(&fixture, &before);
+    for (size_t i = 0; i < EXODUS_PAGE_BYTES; ++i)
+        pages[1][i] = (uint8_t)(1 + i % 8);
+    CHECK(exodus_page_store_replace_adaptive(&fixture.store, 1, pages[1]));
+    CHECK(fixture.store.payload_used == 25);
+    check_pages(&fixture, pages, 3);
+    memset(pages[1], 0, EXODUS_PAGE_BYTES);
+    CHECK(exodus_page_store_replace_adaptive(&fixture.store, 1, pages[1]));
+    CHECK(fixture.store.payload_used == 24);
+    check_pages(&fixture, pages, 3);
+}
+
 int main(void)
 {
+    check_adaptive_replacement();
     check_replacement_positions();
     check_capacity_and_invalid_inputs();
     check_operation_sequences();
