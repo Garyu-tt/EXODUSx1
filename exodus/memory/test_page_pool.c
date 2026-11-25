@@ -9,8 +9,9 @@ enum{P=EXODUS_PAGE_BYTES,L=8};
 static uint8_t backing[L*P],expected[L][P],out[P],raw[P];
 static size_t starts[L],ends[L],refs[L];
 static uint64_t hashes[L];
+static uint32_t order[L];
 static struct exodus_page_dedup_store s={
- .unique={.payload=backing,.payload_capacity=sizeof(backing),.page_ends=ends,.page_capacity=L,.page_starts=starts},
+ .unique={.payload=backing,.payload_capacity=sizeof(backing),.page_ends=ends,.page_capacity=L,.page_starts=starts,.page_order=order},
  .fingerprints=hashes,.page_refs=refs,.page_capacity=L};
 static unsigned rng=18277;
 static unsigned next(void){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;}
@@ -51,10 +52,11 @@ int main(void){
   if(i%3==0){C(exodus_page_dedup_store_replace_adaptive(&s,a,expected[b]));if(a!=b)memcpy(expected[a],expected[b],P);}
   else{put(v,next());C(exodus_page_dedup_store_write_word(&s,a,w,v));memcpy(expected[a]+4*w,v,4);}
   verify();
+  if(i%17==0){size_t moved;C(exodus_page_dedup_store_compact(&s,500,&moved)&&moved<=500);verify();}
  }
  /* Independent base pool, full capacity and fragmented allocation rollback. */
- uint8_t buf[160]={0},before[160],enc[72];size_t st[3]={0},en[3]={0};
- struct exodus_page_store p={.payload=buf,.payload_capacity=sizeof(buf),.page_starts=st,.page_ends=en,.page_capacity=3};
+ uint8_t buf[160]={0},before[160],enc[72];size_t st[3]={0},en[3]={0};uint32_t ord[3]={0};
+ struct exodus_page_store p={.payload=buf,.payload_capacity=sizeof(buf),.page_starts=st,.page_ends=en,.page_capacity=3,.page_order=ord};
  memset(enc,0,72);enc[0]=1;
  C(exodus_page_store_pool_put(&p,0,enc,72));
  C(exodus_page_store_pool_put(&p,1,enc,72));
@@ -68,6 +70,23 @@ int main(void){
  C(!memcmp(before,buf,sizeof(buf))&&p.page_count==2&&p.payload_used==80);
  C(!memcmp(st,bst,sizeof(st))&&!memcmp(en,ben,sizeof(en)));
  st[1]=80;en[1]=88;C(!exodus_page_store_validate(&p));st[1]=0;en[1]=8;
+
+ struct exodus_page_pool_stats stats;
+ C(exodus_page_store_pool_stats(&p,&stats));
+ C(stats.free_bytes==80&&stats.largest_gap==64&&stats.tail_free==16&&stats.holes==1);
+ size_t moved=999;
+ C(exodus_page_store_pool_compact(&p,71,&moved)&&moved==0);
+ C(!memcmp(before,buf,sizeof(buf)));
+ C(exodus_page_store_pool_compact(&p,72,&moved)&&moved==72);
+ C(st[0]==8&&st[1]==0&&en[0]==80);
+ C(exodus_page_store_pool_stats(&p,&stats)&&stats.largest_gap==80&&stats.tail_free==80&&stats.holes==0);
+ C(exodus_page_store_pool_put(&p,2,enc,72));
+ C(exodus_page_store_validate(&p));
+ uint32_t saved_order=ord[1];ord[1]=ord[0];moved=999;
+ memcpy(before,buf,sizeof(buf));
+ C(!exodus_page_store_pool_compact(&p,160,&moved)&&moved==999&&!memcmp(before,buf,sizeof(buf)));
+ ord[1]=saved_order;
+ C(exodus_page_store_validate(&p));
  struct exodus_page_compact_index idx;uint16_t lengths[3];size_t points[3];
  C(!exodus_page_compact_build(&p,&idx,lengths,3,points,3));
  /* Integrity wrapper operates over the very same extent layout. */
@@ -76,6 +95,9 @@ int main(void){
  memset(raw,0x55,P);C(exodus_page_integrity_store_append_adaptive(&integrity,raw));
  memset(raw,0x77,P);C(exodus_page_integrity_store_replace_adaptive(&integrity,0,raw));
  C(exodus_page_integrity_store_restore(&integrity,0,out)&&!memcmp(raw,out,P));
+ size_t copied;C(exodus_page_dedup_store_compact(&s,SIZE_MAX,&copied));verify();
+ C(exodus_page_store_pool_stats(&s.unique,&stats)&&stats.tail_free==stats.free_bytes&&stats.holes==0);
+ puts("Indexed pool: linear validation, budgeted compaction and fragmentation recovery passed");
  puts("Pool: 2000 mutations, unchanged neighbour, hole reuse, fragmented rollback, integrity passed");
  return 0;
 }

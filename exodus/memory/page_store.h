@@ -17,6 +17,10 @@ struct exodus_page_store {
      * NULL selects packed layout; non-NULL selects reusable extents. In pool
      * mode page_ends are absolute ends and payload_used is live bytes. */
     size_t *page_starts;
+    /* Optional uint32_t[page_capacity], initialized on an empty pool.
+     * Stores physical record indices sorted by start; all arrays disjoint.
+     * Requires page_capacity <= UINT32_MAX. NULL retains legacy pool. */
+    uint32_t *page_order;
 };
 
 /* Append one readable EXODUS_PAGE_BYTES page using the legacy sparse/raw
@@ -45,7 +49,7 @@ bool exodus_page_store_replace_adaptive(struct exodus_page_store *store, size_t 
 bool exodus_page_store_restore(const struct exodus_page_store *store, size_t index, uint8_t *page);
 
 /* Validate all active extents, including overlap and live byte accounting.
- * Pool mode currently uses quadratic validation for bounded groups. */
+ * Indexed pool mode is linear; unindexed pool mode is quadratic. */
 bool exodus_page_store_validate(const struct exodus_page_store *store);
 /* Locate one record (local bounds validation). */
 bool exodus_page_store_extent(const struct exodus_page_store *store,size_t index,
@@ -55,4 +59,16 @@ bool exodus_page_store_extent(const struct exodus_page_store *store,size_t index
 bool exodus_page_store_pool_put(struct exodus_page_store *store,size_t index,
                                 const uint8_t *encoded,size_t size);
 bool exodus_page_store_pool_remove(struct exodus_page_store *store,size_t index);
+struct exodus_page_pool_stats {
+    size_t free_bytes, largest_gap, tail_free, holes;
+};
+/* Indexed pools only. Output unchanged on invalid metadata. */
+bool exodus_page_store_pool_stats(const struct exodus_page_store *store,
+                                  struct exodus_page_pool_stats *out);
+/* Compact toward offset zero, preserving all page indices. Stop before a
+ * record would exceed the copy budget; later calls can resume. Zero budget
+ * is valid. Returns copied bytes, unchanged on invalid metadata.
+ * Requires an indexed pool and serialized access. */
+bool exodus_page_store_pool_compact(struct exodus_page_store *store,
+                                    size_t budget,size_t *moved);
 #endif

@@ -109,3 +109,20 @@ clean-page-pool:
 	$(RM) test_page_pool$(EXEEXT)
 
 .PHONY: check-page-pool clean-page-pool
+
+test_extent_index$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h test_extent_index.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c test_extent_index.c $(LDLIBS)
+
+test_dedup_index$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h page_dedup_store.c page_dedup_store.h test_dedup_index.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c test_dedup_index.c $(LDLIBS)
+
+check: check-extent-index
+check-extent-index: test_extent_index$(EXEEXT) test_dedup_index$(EXEEXT)
+	./test_extent_index$(EXEEXT)
+	./test_dedup_index$(EXEEXT)
+
+clean: clean-extent-index
+clean-extent-index:
+	$(RM) test_extent_index$(EXEEXT) test_dedup_index$(EXEEXT)
+
+.PHONY: check-extent-index clean-extent-index

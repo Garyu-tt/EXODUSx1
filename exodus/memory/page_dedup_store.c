@@ -220,3 +220,12 @@ bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *s,
     memcpy(page + word * 4, value, 4);
     return exodus_page_dedup_store_replace_adaptive(s, index, page);
 }
+
+bool exodus_page_dedup_store_compact(struct exodus_page_dedup_store *s,
+                                     size_t budget,size_t *moved)
+{
+    if(!valid_store(s))return false;
+    for(size_t i=0;i<s->page_count;i++)
+        if(s->page_refs[i]>=s->unique.page_count)return false;
+    return exodus_page_store_pool_compact(&s->unique,budget,moved);
+}

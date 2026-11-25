@@ -6,7 +6,7 @@
 /* A caller-owned group of logical pages sharing immutable backing.
  * Initialize both page counts and unique.payload_used to zero. Supply separate,
  * non-overlapping buffers for unique.payload, unique.page_ends, fingerprints,
- * and page_refs (and optional unique.page_starts). fingerprints has unique.page_capacity uint64_t entries;
+ * and page_refs (and optional unique.page_starts and unique.page_order). fingerprints has unique.page_capacity uint64_t entries;
  * these are runtime v2 indices, not serialized FNV-1a values. Rebuild old
  * groups from decoded pages; do not reuse old fingerprint arrays.
  * page_refs has page_capacity size_t entries. The unique store belongs to this
@@ -57,4 +57,8 @@ bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *st
 bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *store,
                                        size_t index, size_t word,
                                        const uint8_t value[4]);
+/* Compact physical extents without changing logical references or hashes.
+ * Same copy budget contract as exodus_page_store_pool_compact. */
+bool exodus_page_dedup_store_compact(struct exodus_page_dedup_store *store,
+                                     size_t budget,size_t *moved);
 #endif

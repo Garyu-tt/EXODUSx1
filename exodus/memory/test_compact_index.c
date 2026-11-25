@@ -27,7 +27,7 @@ static void check_failed_build(void)
 {
     uint8_t payload[EXODUS_PAGE_BYTES + 1] = {0};
     size_t offsets[] = {8, 16};
-    struct exodus_page_store store = {payload, sizeof(payload), offsets, 2, 16, 2, NULL};
+    struct exodus_page_store store = {payload, sizeof(payload), offsets, 2, 16, 2, NULL, NULL};
     struct exodus_page_compact_index index = {.page_count = 7};
     uint16_t lengths[] = {0xaaaa, 0xbbbb};
     size_t checkpoints[] = {999};
@@ -53,7 +53,7 @@ int main(void)
     uint8_t page[EXODUS_PAGE_BYTES], restored[EXODUS_PAGE_BYTES];
     size_t offsets[PAGES], checkpoints[GROUPS];
     uint16_t lengths[PAGES];
-    struct exodus_page_store store = {payload, sizeof(payload), offsets, PAGES, 0, 0, NULL};
+    struct exodus_page_store store = {payload, sizeof(payload), offsets, PAGES, 0, 0, NULL, NULL};
     struct exodus_page_compact_index index;
 
     CHECK(exodus_page_compact_checkpoints(0) == 0);

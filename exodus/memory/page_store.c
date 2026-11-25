@@ -6,7 +6,8 @@
 static bool basic(const struct exodus_page_store *s)
 {
     return s && s->payload && s->page_ends &&
-           s->page_count<=s->page_capacity && s->payload_used<=s->payload_capacity;
+           s->page_count<=s->page_capacity && s->payload_used<=s->payload_capacity &&
+           (!s->page_order||(s->page_starts&&s->page_capacity<=UINT32_MAX));
 }
 
 bool exodus_page_store_extent(const struct exodus_page_store *s,size_t i,
@@ -25,6 +26,17 @@ bool exodus_page_store_validate(const struct exodus_page_store *s)
 {
     if(!basic(s))return false;
     size_t used=0;
+    if(s->page_order){
+        size_t last=0;
+        for(size_t k=0;k<s->page_count;k++){
+            size_t i=s->page_order[k],a,b;
+            if(!exodus_page_store_extent(s,i,&a,&b)||a<last||
+               b-a>s->payload_used-used)return false;
+            last=b;used+=b-a;
+        }
+        /* Strict nonoverlap and nonempty extents imply distinct indices. */
+        return used==s->payload_used;
+    }
     for(size_t i=0;i<s->page_count;i++){
         size_t a,b;
         if(!exodus_page_store_extent(s,i,&a,&b)||b-a>s->payload_used-used)return false;
@@ -48,6 +60,70 @@ static size_t conflict(const struct exodus_page_store *s,size_t skip,size_t a,si
     return next;
 }
 
+
+/* With sorted extents, first-fit needs one traversal, including old extent
+ * reuse. No state changes until a destination has been found. */
+static bool ordered_gap(const struct exodus_page_store *s,size_t skip,size_t n,size_t *out)
+{
+    size_t a=0;
+    for(size_t k=0;k<s->page_count;k++){
+        size_t i=s->page_order[k];
+        if(i==skip)continue;
+        if(s->page_starts[i]-a>=n){*out=a;return true;}
+        a=s->page_ends[i];
+    }
+    if(s->payload_capacity-a<n)return false;
+    *out=a;return true;
+}
+static void order_remove(struct exodus_page_store *s,size_t i)
+{
+    size_t k=0;
+    while(k<s->page_count&&s->page_order[k]!=i)++k;
+    /* Existing index was validated, so k is in range. */
+    for(;k+1<s->page_count;k++)s->page_order[k]=s->page_order[k+1];
+}
+static void order_insert(struct exodus_page_store *s,size_t count,size_t i)
+{
+    size_t k=count;
+    while(k&&s->page_starts[s->page_order[k-1]]>s->page_starts[i]){
+        s->page_order[k]=s->page_order[k-1];--k;
+    }
+    s->page_order[k]=(uint32_t)i;
+}
+bool exodus_page_store_pool_stats(const struct exodus_page_store *s,
+                                  struct exodus_page_pool_stats *out)
+{
+    if(!out||!s||!s->page_order||!exodus_page_store_validate(s))return false;
+    struct exodus_page_pool_stats r={0};
+    r.free_bytes=s->payload_capacity-s->payload_used;
+    size_t cursor=0;
+    for(size_t k=0;k<s->page_count;k++){
+        size_t i=s->page_order[k],gap=s->page_starts[i]-cursor;
+        if(gap)++r.holes;
+        if(gap>r.largest_gap)r.largest_gap=gap;
+        cursor=s->page_ends[i];
+    }
+    r.tail_free=s->payload_capacity-cursor;
+    if(r.tail_free>r.largest_gap)r.largest_gap=r.tail_free;
+    *out=r;return true;
+}
+bool exodus_page_store_pool_compact(struct exodus_page_store *s,size_t budget,size_t *moved)
+{
+    if(!moved||!s||!s->page_order||!exodus_page_store_validate(s))return false;
+    size_t cursor=0,total=0;
+    for(size_t k=0;k<s->page_count;k++){
+        size_t i=s->page_order[k],a=s->page_starts[i],n=s->page_ends[i]-a;
+        if(a!=cursor){
+            if(n>budget-total)break;
+            memmove(s->payload+cursor,s->payload+a,n);
+            s->page_starts[i]=cursor;s->page_ends[i]=cursor+n;
+            total+=n;
+        }
+        cursor+=n;
+    }
+    *moved=total;return true;
+}
+
 bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
                                 const uint8_t *encoded,size_t n)
 {
@@ -61,6 +137,9 @@ bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
     size_t limit=s->payload_capacity-n;
     size_t a=append?0:s->page_starts[i];
     if(a>limit||conflict(s,i,a,n)!=a){
+        if(s->page_order){
+            if(!ordered_gap(s,i,n,&a))return false;
+        }else{
         a=0;
         for(;;){
             if(a>limit)return false;
@@ -68,9 +147,12 @@ bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
             if(next==a)break;
             a=next;
         }
+        }
     }
+    if(s->page_order&&!append)order_remove(s,i);
     memcpy(s->payload+a,encoded,n);
     s->page_starts[i]=a;s->page_ends[i]=a+n;s->payload_used=other+n;
+    if(s->page_order)order_insert(s,s->page_count-(append?0:1),i);
     if(append)++s->page_count;
     return true;
 }
@@ -79,6 +161,10 @@ bool exodus_page_store_pool_remove(struct exodus_page_store *s,size_t i)
 {
     if(!s||!s->page_starts||!exodus_page_store_validate(s)||i>=s->page_count)return false;
     size_t bytes=s->page_ends[i]-s->page_starts[i];
+    if(s->page_order){
+        order_remove(s,i);
+        for(size_t k=0;k+1<s->page_count;k++)if(s->page_order[k]>i)--s->page_order[k];
+    }
     for(size_t j=i+1;j<s->page_count;j++){
         s->page_starts[j-1]=s->page_starts[j];
         s->page_ends[j-1]=s->page_ends[j];
