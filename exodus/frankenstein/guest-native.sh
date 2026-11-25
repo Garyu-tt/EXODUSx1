@@ -31,6 +31,14 @@ mount -t msdosfs -o ro "$seed" "$work/seed"
 for f in sessiond.c sessiond-dbus.inc test_sessiond.py test_sessiond_dbus.sh; do
     cp "$work/seed/$f" "$work/src/$f"
 done
+mkdir "$work/src/exodus" "$work/src/tests"
+for f in task_center.py task_center_child.py; do
+    cp "$work/seed/$f" "$work/src/exodus/$f"
+done
+for f in test_task_center.py test_task_center_child.py; do
+    cp "$work/seed/$f" "$work/src/tests/$f"
+done
+touch "$work/src/exodus/__init__.py" "$work/src/tests/__init__.py"
 umount "$work/seed"
 export ASSUME_ALWAYS_YES=yes
 pkg bootstrap -y
@@ -47,6 +55,11 @@ pw useradd -n exodusref -m -s /bin/sh -w no
 chmod 755 "$work" "$work/src"
 su -m exodusref -c "cd '$work/src' && /usr/local/bin/python3 test_sessiond.py ./exodus-sessiond"
 echo EXODUS_NATIVE_SESSION_PASS
+# Execute the exact accepted R03 tests as a non-root user on real FreeBSD.
+# The POSIX capability check is mandatory: a skipped test is not acceptance.
+su -m exodusref -c "cd '$work/src' && /usr/local/bin/python3 -c 'import os; assert hasattr(os, \"posix_spawn\") and hasattr(os, \"WCONTINUED\")'"
+su -m exodusref -c "cd '$work/src' && /usr/local/bin/python3 -m unittest -v tests.test_task_center tests.test_task_center_child"
+echo EXODUS_TASK_CENTER_FREEBSD_PASS
 su -m exodusref -c "cd '$work/src' && /usr/local/bin/dbus-run-session -- sh test_sessiond_dbus.sh ./exodus-sessiond-dbus"
 export_dir=$(mktemp -d /var/tmp/exodus-export.XXXXXX)
 mount -t msdosfs /dev/msdosfs/EXODUSOUT "$export_dir"
