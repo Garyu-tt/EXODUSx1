@@ -53,8 +53,17 @@ static inline int exodus_artwork_path(const char *path)
             segment = p + 1;
         } else if (c < 32 || c == 127 || c == '\\' || c == ':' || c == '"') return 0;
     }
-    size_t len = strlen(path);
-    return (len > 4 && (!strcmp(path + len - 4, ".png") || !strcmp(path + len - 4, ".jpg"))) ||
-           (len > 5 && !strcmp(path + len - 5, ".jpeg"));
+    const char *dot = strrchr(segment, '.');
+    if (!dot) return 0;
+    const char *suffix = dot + 1;
+    size_t length = strlen(suffix);
+    char extension[sizeof("jpeg")];
+    if (length < 3 || length >= sizeof(extension)) return 0;
+    for (size_t i = 0; i < length; ++i) {
+        char c = suffix[i];
+        extension[i] = c >= 'A' && c <= 'Z' ? (char)(c - 'A' + 'a') : c;
+    }
+    extension[length] = '\0';
+    return !strcmp(extension, "png") || !strcmp(extension, "jpg") || !strcmp(extension, "jpeg");
 }
 #endif
