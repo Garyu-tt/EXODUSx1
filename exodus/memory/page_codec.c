@@ -265,13 +265,17 @@ size_t exodus_page_bdi_patch_word(const uint8_t *p,size_t size,size_t word,
 /* Position-dependent word tokens. XOR makes replacement reversible; the
  * SplitMix64 finalizer diffuses the combined index and little-endian word.
  * This is a candidate filter, never a proof of equality or integrity. */
-static uint64_t word_token(size_t word,const uint8_t value[4])
+static uint64_t word_token_value(size_t word,uint32_t value)
 {
-    uint64_t x=((uint64_t)word<<32)|bdi_load(value);
+    uint64_t x=((uint64_t)word<<32)|value;
     x+=UINT64_C(0x9e3779b97f4a7c15);
     x=(x^(x>>30))*UINT64_C(0xbf58476d1ce4e5b9);
     x=(x^(x>>27))*UINT64_C(0x94d049bb133111eb);
     return x^(x>>31);
+}
+static uint64_t word_token(size_t word,const uint8_t value[4])
+{
+    return word_token_value(word,bdi_load(value));
 }
 
 uint64_t exodus_page_fingerprint(const uint8_t *page)
@@ -296,11 +300,17 @@ bool exodus_page_bdi_fingerprint(const uint8_t *p,size_t size,uint64_t *out)
     uint64_t hash=UINT64_C(0x45584f4455530002);
     size_t pos=BDI_HEADER;
     for(size_t b=0;b<BLOCKS;b++){
-        uint8_t block[BLOCK_BYTES];
-        bool compressed=(p[1+b/8]&(1u<<(b%8)))!=0;
-        bdi_block(p+pos,compressed,block);
-        for(size_t w=0;w<16;w++)hash^=word_token(b*16+w,block+w*4);
-        pos+=compressed?BDI_BYTES:BLOCK_BYTES;
+        /* Hash logical words directly. Unsigned addition matches the
+         * decoder's modulo-2^32 semantics even for noncanonical bases. */
+        if(p[1+b/8]&(1u<<(b%8))){
+            uint32_t base=bdi_load(p+pos);
+            for(size_t w=0;w<16;w++)
+                hash^=word_token_value(b*16+w,base+(uint32_t)p[pos+4+w]);
+            pos+=BDI_BYTES;
+        }else{
+            for(size_t w=0;w<16;w++)hash^=word_token(b*16+w,p+pos+4*w);
+            pos+=BLOCK_BYTES;
+        }
     }
     *out=hash;
     return true;
