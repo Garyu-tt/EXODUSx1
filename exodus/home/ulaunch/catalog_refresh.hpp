@@ -14,6 +14,9 @@ namespace exodus::home {
     bool IsSteamCatalog(const Catalog &catalog);
     std::optional<std::uint64_t> PublishSteamSnapshot(const char *directory, std::string_view steam,
                                                       const char *base_path = HomeCatalogPath);
-    Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory);
+    Catalog ApplySteamSnapshots(Catalog current, const char *snapshot_directory);
+    // A fallback inventory is used only if the base path is genuinely absent.
+    Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory,
+                                 Catalog (*missing_base)() = nullptr);
 
 }
