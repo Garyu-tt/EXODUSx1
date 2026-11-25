@@ -8,6 +8,14 @@ on:
 permissions:
   contents: read
 jobs:
+  mapping-fdt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y device-tree-compiler
+      - run: sh exodus/frankenstein/tumor_mailbox/test-mapping-fdt.sh
   native-module:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 50
