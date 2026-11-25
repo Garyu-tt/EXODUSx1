@@ -40,6 +40,41 @@ static void check_rejected_encoding(const uint8_t *encoded, size_t size)
         CHECK(decoded[i] == 0x6a);
 }
 
+static void check_word_run_lengths(void)
+{
+    static const uint8_t first_word[] = {0x26, 0xe1, 0, 0x8c};
+    static const uint8_t other_word[] = {0xfa, 0, 0x39, 0x65};
+    const size_t page_words = EXODUS_PAGE_BYTES / sizeof(first_word);
+
+    for (size_t count = 2; count <= 128; ++count) {
+        uint8_t encoded[EXODUS_PAGE_BYTES];
+        uint8_t restored[EXODUS_PAGE_BYTES + 2];
+        uint8_t *stream = encoded + 1;
+        size_t size = 0;
+        stream[size++] = 1;
+        stream[size++] = (uint8_t)(0x80 | (count - 1));
+        memcpy(stream + size, first_word, sizeof(first_word));
+        size += sizeof(first_word);
+        for (size_t remaining = page_words - count; remaining > 0;) {
+            size_t chunk = remaining > 128 ? 128 : remaining;
+            stream[size++] = chunk == 1 ? 0 : (uint8_t)(0x80 | (chunk - 1));
+            memcpy(stream + size, other_word, sizeof(other_word));
+            size += sizeof(other_word);
+            remaining -= chunk;
+        }
+        if (size % 2 == 0)
+            stream[size++] = 0;
+
+        memset(restored, 0x6a, sizeof(restored));
+        CHECK(exodus_page_decode(stream, size, restored + 1));
+        CHECK(restored[0] == 0x6a && restored[sizeof(restored) - 1] == 0x6a);
+        for (size_t i = 0; i < page_words; ++i) {
+            const uint8_t *expected = i < count ? first_word : other_word;
+            CHECK(memcmp(restored + 1 + i * sizeof(first_word), expected, sizeof(first_word)) == 0);
+        }
+    }
+}
+
 static void check_adaptive(void)
 {
     const uint8_t pixel[] = {0x53, 0x71, 0x95, 0xff};
@@ -212,6 +247,7 @@ int main(void)
 {
     check_adaptive();
     check_repeated_tiles();
+    check_word_run_lengths();
     check_layout(0);
     check_layout(UINT64_MAX);
     for (unsigned i = 0; i < BLOCKS; ++i) {
