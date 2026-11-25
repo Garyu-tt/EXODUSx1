@@ -93,19 +93,29 @@ static bool ordered_gap(const struct exodus_page_store *s,size_t skip,size_t n,s
     if(s->payload_capacity-a<n)return false;
     *out=a;return true;
 }
+/* Sorted, validated extents have distinct starts. Search by address,
+ * then move the contiguous suffix once instead of shifting entry by entry. */
+static size_t order_lower_bound(const struct exodus_page_store *s,size_t count,size_t a)
+{
+    size_t lo=0,hi=count;
+    while(lo<hi){
+        size_t mid=lo+(hi-lo)/2;
+        if(start_at(s,s->page_order[mid])<a)lo=mid+1;
+        else hi=mid;
+    }
+    return lo;
+}
 static void order_remove(struct exodus_page_store *s,size_t i)
 {
-    size_t k=0;
-    while(k<s->page_count&&s->page_order[k]!=i)++k;
-    /* Existing index was validated, so k is in range. */
-    for(;k+1<s->page_count;k++)s->page_order[k]=s->page_order[k+1];
+    size_t k=order_lower_bound(s,s->page_count,start_at(s,i));
+    /* Existing index was validated, so k identifies i. */
+    size_t tail=s->page_count-k-1;
+    if(tail)memmove(s->page_order+k,s->page_order+k+1,tail*sizeof *s->page_order);
 }
 static void order_insert(struct exodus_page_store *s,size_t count,size_t i)
 {
-    size_t k=count;
-    while(k&&start_at(s,s->page_order[k-1])>start_at(s,i)){
-        s->page_order[k]=s->page_order[k-1];--k;
-    }
+    size_t k=order_lower_bound(s,count,start_at(s,i));
+    if(k<count)memmove(s->page_order+k+1,s->page_order+k,(count-k)*sizeof *s->page_order);
     s->page_order[k]=(uint32_t)i;
 }
 bool exodus_page_store_pool_stats(const struct exodus_page_store *s,
@@ -154,17 +164,30 @@ static bool pool_plan(const struct exodus_page_store *s,size_t i,size_t n,
     if(n>s->payload_capacity-other)return false;
     size_t limit=s->payload_capacity-n;
     size_t a=append?0:start_at(s,i);
-    if(a>limit||conflict(s,i,a,n)!=a){
-        if(s->page_order){
-            if(!ordered_gap(s,i,n,&a))return false;
-        }else{
+    /* A validated existing extent already fits a same-size or smaller
+     * replacement. No other live extent can overlap it. */
+    if(!append&&n<=old){
+        *dest=a;*live=other+n;return true;
+    }
+    /* Indexed appends have no preferred old location. First-fit alone
+     * preserves their placement policy without a redundant conflict scan. */
+    if(s->page_order){
+        bool fits=false;
+        if(!append){
+            size_t k=order_lower_bound(s,s->page_count,a);
+            size_t next=k+1<s->page_count?start_at(s,s->page_order[k+1]):s->payload_capacity;
+            /* The previous extent ends before a; only the right neighbor
+             * can obstruct a growing replacement at its current start. */
+            fits=n<=next-a;
+        }
+        if(!fits&&!ordered_gap(s,i,n,&a))return false;
+    }else if(a>limit||conflict(s,i,a,n)!=a){
         a=0;
         for(;;){
             if(a>limit)return false;
             size_t next=conflict(s,i,a,n);
             if(next==a)break;
             a=next;
-        }
         }
     }
     *dest=a;*live=other+n;return true;
@@ -181,10 +204,13 @@ bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
     size_t a,live;
     if(!encoded||!pool_plan(s,i,n,&a,&live))return false;
     bool append=i==s->page_count;
-    if(s->page_order&&!append)order_remove(s,i);
+    /* The ordering key is the start, not the length. Keep the existing
+     * index untouched whenever a replacement stays at its old address. */
+    bool reorder=s->page_order&&(append||a!=start_at(s,i));
+    if(reorder&&!append)order_remove(s,i);
     memcpy(s->payload+a,encoded,n);
     set_extent(s,i,a,a+n);s->payload_used=live;
-    if(s->page_order)order_insert(s,s->page_count-(append?0:1),i);
+    if(reorder)order_insert(s,s->page_count-(append?0:1),i);
     if(append)++s->page_count;
     return true;
 }
@@ -285,6 +311,12 @@ static bool replace_page(struct exodus_page_store *store, size_t index,
     if (size > store->payload_capacity - other_bytes)
         return false;
 
+    /* An equal-length replacement cannot move any extent or change the
+     * used-byte total. The complete index was already validated above. */
+    if(size==old_size){
+        memcpy(store->payload+start,encoded,size);
+        return true;
+    }
     memmove(store->payload + start + size, store->payload + end, store->payload_used - end);
     memcpy(store->payload + start, encoded, size);
     for (size_t i = index; i < store->page_count; ++i) {
