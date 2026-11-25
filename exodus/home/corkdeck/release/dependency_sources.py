@@ -66,7 +66,7 @@ def _is_link_or_reparse(path):
         return True
     try:
         return bool(getattr(path.lstat(), "st_reparse_tag", 0))
-    except OSError:
+    except FileNotFoundError:
         return False
 
 
