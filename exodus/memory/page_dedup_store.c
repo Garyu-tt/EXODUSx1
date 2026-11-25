@@ -33,6 +33,18 @@ static bool append_page(struct exodus_page_dedup_store *store,
     if (!page || !valid_store(store) || store->page_count == store->page_capacity)
         return false;
 
+    /* Appending must not extend an inconsistent physical index, even
+     * when no fingerprint matches or an early match would skip its tail.
+     * Restore keeps its indexed, single-record validation path. */
+    size_t previous = 0;
+    for (size_t i = 0; i < store->unique.page_count; ++i) {
+        size_t end = store->unique.page_ends[i];
+        if (end <= previous || end > store->unique.payload_used ||
+            end - previous > EXODUS_PAGE_BYTES)
+            return false;
+        previous = end;
+    }
+
     uint64_t hash = page_fingerprint(page);
     size_t physical = store->unique.page_count;
     for (size_t i = 0; i < store->unique.page_count; ++i) {
