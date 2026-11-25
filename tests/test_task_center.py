@@ -150,6 +150,54 @@ class TaskCenterTests(unittest.TestCase):
         self.center.view()
         self.assertEqual(self.center.lifecycle_result, (p.token, UNKNOWN))
 
+    def test_uncertain_lifecycle_blocks_new_operations_until_adapter_quiescence(self):
+        s = Session("freebsd", 1, "game", 1, "running", frozenset({"terminate"}))
+        self.center.publish("freebsd", 1, 2, [s])
+        self.center.reconcile(self.a.key)
+        p = self.center.request_lifecycle(s.key, "terminate")
+        self.center.acknowledge_lifecycle(p.token, p.target, True)
+        self.center.disconnect("horizon")
+        self.assertEqual(self.center.lifecycle_result, (p.token, UNKNOWN))
+        self.assertEqual(self.center.owner, UNKNOWN)
+        self.center.reconcile(None)
+        self.center.publish("freebsd", 1, 3, [s])
+        with self.assertRaises(ValueError):
+            self.center.begin(s.key)
+        with self.assertRaises(ValueError):
+            self.center.request_lifecycle(s.key, "terminate")
+        for token, target, quiesced in ((p.token+1, p.target, True),
+                                        (p.token, self.a.key, True),
+                                        (p.token, p.target, False)):
+            with self.assertRaises(ValueError):
+                self.center.resolve_uncertain_lifecycle(token, target, quiesced=quiesced)
+        self.center.resolve_uncertain_lifecycle(p.token, p.target, quiesced=True)
+        self.assertEqual(self.center.lifecycle_result, (p.token, UNKNOWN))
+        self.assertEqual(self.center.begin(s.key).phase, "acquire")
+
+    def test_timeout_without_ack_cannot_be_retried_after_fresh_snapshot(self):
+        s = Session("freebsd", 1, "game", 1, "running", frozenset({"suspend"}))
+        self.center.publish("freebsd", 1, 2, [s])
+        self.center.reconcile(None)
+        p = self.center.request_lifecycle(s.key, "suspend")
+        self.now += 2
+        self.center.publish("freebsd", 1, 3, [s])
+        self.now += 2
+        self.center.publish("freebsd", 1, 4, [s])
+        self.now += 1
+        self.center.view()
+        self.assertEqual(self.center.lifecycle_result, (p.token, UNKNOWN))
+        with self.assertRaises(ValueError):
+            self.center.request_lifecycle(s.key, "suspend")
+        self.center.resolve_uncertain_lifecycle(p.token, p.target, quiesced=True)
+        self.assertNotEqual(self.center.request_lifecycle(s.key, "suspend").token, p.token)
+
+    def test_boolean_identity_cannot_alias_integer_epoch(self):
+        self.center.reconcile(None)
+        with self.assertRaises(ValueError):
+            self.center.begin(("horizon", True, "game", 1))
+        with self.assertRaises(ValueError):
+            self.center.reconcile(("horizon", 1, "game", True))
+
     def test_invalid_snapshot_is_atomic(self):
         for rows in ([self.a, self.a], [self.b], [Session("horizon", 1, "game", 0, "running")]):
             with self.assertRaises(ValueError):

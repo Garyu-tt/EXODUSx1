@@ -11,3 +11,7 @@ Three-second snapshot expiry and two-second handoff deadline are provisional ref
 ## Lifecycle requests (R02)
 
 Suspend, resume and graceful termination are admitted only for fresh, non-foreground sessions with explicit backend capabilities. Foreground ownership must already be known. A typed request has a single token and provisional five-second deadline. Backend acceptance does not change observed state; a subsequent newer snapshot with the same full session identity is required. Disappearance is unknown, not proof of exit. No automatic retry or forced kill. The controller serializes lifecycle and handoff requests. A real authenticated adapter, process-control implementation, and hardware evidence are still required.
+
+## Uncertain lifecycle recovery
+
+A timed-out, lost or ambiguous command is quarantined: even fresh backend snapshots or foreground reconciliation alone do not prove that the old command cannot execute later. Block new lifecycle requests and foreground handoffs until the trusted adapter explicitly attests quiescence of the exact old token and target. The recorded result remains unknown, not success. Loss of known foreground ownership during a lifecycle operation also quarantines it. This is a conservative global gate in the reference model, not an implemented transport or proof of adapter quiescence.

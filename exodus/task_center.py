@@ -64,9 +64,11 @@ class TaskCenter:
         self.token = 0
         self.lifecycle = None
         self.lifecycle_result = None
+        self.uncertain_lifecycle = None
 
     def _session(self, key, now):
-        if not isinstance(key, tuple) or len(key) != 4 or not isinstance(key[0], str):
+        if (not isinstance(key, tuple) or len(key) != 4 or not isinstance(key[0], str)
+                or not positive(key[1]) or not isinstance(key[2], str) or not positive(key[3])):
             return None
         view = self.snapshots.get(key[0])
         if view and now < view[2]:
@@ -79,6 +81,8 @@ class TaskCenter:
 
     def _finish_lifecycle(self, result):
         self.lifecycle_result = (self.lifecycle.token, result)
+        if result == UNKNOWN:
+            self.uncertain_lifecycle = self.lifecycle
         self.lifecycle = None
 
     def _check_lifecycle(self, now):
@@ -86,7 +90,7 @@ class TaskCenter:
         if not p:
             return
         s = self._session(p.target, now)
-        if now >= p.deadline or s is None or s.state == UNKNOWN:
+        if now >= p.deadline or s is None or s.state == UNKNOWN or self.owner == UNKNOWN:
             self._finish_lifecycle(UNKNOWN)
             return
         if not p.accepted:
@@ -102,12 +106,12 @@ class TaskCenter:
         self.pending = None
 
     def _tick(self, now):
-        self._check_lifecycle(now)
         p = self.pending
         if p and (now >= p.deadline or not self._live(p.target, now)):
             self._invalidate()
         if self.owner not in (None, UNKNOWN) and not self._live(self.owner, now):
             self._invalidate()
+        self._check_lifecycle(now)
 
     def publish(self, backend, epoch, sequence, sessions):
         now = self.clock()
@@ -166,7 +170,8 @@ class TaskCenter:
     def begin(self, target):
         now = self.clock()
         self._tick(now)
-        if self.pending or self.lifecycle or self.owner == UNKNOWN or not self._live(target, now):
+        if (self.pending or self.lifecycle or self.uncertain_lifecycle
+                or self.owner == UNKNOWN or not self._live(target, now)):
             raise ValueError("handoff unavailable")
         if target == self.owner:
             raise ValueError("already foreground")
@@ -182,7 +187,8 @@ class TaskCenter:
         now = self.clock()
         self._tick(now)
         s = self._session(target, now)
-        if (self.pending or self.lifecycle or self.owner == UNKNOWN or self.owner == target
+        if (self.pending or self.lifecycle or self.uncertain_lifecycle
+                or self.owner == UNKNOWN or self.owner == target
                 or s is None or operation not in OPERATIONS or operation not in s.capabilities):
             raise ValueError("lifecycle unavailable")
         initial = TRANSITIONS[operation][0]
@@ -194,6 +200,19 @@ class TaskCenter:
         self.lifecycle_result = None
         self.lifecycle = Lifecycle(self.token, operation, s.key, self.snapshots[s.backend][1], now + 5)
         return self.lifecycle
+
+    def resolve_uncertain_lifecycle(self, token, target, *, quiesced):
+        """Trusted adapter attests that the exact request cannot execute later.
+
+        A timeout, snapshot, epoch change or owner reconciliation is not that
+        attestation. This does not claim that the requested operation succeeded.
+        """
+        self._tick(self.clock())
+        p = self.uncertain_lifecycle
+        if (not p or type(token) is not int or token != p.token
+                or target != p.target or quiesced is not True):
+            raise ValueError("unresolved lifecycle operation")
+        self.uncertain_lifecycle = None
 
     def acknowledge_lifecycle(self, token, target, accepted):
         """Backend acceptance is not execution evidence. Require later snapshot."""
