@@ -12,6 +12,7 @@ namespace exodus::home {
 
     bool IsSteamCatalog(const Catalog &catalog);
     std::optional<std::uint64_t> PublishSteamSnapshot(const char *directory, std::string_view steam);
+    Catalog ApplySteamSnapshots(Catalog current, const char *snapshot_directory);
     Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory);
 
 }

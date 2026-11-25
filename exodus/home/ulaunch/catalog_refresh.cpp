@@ -180,10 +180,8 @@ namespace exodus::home {
         return std::nullopt;
     }
 
-    Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory) {
-        auto current = ReadCatalog(base_path);
-        if (current.status != CatalogStatus::Ready &&
-            (current.status != CatalogStatus::Unavailable || !PathMissing(base_path)))
+    Catalog ApplySteamSnapshots(Catalog current, const char *snapshot_directory) {
+        if (current.status != CatalogStatus::Ready && current.status != CatalogStatus::Unavailable)
             return current;
         const auto generations = ListSnapshots(snapshot_directory);
         if (!generations)
@@ -205,6 +203,13 @@ namespace exodus::home {
             return steam;
         }
         return current;
+    }
+
+    Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory) {
+        auto current = ReadCatalog(base_path);
+        if (current.status == CatalogStatus::Unavailable && !PathMissing(base_path))
+            return current;
+        return ApplySteamSnapshots(std::move(current), snapshot_directory);
     }
 
 }

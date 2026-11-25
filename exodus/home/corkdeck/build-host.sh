@@ -22,7 +22,7 @@ for file in "$here/settings_preview.c" "$here/focus_adapter.c" "$here/focus_indi
     "${CC:-cc}" -std=gnu11 -O2 -Wall -Wextra -I "$src" \
         $(pkg-config --cflags sdl2 SDL2_ttf libpng libturbojpeg) -c "$file" -o "$tmp/$(basename "$file").o"
 done
-for file in "$here/library_catalog.cpp" "$here/../ulaunch/catalog.cpp"; do
+for file in "$here/library_catalog.cpp" "$here/../ulaunch/catalog.cpp" "$here/../ulaunch/catalog_refresh.cpp"; do
     "${CXX:-c++}" -std=c++17 -O2 -Wall -Wextra -I "$json_include" -I "$(dirname -- "$json_include")" \
         -c "$file" -o "$tmp/$(basename "$file").o"
 done

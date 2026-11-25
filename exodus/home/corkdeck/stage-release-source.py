@@ -16,7 +16,8 @@ SHELL = Path("exodus/home/corkdeck")
 INPUTS = (
     SHELL.as_posix(),
     "exodus/home/ulaunch/COPYING", "exodus/home/ulaunch/catalog.cpp",
-    "exodus/home/ulaunch/catalog.hpp", "exodus/runtime/autorun_probe.c",
+    "exodus/home/ulaunch/catalog.hpp", "exodus/home/ulaunch/catalog_refresh.cpp",
+    "exodus/home/ulaunch/catalog_refresh.hpp", "exodus/runtime/autorun_probe.c",
     "exodus/runtime/autorun_probe.h", ".github/workflows/exodus-corkdeck.yml",
 )
 

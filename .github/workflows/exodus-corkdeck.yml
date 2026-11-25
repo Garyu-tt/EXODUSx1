@@ -49,6 +49,7 @@ jobs:
           "$RUNNER_TEMP/test-windows-pe"
           c++ -std=c++17 -Wall -Wextra -Werror -I /usr/include/nlohmann \
             "$dir/test_library_catalog.cpp" "$dir/library_catalog.cpp" exodus/home/ulaunch/catalog.cpp \
+            exodus/home/ulaunch/catalog_refresh.cpp \
             -o "$RUNNER_TEMP/test-catalog"
           "$RUNNER_TEMP/test-catalog" "$RUNNER_TEMP/catalog-fixture.json"
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
