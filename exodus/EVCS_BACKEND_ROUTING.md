@@ -38,3 +38,9 @@ determine backend selection.
 R17 implements the typed backend/target dispatch and regression cases,
 not a working Steam compatibility-tool package. Existing UI categories
 are preserved until their separate Applications presentation is wired.
+
+## R18: local bridge protocol (host-only integration)
+
+The `steam_compat` module validates bounded `.exodus-target` descriptors and previews non-installable VDF manifests. The `steam_bridge` client and server use bounded JSON frames over an owner-only Unix socket, a random request ID, explicit confirmation requirement and accepted/running/exited lifecycle transitions. A missing adapter rejects requests. No automatic launch retry, shell execution, external listener, or exit inference from disconnection is provided. Both client verbs wait for a terminal event. Tests exercise simulated adapters, not actual game execution.
+
+This integration intentionally excludes the separate Horizon observer, managed applet session and Applications UI changes from #160. No native adapter is installed and no actual Steam discovery, FreeBSD execution or Switch hardware acceptance is claimed.
