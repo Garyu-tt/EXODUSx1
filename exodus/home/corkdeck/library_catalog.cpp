@@ -209,7 +209,7 @@ int exodus_library_archive_detail(const struct exodus_library *library,size_t in
         snprintf(out,cap,"%s discovered: %llu bytes.\nNo verified launch backend.",format,(unsigned long long)st.st_size);
         return 1;
     }
-    FILE *stream=fopen(entry.id.c_str(),"rb");
+    FILE *stream=evcs_open_observed_regular(entry.id.c_str(),&st);
     struct evcs_pfs0_info info{};
     auto rc=stream?evcs_pfs0_probe(stream,(uint64_t)st.st_size,&info):EVCS_PFS0_IO;
     if (stream && fclose(stream)) rc=EVCS_PFS0_IO;

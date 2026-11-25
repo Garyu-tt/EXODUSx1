@@ -5,6 +5,7 @@
 #ifndef EXODUS_EVCS_MANIFEST_H
 #define EXODUS_EVCS_MANIFEST_H
 #include "evcs_graph.h"
+#include "evcs_regular.h"
 #include <stdio.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -57,7 +58,7 @@ static inline enum evcs_manifest_result evcs_manifest_read(const char *archive, 
     if (lstat(path,&st)) return errno==ENOENT ? EVCS_MANIFEST_MISSING : EVCS_MANIFEST_IO;
     if (!S_ISREG(st.st_mode) || st.st_size<=0 || st.st_size>=(off_t)sizeof(buf))
         return EVCS_MANIFEST_INVALID;
-    FILE *f=fopen(path,"rb");
+    FILE *f=evcs_open_observed_regular(path,&st);
     if (!f) return EVCS_MANIFEST_IO;
     size_t n=fread(buf,1,sizeof(buf),f);
     int err=ferror(f);

@@ -84,6 +84,31 @@ static void graph_fixture(void)
     assert(evcs_graph_validate(NULL,1)==EVCS_GRAPH_INVALID);
     assert(evcs_graph_validate(NULL,0)==EVCS_GRAPH_OK);
 }
+static void regular_fixture(void)
+{
+    char dir[]="/tmp/evcs-regular-XXXXXX",path[512],old[512];
+    assert(mkdtemp(dir));
+    assert(snprintf(path,sizeof(path),"%s/file",dir)>0);
+    assert(snprintf(old,sizeof(old),"%s/old",dir)>0);
+    touch(path,1);
+    struct stat observed;
+    assert(!lstat(path,&observed));
+    FILE *f=evcs_open_observed_regular(path,&observed);
+    assert(f && fgetc(f)=='x' && !fclose(f));
+    /* Keep the original inode alive so replacement identity cannot be reused. */
+    assert(!rename(path,old));
+    touch(path,1);
+    assert(!evcs_open_observed_regular(path,&observed));
+    assert(!unlink(path) && !mkfifo(path,0600));
+    assert(!evcs_open_observed_regular(path,&observed));
+    assert(!unlink(path) && !symlink(old,path));
+    assert(!evcs_open_observed_regular(path,&observed));
+    assert(!unlink(path) && !rename(old,path));
+    f=fopen(path,"ab");
+    assert(f && fputc('y',f)!=EOF && !fclose(f));
+    assert(!evcs_open_observed_regular(path,&observed));
+    assert(!unlink(path) && !rmdir(dir));
+}
 static void manifest_fixture(void)
 {
     struct evcs_content item;
@@ -114,6 +139,7 @@ int main(void)
 #ifndef __SWITCH__
     assert(evcs_directory_read_failed(ENOENT));
 #endif
+    regular_fixture();
     manifest_fixture();
     pfs0_fixture();
     graph_fixture();
