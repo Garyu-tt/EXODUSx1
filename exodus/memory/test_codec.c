@@ -27,6 +27,11 @@ static size_t check_adaptive_round_trip(const uint8_t *page, uint8_t *encoded)
     CHECK(encoded[0] == 0xa3 && encoded[1 + size] == 0xa3);
     CHECK(exodus_page_decode(encoded + 1, size, decoded + 1));
     CHECK(memcmp(page, decoded + 1, EXODUS_PAGE_BYTES) == 0);
+    bool equal=false;
+    CHECK(exodus_page_compare(encoded+1,size,page,&equal)&&equal);
+    decoded[EXODUS_PAGE_BYTES]^=1;
+    CHECK(exodus_page_compare(encoded+1,size,decoded+1,&equal)&&!equal);
+    decoded[EXODUS_PAGE_BYTES]^=1;
     CHECK(decoded[0] == 0xc5 && decoded[sizeof(decoded) - 1] == 0xc5);
     return size;
 }
@@ -36,6 +41,8 @@ static void check_rejected_encoding(const uint8_t *encoded, size_t size)
     uint8_t decoded[EXODUS_PAGE_BYTES];
     memset(decoded, 0x6a, sizeof(decoded));
     CHECK(!exodus_page_decode(encoded, size, decoded));
+    bool equal=true;
+    CHECK(!exodus_page_compare(encoded,size,decoded,&equal)&&equal);
     for (size_t i = 0; i < sizeof(decoded); ++i)
         CHECK(decoded[i] == 0x6a);
 }
@@ -67,6 +74,11 @@ static void check_word_run_lengths(void)
 
         memset(restored, 0x6a, sizeof(restored));
         CHECK(exodus_page_decode(stream, size, restored + 1));
+        bool equal=false;
+        CHECK(exodus_page_compare(stream,size,restored+1,&equal)&&equal);
+        restored[EXODUS_PAGE_BYTES]^=1;
+        CHECK(exodus_page_compare(stream,size,restored+1,&equal)&&!equal);
+        restored[EXODUS_PAGE_BYTES]^=1;
         CHECK(restored[0] == 0x6a && restored[sizeof(restored) - 1] == 0x6a);
         for (size_t i = 0; i < page_words; ++i) {
             const uint8_t *expected = i < count ? first_word : other_word;
@@ -243,8 +255,28 @@ static void check_page_store_index_capacity(void)
         CHECK(payload[i] == 0xa3);
 }
 
+/* A late malformed command must be rejected even after an early mismatch.
+ * Exercise both padding and repeated/literal command validation. */
+static void check_compare_invalid_tail(void)
+{
+    uint8_t stream[41]={1}, page[EXODUS_PAGE_BYTES]={0};
+    for(size_t i=0;i<8;i++){
+        stream[1+i*5]=255;
+        stream[2+i*5]=1;
+    }
+    bool equal=true;
+    CHECK(exodus_page_compare(stream,sizeof stream,page,&equal)&&!equal);
+    stream[36]=128; /* Invalid repeat of one word, after the first mismatch. */
+    equal=true;
+    CHECK(!exodus_page_compare(stream,sizeof stream,page,&equal)&&equal);
+    CHECK(!exodus_page_compare(NULL,sizeof stream,page,&equal)&&equal);
+    CHECK(!exodus_page_compare(stream,0,page,&equal)&&equal);
+    CHECK(!exodus_page_compare(stream,SIZE_MAX,page,&equal)&&equal);
+}
+
 int main(void)
 {
+    check_compare_invalid_tail();
     check_adaptive();
     check_repeated_tiles();
     check_word_run_lengths();
