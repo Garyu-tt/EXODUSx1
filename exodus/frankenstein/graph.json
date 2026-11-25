@@ -141,7 +141,9 @@
       "state": "closed-binary-unverified",
       "depends": [
         "gamescope",
-        "pipewire"
+        "pipewire",
+        "linux-arm64-abi",
+        "linux-glibc"
       ]
     },
     {
@@ -176,13 +178,15 @@
     {
       "id": "resident-service",
       "origin": "exodus/frankenstein/sessiond.c",
-      "state": "linux-amd64-arm64-tested",
+      "state": "freebsd-qemu-arm64-tested",
       "depends": [
         "kernel"
       ],
       "evidence": {
-        "run": 45495521234,
-        "scope": "Linux tests only"
+        "run": 45500312919,
+        "job": 138821525995,
+        "artifact": 14970783442,
+        "scope": "Native FreeBSD 15.1 ARM64 compile and same-process live reload, rejected unsafe configs, clean shutdown; QEMU virt only."
       }
     },
     {
@@ -196,13 +200,15 @@
     {
       "id": "manager-dbus",
       "origin": "exodus/frankenstein/sessiond-dbus.inc",
-      "state": "linux-amd64-arm64-tested",
+      "state": "freebsd-qemu-arm64-tested",
       "depends": [
         "resident-service"
       ],
       "evidence": {
-        "run": 45496077072,
-        "scope": "Linux private bus, no actual graphical switching"
+        "run": 45500312919,
+        "job": 138821525995,
+        "artifact": 14970783442,
+        "scope": "Native FreeBSD 15.1 ARM64 D-Bus desired mode property, persisted configuration, reload and rejection on isolated session bus; no actual graphical session switching."
       }
     },
     {
@@ -227,6 +233,27 @@
       "state": "needs-hardware-proof",
       "depends": [
         "dual-kernel"
+      ]
+    },
+    {
+      "id": "linux-arm64-abi",
+      "origin": "freebsd/freebsd-src@releng/15.1:sys/arm64/linux",
+      "state": "static-syscall-and-lse-boundary-verified",
+      "depends": [
+        "kernel"
+      ],
+      "evidence": {
+        "run": 45500903377,
+        "job": 138823600784,
+        "scope": "Static AArch64 Linux syscall probe passed under Linuxulator 5.15.0; native waitpid observed SIGILL=4 for LSE instruction on emulated Cortex-A57; overall guest exit 0. Dynamic ABI and physical hardware unverified."
+      }
+    },
+    {
+      "id": "linux-glibc",
+      "origin": "exodus/frankenstein/linux-dynamic-probe.c",
+      "state": "probe-pending",
+      "depends": [
+        "linux-arm64-abi"
       ]
     }
   ],

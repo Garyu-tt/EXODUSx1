@@ -24,7 +24,7 @@ export ASSUME_ALWAYS_YES=yes
 pkg bootstrap -y
 pkg update -f
 pkg install -y git-lite rust pkgconf dbus glib speech-dispatcher
-command -v git rustc cargo
+for tool in git rustc cargo; do command -v "$tool"; done
 rustc -Vv
 cargo -V
 pkg info

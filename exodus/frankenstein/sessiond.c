@@ -60,6 +60,13 @@ int main(int argc, char **argv) {
     sigemptyset(&signals);
     sigaddset(&signals, SIGHUP); sigaddset(&signals, SIGUSR1); sigaddset(&signals, SIGTERM);
     if (sigprocmask(SIG_BLOCK, &signals, NULL)) return 1;
+    /* rc/su can inherit ignored signals. FreeBSD may discard them even
+     * when blocked. Restore default dispositions before synchronous wait. */
+    struct sigaction sa = {0};
+    sa.sa_handler = SIG_DFL;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGHUP, &sa, NULL) || sigaction(SIGUSR1, &sa, NULL) ||
+        sigaction(SIGTERM, &sa, NULL)) return 1;
     struct config active, candidate;
     if (!read_config(argv[1], &active)) { fputs("invalid initial config\n", stderr); return 1; }
     report("ready", &active);
