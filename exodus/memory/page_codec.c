@@ -131,15 +131,18 @@ static void bdi_put(uint8_t *p, uint32_t v)
 {
     for (unsigned i=0;i<4;i++) p[i]=(uint8_t)(v>>(8*i));
 }
+/* Fixed-cost byte population count; no table, alignment or ISA dependency. */
+static unsigned bdi_byte_count(unsigned x)
+{
+    x -= (x >> 1) & 0x55u;
+    x = (x & 0x33u) + ((x >> 2) & 0x33u);
+    return (x + (x >> 4)) & 0x0fu;
+}
 static size_t bdi_count(const uint8_t *mask, size_t limit)
 {
-    size_t n=0;
-    for (size_t i=0;i<limit/8;i++) {
-        unsigned b=mask[i];
-        while(b) { b &= b-1; ++n; }
-    }
-    for (size_t i=limit/8*8;i<limit;i++)
-        n += (mask[i/8]>>(i%8))&1u;
+    size_t n=0, full=limit/8, tail=limit%8;
+    for(size_t i=0;i<full;i++)n+=bdi_byte_count(mask[i]);
+    if(tail)n+=bdi_byte_count(mask[full]&((1u<<tail)-1u));
     return n;
 }
 static size_t encode_bdi(const uint8_t *page, uint8_t *encoded, size_t best)
