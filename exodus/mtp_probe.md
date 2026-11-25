@@ -28,4 +28,6 @@ python exodus/mtp_probe.py --usb-id 1234:abcd --reconnect 45
 
 The report includes the initial and last states and whether a disconnect was observed. The exit code is `0` for WPD readiness or a confirmed reconnect, `1` when the requested result was unobserved, and `2` for an argument or probe error. JSON goes to stdout. Prompts and probe errors go to stderr.
 
+Use `--observe SECONDS` to record transitions from any initial state, including an absent device. Exit code `0` means the observation window finished. If a later query fails, stdout still contains all recorded events with `observation.complete` set to `false` and the reason set to `query_error` or `query_timeout`. Exit code `1` indicates a query timed out with only the remaining window available. Other query failures exit `2` with a diagnostic on stderr. An initial query failure exits `2` before any report is available.
+
 See [Microsoft's PnP codes and device properties](https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-pnpentity), [PnP parent property](https://learn.microsoft.com/en-us/windows-hardware/drivers/install/devpkey-device-parent) and [supported WPD protocols](https://learn.microsoft.com/en-us/windows-hardware/drivers/portable/wpd-drivers-overview).

@@ -198,13 +198,16 @@ def observe(usb_id, initial, seconds, sample):
     """Observe state transitions even when the USB target starts absent.
 
     Do not require the same instance ID: changing ports may legitimately change
-    it. Report only whether it changed, never the ID itself.
+    it. Report only whether it changed, never the ID itself. Return accumulated
+    evidence together with any query error that requires exit code 2.
     """
     start = time.monotonic()
     deadline = start + seconds
     events = [{"elapsed_ms": 0, **initial.report(), "parent_changed": False}]
     previous = initial
     last_parent = initial.parent_id
+    reason = "window_finished"
+    query_error = None
     while deadline - time.monotonic() > POLL_INTERVAL:
         time.sleep(POLL_INTERVAL)
         remaining = deadline - time.monotonic()
@@ -212,10 +215,12 @@ def observe(usb_id, initial, seconds, sample):
             break
         try:
             current = sample(usb_id, timeout=min(remaining, QUERY_TIMEOUT))
-        except ProbeTimeout:
-            if remaining > QUERY_TIMEOUT:
-                raise
-            return {"events": events, "complete": False, "reason": "query_timeout"}
+        except ProbeError as exc:
+            timed_out = isinstance(exc, ProbeTimeout)
+            reason = "query_timeout" if timed_out else "query_error"
+            if not timed_out or remaining > QUERY_TIMEOUT:
+                query_error = exc
+            break
         changed = (current.parent_id is not None and last_parent is not None
                    and current.parent_id != last_parent)
         if current.parent_id is not None:
@@ -224,7 +229,7 @@ def observe(usb_id, initial, seconds, sample):
             events.append({"elapsed_ms": int((time.monotonic() - start) * 1000),
                            **current.report(), "parent_changed": changed})
         previous = current
-    return {"events": events, "complete": True, "reason": "window_finished"}
+    return {"events": events, "complete": reason == "window_finished", "reason": reason}, query_error
 
 
 def main(argv=None, sample=read_windows):
@@ -245,6 +250,7 @@ def main(argv=None, sample=read_windows):
     usb_id = args.usb_id.lower()
     reconnect = None
     observation = None
+    observation_error = None
     try:
         initial = sample(usb_id)
         success = initial.state == "wpd_ready"
@@ -253,7 +259,7 @@ def main(argv=None, sample=read_windows):
             reconnect = {"state": state, "disconnect_seen": disconnected, "last": last.report()}
             success = state == "reconnected"
         elif args.observe is not None:
-            observation = observe(usb_id, initial, args.observe, sample)
+            observation, observation_error = observe(usb_id, initial, args.observe, sample)
             success = observation["complete"]
     except ProbeError as exc:
         print(f"MTP probe: {exc}", file=sys.stderr)
@@ -263,6 +269,9 @@ def main(argv=None, sample=read_windows):
     if observation is not None:
         report["observation"] = observation
     print(json.dumps(report))
+    if observation_error is not None:
+        print(f"MTP probe: {observation_error}", file=sys.stderr)
+        return 2
     return 0 if success else 1
 
 

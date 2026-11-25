@@ -205,11 +205,37 @@ class MtpProbeTests(unittest.TestCase):
         self.assertEqual(report["initial"]["state"], "not_present")
 
     def test_observe_timeout_is_incomplete(self):
-        sample = Mock(side_effect=[snapshots([])[0], mtp_probe.ProbeTimeout("timed out")])
-        code, report, _ = self.run_probe(sample, "--observe", "5")
-        self.assertEqual(code, 1)
+        sample = Mock(side_effect=[*snapshots([], [node(PARENT)]), mtp_probe.ProbeTimeout("timed out")])
+        code, report, errors = self.run_probe(sample, "--observe", "5")
+        self.assertEqual((code, errors), (1, ""))
         self.assertFalse(report["observation"]["complete"])
         self.assertEqual(report["observation"]["reason"], "query_timeout")
+        self.assertEqual([event["state"] for event in report["observation"]["events"]],
+                         ["not_present", "usb_only"])
+        sample.assert_called_with(USB_ID, timeout=3)
+
+    def test_observe_query_failure_preserves_prior_transitions(self):
+        for failure, reason in (
+            (mtp_probe.ProbeError("Windows USB enumeration failed."), "query_error"),
+            (mtp_probe.ProbeTimeout("Windows USB enumeration timed out."), "query_timeout"),
+        ):
+            with self.subTest(reason=reason):
+                sample = Mock(side_effect=[*snapshots([], [node(PARENT)], self.ready), failure])
+                code, report, errors = self.run_probe(sample, "--observe", "45")
+                self.assertEqual((code, errors), (2, f"MTP probe: {failure}\n"))
+                self.assertIsNotNone(report, "a query failure discarded the observation report")
+                observation = report["observation"]
+                self.assertFalse(observation["complete"])
+                self.assertEqual(observation["reason"], reason)
+                self.assertEqual([(event["elapsed_ms"], event["state"]) for event in observation["events"]],
+                                 [(0, "not_present"), (1000, "usb_only"), (2000, "wpd_ready")])
+                sample.assert_called_with(USB_ID, timeout=mtp_probe.QUERY_TIMEOUT)
+
+    def test_observe_baseline_failure_does_not_fabricate_a_report(self):
+        sample = Mock(side_effect=mtp_probe.ProbeError("Windows USB enumeration failed."))
+        code, report, errors = self.run_probe(sample, "--observe", "45")
+        self.assertEqual((code, report, errors), (2, None, "MTP probe: Windows USB enumeration failed.\n"))
+        sample.assert_called_once_with(USB_ID)
 
 
 if __name__ == "__main__":
