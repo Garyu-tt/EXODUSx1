@@ -30,6 +30,12 @@ bool exodus_page_store_append_adaptive(struct exodus_page_store *store, const ui
  * leave the store unchanged. Access must be serialized by the caller. */
 bool exodus_page_store_replace(struct exodus_page_store *store, size_t index, const uint8_t *page);
 
+/* Replace using the adaptive encoder, retaining the same failure atomicity
+ * and logical indices. Not for immutable shared backing or integrity wrappers
+ * whose checksums must be updated by their own API. */
+bool exodus_page_store_replace_adaptive(struct exodus_page_store *store, size_t index,
+                                        const uint8_t *page);
+
 /* Restore into a separate EXODUS_PAGE_BYTES buffer. Invalid indices or
  * malformed compressed encodings leave the destination unchanged. */
 bool exodus_page_store_restore(const struct exodus_page_store *store, size_t index, uint8_t *page);
