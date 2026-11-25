@@ -31,4 +31,37 @@ static void run(int pool){
  struct exodus_bdi_patch bad,saved;memset(&bad,0xa5,sizeof bad);memcpy(&saved,&bad,sizeof bad);assert(!exodus_page_bdi_prepare_patch(arena+a,b-a-1,0,v,&bad)&&!memcmp(&bad,&saved,sizeof bad));
  printf("%s: 10000 local BDI writes, RAW local update, COW and merge passed\n",pool?"compact pool":"packed");
 }
-int main(void){run(0);run(1);return 0;}
+/* Compare patch output with the original decode/modify/encode semantics,
+ * including noncanonical bases and modulo-2^32 wrapping source words. */
+static void check_direct_cold_patch(void){
+ uint8_t wire_storage[1291],block[64],canonical[64],value[4],whole[P],decoded[P];
+ uint8_t *wire=wire_storage+1;
+ wire[0]=EXODUS_PAGE_BDI_VERSION;memset(wire+1,0xff,8);
+ for(unsigned mode=0;mode<4;mode++){
+  uint32_t base=mode==3?UINT32_MAX-31u:1000u;
+  for(size_t b=0;b<64;b++){
+   uint8_t *src=wire+9+20*b;put(src,base);
+   for(size_t w=0;w<16;w++)
+    src[4+w]=(uint8_t)(mode==0?w:mode==1?w+1:mode==2?w/2:w*17);
+  }
+  for(size_t w=0;w<16;w++){
+   for(unsigned delta=0;delta<256;delta++){
+    const uint8_t *src=wire+9+20*63;
+    put(value,base+(uint32_t)delta);
+    assert(exodus_bdi_block_decode(src,20,block));
+    memcpy(block+4*w,value,4);
+    size_t n=exodus_bdi_block_encode(block,canonical);
+    struct exodus_bdi_patch patch;
+    assert(exodus_page_bdi_prepare_patch(wire,1289,63*16+w,value,&patch));
+    assert(patch.offset==9+20*63&&patch.old_len==20&&patch.new_len==n);
+    assert(!memcmp(patch.bytes,canonical,n));
+    size_t total=exodus_page_bdi_patch_word(wire,1289,63*16+w,value,whole);
+    assert(total==1289-20+n);
+    assert(exodus_page_decode(whole,total,decoded));
+    assert(!memcmp(decoded+63*64,block,64));
+    assert(!memcmp(whole+9,wire+9,63*20));
+   }
+  }
+ }
+}
+int main(void){check_direct_cold_patch();run(0);run(1);return 0;}
