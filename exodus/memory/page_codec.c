@@ -166,9 +166,15 @@ bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *pa
         return read_word_runs(encoded, encoded_size, NULL) &&
                read_word_runs(encoded, encoded_size, page);
     }
-    if (encoded_size < MASK_BYTES || (encoded_size - MASK_BYTES) % BLOCK_BYTES != 0) {
-        return false;
+    if (encoded_size <= MASK_BYTES) {
+        static const uint8_t zero_mask[MASK_BYTES] = {0};
+        if (encoded_size != MASK_BYTES || memcmp(encoded, zero_mask, MASK_BYTES) != 0)
+            return false;
+        memset(page, 0, EXODUS_PAGE_BYTES);
+        return true;
     }
+    if ((encoded_size - MASK_BYTES) % BLOCK_BYTES != 0)
+        return false;
 
     size_t expected = MASK_BYTES;
     for (size_t i = 0; i < MASK_BYTES; ++i) {
