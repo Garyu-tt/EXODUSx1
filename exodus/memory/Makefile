@@ -70,3 +70,16 @@ clean-direct-read:
 	$(RM) test_page_read$(EXEEXT)
 
 .PHONY: check-direct-read clean-direct-read
+
+test_page_cow$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h page_dedup_store.c page_dedup_store.h page_read.c page_read.h test_page_cow.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c page_read.c test_page_cow.c $(LDLIBS)
+
+check: check-page-cow
+check-page-cow: test_page_cow$(EXEEXT)
+	./test_page_cow$(EXEEXT)
+
+clean: clean-page-cow
+clean-page-cow:
+	$(RM) test_page_cow$(EXEEXT)
+
+.PHONY: check-page-cow clean-page-cow

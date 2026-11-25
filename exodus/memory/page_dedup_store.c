@@ -89,3 +89,81 @@ bool exodus_page_dedup_store_restore(const struct exodus_page_dedup_store *store
         return false;
     return exodus_page_store_restore(&store->unique, store->page_refs[index], page);
 }
+
+/* Copy-on-write for the immutable physical backing. Logical indices never move.
+ * No allocations: the existing physical table is compacted only when a sole
+ * owner switches to an already stored page. Caller serializes access. */
+bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *s,
+                                             size_t index, const uint8_t *page)
+{
+    if (!page || !valid_store(s) || index >= s->page_count)
+        return false;
+    size_t previous = 0;
+    for (size_t i = 0; i < s->unique.page_count; ++i) {
+        size_t end = s->unique.page_ends[i];
+        if (end <= previous || end > s->unique.payload_used ||
+            end - previous > EXODUS_PAGE_BYTES) return false;
+        previous = end;
+    }
+    size_t old = s->page_refs[index], owners = 0;
+    if (old >= s->unique.page_count) return false;
+    for (size_t i = 0; i < s->page_count; ++i) {
+        if (s->page_refs[i] >= s->unique.page_count) return false;
+        if (s->page_refs[i] == old) ++owners;
+    }
+    uint8_t restored[EXODUS_PAGE_BYTES];
+    if (!exodus_page_store_restore(&s->unique, old, restored)) return false;
+    if (memcmp(restored, page, sizeof(restored)) == 0) return true;
+    uint64_t hash = page_fingerprint(page);
+    size_t match = s->unique.page_count;
+    for (size_t i = 0; i < s->unique.page_count; ++i) {
+        if (i == old || s->fingerprints[i] != hash) continue;
+        if (!exodus_page_store_restore(&s->unique, i, restored)) return false;
+        if (memcmp(restored, page, sizeof(restored)) == 0) {
+            match = i;
+            break;
+        }
+    }
+    if (match == s->unique.page_count) {
+        if (owners == 1) {
+            if (!exodus_page_store_replace_adaptive(&s->unique, old, page))
+                return false;
+            s->fingerprints[old] = hash;
+        } else {
+            if (s->unique.page_count >= s->page_count ||
+                !exodus_page_store_append_adaptive(&s->unique, page))
+                return false;
+            s->fingerprints[match] = hash;
+            s->page_refs[index] = match;
+        }
+        return true;
+    }
+    s->page_refs[index] = match;
+    if (owners == 1) {
+        /* All validation is complete; no failure points after mutation. */
+        size_t start = old ? s->unique.page_ends[old - 1] : 0;
+        size_t end = s->unique.page_ends[old], bytes = end - start;
+        memmove(s->unique.payload + start, s->unique.payload + end,
+                s->unique.payload_used - end);
+        for (size_t i = old + 1; i < s->unique.page_count; ++i) {
+            s->unique.page_ends[i - 1] = s->unique.page_ends[i] - bytes;
+            s->fingerprints[i - 1] = s->fingerprints[i];
+        }
+        for (size_t i = 0; i < s->page_count; ++i)
+            if (s->page_refs[i] > old) --s->page_refs[i];
+        --s->unique.page_count;
+        s->unique.payload_used -= bytes;
+    }
+    return true;
+}
+
+bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *s,
+                                       size_t index, size_t word,
+                                       const uint8_t value[4])
+{
+    uint8_t page[EXODUS_PAGE_BYTES];
+    if (!value || word >= EXODUS_PAGE_BYTES / 4 ||
+        !exodus_page_dedup_store_restore(s, index, page)) return false;
+    memcpy(page + word * 4, value, 4);
+    return exodus_page_dedup_store_replace_adaptive(s, index, page);
+}

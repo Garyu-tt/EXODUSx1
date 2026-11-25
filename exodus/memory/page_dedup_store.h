@@ -3,7 +3,7 @@
 
 #include "page_store.h"
 
-/* A caller-owned append-only group of logical pages sharing immutable backing.
+/* A caller-owned group of logical pages sharing immutable backing.
  * Initialize both page counts and unique.payload_used to zero. Supply separate,
  * non-overlapping buffers for unique.payload, unique.page_ends, fingerprints,
  * and page_refs. fingerprints has unique.page_capacity uint64_t entries;
@@ -38,10 +38,20 @@ bool exodus_page_dedup_store_append_adaptive(struct exodus_page_dedup_store *sto
 
 /* Restore a logical page into a separate writable EXODUS_PAGE_BYTES buffer.
  * The output must not overlap any store buffer. Invalid indices, mappings, or
- * malformed stored encodings leave the output unchanged. There is no mutation
- * or copy-on-write API: changes to a restored page do not alter stored pages.
+ * malformed stored encodings leave the output unchanged. Changes to a restored page do not alter stored pages.
  */
 bool exodus_page_dedup_store_restore(const struct exodus_page_dedup_store *store,
                                     size_t index, uint8_t *page);
 
+/* Replace a logical page, preserving other owners and deduplicating by full
+ * decoded equality. Reclaims the old backing when its last owner leaves.
+ * Source must not overlap any store buffer. Capacity or validation failure
+ * leaves buffers and counters unchanged. Serialize access. */
+bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *store,
+                                             size_t index, const uint8_t *page);
+/* Copy-on-write of a 4-byte word in stored byte order. Currently restores
+ * and re-encodes one page; does not yet implement in-place BDI mutation. */
+bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *store,
+                                       size_t index, size_t word,
+                                       const uint8_t value[4]);
 #endif
