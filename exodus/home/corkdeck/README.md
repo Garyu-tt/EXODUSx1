@@ -84,6 +84,15 @@ The pinned CorkDeck runtime.c at adc0b52284e9e57d18808427a770a2a162c76bf0 accept
 
 Steam entries validate the numeric AppID but open the installed CorkDeck library without passing an app ID: the user selects the game there. This is not direct Steam game launch or ownership verification. The Steam snapshot/sync work in #44 is separate. A pending run-next.txt blocks both routes, because the donor prioritizes queued jobs over CLI targets. The guard cannot eliminate races with another writer. NRO structural validation does not authenticate the installed runtime or identify its version; use a compatible CorkDeck build. Return to EXODUS, low-address requirements and actual game launch need device tests.
 
+The shared NRO preflight also requires a nonempty read-only segment and a page-padded image-plus-BSS extent that fits the NRO's 32-bit size range. BSS does not require bytes in the file. These checks prevent known malformed headers from reaching the loader; they do not measure its available heap or establish runtime compatibility. The file-based regression uses small fixtures even at the mapped-size boundary:
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_autorun_probe.c exodus/runtime/autorun_probe.c -o /tmp/exodus-nro-check
+nro_test_dir=$(mktemp -d)
+/tmp/exodus-nro-check "$nro_test_dir/runtime.nro" "$nro_test_dir"
+rmdir "$nro_test_dir"
+```
+
 Run the portable argument and PE preflight tests.
 
 ```sh
