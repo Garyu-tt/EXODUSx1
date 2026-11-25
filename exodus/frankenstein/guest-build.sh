@@ -54,6 +54,29 @@ for port in graphics/wayland graphics/mesa-libs graphics/mesa-dri graphics/vulka
         make -C "/usr/ports/$port" -V "$v"
     done
 done
+# Install the direct Gamescope dependencies by their recorded Ports origins
+# before source-building Wayland. The repository may pull in binary Wayland
+# transitively; the freshly built Wayland package replaces it below.
+# Keep the Ports package-only dependency gate: no recursive source fallback.
+echo EXODUS_GAMESCOPE_DEPENDENCY_PREFLIGHT_BEGIN
+set -- devel/evdev-proto graphics/glslang graphics/vulkan-headers \
+    graphics/wayland-protocols math/glm misc/hwdata devel/cmake-core \
+    devel/sdl20 x11/libX11 x11/libxcb x11/libXcomposite x11/libXdamage \
+    x11/libXfixes x11-toolkits/libXmu x11/libXrender x11/libXres \
+    x11/libXtst x11/libXxf86vm graphics/libdrm graphics/libliftoff \
+    graphics/vulkan-loader sysutils/libdisplay-info x11-toolkits/wlroots017 \
+    x11/libxkbcommon multimedia/pipewire
+pkg install -y "$@"
+installed_origins=$(pkg query -a '%o')
+for origin do
+    printf '%s\n' "$installed_origins" | grep -Fx "$origin" >/dev/null
+    printf 'EXODUS_GAMESCOPE_DEPENDENCY_PRESENT %s\n' "$origin"
+done
+pkg info -e evdev-proto
+command -v glslangValidator
+command -v cmake
+command -v sdl2-config
+echo EXODUS_GAMESCOPE_DEPENDENCY_PREFLIGHT_PASS
 # The pinned Ports framework has separate work-directory and repository
 # package paths. Expand make variables explicitly and admit only the exact
 # freshly built package, never a downloaded substitute.
