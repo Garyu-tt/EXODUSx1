@@ -71,8 +71,17 @@ static int attach(tmr_endpoint *e, tmr_mailbox *m, uint8_t role,
     uint64_t peer_claim = atomic_load_explicit(&e->rx->claimed, memory_order_acquire);
     if (peer_claim && peer_claim != peer_generation) return TMR_FAULT;
     uint64_t empty = 0;
+    /* Sequential consistency across both direction claims prevents the
+     * store-buffering outcome: concurrent opposing attaches cannot both
+     * miss the other's incompatible generation after claiming their roles. */
     if (!atomic_compare_exchange_strong_explicit(&e->tx->claimed, &empty,
-            generation, memory_order_acq_rel, memory_order_acquire)) return TMR_FAULT;
+            generation, memory_order_seq_cst, memory_order_seq_cst)) return TMR_FAULT;
+    uint64_t confirmed = atomic_load_explicit(&e->rx->claimed, memory_order_seq_cst);
+    if ((peer_claim && confirmed != peer_claim) ||
+        (confirmed && confirmed != peer_generation)) return TMR_FAULT;
+    /* A post-claim rejection leaves the permanent claim occupied. Recovery
+     * requires mediator quiescence and a fresh mailbox, never live rollback. */
+    peer_claim = confirmed;
     e->role = role; e->generation = generation; e->closed = 0;
     e->peer_claim_seen = peer_claim != 0;
     return TMR_OK;
@@ -282,6 +291,40 @@ int main(void) {
     assert(WEXITSTATUS(race_status)==(won ? 1 : 0));
     assert(attach(&contender,shared,1,1,2,now_ms())==TMR_FAULT);
     puts("PASS: concurrent duplicate role claim has exactly one winner");
+    /* Opposing producers may race with incompatible peer expectations.
+     * Each expects generation 99, while the actual claims are 1 and 2.
+     * Never admit both; a post-CAS failure must remain closed. */
+    for (unsigned trial=0; trial<64; ++trial) {
+        assert(mailbox_init(shared));
+        int gate[2]; assert(pipe(gate)==0);
+        pid_t opposing=fork(); assert(opposing>=0);
+        if (opposing==0) {
+            close(gate[1]);
+            char go;
+            if (read(gate[0],&go,1)!=1) _exit(3);
+            close(gate[0]);
+            tmr_endpoint other;
+            int rc=attach(&other,shared,2,2,99,now_ms());
+            if (rc==TMR_FAULT && (!other.closed || send_frame(&other,now_ms())!=TMR_FAULT)) _exit(4);
+            _exit(rc==TMR_OK ? 0 : rc==TMR_FAULT ? 1 : 5);
+        }
+        close(gate[0]);
+        assert(write(gate[1],"x",1)==1);
+        close(gate[1]);
+        tmr_endpoint local;
+        int rc=attach(&local,shared,1,1,99,now_ms());
+        assert(rc==TMR_OK || rc==TMR_FAULT);
+        if (rc==TMR_FAULT) assert(local.closed && send_frame(&local,now_ms())==TMR_FAULT);
+        int status;
+        assert(waitpid(opposing,&status,0)==opposing && WIFEXITED(status));
+        assert(WEXITSTATUS(status)==0 || WEXITSTATUS(status)==1);
+        assert(rc!=TMR_OK || WEXITSTATUS(status)!=0);
+        if (rc==TMR_OK && atomic_load(&shared->direction[1].claimed))
+            assert(send_frame(&local,now_ms())==TMR_FAULT);
+        assert(atomic_load(&shared->direction[0].published)==0);
+        assert(atomic_load(&shared->direction[1].published)==0);
+    }
+    puts("PASS: opposing incompatible generation claims cannot both attach");
     /* Both contenders are quiescent; reinitialize only the test fixture. */
     assert(mailbox_init(shared));
     pid_t pid=fork(); assert(pid>=0);
