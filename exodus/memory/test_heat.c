@@ -7,9 +7,10 @@ enum {P=4096,N=6,S=384};
 static uint8_t arena[(N+1)*P],small[S*20],raw[S*64],want[N][P],out[P],scores[N];
 static uint16_t sr[S],rr[S],length[N],scratch[N];static uint32_t start[N],order[N];
 static size_t refs[N];static uint64_t fp[N];static struct exodus_hot_entry hot[N];
-static struct exodus_bdi_slab slab={small,raw,sr,rr,S,S};
+static struct exodus_bdi_slab slab={small,raw,sr,rr,S,S,NULL};
 static struct exodus_page_heat heat={scores,scratch,0};
 static struct exodus_page_dedup_store s={.unique={.payload=arena,.payload_capacity=sizeof arena,.page_capacity=N,.starts32=start,.lengths16=length,.page_order=order},.fingerprints=fp,.page_refs=refs,.page_capacity=N,.slab=&slab,.hot=hot,.hot_capacity=N,.heat=&heat};
+static struct exodus_bdi_free_index free_index;
 static uint32_t rng=0x65a11u;
 static uint32_t rnd(void){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;}
 static void put(uint8_t*p,uint32_t v){for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(v>>(i*8));}
@@ -30,14 +31,14 @@ int main(void){
  uint8_t v[4];put(v,UINT32_MAX);score=scores[0];assert(exodus_page_dedup_store_write_word(&s,0,0,v));memcpy(want[0],v,4);assert(scores[0]==score+1); /* fallback counts once */
  struct exodus_heat_result r={.attempted=123};assert(!exodus_page_dedup_store_heat_tick(&s,2,2,512,1,&r)&&r.attempted==123);
  for(size_t i=0;i<10;i++)assert(exodus_page_dedup_store_write_word(&s,2,0,want[2]));
- slab.small_capacity=0;assert(tick(1).failed==1&&!ishot(2));slab.small_capacity=S;verify();
+ slab.small_capacity=0;assert(tick(1).failed==1&&!ishot(2));slab.small_capacity=S;verify();assert(exodus_bdi_slab_attach_index(&slab,&free_index));
  size_t promotions=0,demotions=0,failures=0;
  for(size_t k=0;k<5000;k++){
   size_t i=(k/256)%4,w=rnd()%1024,j=rnd()%N;
   if(k%11==0){assert(exodus_page_dedup_store_replace_adaptive(&s,i,want[j]));if(i!=j)memcpy(want[i],want[j],P);}
   else{put(v,rnd());if(!exodus_page_dedup_store_write_word(&s,i,w,v)){size_t moved;assert(exodus_page_dedup_store_compact(&s,SIZE_MAX,&moved));assert(exodus_page_dedup_store_write_word(&s,i,w,v));}memcpy(want[i]+4*w,v,4);}
   if(k%16==15){r=tick(2);promotions+=r.promoted;demotions+=r.demoted;failures+=r.failed;}
-  verify();
+  verify();assert(exodus_bdi_slab_check_index(&slab));
  }
  assert(promotions&&demotions);printf("5000 policy mutations, %zu promotions, %zu demotions, %zu failed attempts; exact bytes, aliases and slot counts verified\n",promotions,demotions,failures);
  return 0;

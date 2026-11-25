@@ -204,3 +204,16 @@ clean-heat:
 	$(RM) test_heat$(EXEEXT)
 
 .PHONY: check-heat clean-heat
+
+test_slab_index$(EXEEXT): page_codec.c page_codec.h bdi_slab.c bdi_slab.h test_slab_index.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c bdi_slab.c test_slab_index.c $(LDLIBS)
+
+check: check-slab-index
+check-slab-index: test_slab_index$(EXEEXT)
+	./test_slab_index$(EXEEXT)
+
+clean: clean-slab-index
+clean-slab-index:
+	$(RM) test_slab_index$(EXEEXT)
+
+.PHONY: check-slab-index clean-slab-index
