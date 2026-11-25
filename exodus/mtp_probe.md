@@ -1,8 +1,18 @@
 # Windows USB and MTP probe
 
-Use this read-only probe to find where the USB enumeration or Windows Portable Devices (WPD) driver path stops. It runs on Windows 10 or 11 with Windows PowerShell and Python 3.8 or newer.
+Use this read-only probe to find where the USB enumeration or Windows Portable Devices (WPD) driver path stops. It runs on Windows 10 or 11 with Python 3.8 or newer. The targeted WPD probe also requires Windows PowerShell.
 
 In Device Manager, open the connected device's properties and select **Details** → **Hardware Ids**. Record the four hexadecimal digits following `VID_` and `PID_` while the device is visible. Replace the example values with yours.
+
+If the USB ID is unknown, disconnect the target and run discovery from the repository root. Connect the target when prompted. Keep other devices attached as they were at the start.
+
+```powershell
+python -m exodus.usb_discover --seconds 20
+```
+
+Discovery records each newly visible VID/PID once, with the time of the first matching Windows sample in milliseconds. If an additional physical device uses a VID/PID that was already present, its ID can also appear. The JSON omits device names, serial numbers and instance IDs. Discovery can miss attachments between samples and includes any other device attached during the window. Exit code `0` means at least one candidate was found, `1` means the window finished with no candidates, and `2` means an argument or enumeration error occurred. If an error occurs after the baseline, the JSON retains the candidates already seen and sets `complete` to `false`.
+
+Use a candidate with the targeted probe to inspect WPD readiness.
 
 ```powershell
 python exodus/mtp_probe.py --usb-id 1234:abcd
