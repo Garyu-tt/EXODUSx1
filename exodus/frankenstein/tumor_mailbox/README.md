@@ -21,3 +21,7 @@ R34 head c96b4936de00ff904ef1a77cb0c5c3800d352096 passed native load/unload twic
 ## R37 positive mapping attachment control
 
 R36 accepted 8/8 at 391e6474218c554c6bb7b846d80d325bcbc97766, merge e96a7a003b78db8235d0289fb0bffec04355ebfd. R37 consumes the exact checksum-verified module artifact from the same workflow, boots a separate Bao synthetic peer plus stock FreeBSD 15.1 RAM-root with role-2 mapping-only DTB, invokes real rescue kldload/kldunload, checks attached driver via sysctl and exact serial marker, verifies detach. No data access or coherent flag. This is not yet a two-OS exchange. Existing R32/R35 tests and base images unchanged.
+
+## R38 limited non-cacheable exchange control
+
+Separate explicit role-2 FDT mode, mutually exclusive with mapping-only and coherent flags. Synthetic peer initializes fixed three 32-bit lanes at window offset 0x2000 before boot-ready, FreeBSD driver validates challenge and zero response/confirmation, publishes response and waits a bounded 2000 x 1 ms for exact peer confirmation. Full-system barriers and volatile accesses; no claim of cache coherence, atomic R33 protocol, or two real operating systems. Existing mapping-only test still mandatory; new test boots a separate disposable instance and checks driver attach/detach and exact exchange marker. No physical target.

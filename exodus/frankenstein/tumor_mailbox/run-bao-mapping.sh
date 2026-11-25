@@ -2,7 +2,14 @@
 # Isolated QEMU-only positive attachment control. Stock kernel, one synthetic
 # peer and one FreeBSD guest; never touch mapped contents or enable coherence.
 set -euo pipefail
-test "$#" -eq 2
+test "$#" -ge 2
+test "$#" -le 3
+mode=${3:-mapping}
+case "$mode" in
+    mapping) peer_flag= ;;
+    exchange) peer_flag=-DTUMOR_NC_EXCHANGE_CONTROL ;;
+    *) exit 2 ;;
+esac
 src=$(cd "$(dirname "$0")/.." && pwd)
 module_dir=$(realpath "$1")
 evidence=$(realpath -m "$2")
@@ -65,8 +72,8 @@ install -m 0644 "$module_dir/tumor_mailbox.ko" "$out/root/boot/kernel/tumor_mail
 install -m 0755 "$src/tumor_mailbox/bao-mapping-rc.sh" "$out/root/etc/rc"
 : > "$out/root/etc/ttys"
 makefs -t ffs -o version=1 -B little -s 64m "$out/root.ufs" "$out/root"
-sh "$src/tumor_mailbox/prepare-mapping-fdt.sh" 2 "$out/mapping.dtb"
-clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DGUEST_A -c "$src/bao_guest.S" -o "$out/peer.o"
+sh "$src/tumor_mailbox/prepare-mapping-fdt.sh" 2 "$out/mapping.dtb" "$mode"
+clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DGUEST_A $peer_flag -c "$src/bao_guest.S" -o "$out/peer.o"
 ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/peer.o" -o "$out/images/guest-A.bin"
 clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DTUMOR_FREEBSD_NATIVE_METADATA -c "$src/bao_freebsd_boot.S" -o "$out/boot.o"
 ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/boot.o" -o "$out/boot.bin"
@@ -83,6 +90,13 @@ tr -d '\r' < "$evidence/serial.log" > "$evidence/normalized.log"
 for marker in FREEBSD_HANDOFF_AFTER_PEER_IPC MAPPING_ONLY_DRIVER_ATTACHED MAPPING_ONLY_DRIVER_DETACHED; do
     test "$(grep -ac "^TUMOR_BAO_REF: $marker$" "$evidence/normalized.log")" -eq 1
 done
-test "$(grep -ac 'tumor_mailbox0: TMR_MAPPING_ONLY_ATTACHED; no shared-memory access performed' "$evidence/normalized.log")" -eq 1
-if grep -aiE 'panic:|fatal exception|TMR_COHERENT_MAPPING_ATTACHED' "$evidence/normalized.log"; then exit 1; fi
-echo EXODUS_BAO_MAPPING_ONLY_PASS
+if grep -aiE 'panic:|fatal exception|TMR_COHERENT_MAPPING_ATTACHED|TMR_NC_EXCHANGE_FAILED' "$evidence/normalized.log"; then exit 1; fi
+if [ "$mode" = exchange ]; then
+    test "$(grep -ac 'tumor_mailbox0: TMR_NC_EXCHANGE_PASS challenge-response-confirm' "$evidence/normalized.log")" -eq 1
+    if grep -aF TMR_MAPPING_ONLY_ATTACHED "$evidence/normalized.log"; then exit 1; fi
+    echo EXODUS_BAO_NC_EXCHANGE_PASS
+else
+    test "$(grep -ac 'tumor_mailbox0: TMR_MAPPING_ONLY_ATTACHED; no shared-memory access performed' "$evidence/normalized.log")" -eq 1
+    if grep -aF TMR_NC_EXCHANGE_PASS "$evidence/normalized.log"; then exit 1; fi
+    echo EXODUS_BAO_MAPPING_ONLY_PASS
+fi

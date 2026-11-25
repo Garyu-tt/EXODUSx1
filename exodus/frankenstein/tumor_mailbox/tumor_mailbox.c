@@ -1,5 +1,6 @@
 /* QEMU Bao reference only. Reserve and map the dedicated FDT resource.
- * No userspace device, raw physical access, reset, or mailbox writes.
+ * No userspace device or raw physical access. Explicit QEMU exchange
+ * control touches only its three dedicated fixed-width test words.
  * Mapping-only control is non-cacheable and never dereferences the window.
  * Coherent mode requires a separate mediator proof before enabling it.
  */
@@ -33,12 +34,14 @@ tmr_map_mode(phandle_t node)
 {
     int control = OF_hasprop(node, "exodus,mapping-only");
     int coherent = OF_hasprop(node, "exodus,coherent-normal-memory");
-    if (control == coherent)
+    int exchange = OF_hasprop(node, "exodus,nc-exchange-control");
+    if (control + coherent + exchange != 1)
         return (0);
     if (OF_getproplen(node, control ? "exodus,mapping-only" :
-        "exodus,coherent-normal-memory") != 0)
+        coherent ? "exodus,coherent-normal-memory" :
+        "exodus,nc-exchange-control") != 0)
         return (0);
-    return (control ? 1 : 2);
+    return (control ? 1 : coherent ? 2 : 3);
 }
 
 static int
@@ -55,7 +58,8 @@ tmr_map_probe(device_t dev)
         !ofw_bus_is_compatible(dev, "exodus,tumor-mailbox-reference-v1") ||
         OF_getencprop(node, "exodus,role", &role, sizeof(role)) != sizeof(role) ||
         (role != 1 && role != 2) ||
-        tmr_map_mode(node) == 0)
+        tmr_map_mode(node) == 0 ||
+        (tmr_map_mode(node) == 3 && role != 2))
         return (ENXIO);
     device_set_desc(dev, "Tumor dedicated reference mailbox resource");
     return (BUS_PROBE_DEFAULT);
@@ -79,6 +83,43 @@ tmr_map_detach(device_t dev)
         sc->res = NULL;
     }
     return (0);
+}
+
+/* One-shot fixture, disjoint from boot handshake and R35 test lanes.
+ * Volatile 32-bit accesses and full-system barriers; no coherent atomic claim.
+ * Only B writes the response. A initializes its own challenge/confirmation
+ * and the empty response before the boot handoff. No resets or retries.
+ */
+#define TMR_TEST_OFFSET 0x2000
+#define TMR_CHALLENGE UINT32_C(0x544d5238)
+#define TMR_RESPONSE  UINT32_C(0x52455338)
+#define TMR_CONFIRM   UINT32_C(0x41434b38)
+static void
+tmr_control_barrier(void)
+{
+    __asm __volatile("dmb sy" ::: "memory");
+}
+static int
+tmr_nc_exchange(struct tmr_map_softc *sc)
+{
+    volatile uint32_t *words = (volatile uint32_t *)
+        ((char *)sc->map.r_vaddr + TMR_TEST_OFFSET);
+    tmr_control_barrier();
+    if (words[0] != TMR_CHALLENGE || words[16] != 0 || words[32] != 0)
+        return (EINVAL);
+    words[16] = TMR_RESPONSE;
+    tmr_control_barrier();
+    for (unsigned i = 0; i < 2000; ++i) {
+        uint32_t ack = words[32];
+        tmr_control_barrier();
+        if (ack == TMR_CONFIRM)
+            return (words[0] == TMR_CHALLENGE &&
+                words[16] == TMR_RESPONSE ? 0 : EIO);
+        if (ack != 0)
+            return (EIO);
+        DELAY(1000);
+    }
+    return (ETIMEDOUT);
 }
 
 static int
@@ -108,7 +149,7 @@ tmr_map_attach(device_t dev)
         return (EINVAL);
     }
     resource_init_map_request(&req);
-    req.memattr = mode == 1 ? VM_MEMATTR_UNCACHEABLE : VM_MEMATTR_WRITE_BACK;
+    req.memattr = mode == 2 ? VM_MEMATTR_WRITE_BACK : VM_MEMATTR_UNCACHEABLE;
     req.length = TMR_SIZE;
     error = bus_map_resource(dev, sc->res, &req, &sc->map);
     if (error != 0) {
@@ -120,8 +161,18 @@ tmr_map_attach(device_t dev)
         (void)tmr_map_detach(dev);
         return (ENXIO);
     }
-    device_printf(dev, "%s; no shared-memory access performed\n",
-        mode == 1 ? "TMR_MAPPING_ONLY_ATTACHED" : "TMR_COHERENT_MAPPING_ATTACHED");
+    if (mode == 3) {
+        error = tmr_nc_exchange(sc);
+        if (error != 0) {
+            device_printf(dev, "TMR_NC_EXCHANGE_FAILED error=%d\n", error);
+            (void)tmr_map_detach(dev);
+            return (error);
+        }
+        device_printf(dev, "TMR_NC_EXCHANGE_PASS challenge-response-confirm\n");
+    } else {
+        device_printf(dev, "%s; no shared-memory access performed\n",
+            mode == 1 ? "TMR_MAPPING_ONLY_ATTACHED" : "TMR_COHERENT_MAPPING_ATTACHED");
+    }
     return (0);
 }
 static device_method_t tmr_map_methods[] = {

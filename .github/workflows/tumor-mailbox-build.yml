@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'exodus/frankenstein/tumor_mailbox/**'
+      - 'exodus/frankenstein/bao_guest.S'
       - '.github/workflows/tumor-mailbox-build.yml'
   workflow_dispatch:
 permissions:
@@ -37,7 +38,7 @@ jobs:
   bao-mapping-only:
     needs: [native-module, mapping-fdt]
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v6
         with:
@@ -51,9 +52,12 @@ jobs:
           sh -n exodus/frankenstein/tumor_mailbox/bao-mapping-rc.sh
           bash -n exodus/frankenstein/tumor_mailbox/run-bao-mapping.sh
           bash exodus/frankenstein/tumor_mailbox/run-bao-mapping.sh "$RUNNER_TEMP/mailbox-module/module" "$RUNNER_TEMP/bao-mapping"
+          bash exodus/frankenstein/tumor_mailbox/run-bao-mapping.sh "$RUNNER_TEMP/mailbox-module/module" "$RUNNER_TEMP/bao-exchange" exchange
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mailbox-bao-mapping-evidence
-          path: ${{ runner.temp }}/bao-mapping/
+          path: |
+            ${{ runner.temp }}/bao-mapping/
+            ${{ runner.temp }}/bao-exchange/
           if-no-files-found: warn
