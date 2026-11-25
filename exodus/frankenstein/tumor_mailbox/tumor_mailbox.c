@@ -1,0 +1,118 @@
+/* QEMU Bao reference only. Reserve and map the dedicated FDT resource.
+ * No userspace device, raw physical access, reset, or mailbox writes.
+ * Mediator must guarantee normal coherent RAM at stage 2 before enabling it.
+ */
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/bus.h>
+#include <sys/kernel.h>
+#include <sys/module.h>
+#include <sys/rman.h>
+#include <sys/errno.h>
+#include <machine/bus.h>
+#include <machine/resource.h>
+#include <machine/vm.h>
+#include <dev/ofw/openfirm.h>
+#include <dev/ofw/ofw_bus.h>
+#include <dev/ofw/ofw_bus_subr.h>
+
+#define TMR_BASE ((rman_res_t)0xf0000000)
+#define TMR_SIZE ((rman_res_t)0x10000)
+
+struct tmr_map_softc {
+    struct resource *res;
+    struct resource_map map;
+    int rid;
+    int mapped;
+};
+
+static int
+tmr_map_probe(device_t dev)
+{
+    pcell_t role;
+    phandle_t node = ofw_bus_get_node(dev);
+    char model[64] = {0};
+    phandle_t root = OF_finddevice("/");
+    if (root == -1 || OF_getprop(root, "model", model, sizeof(model)) !=
+        sizeof("Tumor Bao QEMU reference") ||
+        strcmp(model, "Tumor Bao QEMU reference") != 0 ||
+        !ofw_bus_status_okay(dev) ||
+        !ofw_bus_is_compatible(dev, "exodus,tumor-mailbox-reference-v1") ||
+        OF_getencprop(node, "exodus,role", &role, sizeof(role)) != sizeof(role) ||
+        (role != 1 && role != 2) ||
+        !OF_hasprop(node, "exodus,coherent-normal-memory"))
+        return (ENXIO);
+    device_set_desc(dev, "Tumor dedicated reference mailbox resource");
+    return (BUS_PROBE_DEFAULT);
+}
+
+static int
+tmr_map_detach(device_t dev)
+{
+    struct tmr_map_softc *sc = device_get_softc(dev);
+    int error;
+    if (sc->mapped) {
+        error = bus_unmap_resource(dev, sc->res, &sc->map);
+        if (error != 0)
+            return (error);
+        sc->mapped = 0;
+    }
+    if (sc->res != NULL) {
+        error = bus_release_resource(dev, SYS_RES_MEMORY, sc->rid, sc->res);
+        if (error != 0)
+            return (error);
+        sc->res = NULL;
+    }
+    return (0);
+}
+
+static int
+tmr_map_attach(device_t dev)
+{
+    struct tmr_map_softc *sc = device_get_softc(dev);
+    struct resource_map_request req;
+    int error;
+    /* Do not accept an arbitrary physical region even from a malformed FDT. */
+    sc->rid = 0;
+    sc->res = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &sc->rid, 0);
+    if (sc->res == NULL)
+        return (ENXIO);
+    if (rman_get_start(sc->res) != TMR_BASE ||
+        rman_get_size(sc->res) != TMR_SIZE) {
+        (void)tmr_map_detach(dev);
+        return (EINVAL);
+    }
+    (void)tmr_map_detach(dev);
+    /* Deliberately reserve without a default Device-memory mapping. */
+    sc->rid = 0;
+    sc->res = bus_alloc_resource(dev, SYS_RES_MEMORY, &sc->rid,
+        TMR_BASE, TMR_BASE + TMR_SIZE - 1, TMR_SIZE, RF_ACTIVE | RF_UNMAPPED);
+    if (sc->res == NULL)
+        return (ENXIO);
+    resource_init_map_request(&req);
+    req.memattr = VM_MEMATTR_WRITE_BACK;
+    req.length = TMR_SIZE;
+    error = bus_map_resource(dev, sc->res, &req, &sc->map);
+    if (error != 0) {
+        (void)tmr_map_detach(dev);
+        return (error);
+    }
+    sc->mapped = 1;
+    if (sc->map.r_vaddr == NULL || sc->map.r_size != TMR_SIZE) {
+        (void)tmr_map_detach(dev);
+        return (ENXIO);
+    }
+    device_printf(dev, "dedicated reference resource mapped; runtime exchange unverified\n");
+    return (0);
+}
+static device_method_t tmr_map_methods[] = {
+    DEVMETHOD(device_probe, tmr_map_probe),
+    DEVMETHOD(device_attach, tmr_map_attach),
+    DEVMETHOD(device_detach, tmr_map_detach),
+    DEVMETHOD_END
+};
+static driver_t tmr_map_driver = {
+    "tumor_mailbox", tmr_map_methods, sizeof(struct tmr_map_softc)
+};
+DRIVER_MODULE(tumor_mailbox, ofwbus, tmr_map_driver, 0, 0);
+MODULE_VERSION(tumor_mailbox, 1);
