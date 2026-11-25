@@ -59,7 +59,7 @@ if [ "$mode" = linuxdynamic ]; then
     mcopy -i seed.img linux-dynamic ld-linux-aarch64.so.1 libc.so.6 ::
 fi
 if [ "$mode" = manager ]; then
-    for f in manager-inotify-probe.c bsd_process.rs apply-manager-process.sh; do
+    for f in manager-inotify-probe.c bsd_process.rs apply-manager-process.sh test-bsd-process.sh; do
         mcopy -i seed.img "$here/$f" ::
     done
 fi
