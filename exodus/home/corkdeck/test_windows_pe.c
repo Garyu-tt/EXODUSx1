@@ -108,6 +108,19 @@ int main(void)
     assert(!probe(image, sizeof(image)));
 
     make_executable(image, false);
+    write_le16(image + PE_OFFSET + 6, 2);
+    write_le32(image + PE32_TABLE_OFFSET + 16, 256);
+    memcpy(image + PE32_TABLE_OFFSET + 40, ".data", 5);
+    write_le32(image + PE32_TABLE_OFFSET + 40 + 16, 256);
+    write_le32(image + PE32_TABLE_OFFSET + 40 + 20, 640);
+    assert(!probe(image, sizeof(image))); /* Raw section payloads overlap. */
+    write_le32(image + PE32_TABLE_OFFSET + 40 + 20, 768);
+    assert(probe(image, sizeof(image))); /* Adjacent payloads do not overlap. */
+    write_le32(image + PE32_TABLE_OFFSET + 20, 768);
+    write_le32(image + PE32_TABLE_OFFSET + 40 + 20, 512);
+    assert(probe(image, sizeof(image))); /* The section table need not use file order. */
+
+    make_executable(image, false);
     write_le16(image + PE_OFFSET + 6, 2); /* An uninitialized section has no raw bytes. */
     memcpy(image + PE32_TABLE_OFFSET + 40, ".bss", 4);
     assert(probe(image, sizeof(image)));
