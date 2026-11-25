@@ -7,6 +7,7 @@
 #include "library_catalog.h"
 #include "native_launch.h"
 #include "native_target.h"
+#include "horizon_session.h"
 #include "library_filter.h"
 #include "shell_menu.h"
 #include "control_metrics.h"
@@ -398,6 +399,18 @@ static void show_home(struct ui *ui, const char *catalog)
 
 int main(int argc, char **argv)
 {
+    /* Read-only diagnostic: missing evidence never means an exited game. */
+    if (argc>=2 && !strcmp(argv[1],"--native-observe")) {
+        if (argc!=2) return 2;
+        const struct exodus_horizon_sample sample=exodus_horizon_read_sample();
+        if (!sample.pid || !sample.program_id) {
+            puts("{\"status\":\"unknown\"}");
+            return 1;
+        }
+        printf("{\"status\":\"observed\",\"pid\":\"%llu\",\"program_id\":\"%016llx\"}\n",
+               (unsigned long long)sample.pid,(unsigned long long)sample.program_id);
+        return 0;
+    }
     struct ui ui;
     int smoke = argc == 3 && strcmp(argv[2], "--smoke") == 0;
     int library_mode = argc == 4 && strcmp(argv[2], "--library") == 0;

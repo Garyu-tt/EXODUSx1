@@ -39,7 +39,7 @@ jobs:
         run: |
           set -eu
           dir=exodus/home/corkdeck
-          for test in horizon_settings launch_route runtime_handoff library_filter shell_menu control_metrics native_target; do
+          for test in horizon_settings launch_route runtime_handoff library_filter shell_menu control_metrics native_target horizon_observer horizon_session; do
             cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
               "$dir/test_$test.c" -o "$RUNNER_TEMP/test-$test"
             "$RUNNER_TEMP/test-$test"
@@ -47,6 +47,10 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
             "$dir/test_windows_pe.c" "$dir/windows_pe.c" -o "$RUNNER_TEMP/test-windows-pe"
           "$RUNNER_TEMP/test-windows-pe"
+          for test in horizon_observer horizon_session; do
+            cc -std=c11 -Wall -Wextra -Werror -pedantic -D__SWITCH__ -I"$dir/test_horizon_mock" "$dir/test_${test}_mock.c" -o "$RUNNER_TEMP/test-${test}-mock"
+            "$RUNNER_TEMP/test-${test}-mock"
+          done
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
             "$dir/test_autorun_probe.c" exodus/runtime/autorun_probe.c \
             -o "$RUNNER_TEMP/test-autorun-probe"
@@ -71,6 +75,10 @@ jobs:
           rc=0
           "$RUNNER_TEMP/exodus-shell" --native-target homebrew ../bad.nro || rc=$?
           test "$rc" -eq 2
+          rc=0
+          result=$("$RUNNER_TEMP/exodus-shell" --native-observe) || rc=$?
+          test "$rc" -eq 1
+          test "$result" = '{"status":"unknown"}'
 
   native:
     runs-on: ubuntu-latest
