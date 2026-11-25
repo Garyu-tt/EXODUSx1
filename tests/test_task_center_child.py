@@ -69,7 +69,7 @@ class ManagedChildTests(unittest.TestCase):
             replace(p, sequence=True), replace(p, deadline=float("nan")),
             replace(p, deadline=float("inf")), replace(p, deadline=10**1000),
             replace(p, deadline="later"), replace(p, accepted=0),
-            replace(p, operation=[]),
+            replace(p, operation=[]), replace(p, operation="unknown"),
         ]
         with patch("exodus.task_center_child.os.kill") as kill:
             for request in bad:
