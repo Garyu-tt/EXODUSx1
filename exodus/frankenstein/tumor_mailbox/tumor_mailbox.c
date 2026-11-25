@@ -1,6 +1,7 @@
 /* QEMU Bao reference only. Reserve and map the dedicated FDT resource.
  * No userspace device, raw physical access, reset, or mailbox writes.
- * Mediator must guarantee normal coherent RAM at stage 2 before enabling it.
+ * Mapping-only control is non-cacheable and never dereferences the window.
+ * Coherent mode requires a separate mediator proof before enabling it.
  */
 #include <sys/param.h>
 #include <sys/systm.h>
@@ -26,6 +27,20 @@ struct tmr_map_softc {
     int mapped;
 };
 
+/* Exactly one explicitly declared mapping mode. */
+static int
+tmr_map_mode(phandle_t node)
+{
+    int control = OF_hasprop(node, "exodus,mapping-only");
+    int coherent = OF_hasprop(node, "exodus,coherent-normal-memory");
+    if (control == coherent)
+        return (0);
+    if (OF_getproplen(node, control ? "exodus,mapping-only" :
+        "exodus,coherent-normal-memory") != 0)
+        return (0);
+    return (control ? 1 : 2);
+}
+
 static int
 tmr_map_probe(device_t dev)
 {
@@ -40,7 +55,7 @@ tmr_map_probe(device_t dev)
         !ofw_bus_is_compatible(dev, "exodus,tumor-mailbox-reference-v1") ||
         OF_getencprop(node, "exodus,role", &role, sizeof(role)) != sizeof(role) ||
         (role != 1 && role != 2) ||
-        !OF_hasprop(node, "exodus,coherent-normal-memory"))
+        tmr_map_mode(node) == 0)
         return (ENXIO);
     device_set_desc(dev, "Tumor dedicated reference mailbox resource");
     return (BUS_PROBE_DEFAULT);
@@ -71,8 +86,11 @@ tmr_map_attach(device_t dev)
 {
     struct tmr_map_softc *sc = device_get_softc(dev);
     struct resource_map_request req;
-    int error;
+    int error, mode;
     rman_res_t start, count;
+    mode = tmr_map_mode(ofw_bus_get_node(dev));
+    if (mode == 0)
+        return (EINVAL);
     /* Validate the declared resource before reserving or mapping it. */
     sc->rid = 0;
     error = bus_get_resource(dev, SYS_RES_MEMORY, sc->rid, &start, &count);
@@ -90,7 +108,7 @@ tmr_map_attach(device_t dev)
         return (EINVAL);
     }
     resource_init_map_request(&req);
-    req.memattr = VM_MEMATTR_WRITE_BACK;
+    req.memattr = mode == 1 ? VM_MEMATTR_UNCACHEABLE : VM_MEMATTR_WRITE_BACK;
     req.length = TMR_SIZE;
     error = bus_map_resource(dev, sc->res, &req, &sc->map);
     if (error != 0) {
@@ -102,7 +120,8 @@ tmr_map_attach(device_t dev)
         (void)tmr_map_detach(dev);
         return (ENXIO);
     }
-    device_printf(dev, "dedicated reference resource mapped; runtime exchange unverified\n");
+    device_printf(dev, "%s; no shared-memory access performed\n",
+        mode == 1 ? "TMR_MAPPING_ONLY_ATTACHED" : "TMR_COHERENT_MAPPING_ATTACHED");
     return (0);
 }
 static device_method_t tmr_map_methods[] = {
