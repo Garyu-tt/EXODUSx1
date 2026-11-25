@@ -10,6 +10,11 @@ The Games directory must already exist. The command only reads filesystem
 metadata and returns JSON. It supports nonempty NRO/NSP/XCI regular files
 and NSP/XCI directories containing contiguous numbered parts 00..99.
 Existing files in Games require no additional payload copy for discovery.
+Preflight rejects destination paths outside the native scanner's depth, name
+and UTF-8 byte limits (relative to `sdmc:/Games`), including nested files
+inside an NSP/XCI split directory. `already_discoverable` means path and
+file shape are eligible; the full scanner may still reject an inventory
+that exceeds its global visit or catalog budgets.
 For external files it reports a conservative payload-copy estimate, free
 space, case-insensitive name collisions, logical size, allocated source
 blocks when the OS exposes them, and same-device status.

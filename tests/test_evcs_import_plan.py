@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 from collections import namedtuple
 from types import SimpleNamespace
-from exodus.evcs_import_plan import plan, FAT32_MAX, is_indirect
+from exodus.evcs_import_plan import plan, FAT32_MAX, is_indirect, discovery_path_ok
 
 Usage = namedtuple('Usage', 'total used free')
 
@@ -35,6 +35,35 @@ class ImportPlanTest(unittest.TestCase):
         result = plan(target, self.games)
         self.assertEqual(result['status'], 'already_discoverable')
         self.assertEqual(result['minimum_copy_payload_bytes'], 0)
+
+    def test_nested_catalog_path_limits(self):
+        allowed = self.games.joinpath(*(['folder'] * 8))
+        allowed.mkdir(parents=True)
+        game = allowed / 'game.nsp'
+        game.write_bytes(b'1')
+        self.assertEqual(plan(game, self.games)['status'], 'already_discoverable')
+        deep = allowed / 'too-deep'
+        deep.mkdir()
+        game.rename(deep / game.name)
+        self.assertEqual(plan(deep / game.name, self.games)['status'],
+                         'unsupported_catalog_path')
+
+    def test_archive_ancestor_not_traversed(self):
+        container = self.games / 'Container.NSP'
+        container.mkdir()
+        game = container / 'nested.nro'
+        game.write_bytes(b'1')
+        self.assertEqual(plan(game, self.games)['status'], 'unsupported_catalog_path')
+        self.assertEqual(game.read_bytes(), b'1')
+
+    def test_catalog_path_byte_budget_and_names(self):
+        self.assertTrue(discovery_path_ok(Path('a' * 255) / ('b' * 239 + '.nsp')))
+        self.assertFalse(discovery_path_ok(Path('a' * 255) / ('b' * 240 + '.nsp')))
+        self.assertFalse(discovery_path_ok(Path('a' * 255) / ('b' * 239 + '.nsp'), split=True))
+        self.assertFalse(discovery_path_ok(Path('bad"file.nsp')))
+        self.assertFalse(discovery_path_ok(Path('bad\x7fname.nsp')))
+        self.assertFalse(discovery_path_ok(Path('é' * 250) / 'game.nsp'))
+        self.assertTrue(discovery_path_ok(Path('Folder') / 'game.nsp'))
 
     def test_collision_casefold(self):
         (self.games / 'TEST.NSP').write_bytes(b'existing')
