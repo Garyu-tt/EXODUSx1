@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "bridge_snapshot": "f3b2e72bc142e15c9a641ff4a6626f261a0faab3",
+  "bridge_pr": 36,
+  "evidence_note": "File blob SHAs from discovery reads, not immutable repository commit pins or complete license review. No imported donor code.",
+  "evidence": [
+    {
+      "repo": "Garyu-tt/gamescope",
+      "path": "README.md",
+      "blob": "30e1d86cdfeb858f25931052548542c2a9398fd2",
+      "observation": "virtual output dimensions, integer/stretch scaling, frame-rate caps; DRM/KMS and Vulkan presentation"
+    },
+    {
+      "repo": "Garyu-tt/gamescope",
+      "path": "meson.build",
+      "blob": "7a3ca94d995ce9db2c1aca0dd7ecf83b80ed1e25",
+      "observation": "mandatory X11, Wayland and Vulkan dependencies"
+    },
+    {
+      "repo": "Garyu-tt/kwin",
+      "path": "src/workspace.cpp",
+      "blob": "924d0ad376fee90b4f143b26dd7cbc094c86eb29",
+      "observation": "focus chain, placement, outputs, tiles, virtual desktops; file SPDX GPL-2.0-or-later"
+    },
+    {
+      "repo": "Garyu-tt/kwin",
+      "path": "CMakeLists.txt",
+      "blob": "43e2c36430ed730032e4ed41b1b5fd5d77fc1dea",
+      "observation": "Qt6, KF6, DBus, Wayland dependencies"
+    },
+    {
+      "repo": "Garyu-tt/OpenGamepadUI",
+      "path": "README.md",
+      "blob": "4f6c6038c73f1c01279a1db874880545151422b7",
+      "observation": "controller-first UI, overlays, multi-source library and artwork; project states GPLv3+"
+    },
+    {
+      "repo": "Garyu-tt/OpenGamepadUI",
+      "path": "project.godot",
+      "blob": "25887c64b3d9beb7d9043db53d38e4c706a74dba",
+      "observation": "Godot Forward Plus, keyboard and joypad action mappings, 1280x800 design viewport"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "graphics.scale",
+      "bridge": "exodus.graphics",
+      "requires": [
+        "horizon.vi",
+        "kernel.memory"
+      ],
+      "donor": "gamescope",
+      "status": "portable_reference",
+      "scope": "viewport fit/integer/stretch"
+    },
+    {
+      "id": "graphics.cadence",
+      "bridge": "exodus.graphics",
+      "requires": [
+        "horizon.vi"
+      ],
+      "donor": "gamescope",
+      "status": "portable_reference",
+      "scope": "rational refresh opportunity selection; no actual vblank access"
+    },
+    {
+      "id": "graphics.present",
+      "bridge": "exodus.graphics",
+      "requires": [
+        "horizon.vi",
+        "kernel.memory"
+      ],
+      "donor": "gamescope",
+      "status": "native_probe_required",
+      "scope": "deko3d buffer acquire/present and ownership"
+    },
+    {
+      "id": "graphics.scene",
+      "bridge": "exodus.graphics",
+      "requires": [
+        "horizon.vi",
+        "kernel.memory"
+      ],
+      "donor": "kwin",
+      "status": "existing_host_candidate",
+      "scope": "PR #36 exc_scene, no native claims"
+    },
+    {
+      "id": "graphics.focus",
+      "bridge": "exodus.input",
+      "requires": [
+        "horizon.hid",
+        "exodus.graphics"
+      ],
+      "donor": "kwin",
+      "status": "existing_host_candidate",
+      "scope": "PR #36 exc_focus/press; keyboard/controller routing not implemented"
+    },
+    {
+      "id": "graphics.workspace",
+      "bridge": "exodus.session",
+      "requires": [
+        "exodus.graphics",
+        "exodus.process"
+      ],
+      "donor": "kwin",
+      "status": "planned",
+      "scope": "layout/session policy"
+    },
+    {
+      "id": "shell.controller",
+      "bridge": "exodus.input",
+      "requires": [
+        "horizon.hid"
+      ],
+      "donor": "OpenGamepadUI",
+      "status": "planned",
+      "scope": "logical navigation action mapping"
+    },
+    {
+      "id": "shell.overlay",
+      "bridge": "exodus.session",
+      "requires": [
+        "exodus.graphics",
+        "exodus.input"
+      ],
+      "donor": "OpenGamepadUI",
+      "status": "native_probe_required",
+      "scope": "authorized layer lifetime and focus restoration"
+    },
+    {
+      "id": "shell.library",
+      "bridge": "exodus.session",
+      "requires": [
+        "exodus.vfs",
+        "exodus.process"
+      ],
+      "donor": "OpenGamepadUI",
+      "status": "planned",
+      "scope": "catalog integration #24; native launch broker"
+    }
+  ]
+}
