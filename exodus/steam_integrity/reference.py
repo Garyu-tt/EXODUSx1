@@ -131,7 +131,9 @@ def _inventory(game, app_id, max_relative):
         with os.scandir(directory) as entries:
             for entry in entries:
                 component = _component_bytes(entry.name)
-                folded_name = entry.name.casefold()
+                # NUL is forbidden in components. Use it only in the alias key
+                # to keep ß distinct from SS; serialized path bytes stay intact.
+                folded_name = "\0".join(character.casefold() for character in entry.name)
                 if folded_name in sibling_names:
                     raise ValueError(f"{directory}: case-alias path component {entry.name!r}")
                 sibling_names.add(folded_name)

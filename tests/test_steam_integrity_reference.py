@@ -16,6 +16,12 @@ from exodus.steam_integrity import reference
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+EXPANSION_PAIRS = (
+    ("Straße.dat", "STRASSE.dat"),
+    ("ﬀ.dat", "ff.dat"),
+    ("İ.dat", "i\u0307.dat"),
+    ("ßs.dat", "sß.dat"),
+)
 
 
 class SteamIntegrityReferenceTests(unittest.TestCase):
@@ -255,6 +261,92 @@ class SteamIntegrityReferenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "case-alias"):
             self.export()
         self.assertFalse(self.output.exists())
+
+    def assert_exported_contents(self, contents, output=None):
+        output = output or self.output
+        paths = sorted(contents, key=lambda name: name.encode("utf-8").lower())
+        expected = f"EXODUS-STEAM-SHA256 1\n42\n{len(paths)}\n".encode("ascii")
+        for name in paths:
+            data = contents[name]
+            expected += (f"{hashlib.sha256(data).hexdigest()}\t{len(data)}\t{name}\n"
+                         .encode("utf-8"))
+        self.assertEqual(output.read_bytes(), expected)
+        for name, data in contents.items():
+            self.assertEqual((self.game / name).read_bytes(), data)
+        return hashlib.sha256(expected).hexdigest()
+
+    def test_unicode_expansion_file_and_directory_names_remain_distinct(self):
+        contents = {"a-first.dat": b"lowercase ASCII", "Z-last-ascii.dat": b"uppercase ASCII"}
+        for number, pair in enumerate(EXPANSION_PAIRS):
+            for name in pair:
+                for relative in (f"files-{number}/{name}", f"directories-{number}/{name}/part.bin"):
+                    contents[relative] = ("payload for " + relative).encode("utf-8")
+        # Create in reverse order so traversal order cannot determine the wire order.
+        for relative, data in reversed(contents.items()):
+            self.file(relative, data)
+        for number, pair in enumerate(EXPANSION_PAIRS):
+            for kind in ("files", "directories"):
+                first, second = (self.game / f"{kind}-{number}" / name for name in pair)
+                self.assertFalse(first.samefile(second), "Expansion pairs must be separate filesystem entries")
+
+        pin = self.export()
+        self.assertEqual(pin, self.assert_exported_contents(contents))
+
+    def test_root_file_directory_expansion_pairs_are_not_aliases(self):
+        contents = {}
+        for number, pair in enumerate(EXPANSION_PAIRS):
+            file_name, directory_name = pair if number % 2 == 0 else reversed(pair)
+            contents[file_name] = ("file " + file_name).encode("utf-8")
+            contents[directory_name + "/part.bin"] = ("directory " + directory_name).encode("utf-8")
+        for relative, data in contents.items():
+            self.file(relative, data)
+        pin = self.export()
+        self.assertEqual(pin, self.assert_exported_contents(contents))
+
+    def test_cli_preserves_unicode_expansion_paths_hashes_and_sources(self):
+        contents = {name: ("CLI payload " + name).encode("utf-8")
+                    for pair in EXPANSION_PAIRS for name in pair}
+        for relative, data in reversed(contents.items()):
+            self.file(relative, data)
+        manifest = self.steamapps / "appmanifest_42.acf"
+        original_manifest = manifest.read_bytes()
+        command = [sys.executable, "-B", "-X", "utf8", "-m", "exodus.steam_integrity.reference",
+                   "--steamapps", str(self.steamapps), "--app-id", "42"]
+        for output in (self.output, self.root / "repeat.files"):
+            result = subprocess.run(command + ["--output", str(output)], cwd=REPO_ROOT,
+                                    capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual((result.returncode, result.stderr), (0, ""))
+            pin = self.assert_exported_contents(contents, output)
+            self.assertEqual(result.stdout, pin + "\n")
+        self.assertEqual(self.output.read_bytes(), (self.root / "repeat.files").read_bytes())
+        self.assertEqual(manifest.read_bytes(), original_manifest)
+
+    def test_per_character_aliases_still_reject_files_directories_and_mixed_entries(self):
+        aliases = (("Other.dat", "other.dat"), ("Σ.dat", "σ.dat"), ("Straße.dat", "STRAẞE.dat"))
+        for pair in aliases:
+            for kinds in (("file", "file"), ("directory", "directory"), ("file", "directory")):
+                with self.subTest(pair=pair, kinds=kinds), tempfile.TemporaryDirectory(dir=self.root) as temporary:
+                    root = Path(temporary)
+                    steamapps = root / "steamapps"
+                    game = steamapps / "common/Game"
+                    game.mkdir(parents=True)
+                    (steamapps / "appmanifest_42.acf").write_text(
+                        'AppState { appid 42 installdir Game StateFlags 4 }', encoding="utf-8",
+                    )
+                    first, second = (game / name for name in pair)
+                    for path, kind in zip((first, second), kinds):
+                        if path.exists():
+                            self.skipTest("case aliases already identify one entry on this filesystem")
+                        if kind == "directory":
+                            path.mkdir()
+                            (path / "part.bin").write_bytes(b"directory payload")
+                        else:
+                            path.write_bytes(b"file payload")
+                    self.assertFalse(first.samefile(second))
+                    output = root / "42.files"
+                    with self.assertRaisesRegex(ValueError, "case-alias"):
+                        reference.export_reference(steamapps, "42", output)
+                    self.assertFalse(output.exists())
 
     def test_rejects_links_in_source_and_files(self):
         self.file("real.bin")

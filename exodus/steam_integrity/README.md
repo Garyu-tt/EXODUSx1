@@ -14,6 +14,8 @@ Keep the reported reference SHA-256 separately from the test SD. The checksum pi
 
 Every selected source and output directory component must exist as a real directory. Parent components (`..`) are checked before normalization: an existing `directory/..` remains usable, while a missing component, regular file, symlink or Windows junction cannot be hidden by the following `..`.
 
+The exporter rejects sibling names that differ only by per-character case folding, including ASCII and Unicode aliases such as `Σ`/`σ`. It preserves character boundaries, so distinct names such as `Straße.dat` and `STRASSE.dat` can both be exported. This remains a conservative alias check, not a model of every destination filesystem's case table. Original UTF-8 path bytes, reference ordering and file hashes are preserved.
+
 ## Run the check
 
 1. On the test SD, place the corresponding Steam-created `appmanifest_<AppID>.acf` in `/switch/exodus-steam/steamapps/` and the installed game folder in its `common/` directory. The AppID and install folder are resolved from this manifest.
