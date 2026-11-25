@@ -355,8 +355,39 @@ static void check_bdi_direct_compare(void)
     CHECK(!exodus_page_bdi_equal_page(p,packed_size-2,page));
 }
 
+/* Wire BDI permits unsigned modulo-2^32 addition even though the
+ * encoder normally chooses a non-wrapping minimum. Compare must agree
+ * with the decoder on these records, including unaligned addresses. */
+static void check_bdi_wrap_compare(void)
+{
+    uint8_t wire_storage[1290]={0}, page_storage[EXODUS_PAGE_BYTES+2]={0};
+    uint8_t *wire=wire_storage+1, *page=page_storage+1;
+    const size_t size=1289;
+    wire[0]=EXODUS_PAGE_BDI_VERSION;
+    memset(wire+1,0xff,8);
+    for(size_t b=0;b<64;b++){
+        uint8_t *block=wire+9+b*20;
+        memset(block,0xff,4);
+        for(size_t w=0;w<16;w++)block[4+w]=(uint8_t)w;
+    }
+    CHECK(exodus_page_decode(wire,size,page));
+    CHECK(page[0]==0xff && page[3]==0xff && page[4]==0 && page[8]==1);
+    bool equal=false;
+    CHECK(exodus_page_bdi_equal_page(wire,size,page));
+    CHECK(exodus_page_compare(wire,size,page,&equal)&&equal);
+    for(size_t w=0;w<EXODUS_PAGE_BYTES/4;w++){
+        page[w*4+3]^=0x80;
+        CHECK(!exodus_page_bdi_equal_page(wire,size,page));
+        CHECK(exodus_page_compare(wire,size,page,&equal)&&!equal);
+        page[w*4+3]^=0x80;
+    }
+    CHECK(exodus_page_compare(wire,size,page,&equal)&&equal);
+    CHECK(page_storage[0]==0 && page_storage[sizeof page_storage-1]==0);
+}
+
 int main(void)
 {
+    check_bdi_wrap_compare();
     check_bdi_direct_compare();
     check_compare_differential();
     check_compare_invalid_tail();
