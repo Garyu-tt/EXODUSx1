@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "library_catalog.h"
 #include "native_catalog_merge.hpp"
+#include "library_filter.h"
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -81,6 +82,17 @@ int main(int argc, char **argv)
         assert(!strcmp(exodus_library_provider(lib, i), labels[i]));
         assert(!strcmp(exodus_library_title(lib, i), "Game"));
     }
+    const enum exodus_backend backends[]={EXODUS_BACKEND_CORKDECK,EXODUS_BACKEND_HORIZON,
+        EXODUS_BACKEND_HORIZON,EXODUS_BACKEND_CORKDECK,EXODUS_BACKEND_NONE};
+    const enum exodus_target_kind kinds[]={EXODUS_TARGET_STEAM_LIBRARY,EXODUS_TARGET_TITLE_ID,
+        EXODUS_TARGET_NRO,EXODUS_TARGET_PE,EXODUS_TARGET_NONE};
+    for(size_t i=0;i<5;++i) {
+        auto target=exodus_library_execution_target(lib,i);
+        assert(target.backend==backends[i] && target.kind==kinds[i]);
+        assert(exodus_section_matches(SECTION_APPLICATIONS,exodus_library_provider(lib,i))==(i==2));
+        assert(exodus_section_matches(SECTION_LIBRARY,exodus_library_provider(lib,i))==(i!=2));
+    }
+    assert(exodus_library_execution_target(lib,99).backend==EXODUS_BACKEND_NONE);
     char native_detail[256];
     assert(!exodus_library_native_detail(lib,0,native_detail,sizeof(native_detail)));
     assert(!exodus_library_native_detail(lib,1,native_detail,sizeof(native_detail))); // invalid title ID
