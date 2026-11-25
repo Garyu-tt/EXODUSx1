@@ -6,6 +6,7 @@
 #include <array>
 #include <cerrno>
 #include <charconv>
+#include <dirent.h>
 #include <fcntl.h>
 #include <limits>
 #include <memory>
@@ -33,6 +34,9 @@ namespace exodus::steam_integrity {
     namespace {
 
         using Digest = std::array<unsigned char, 32>;
+        constexpr std::string_view ReferenceDirectory = "switch/exodus-steam/references";
+        constexpr std::string_view ReferenceSuffix = ".files";
+        constexpr std::size_t ReferenceDirectoryEntryLimit = 512;
         constexpr std::size_t ReferenceByteLimit = 8 * 1024 * 1024;
         constexpr std::size_t ReferenceFileLimit = 32768;
         constexpr std::size_t RelativePathLimit = 1024;
@@ -307,6 +311,16 @@ namespace exodus::steam_integrity {
             Descriptor OpenFile(const std::string &name) const {
                 return Descriptor(openat(fd.Get(), name.c_str(), ReadFlags()));
             }
+
+            DIR *OpenEntries() const {
+                const int iterator_fd = openat(fd.Get(), ".", ReadFlags() | O_DIRECTORY);
+                if (iterator_fd < 0)
+                    return nullptr;
+                DIR *entries = fdopendir(iterator_fd);
+                if (entries == nullptr)
+                    close(iterator_fd);
+                return entries;
+            }
 #else
             // libnx SD mounts are FAT/exFAT and do not expose directory-relative descriptors.
             std::string path;
@@ -332,6 +346,8 @@ namespace exodus::steam_integrity {
             Descriptor OpenFile(const std::string &name) const {
                 return Descriptor(open(ChildPath(name).c_str(), ReadFlags()));
             }
+
+            DIR *OpenEntries() const { return opendir(path.c_str()); }
 #endif
         };
 
@@ -428,6 +444,59 @@ namespace exodus::steam_integrity {
 
     }
 
+    std::optional<std::uint32_t> ParseSteamAppId(std::string_view text) {
+        std::uint64_t app_id = 0;
+        if (!ParseUint64(text, app_id) || app_id == 0 || app_id > std::numeric_limits<std::uint32_t>::max())
+            return std::nullopt;
+        return static_cast<std::uint32_t>(app_id);
+    }
+
+    std::optional<std::vector<std::uint32_t>> ListReferenceAppIds(std::string_view sd_mount) {
+        const auto directory = OpenDirectory(OpenRoot(sd_mount), ReferenceDirectory);
+        if (!directory.IsOpen())
+            return std::nullopt;
+        const std::unique_ptr<DIR, int (*)(DIR *)> entries(directory.OpenEntries(), closedir);
+        if (entries == nullptr)
+            return std::nullopt;
+
+        std::vector<std::uint32_t> app_ids;
+        std::size_t visited = 0;
+        for (;;) {
+            errno = 0;
+            const auto *entry = readdir(entries.get());
+            if (entry == nullptr) {
+#if defined(__SWITCH__) || defined(ATMOSPHERE_OS_HORIZON)
+                // libnx signals end of a directory with ENOENT.
+                if (errno != 0 && errno != ENOENT)
+#else
+                if (errno != 0)
+#endif
+                    return std::nullopt;
+                break;
+            }
+
+            const std::string_view name(entry->d_name);
+            if (name == "." || name == "..")
+                continue;
+            if (++visited > ReferenceDirectoryEntryLimit)
+                return std::nullopt;
+            if (name.size() <= ReferenceSuffix.size() || name.substr(name.size() - ReferenceSuffix.size()) != ReferenceSuffix)
+                continue;
+            const auto app_id = ParseSteamAppId(name.substr(0, name.size() - ReferenceSuffix.size()));
+            if (!app_id)
+                continue;
+
+            struct stat info{};
+            if (directory.Stat(std::string(name), info) == 0 && S_ISREG(info.st_mode) && info.st_size > 0
+                && static_cast<std::uint64_t>(info.st_size) <= ReferenceByteLimit)
+                app_ids.push_back(*app_id);
+        }
+
+        std::sort(app_ids.begin(), app_ids.end());
+        app_ids.erase(std::unique(app_ids.begin(), app_ids.end()), app_ids.end());
+        return app_ids;
+    }
+
     VerificationResult VerifySteamInstallation(std::string_view sd_mount, std::uint32_t app_id,
         std::string_view expected_reference_sha256, ProgressCallback progress, void *context) {
         VerificationResult result{Status::ReferenceUnavailable, 0, 0, 0, {}};
@@ -446,13 +515,14 @@ namespace exodus::steam_integrity {
             return finish(Status::InvalidReference);
 
         const auto id = std::to_string(app_id);
+        auto reference_path = std::string(ReferenceDirectory) + '/' + id;
+        reference_path += ReferenceSuffix;
         const auto sd = OpenRoot(sd_mount);
         std::string text;
         {
             Descriptor reference;
             std::uint64_t size = 0;
-            if (!sd.IsOpen() || OpenRegularFile(sd, "switch/exodus-steam/references/" + id + ".files", reference, size)
-                != OpenStatus::Opened)
+            if (!sd.IsOpen() || OpenRegularFile(sd, reference_path, reference, size) != OpenStatus::Opened)
                 return finish(Status::ReferenceUnavailable);
             if (size == 0 || size > ReferenceByteLimit)
                 return finish(Status::InvalidReference);

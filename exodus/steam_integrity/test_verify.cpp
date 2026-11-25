@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <vector>
 
+using exodus::steam_integrity::ListReferenceAppIds;
 using exodus::steam_integrity::Status;
 using exodus::steam_integrity::VerificationResult;
 using exodus::steam_integrity::VerifySteamInstallation;
@@ -106,6 +107,55 @@ namespace {
         fs::path mount;
     };
 
+    void TestReferenceAppIds() {
+        Fixture fixture;
+        const auto references = fixture.ReferenceFile().parent_path();
+        const auto mount = fixture.mount.string();
+        for (const auto *name : {"10.files", "2.files", "4294967295.files"})
+            Write(references / name, "Reference filename hint");
+        fs::resize_file(references / "4294967295.files", 8 * 1024 * 1024);
+
+        for (const auto *name : {"0.files", "01.files", "4294967296.files", "+5.files", "3.FILES", "4.files.bak", ".files"})
+            Write(references / name, "Not a candidate name");
+        fs::create_directory(references / "15.files");
+        fs::create_symlink(fixture.ReferenceFile(), references / "16.files");
+        Require(mkfifo((references / "17.files").c_str(), 0600) == 0, "Could not create a FIFO reference fixture");
+        Write(references / "18.files", "");
+        Write(references / "19.files", "");
+        fs::resize_file(references / "19.files", 8 * 1024 * 1024 + 1);
+
+        const auto ids = ListReferenceAppIds(mount);
+        const std::vector<std::uint32_t> expected{2, 10, AppId, 4294967295u};
+        Require(ids && *ids == expected, "Reference names must be canonical, backed by safe files and sorted numerically");
+        Expect(VerifySteamInstallation(mount, 10, ReferencePin), Status::ReferenceDigestMismatch,
+            "A listed filename still requires the independently supplied digest");
+
+        const auto moved = fixture.mount / "moved-references";
+        fs::rename(references, moved);
+        Require(!ListReferenceAppIds(mount), "A missing reference directory has no list");
+        fs::create_directory_symlink(moved, references);
+        Require(!ListReferenceAppIds(mount), "A reference directory symlink must be rejected");
+        fs::remove(references);
+        Write(references, "A directory is required");
+        Require(!ListReferenceAppIds(mount), "A regular file cannot serve as the reference directory");
+        fs::remove(references);
+        fs::create_directory(references);
+        const auto empty = ListReferenceAppIds(mount);
+        Require(empty && empty->empty(), "A readable empty reference directory has an empty list");
+    }
+
+    void TestReferenceDirectoryLimit() {
+        Fixture fixture;
+        const auto references = fixture.ReferenceFile().parent_path();
+        const auto mount = fixture.mount.string();
+        for (unsigned i = 0; i < 511; ++i)
+            Write(references / (std::to_string(i) + ".txt"), "");
+        const auto ids = ListReferenceAppIds(mount);
+        Require(ids && *ids == std::vector<std::uint32_t>{AppId}, "The picker allows exactly 512 directory entries");
+        Write(references / "extra.txt", "");
+        Require(!ListReferenceAppIds(mount), "An oversized directory has no list, including when its extra entries are unrelated");
+    }
+
     std::string ReferenceHeader(std::string_view id = "730", std::string_view count = "1") {
         return "EXODUS-STEAM-SHA256 1\n" + std::string(id) + '\n' + std::string(count) + '\n';
     }
@@ -126,6 +176,8 @@ namespace {
 }
 
 int main() {
+    TestReferenceAppIds();
+    TestReferenceDirectoryLimit();
     Fixture fixture;
     Require(Sha256Hex(Reference) == ReferencePin, "Known SHA-256 reference pin changed");
     const auto matched = fixture.Verify("E885694620199CB49268b09A421C9E7C925dabc2d41362f26a7E15F1DE32E58A");
