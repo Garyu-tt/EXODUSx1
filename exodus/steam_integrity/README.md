@@ -12,6 +12,8 @@ python -m exodus.steam_integrity.reference --steamapps "D:/SteamLibrary/steamapp
 
 Keep the reported reference SHA-256 separately from the test SD. The checksum pins the exact reference you prepared. The export records the file state at that time, including local configuration files in the chosen directory. A later update or local file edit can change the result. The exporter creates a new `.files` document and leaves the game directory intact.
 
+Every selected source and output directory component must exist as a real directory. Parent components (`..`) are checked before normalization: an existing `directory/..` remains usable, while a missing component, regular file, symlink or Windows junction cannot be hidden by the following `..`.
+
 ## Run the check
 
 1. On the test SD, place the corresponding Steam-created `appmanifest_<AppID>.acf` in `/switch/exodus-steam/steamapps/` and the installed game folder in its `common/` directory. The AppID and install folder are resolved from this manifest.
