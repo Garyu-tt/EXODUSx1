@@ -1,8 +1,8 @@
 #include "handle_wait.h"
 #include <errno.h>
 
-int nx_handle_wait(const struct nx_handle_watch *watches, size_t count,
-                   uint32_t *token_out, int timeout_ms, Result *native_result)
+static int handle_wait_impl(const struct nx_handle_watch *watches, size_t count,
+                   uint32_t *token_out, int timeout_ms, Result *native_result, int interruptible)
 {
     Handle handles[NX_HANDLE_WAIT_MAX];
     s32 idx = -1;
@@ -30,9 +30,14 @@ int nx_handle_wait(const struct nx_handle_watch *watches, size_t count,
     }
     const u64 ns = timeout_ms == -1 ? UINT64_MAX :
         (u64)timeout_ms * UINT64_C(1000000);
-    rc = waitHandles(&idx, handles, (s32)count, ns);
+    rc = interruptible ? svcWaitSynchronization(&idx, handles, (s32)count, ns) :
+                         waitHandles(&idx, handles, (s32)count, ns);
     *native_result = rc;
     if (R_VALUE(rc) == KERNELRESULT(TimedOut)) return 0;
+    if (interruptible && R_VALUE(rc) == KERNELRESULT(Cancelled)) {
+        errno = ECANCELED;
+        return -1;
+    }
     if (R_FAILED(rc)) {
         errno = R_VALUE(rc) == KERNELRESULT(InvalidHandle) ? EBADF : EIO;
         return -1;
@@ -43,4 +48,16 @@ int nx_handle_wait(const struct nx_handle_watch *watches, size_t count,
     }
     *token_out = watches[idx].token;
     return 1;
+}
+
+int nx_handle_wait(const struct nx_handle_watch *watches, size_t count,
+                   uint32_t *token_out, int timeout_ms, Result *native_result)
+{
+    return handle_wait_impl(watches, count, token_out, timeout_ms, native_result, 0);
+}
+
+int nx_handle_wait_interruptible(const struct nx_handle_watch *watches, size_t count,
+                                uint32_t *token_out, int timeout_ms, Result *native_result)
+{
+    return handle_wait_impl(watches, count, token_out, timeout_ms, native_result, 1);
 }

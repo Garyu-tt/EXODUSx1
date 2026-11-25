@@ -7,6 +7,7 @@
 static Result response;
 static s32 selected;
 static unsigned calls;
+static unsigned raw_calls;
 static u64 expected_ns;
 static s32 expected_count;
 
@@ -18,6 +19,12 @@ Result waitHandles(s32 *idx, const Handle *handles, s32 count, u64 ns)
         assert(handles[i] == (Handle)(i + 10));
     *idx = selected;
     return response;
+}
+
+Result svcWaitSynchronization(s32 *idx, const Handle *handles, s32 count, u64 ns)
+{
+    ++raw_calls;
+    return waitHandles(idx, handles, count, ns);
 }
 
 int main(void)
@@ -71,6 +78,23 @@ int main(void)
     w[1].token = w[0].token;
     assert(nx_handle_wait(w, 2, &token, 0, &raw) == -1 && errno == EINVAL);
     assert(calls == before && token == 999);
+    /* Interruptible wait is opt-in, uses raw SVC exactly once, preserves token. */
+    w[1].token = 101;
+    expected_count = 2;
+    expected_ns = UINT64_C(12000000);
+    response = KERNELRESULT(Cancelled);
+    assert(raw_calls == 0);
+    assert(nx_handle_wait_interruptible(w, 2, &token, 12, &raw) == -1);
+    assert(errno == ECANCELED && raw == response && token == 999 && raw_calls == 1);
+    response = KERNELRESULT(TimedOut);
+    assert(nx_handle_wait_interruptible(w, 2, &token, 12, &raw) == 0);
+    assert(raw == response && token == 999 && raw_calls == 2);
+    response = 0; selected = 1;
+    assert(nx_handle_wait_interruptible(w, 2, &token, 12, &raw) == 1);
+    assert(token == 101 && raw == 0 && raw_calls == 3);
+    assert(nx_handle_wait_interruptible(w, 0, &token, 12, &raw) == -1);
+    assert(errno == EINVAL && raw == 0 && raw_calls == 3);
+    assert(nx_handle_wait(w, 2, &token, 12, &raw) == 1 && raw_calls == 3);
     puts("handle wait contract tests passed (mock backend)");
     return 0;
 }

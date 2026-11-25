@@ -21,4 +21,9 @@ struct nx_handle_watch {
  * and errno describes the error. waitHandles may retry cancellations. */
 int nx_handle_wait(const struct nx_handle_watch *watches, size_t count,
                    uint32_t *token_out, int timeout_ms, Result *native_result);
+/* Same contract, but raw SVC is invoked once. Kernel cancellation returns
+ * -1/ECANCELED with original Result; never retries internally.
+ * Callers must handle cancellation races and thread lifetime. */
+int nx_handle_wait_interruptible(const struct nx_handle_watch *watches, size_t count,
+                                uint32_t *token_out, int timeout_ms, Result *native_result);
 #endif
