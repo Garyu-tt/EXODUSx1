@@ -29,7 +29,50 @@ static void test_incremental(void){
  put(raw,0);put(raw+4,1);C(exodus_page_fingerprint(raw)!=first&&first!=zero);
  puts("Fingerprint v2: 10000 incremental/full comparisons and reversals passed");
 }
+/* Contiguous zero blocks, then compact nonzero blocks, then RAW blocks
+ * (or reversed RAW-first order). All nonzero words differ from neighbors:
+ * word-run overhead cannot beat the sparse/RAW fallback in this fixture.
+ * Compare exact fallback bytes, and exact canonical BDI bytes when it wins. */
+static void test_bdi_early_reject(void){
+ uint8_t page[P], wire[P], fallback[P], expected[P], decoded[P];
+ for(unsigned reverse=0;reverse<2;reverse++){
+  for(size_t zero=0;zero<=64;zero++){
+   for(size_t compact=0;compact<=64-zero;compact++){
+    memset(page,0,P);
+    for(size_t b=0;b<64-zero;b++){
+     size_t block=reverse?b:zero+b;
+     bool packed=reverse?b>=64-zero-compact:b<compact;
+     for(size_t w=0;w<16;w++)
+      put(page+64*block+4*w,1000u+(uint32_t)block*4096u+(uint32_t)w*(packed?1u:257u));
+    }
+    size_t best=exodus_page_encode(page,fallback);
+    size_t bdi=9+64*64-(zero+compact)*44;
+    size_t n=exodus_page_encode_adaptive(page,wire);
+    C(n==(bdi<best?bdi:best));
+    if(bdi>=best){C(!memcmp(wire,fallback,best));}
+    else{
+     memset(expected,0,9);expected[0]=EXODUS_PAGE_BDI_VERSION;
+     size_t pos=9;
+     for(size_t block=0;block<64;block++){
+      bool z=reverse?block>=64-zero:block<zero;
+      bool c=reverse?block>=64-zero-compact&&block<64-zero:
+                       block>=zero&&block<zero+compact;
+      if(z||c){
+       expected[1+block/8]|=(uint8_t)(1u<<(block%8));
+       memcpy(expected+pos,page+64*block,4);
+       for(size_t w=0;w<16;w++)expected[pos+4+w]=(uint8_t)(z?0:w);
+       pos+=20;
+      }else{memcpy(expected+pos,page+64*block,64);pos+=64;}
+     }
+     C(pos==n&&!memcmp(wire,expected,n));
+    }
+    C(exodus_page_decode(wire,n,decoded)&&!memcmp(page,decoded,P));
+   }
+  }
+ }
+}
 int main(void){
+ test_bdi_early_reject();
  test_incremental();
  for(size_t b=0;b<64;b++) for(size_t w=0;w<16;w++)
   put(p+b*64+w*4,UINT32_MAX-255-(uint32_t)b*1024+(uint32_t)w*17);
