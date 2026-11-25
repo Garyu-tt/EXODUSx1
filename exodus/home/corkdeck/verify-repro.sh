@@ -20,6 +20,7 @@ build_copy() (
     mkdir -p "$project/exodus/home/ulaunch" "$project/exodus/runtime" "$build_root/tmp"
     cp -R "$source_dir/exodus/home/corkdeck" "$project/exodus/home/"
     cp "$source_dir/exodus/home/ulaunch/catalog.cpp" "$source_dir/exodus/home/ulaunch/catalog.hpp" \
+        "$source_dir/exodus/home/ulaunch/catalog_refresh.cpp" "$source_dir/exodus/home/ulaunch/catalog_refresh.hpp" \
         "$source_dir/exodus/home/ulaunch/COPYING" \
         "$project/exodus/home/ulaunch/"
     cp "$source_dir/exodus/runtime/autorun_probe.c" "$source_dir/exodus/runtime/autorun_probe.h" \
