@@ -9,7 +9,7 @@ import os
 import signal
 import time
 
-from .task_center import Lifecycle, Session, UNKNOWN, LIMIT, positive, valid_key
+from .task_center import Lifecycle, Session, UNKNOWN, LIMIT, OPERATIONS, positive, valid_key
 
 
 class ManagedChild:
@@ -78,7 +78,7 @@ class ManagedChild:
                 or not positive(request.token) or request.token <= self.last_token
                 or request.accepted is not False or not positive(request.sequence)
                 or request.sequence != self.sequence
-                or type(request.operation) is not str
+                or type(request.operation) is not str or request.operation not in OPERATIONS
                 or type(request.deadline) not in (int, float)
                 or not 0 < request.deadline <= LIMIT
                 or not math.isfinite(request.deadline)
