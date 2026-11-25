@@ -21,6 +21,7 @@ on:
       - 'exodus/frankenstein/bao-freebsd-rescue-rc.sh'
       - 'exodus/frankenstein/bao-freebsd-ssh-rc.sh'
       - 'exodus/frankenstein/prepare_bao_ssh_root.py'
+      - 'exodus/frankenstein/test_prepare_bao_ssh_root.py'
       - 'exodus/frankenstein/test_ipc_process.py'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/test_sessiond.py'
@@ -45,6 +46,7 @@ jobs:
           python3 exodus/frankenstein/validate_graph.py
           python3 exodus/frankenstein/partition_contract.py
           python3 exodus/frankenstein/pack_bao_freebsd_root.py --selftest
+          python3 exodus/frankenstein/test_prepare_bao_ssh_root.py
           python3 exodus/frankenstein/ipc_contract.py
           python3 -W error::ResourceWarning exodus/frankenstein/test_ipc_process.py
           cc -std=c11 -Wall -Wextra -Werror -pedantic -DTMR_SELFTEST -fsanitize=address,undefined -fno-sanitize-recover=all exodus/frankenstein/ipc_native.c -o /tmp/tumor-ipc-native
