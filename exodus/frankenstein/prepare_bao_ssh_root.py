@@ -27,6 +27,7 @@ def stage(base, root):
     if base == root or base in root.parents or root in base.parents:
         raise ValueError("base and root must be disjoint")
     seen = set()
+    planned = []
     queue = list(PROGRAMS + CONFIG)
     # The rescue binary has several hard links: account for its inode once.
     inodes = set()
@@ -48,16 +49,19 @@ def stage(base, root):
         if not source.is_relative_to(base) or not source.is_file():
             raise ValueError("source escapes base: " + rel)
         target = root / rel
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if not target.parent.resolve().is_relative_to(root) or target.exists() or target.is_symlink():
+        if (not target.parent.resolve().is_relative_to(root)
+                or any(parent.is_symlink() for parent in target.parents if parent != root)
+                or target.exists() or target.is_symlink()):
             raise ValueError("destination not fresh: " + rel)
         total += source.stat().st_size
         if total > MAX_BYTES:
             raise ValueError("staged files exceed 52 MiB")
-        shutil.copy2(source, target)
+        planned.append((source, target))
         seen.add(rel)
         with source.open("rb") as fp:
             if fp.read(4) != b"\x7fELF":
+                if rel not in CONFIG:
+                    raise ValueError("required executable or dependency is not ELF: " + rel)
                 continue
         output = subprocess.check_output(
             ["readelf", "-h", "-d", str(source)], text=True,
@@ -72,6 +76,10 @@ def stage(base, root):
             if not candidates:
                 raise ValueError("missing DT_NEEDED: " + name)
             queue.append(candidates[0])
+    # Do not mutate the root until the complete dependency closure is admitted.
+    for source, target in planned:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
     print("Staged", len(seen), "paths;", total, "unique-file bytes")
     for rel in sorted(seen):
         print(rel)
