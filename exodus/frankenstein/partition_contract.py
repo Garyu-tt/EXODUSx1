@@ -64,6 +64,38 @@ def admit(ram, regions, cores, devices, available_cores):
             raise ValueError("invalid device ownership")
     return True
 
+# Symbolic identities, never hardware CPU numbers or physical addresses.
+AMP_A57 = frozenset(f"a57:{i}" for i in range(4))
+AMP_ADSP = "adsp:a9"
+AMP_DEVICES = DEVICES | {"audio"}
+
+def admit_amp(ram, regions, cores, devices):
+    """Validate an abstract AMP allocation, not target availability or safety."""
+    if set(cores) != DOMAINS:
+        raise ValueError("missing AMP domain")
+    requested = {}
+    for owner, ids in cores.items():
+        ids = tuple(ids)
+        if any(type(i) is not str for i in ids) or len(set(ids)) != len(ids):
+            raise ValueError("invalid AMP CPU identity")
+        requested[owner] = frozenset(ids)
+    if (requested["horizon"] != AMP_A57 or
+            requested["freebsd"] != {AMP_ADSP} or requested["mediator"]):
+        raise ValueError("AMP requires all A57 for Horizon, ADSP for FreeBSD")
+    if set(devices) != AMP_DEVICES or devices["audio"] != "horizon":
+        raise ValueError("AMP audio ownership must remain with Horizon")
+    # Require explicit mediated shared RAM for the IPC transport. The existing
+    # reference validator checks disjoint spans, reservations and device owners.
+    regions = tuple(regions)
+    if not any(r.shared is True and r.owner == "mediator" for r in regions):
+        raise ValueError("missing AMP shared region")
+    numbering = {name: i for i, name in enumerate(sorted(AMP_A57 | {AMP_ADSP}))}
+    return admit(ram, regions,
+                 {owner: [numbering[i] for i in ids]
+                  for owner, ids in requested.items()},
+                 {name: devices[name] for name in DEVICES},
+                 tuple(numbering.values()))
+
 class ContractTests(unittest.TestCase):
     def setUp(self):
         self.ram = [(0, 16 * PAGE)]
@@ -123,6 +155,45 @@ class ContractTests(unittest.TestCase):
     def test_ram_hole(self):
         self.ram = [(0, 2 * PAGE), (4 * PAGE, 12 * PAGE)]
         with self.assertRaises(ValueError): self.check()
+
+
+class AMPContractTests(unittest.TestCase):
+    def setUp(self):
+        ContractTests.setUp(self)
+        self.cores = {"horizon": sorted(AMP_A57), "freebsd": [AMP_ADSP],
+                      "mediator": []}
+        self.devices = dict.fromkeys(AMP_DEVICES, "horizon")
+    def check_amp(self):
+        return admit_amp(self.ram, self.regions, self.cores, self.devices)
+    def test_amp_valid(self):
+        self.assertTrue(self.check_amp())
+    def test_amp_a57_stolen(self):
+        self.cores["freebsd"] = [self.cores["horizon"].pop()]
+        with self.assertRaises(ValueError): self.check_amp()
+    def test_amp_missing_a57(self):
+        self.cores["horizon"].pop()
+        with self.assertRaises(ValueError): self.check_amp()
+    def test_amp_a53_deferred(self):
+        self.cores["freebsd"] = ["a53:0"]
+        with self.assertRaises(ValueError): self.check_amp()
+    def test_amp_duplicate_identity(self):
+        self.cores["horizon"].append("a57:0")
+        with self.assertRaises(ValueError): self.check_amp()
+    def test_amp_mediator_dedicated_core(self):
+        self.cores["mediator"] = ["a57:0"]
+        with self.assertRaises(ValueError): self.check_amp()
+    def test_amp_audio_owner(self):
+        self.devices["audio"] = "freebsd"
+        with self.assertRaises(ValueError): self.check_amp()
+    def test_amp_audio_missing(self):
+        del self.devices["audio"]
+        with self.assertRaises(ValueError): self.check_amp()
+    def test_amp_shared_missing(self):
+        self.regions.pop()
+        with self.assertRaises(ValueError): self.check_amp()
+    def test_amp_overlap(self):
+        self.regions.append(Region(PAGE, PAGE, "freebsd"))
+        with self.assertRaises(ValueError): self.check_amp()
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
