@@ -75,11 +75,13 @@ def render(template_path: Path, input_patch_path: Path, platform_patch_path: Pat
             "Cargo.lock",
             "steamos-manager/Cargo.toml",
             "steamos-manager/examples/freebsd_inotify_probe.rs",
+            "steamos-manager/src/bin/steamosctl.rs",
             "steamos-manager/src/cec.rs",
             "steamos-manager/src/cec_types.rs",
             "steamos-manager/src/hardware.rs",
             "steamos-manager/src/lib.rs",
             "steamos-manager/src/manager/user.rs",
+            "steamos-manager/src/power.rs",
         ),
         "manager platform patch",
     )

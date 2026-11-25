@@ -97,6 +97,45 @@ index 0000000000000000000000000000000000000000..a68226e3d8ef98966d31add356c86ae2
 +    println!("EXODUS_MANAGER_INOTIFY_RUST_PASS");
 +    Ok(())
 +}
+diff --git a/steamos-manager/src/bin/steamosctl.rs b/steamos-manager/src/bin/steamosctl.rs
+index 396cf333652988425297e12ed1beae1e6a976efb..c8785688ee5f29a51db457971135838651e977ff 100644
+--- a/steamos-manager/src/bin/steamosctl.rs
++++ b/steamos-manager/src/bin/steamosctl.rs
+@@ -8,6 +8,7 @@
+ use anyhow::{Result, bail};
+ use clap::{ArgAction, Parser, Subcommand};
+ use itertools::Itertools;
++#[cfg(not(target_os = "freebsd"))]
+ use nix::time::{ClockId, clock_gettime};
+ use std::collections::{BTreeMap, HashMap};
+ use std::io::{Cursor, stderr};
+@@ -875,12 +876,20 @@ async fn main() -> Result<()> {
+             proxy.set_mode(mode.to_string().as_str()).await?;
+         }
+         Commands::TriggerScreenReaderAction { action } => {
+-            let proxy = ScreenReader1Proxy::new(&conn).await?;
+-            let timestamp = clock_gettime(ClockId::CLOCK_MONOTONIC_RAW)?;
+-            let now = timestamp.tv_sec() * 1_000_000_000 + timestamp.tv_nsec();
+-            proxy
+-                .trigger_action(action.to_string().as_str(), now.try_into()?)
+-                .await?;
++            #[cfg(target_os = "freebsd")]
++            {
++                let _ = action;
++                bail!("screen-reader action timestamps are not supported on FreeBSD");
++            }
++            #[cfg(not(target_os = "freebsd"))]
++            {
++                let proxy = ScreenReader1Proxy::new(&conn).await?;
++                let timestamp = clock_gettime(ClockId::CLOCK_MONOTONIC_RAW)?;
++                let now = timestamp.tv_sec() * 1_000_000_000 + timestamp.tv_nsec();
++                proxy
++                    .trigger_action(action.to_string().as_str(), now.try_into()?)
++                    .await?;
++            }
+         }
+         Commands::GetScreenReaderLocales => {
+             let proxy = ScreenReader1Proxy::new(&conn).await?;
 diff --git a/steamos-manager/src/cec.rs b/steamos-manager/src/cec.rs
 index ab6271c03f08463bcea6b6d684c02d2f3a7e5272..8cd023afbaedbeab76622ece1642e813ae36ac49 100644
 --- a/steamos-manager/src/cec.rs
@@ -453,3 +492,31 @@ index 879e0834f5394fa8baeea1818e3043803213a011..16c672adfd8c911fe4ce8a6b9e0a59b7
      use std::num::{NonZero, NonZeroU32};
      use std::os::unix::fs::PermissionsExt;
      use std::path::PathBuf;
+diff --git a/steamos-manager/src/power.rs b/steamos-manager/src/power.rs
+index 52554283ee480c467a783e1b9ee1d29535313da4..1b1ec9cc968c25ff20d279885e6e94365fe50016 100644
+--- a/steamos-manager/src/power.rs
++++ b/steamos-manager/src/power.rs
+@@ -7,6 +7,7 @@
+ 
+ use anyhow::{Result, anyhow, bail, ensure};
+ use async_trait::async_trait;
++#[cfg(not(target_os = "freebsd"))]
+ use nix::errno::Errno;
+ use num_enum::TryFromPrimitive;
+ use serde::Deserialize;
+@@ -710,6 +711,7 @@ fn parse_max_charge_level(result: std::io::Result<String>) -> Result<i32> {
+             .parse()
+             .map_err(|e| anyhow!("Error parsing value: {e}")),
+         // asus-wmi may return ENODATA until userspace writes a value
++        #[cfg(not(target_os = "freebsd"))]
+         Err(e) if e.raw_os_error().map(Errno::from_raw) == Some(Errno::ENODATA) => Ok(-1),
+         Err(e) => Err(anyhow!("Error reading sysfs: {e}")),
+     }
+@@ -1485,6 +1487,7 @@ pub(crate) mod test {
+         assert_eq!(get_max_charge_level().await.unwrap(), 80);
+     }
+ 
++    #[cfg(not(target_os = "freebsd"))]
+     #[test]
+     fn parse_max_charge_level_enodata_is_unknown() {
+         let err = std::io::Error::from_raw_os_error(Errno::ENODATA as i32);

@@ -22,7 +22,7 @@ platform_patch=/var/tmp/steamos-manager-freebsd-platform.patch
 cat > "$platform_patch" <<'EXODUS_PLATFORM_PATCH'
 __EXODUS_MANAGER_PLATFORM_PATCH__
 EXODUS_PLATFORM_PATCH
-test "$(sha256 -q "$platform_patch")" = d84400755e5a1ba566a2fb765c39d2024ba994901701865be49a8f5107cd7536
+test "$(sha256 -q "$platform_patch")" = b80c87119555153103148629bbdc8b5029b6d97d1f481f814bdb568c3746861e
 uname -a
 test "$(uname -s)" = FreeBSD
 test "$(uname -m)" = arm64
@@ -56,10 +56,12 @@ test "$(git rev-parse HEAD)" = a0d399defebd60db30ba38325d9cf47dbda49bee
 test -f Cargo.lock
 test "$(sha256 -q Cargo.lock)" = 001bf56bb9f357710986bea869c67473e2afd358bf2288a00b661ba8ea0027c1
 test "$(sha256 -q steamos-manager/Cargo.toml)" = 78a3b78831c6c3a2834d167b2bfdbb166363b65efc082cc5e449e57a46277937
+test "$(sha256 -q steamos-manager/src/bin/steamosctl.rs)" = 78806f38c4d30810516913e13dfdb48e06483d53920d6263a098373d6ddfb3c2
 test "$(sha256 -q steamos-manager/src/cec.rs)" = ed02ae2ed3ba58eecdda89526afef542a7a2787fc376b20a609ec7a60e19b4c9
 test "$(sha256 -q steamos-manager/src/hardware.rs)" = 7c6c6a6d700ee0c5ddb950d5bbf779b393714b14fe02e937a35b75d24d220a24
 test "$(sha256 -q steamos-manager/src/lib.rs)" = 80f3710c44535fba54864e0f7230afad4fa67f0e16853e25d7e0b228ef05fc51
 test "$(sha256 -q steamos-manager/src/manager/user.rs)" = 7db6bc290d6160399d94f15be7ebc1d9e2b76c18ed2f41ea2a56ffdddf0ac447
+test "$(sha256 -q steamos-manager/src/power.rs)" = bb8d86cb0638f4a58fedb643653f63ef3b3bb68d4fae84516b41e9fcc1ab2623
 test ! -e steamos-manager/examples/freebsd_inotify_probe.rs
 test ! -e steamos-manager/src/cec_types.rs
 git apply --check "$platform_patch"
@@ -67,11 +69,13 @@ git apply "$platform_patch"
 test "$(sha256 -q Cargo.lock)" = 6035e3ec787fbad93d3dfb45f2ebc93d9b53139484cd572603ca8b1e1220da2e
 test "$(sha256 -q steamos-manager/Cargo.toml)" = db05e269748b1c4d884e1d1fa51437e641218296b9df10525f2e0e99dcb159af
 test "$(sha256 -q steamos-manager/examples/freebsd_inotify_probe.rs)" = 01ddfeff92c34d0d24f9de262e81ffa392c0bc482a3113ce0641a04d8b1178b7
+test "$(sha256 -q steamos-manager/src/bin/steamosctl.rs)" = fa04dff9eab2ef582bcfea3fa8c172d6440d75e367785c0b5ef83abaaace4863
 test "$(sha256 -q steamos-manager/src/cec.rs)" = 556bcb3aa3ed1c331a346e4df8ae42bac9d6489d2e0b32ae60e2eeaf163b0d7d
 test "$(sha256 -q steamos-manager/src/cec_types.rs)" = f22b37ed144bc19c3f02bf7c6b3e793f4761992555366377cf684038ef7115b9
 test "$(sha256 -q steamos-manager/src/hardware.rs)" = 72f8977c3f4e8fc427445700876259efbce42c4231fe6a1c4b5292e26bc483c7
 test "$(sha256 -q steamos-manager/src/lib.rs)" = b67d72f586dc8e9f54d7531142e37eab0e6407ace6d8d5f91f823d23f3555543
 test "$(sha256 -q steamos-manager/src/manager/user.rs)" = 9c93d5a40fa7c810110191b9293163d7edfb9ee954f59958a631adcc0548c30a
+test "$(sha256 -q steamos-manager/src/power.rs)" = 80347e3238e72a7d731a027fd847c5d0b8228be1ecedd3dfe40ca87a17732f2d
 echo EXODUS_MANAGER_FREEBSD_PLATFORM_PATCH_PASS
 cargo fetch --locked
 cargo_home=${CARGO_HOME:-"$HOME/.cargo"}

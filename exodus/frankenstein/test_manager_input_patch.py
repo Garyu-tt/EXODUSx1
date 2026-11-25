@@ -131,11 +131,13 @@ class ManagerInputPatchTests(unittest.TestCase):
                 "Cargo.lock",
                 "steamos-manager/Cargo.toml",
                 "steamos-manager/examples/freebsd_inotify_probe.rs",
+                "steamos-manager/src/bin/steamosctl.rs",
                 "steamos-manager/src/cec.rs",
                 "steamos-manager/src/cec_types.rs",
                 "steamos-manager/src/hardware.rs",
                 "steamos-manager/src/lib.rs",
                 "steamos-manager/src/manager/user.rs",
+                "steamos-manager/src/power.rs",
             ],
         )
         for fragment in (
@@ -149,10 +151,15 @@ class ManagerInputPatchTests(unittest.TestCase):
             "libc::dup(original.as_raw_fd())",
             "original_watch, duplicate_watch",
             "EXODUS_MANAGER_INOTIFY_RUST_PASS",
+            "Errno::ENODATA",
+            "CLOCK_MONOTONIC_RAW",
+            "screen-reader action timestamps are not supported on FreeBSD",
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, text)
         self.assertNotIn("Errno::ENOENT", text)
+        self.assertNotIn("Errno::ENOATTR", text)
+        self.assertNotIn("CLOCK_MONOTONIC_PRECISE", text)
         self.assertNotIn("tokio::time", text)
 
     def test_official_crate_hash_and_embedded_patch_hash_are_pinned(self):
