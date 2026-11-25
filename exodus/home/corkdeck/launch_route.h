@@ -7,7 +7,8 @@
 #include <stdio.h>
 
 enum exodus_route { EXODUS_ROUTE_INVALID, EXODUS_ROUTE_SWITCH, EXODUS_ROUTE_HOMEBREW,
-                    EXODUS_ROUTE_WINDOWS, EXODUS_ROUTE_STEAM, EXODUS_ROUTE_UNSUPPORTED };
+                    EXODUS_ROUTE_WINDOWS, EXODUS_ROUTE_STEAM, EXODUS_ROUTE_RUNTIME_LIBRARY,
+                    EXODUS_ROUTE_UNSUPPORTED };
 
 static inline int exodus_title_id(const char *s, uint64_t *out)
 {
@@ -75,6 +76,7 @@ static inline const char *exodus_route_name(enum exodus_route route)
         case EXODUS_ROUTE_HOMEBREW: return "Homebrew loader";
         case EXODUS_ROUTE_WINDOWS: return "CorkDeck runtime";
         case EXODUS_ROUTE_STEAM: return "Open CorkDeck library (select Steam game there)";
+        case EXODUS_ROUTE_RUNTIME_LIBRARY: return "Windows Runtime";
         case EXODUS_ROUTE_INVALID: return "Invalid target";
         default: return "Unsupported provider";
     }

@@ -49,7 +49,8 @@ static inline int exodus_runtime_args(enum exodus_route route, const char *id,
     out[0] = 0;
     if (route == EXODUS_ROUTE_WINDOWS && exodus_windows_path(id))
         n = snprintf(out, EXODUS_RUNTIME_ARGS_CAP, "%s \"%s\"", EXODUS_AUTORUN_PATH, id);
-    else if (route == EXODUS_ROUTE_STEAM && exodus_steam_app_id(id))
+    else if ((route == EXODUS_ROUTE_STEAM && exodus_steam_app_id(id)) ||
+             (route == EXODUS_ROUTE_RUNTIME_LIBRARY && !id))
         n = snprintf(out, EXODUS_RUNTIME_ARGS_CAP, "%s", EXODUS_AUTORUN_PATH);
     else return 0;
     return n > 0 && n < EXODUS_RUNTIME_ARGS_CAP;

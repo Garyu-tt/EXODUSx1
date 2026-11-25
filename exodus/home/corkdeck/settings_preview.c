@@ -287,6 +287,20 @@ static int open_tool(struct ui *ui, const struct exodus_page_info *page)
     return 0;
 }
 
+static int open_windows_runtime(struct ui *ui)
+{
+    const char *title = exodus_pages[PAGE_RUNTIME].name;
+#ifdef __SWITCH__
+    char message[256];
+    if (!ui_confirm(ui, title, EXODUS_AUTORUN_PATH, "Open")) return 0;
+    if (exodus_launch(EXODUS_ROUTE_RUNTIME_LIBRARY, NULL, message)) return 1;
+    ui_message(ui, title, message);
+#else
+    ui_message(ui, title, "Native Switch runtime; unavailable on host.");
+#endif
+    return 0;
+}
+
 static void show_control_center(struct ui *ui)
 {
     struct exodus_metrics metrics;
@@ -331,7 +345,7 @@ static void draw_home(struct ui *ui, size_t selection)
     ui_background(ui);
     exodus_header(ui, "Home", "Gaming Mode");
     for (size_t n = 0; n < PAGE_COUNT; ++n) {
-        int x = 84, y = 120 + (int)n * 94;
+        int x = 84, y = 120 + (int)n * 90;
         ui_panel(ui, x, y, 1112, 82);
         if (n == selection) ui_outline(ui, x, y, 1112, 82, 6, 3, ui->selection);
         ui_text(ui, ui->normal, x + 22, y + 9, exodus_pages[n].name, ui->text);
@@ -364,6 +378,8 @@ static void show_home(struct ui *ui, const char *catalog)
                 if (show_library(ui, catalog)) return;
             } else if (selection == PAGE_SETTINGS) {
                 show_settings(ui);
+            } else if (selection == PAGE_RUNTIME) {
+                if (open_windows_runtime(ui)) return;
             } else if (open_tool(ui, &exodus_pages[selection])) return;
             changed_screen = 1;
             break;
