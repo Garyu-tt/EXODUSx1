@@ -37,6 +37,10 @@ The existing `exodus_page_store_append(&store, page)` keeps the legacy sparse/ra
 
 Restore directly by index with `exodus_page_store_restore` and a separate writable page buffer. The store retains `payload_used` encoded bytes plus one `size_t` offset per page. Choose buffer capacities to fit the caller's memory budget. The caller manages the group lifetime, thread synchronization and transfers between CPU and GPU memory.
 
+To write back a changed page, call `exodus_page_store_replace(store, index, page)` with a readable 4096-byte page. The page keeps its index and the group keeps its page count. A larger or smaller encoding shifts the following payloads and updates their offsets; all other pages retain their contents and indices. A failed capacity or index check leaves both buffers and the counters unchanged, so retain the changed source page until replacement succeeds. A smaller replacement makes capacity available for a later replacement or append.
+
+Replacement uses one 4096-byte scratch buffer without heap allocation. It validates the offset array and may move the entire following payload, so its cost grows with the group size. Serialize replacement, append and restore operations. These operations manage caller-owned CPU storage; they do not update active GPU resources or provide runtime memory hooks.
+
 ## Compress successive snapshots of a page
 
 Link `page_snapshot.c` and `page_codec.c` to retain successive versions of a 4096-byte page. Supply an immutable reference you already retain, such as a checkpointed RAM page or the previous CPU-readable RGBA staging page. The encoder compares adaptive compression of the new bytes with adaptive compression of their bytewise XOR and includes all frame overhead in the choice. Equal sizes select the standalone frame.
