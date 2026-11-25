@@ -40,6 +40,37 @@ namespace exodus::steam_integrity {
         constexpr std::size_t SdPathByteLimit = 0x301 - 1;
         constexpr std::size_t ReadChunkBytes = 64 * 1024;
 
+        struct FileStamp {
+            dev_t device{};
+            ino_t inode{};
+            off_t size{};
+            time_t modified{};
+            time_t changed{};
+            long modified_ns{};
+            long changed_ns{};
+
+            explicit FileStamp(const struct stat &info)
+                : device(info.st_dev), inode(info.st_ino), size(info.st_size),
+                  modified(info.st_mtime), changed(info.st_ctime) {
+#if defined(__APPLE__)
+                modified_ns = info.st_mtimespec.tv_nsec;
+                changed_ns = info.st_ctimespec.tv_nsec;
+#elif !defined(__SWITCH__) && !defined(ATMOSPHERE_OS_HORIZON) && !defined(_WIN32)
+                modified_ns = info.st_mtim.tv_nsec;
+                changed_ns = info.st_ctim.tv_nsec;
+#endif
+            }
+
+            FileStamp() = default;
+
+            bool Matches(const struct stat &info) const {
+                const FileStamp other(info);
+                return S_ISREG(info.st_mode) && device == other.device && inode == other.inode
+                    && size == other.size && modified == other.modified && changed == other.changed
+                    && modified_ns == other.modified_ns && changed_ns == other.changed_ns;
+            }
+        };
+
         class Sha256 {
         public:
             Sha256() {
@@ -209,6 +240,7 @@ namespace exodus::steam_integrity {
             Digest digest{};
             std::uint64_t size = 0;
             std::string_view path;
+            FileStamp compared_file;
         };
 
         bool ParseRecord(std::string_view line, Record &record) {
@@ -369,7 +401,8 @@ namespace exodus::steam_integrity {
 
         enum class OpenStatus { Opened, MissingOrUnsafe, Failed };
 
-        OpenStatus OpenRegularFile(const Directory &root, std::string_view path, Descriptor &file, std::uint64_t &size) {
+        OpenStatus OpenRegularFile(const Directory &root, std::string_view path, Descriptor &file,
+            std::uint64_t &size, struct stat *metadata = nullptr) {
             Directory directory;
             const Directory *parent = &root;
             const auto slash = path.rfind('/');
@@ -397,6 +430,8 @@ namespace exodus::steam_integrity {
             if (!S_ISREG(opened.st_mode) || before.st_dev != opened.st_dev || before.st_ino != opened.st_ino)
                 return OpenStatus::MissingOrUnsafe;
             size = static_cast<std::uint64_t>(opened.st_size);
+            if (metadata != nullptr)
+                *metadata = opened;
             return OpenStatus::Opened;
         }
 
@@ -499,15 +534,17 @@ namespace exodus::steam_integrity {
             return finish(Status::InstallationUnavailable);
 
         std::vector<unsigned char> buffer(ReadChunkBytes);
-        for (const auto &record : records) {
+        for (auto &record : records) {
             result.path = record.path;
             Descriptor file;
             std::uint64_t size = 0;
-            const auto opened = OpenRegularFile(game, record.path, file, size);
+            struct stat before{};
+            const auto opened = OpenRegularFile(game, record.path, file, size, &before);
             if (opened != OpenStatus::Opened)
                 return finish(opened == OpenStatus::MissingOrUnsafe ? Status::MissingOrUnsafeFile : Status::ReadFailure);
             if (size != record.size)
                 return finish(Status::SizeMismatch);
+            record.compared_file = FileStamp(before);
 
             Sha256 hash;
             while (size != 0) {
@@ -536,9 +573,40 @@ namespace exodus::steam_integrity {
                 return finish(Status::ReadFailure);
             if (actual != record.digest)
                 return finish(Status::HashMismatch);
+            struct stat after{};
+            if (fstat(file.Get(), &after) != 0)
+                return finish(Status::ReadFailure);
+            if (!record.compared_file.Matches(after))
+                return finish(Status::ChangedDuringCheck);
             ++result.checked_files;
             if (!keep_going())
                 return finish(Status::Cancelled);
+        }
+
+        // Resolve paths again: an updater can replace a previously checked file
+        // or directory while a later file is being hashed. Do not retain only
+        // the original directory descriptor, which can still refer to removed data.
+        result.path.clear();
+        if (home::FindLocalSteamGameDirectory(sd_mount, app_id) != game_name)
+            return finish(Status::ChangedDuringCheck);
+        const auto current_sd = OpenRoot(sd_mount);
+        if (!current_sd.IsOpen())
+            return finish(Status::ChangedDuringCheck);
+        const auto current_game = OpenDirectory(current_sd, game_path);
+        if (!current_game.IsOpen())
+            return finish(Status::ChangedDuringCheck);
+        for (const auto &record : records) {
+            result.path = record.path;
+            if (!keep_going())
+                return finish(Status::Cancelled);
+            Descriptor current;
+            std::uint64_t size = 0;
+            struct stat metadata{};
+            const auto opened = OpenRegularFile(current_game, record.path, current, size, &metadata);
+            if (opened == OpenStatus::Failed)
+                return finish(Status::ReadFailure);
+            if (opened != OpenStatus::Opened || !record.compared_file.Matches(metadata))
+                return finish(Status::ChangedDuringCheck);
         }
 
         result.path.clear();

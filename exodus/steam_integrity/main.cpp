@@ -39,6 +39,7 @@ namespace {
             case Status::HashMismatch: return "A listed file differs from its SHA-256.";
             case Status::ReadFailure: return "A file became unreadable during the check.";
             case Status::Cancelled: return "File check cancelled.";
+            case Status::ChangedDuringCheck: return "A listed file changed during the check. Stop updates and retry.";
         }
         return "File check failed.";
     }
