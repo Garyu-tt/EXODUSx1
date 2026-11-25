@@ -1,0 +1,30 @@
+ifeq ($(strip $(DEVKITPRO)),)
+$(error Set DEVKITPRO to the devkitPro installation directory)
+endif
+
+include $(DEVKITPRO)/devkitA64/base_tools
+
+TARGET := exodus-nxposix-smoke
+BUILD := build-switch
+LIBNX := $(DEVKITPRO)/libnx
+ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
+
+.PHONY: all clean
+all: $(BUILD)/$(TARGET).nro
+
+$(BUILD):
+	mkdir -p $@
+
+$(BUILD)/$(TARGET).elf: tcp_smoke.c reactor.c reactor.h handle_wait.c handle_wait.h handle_smoke.c Makefile.switch | $(BUILD)
+	$(CC) -std=gnu11 -O2 -Wall -Wextra -Werror $(ARCH) -ffunction-sections -fdata-sections \
+		-D__SWITCH__ -I$(LIBNX)/include -specs=$(LIBNX)/switch.specs \
+		tcp_smoke.c reactor.c handle_wait.c handle_smoke.c -L$(LIBNX)/lib -lnx -o $@
+
+$(BUILD)/$(TARGET).nacp: Makefile.switch | $(BUILD)
+	nacptool --create "EXODUS NX-POSIX Smoke" "EXODUSx1" "0.1.0" $@
+
+$(BUILD)/$(TARGET).nro: $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).nacp $(LIBNX)/default_icon.jpg
+	elf2nro $< $@ --icon=$(LIBNX)/default_icon.jpg --nacp=$(BUILD)/$(TARGET).nacp
+
+clean:
+	rm -rf $(BUILD)

@@ -1,0 +1,60 @@
+name: NX-POSIX host tests
+
+on:
+  pull_request:
+    paths:
+      - "exodus/nxposix/**"
+      - ".github/workflows/nxposix-host.yml"
+  push:
+    branches: [main]
+    paths:
+      - "exodus/nxposix/**"
+      - ".github/workflows/nxposix-host.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile and run host tests
+        env:
+          CC: ${{ matrix.compiler }}
+        run: make -C exodus/nxposix clean test
+
+  switch-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build native NX-POSIX diagnostic with libnx
+        run: |
+          set -eu
+          docker pull devkitpro/devkita64:latest
+          mkdir -p nxposix-results
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > nxposix-results/sdk-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -ec '
+            make -C exodus/nxposix -f Makefile.switch clean all
+          '
+          # GNU readelf on the host can inspect AArch64 ELF headers without the cross-toolchain.
+          LC_ALL=C readelf -h exodus/nxposix/build-switch/exodus-nxposix-smoke.elf > nxposix-results/elf-header.txt
+          cp exodus/nxposix/build-switch/exodus-nxposix-smoke.nro nxposix-results/
+          grep -E 'Machine:.*AArch64' nxposix-results/elf-header.txt
+          python3 -c 'from pathlib import Path; import struct; b=Path("nxposix-results/exodus-nxposix-smoke.nro").read_bytes(); assert len(b)>=128 and b[16:20]==b"NRO0" and 128<=struct.unpack_from("<I",b,24)[0]<=len(b)'
+          (cd nxposix-results && sha256sum exodus-nxposix-smoke.nro sdk-image.json elf-header.txt > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exodus-nxposix-smoke-switch-arm64
+          path: nxposix-results/
+          if-no-files-found: error
+          retention-days: 7
