@@ -11,6 +11,8 @@ on:
       - 'exodus/frankenstein/test_dbus_contract.py'
       - 'exodus/frankenstein/verify-manager-evidence.sh'
       - 'exodus/frankenstein/test_manager_gate.py'
+      - 'exodus/frankenstein/verify-guest-evidence.sh'
+      - 'exodus/frankenstein/test_guest_gate.py'
       - '.github/workflows/frankenstein-service.yml'
   workflow_dispatch:
 permissions:
@@ -28,6 +30,7 @@ jobs:
       - run: |
           python3 exodus/frankenstein/validate_graph.py
           python3 exodus/frankenstein/test_manager_gate.py
+          python3 exodus/frankenstein/test_guest_gate.py
           cc -std=c11 -Wall -Wextra -Werror -O2 exodus/frankenstein/sessiond.c -o /tmp/exodus-sessiond
           python3 exodus/frankenstein/test_sessiond.py /tmp/exodus-sessiond
       - name: Install native GLib and D-Bus test tools

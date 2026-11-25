@@ -106,8 +106,7 @@ if [ "$rc" -ne 0 ]; then
     tail -n 80 "$out/serial.log" >&2
     exit "$rc"
 fi
-grep -F "$gate" "$out/serial.log"
-grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
+sh "$here/verify-guest-evidence.sh" "$out/serial.log" "$out/guest-evidence.txt" "$gate" EXODUS_GUEST_RESULT
 
 # The upstream manager workload deliberately preserves compiler diagnostics
 # and exits cleanly even when the full daemon does not compile. A completed
@@ -139,10 +138,8 @@ if [ "$mode" = rcresident ]; then
         exit "$rc"
     fi
     # FreeBSD console output can use CRLF.
-    tr -d '\r' < "$cold_log" > "$out/cold-evidence.txt"
+    sh "$here/verify-guest-evidence.sh" "$cold_log" "$out/cold-evidence.txt" EXODUS_RC_COLD_BOOT_PASS EXODUS_COLD_GUEST_RESULT
     grep -Fx EXODUS_RC_COLD_BOOT_BEGIN "$out/cold-evidence.txt"
-    grep -Fx EXODUS_RC_COLD_BOOT_PASS "$out/cold-evidence.txt"
-    grep -Fx EXODUS_COLD_GUEST_RESULT=0 "$out/cold-evidence.txt"
 fi
 
 # Extract only known filenames after successful guest shutdown and validation.
