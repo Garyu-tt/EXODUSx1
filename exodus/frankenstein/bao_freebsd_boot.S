@@ -23,7 +23,14 @@ _start:
     str w7, [x6]
     b 3b
 enter:
+#ifdef TUMOR_FREEBSD_NATIVE_METADATA
+    /* QEMU guest bundle slot contains a FreeBSD kernel virtual pointer. */
+    ldr x0, =0x62200000
+    ldr x0, [x0]
+    cbz x0, halt
+#else
     mov x0, #0x62000000
+#endif
     mov x1, xzr
     mov x2, xzr
     mov x3, xzr
