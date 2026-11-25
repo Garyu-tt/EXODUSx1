@@ -27,3 +27,18 @@ Sparse pages start with an eight-byte bitmap for 64 consecutive 64-byte blocks. 
 Link `page_store.c` and `page_codec.c` to append complete pages into a caller-owned payload buffer. Initialize an `exodus_page_store` with the buffer and its byte capacity, an array of `size_t` end offsets and its entry capacity, and zero counters. Each successful append assigns the next zero-based page index. If either buffer fills, the append returns false and keeps the existing pages intact. The caller can release the input page after a successful append.
 
 Restore directly by index with `exodus_page_store_restore` and a separate writable page buffer. The store retains `payload_used` encoded bytes plus one `size_t` offset per page. Choose buffer capacities to fit the caller's memory budget. The caller manages the group lifetime, thread synchronization and transfers between CPU and GPU memory.
+
+## Compress successive snapshots of a page
+
+Link `page_snapshot.c` and `page_codec.c` to retain successive versions of a 4096-byte page. Supply an immutable reference you already retain, such as a checkpointed RAM page or the previous CPU-readable RGBA staging page. The encoder compares adaptive compression of the new bytes with adaptive compression of their bytewise XOR and includes all frame overhead in the choice. Equal sizes select the standalone frame.
+
+```c
+uint8_t frame[EXODUS_SNAPSHOT_MAX_BYTES];
+size_t size = exodus_snapshot_encode(current_page, previous_page, frame);
+/* Store the first size bytes and, for a relative frame, its reference identity. */
+bool restored = exodus_snapshot_decode(frame, size, previous_page, output_page);
+```
+
+Tag `0` precedes one standalone adaptive payload and allows a null reference during decode. Tag `1` precedes the reference's IEEE CRC-32 in four little-endian bytes and an adaptive XOR payload. Each frame needs at most 4097 bytes. Keep the exact reference for the lifetime of each dependent frame. The checksum detects accidental reference mismatches and has a finite collision probability. The caller controls frame integrity, reference lifetime and CPU/GPU synchronization. An in-place restore can replace the reference once no other frame needs it. Encoding uses two temporary 4096-byte arrays. Relative decoding uses one.
+
+`make check` builds and runs the byte-for-byte snapshot tests. On the included synthetic inputs, changing one byte of a dense RAM page takes 56 bytes versus 4097 standalone. Changing a 4×4 region of a 32×32 RGBA staging page takes 134 versus 4066 bytes. An unrelated dense page takes 4097 bytes and decodes independently. These frame sizes exclude the retained reference and allocator metadata.
