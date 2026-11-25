@@ -405,8 +405,65 @@ static void check_bdi_compare_collision_and_corruption(void)
     check_restore_failure_unchanged(&f.store,0);
 }
 
+/* A prospective hot edit must reject the first hash collision and share
+ * the later exact candidate without changing an alias of the source.
+ * Exercise both hot-to-hot and hot-to-cold comparison paths. */
+static void check_hot_prospective_collision(void)
+{
+    enum { SLOTS=256 };
+    for (unsigned hot_candidates=0; hot_candidates<2; ++hot_candidates) {
+        struct fixture f;
+        init_fixture(&f);
+        size_t starts[UNIQUE_CAPACITY]={0};
+        uint32_t order[UNIQUE_CAPACITY]={0};
+        uint8_t small[SLOTS*20], raw[SLOTS*64];
+        uint16_t sr[SLOTS]={0}, rr[SLOTS]={0};
+        struct exodus_bdi_free_index free_index;
+        struct exodus_bdi_slab slab={
+            .small=small,.raw=raw,.small_refs=sr,.raw_refs=rr,
+            .small_capacity=SLOTS,.raw_capacity=SLOTS
+        };
+        struct exodus_hot_entry hot[UNIQUE_CAPACITY]={0};
+        CHECK(exodus_bdi_slab_attach_index(&slab,&free_index));
+        f.store.unique.page_starts=starts;
+        f.store.unique.page_order=order;
+        f.store.slab=&slab;
+        f.store.hot=hot;
+        f.store.hot_capacity=UNIQUE_CAPACITY;
+        uint8_t a[EXODUS_PAGE_BYTES], b[EXODUS_PAGE_BYTES],
+                collision[EXODUS_PAGE_BYTES], restored[EXODUS_PAGE_BYTES];
+        memset(a,0x31,sizeof a);
+        memcpy(b,a,sizeof b);
+        memset(b,0x72,4);
+        memcpy(collision,b,sizeof collision);
+        collision[sizeof collision-1]^=1;
+        CHECK(exodus_page_dedup_store_append_adaptive(&f.store,a));
+        CHECK(exodus_page_dedup_store_append_adaptive(&f.store,collision));
+        CHECK(exodus_page_dedup_store_append_adaptive(&f.store,b));
+        CHECK(exodus_page_dedup_store_append_adaptive(&f.store,a));
+        CHECK(f.refs[0]==0 && f.refs[1]==1 && f.refs[2]==2 && f.refs[3]==0);
+        CHECK(exodus_page_dedup_store_promote(&f.store,0));
+        if(hot_candidates) {
+            CHECK(exodus_page_dedup_store_promote(&f.store,1));
+            CHECK(exodus_page_dedup_store_promote(&f.store,2));
+        }
+        f.hashes[1]=f.hashes[2]; /* test-only collision */
+        CHECK(exodus_page_dedup_store_write_word(&f.store,0,0,b));
+        CHECK(f.store.unique.page_count==3 && f.store.page_count==4);
+        CHECK(f.refs[0]==f.refs[2] && f.refs[0]!=f.refs[1] && f.refs[0]!=f.refs[3]);
+        const uint8_t *expected[]={b,collision,b,a};
+        for(size_t i=0;i<4;i++) {
+            CHECK(exodus_page_dedup_store_restore(&f.store,i,restored));
+            CHECK(!memcmp(restored,expected[i],sizeof restored));
+        }
+        CHECK(exodus_page_store_validate(&f.store.unique));
+        CHECK(exodus_bdi_slab_check_index(&slab));
+    }
+}
+
 int main(void)
 {
+    check_hot_prospective_collision();
     check_bdi_compare_collision_and_corruption();
     check_raw_tail_collision_and_replace();
     check_corrupt_physical_index_rejects_append();
