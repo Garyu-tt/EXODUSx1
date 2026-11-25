@@ -1,0 +1,40 @@
+#ifndef EXODUS_PAGE_DEDUP_STORE_H
+#define EXODUS_PAGE_DEDUP_STORE_H
+
+#include "page_store.h"
+
+/* A caller-owned append-only group of logical pages sharing immutable backing.
+ * Initialize both page counts and unique.payload_used to zero. Supply separate,
+ * non-overlapping buffers for unique.payload, unique.page_ends, fingerprints,
+ * and page_refs. fingerprints has unique.page_capacity uint64_t entries;
+ * page_refs has page_capacity size_t entries. The unique store belongs to this
+ * wrapper exclusively: do not append, replace, or modify its pages directly.
+ * Serialize all access and keep these buffers alive for the group's lifetime.
+ */
+struct exodus_page_dedup_store {
+    struct exodus_page_store unique;
+    uint64_t *fingerprints;
+    size_t *page_refs;
+    size_t page_capacity;
+    size_t page_count;
+};
+
+/* Append one readable EXODUS_PAGE_BYTES source page, assigning the next logical
+ * index. The source must not overlap any store buffer. After success the caller
+ * may reuse the source. Equal pages share backing only after a full byte check;
+ * a fingerprint match alone never establishes equality. A duplicate can fit
+ * even when the unique-page or payload capacity is exhausted. Failure leaves
+ * all buffers and counters unchanged.
+ */
+bool exodus_page_dedup_store_append(struct exodus_page_dedup_store *store,
+                                   const uint8_t *page);
+
+/* Restore a logical page into a separate writable EXODUS_PAGE_BYTES buffer.
+ * The output must not overlap any store buffer. Invalid indices, mappings, or
+ * malformed stored encodings leave the output unchanged. There is no mutation
+ * or copy-on-write API: changes to a restored page do not alter stored pages.
+ */
+bool exodus_page_dedup_store_restore(const struct exodus_page_dedup_store *store,
+                                    size_t index, uint8_t *page);
+
+#endif
