@@ -63,8 +63,10 @@ install-script, owner, setuid or arbitrary mode representation.
 - The input is at most 64 KiB and the JSON depth is at most eight.
 - There are at most 256 files, 16 GiB per record and 64 GiB total.
 - Paths are relative NFC UTF-8 text with bounded components.
-- Empty, dot, dot-dot, absolute, drive, backslash and control components are
-  rejected. DOS/Windows device stems are also rejected for portable staging,
+- Empty, dot, dot-dot, absolute, drive and backslash components are rejected.
+  C0 (`U+0000–U+001F`), DEL (`U+007F`) and C1 (`U+0080–U+009F`) control
+  characters are rejected anywhere in a path. DOS/Windows device stems are
+  also rejected for portable staging,
   including `CONIN$`, `CONOUT$` and the superscript `COM¹`/`LPT¹` variants.
 - ASCII case aliases and file/directory prefix aliases are rejected before a
   later archive stage can write them to FAT-style storage.
