@@ -146,8 +146,11 @@ static size_t encode_bdi(const uint8_t *page, uint8_t *encoded, size_t best)
 {
     uint8_t mask[MASK_BYTES]={0};
     uint32_t bases[BLOCKS];
-    /* Even a fully compressed BDI page cannot beat a smaller existing form. */
-    if (best <= BDI_HEADER+BLOCKS*BDI_BYTES) return best;
+    /* Optimistic lower bound: every unexamined block compresses.
+     * Each observed RAW block adds 44 bytes permanently. Ties keep the
+     * existing format, so stop as soon as even this bound cannot win. */
+    size_t size=BDI_HEADER+BLOCKS*BDI_BYTES;
+    if(best<=size)return best;
     for(size_t b=0;b<BLOCKS;b++) {
         const uint8_t *p=page+b*BLOCK_BYTES;
         uint32_t lo=bdi_load(p),hi=lo;
@@ -158,10 +161,11 @@ static size_t encode_bdi(const uint8_t *page, uint8_t *encoded, size_t best)
             if(hi-lo>255) break;
         }
         if(hi-lo<=255) { mask[b/8]|=(uint8_t)(1u<<(b%8)); bases[b]=lo; }
+        else{
+            size+=BLOCK_BYTES-BDI_BYTES;
+            if(size>=best)return best;
+        }
     }
-    size_t n=bdi_count(mask,BLOCKS);
-    size_t size=BDI_HEADER+BLOCKS*BLOCK_BYTES-n*(BLOCK_BYTES-BDI_BYTES);
-    if(size>=best) return best;
     encoded[0]=EXODUS_PAGE_BDI_VERSION;
     memcpy(encoded+1,mask,MASK_BYTES);
     size_t pos=BDI_HEADER;
