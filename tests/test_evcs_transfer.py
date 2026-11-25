@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 import os
 import sys
+import stat
 from exodus.evcs_transfer import transfer, publish
 
 
@@ -123,6 +124,72 @@ class TransferTest(unittest.TestCase):
             transfer(self.src, self.games)
         self.assertEqual(transfer(self.src, self.games, resume=True)['status'], 'published_verified')
         self.assertEqual(self.dest.read_bytes(), self.src.read_bytes())
+
+    def test_resume_retries_journal_and_payload_file_sync_failures(self):
+        for split in (False, True):
+            # Fail the journal or either split payload after the complete bytes
+            # have been flushed into the OS cache but before fsync succeeds.
+            for failed_file in range(1, 4 if split else 3):
+                with self.subTest(split=split, failed_file=failed_file), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp).resolve()
+                    games = root / 'Games'
+                    games.mkdir()
+                    source = root / 'game.nsp'
+                    if split:
+                        source.mkdir()
+                        (source / '00').write_bytes(b'1234')
+                        (source / '01').write_bytes(b'12')
+                    else:
+                        source.write_bytes(b'1234')
+                    real_sync = os.fsync
+                    calls = 0
+
+                    def interrupt(fd):
+                        nonlocal calls
+                        if stat.S_ISREG(os.fstat(fd).st_mode):
+                            calls += 1
+                            if calls == failed_file:
+                                raise OSError('injected file sync failure')
+                        return real_sync(fd)
+
+                    with patch('exodus.evcs_transfer.os.fsync', side_effect=interrupt), \
+                            self.assertRaisesRegex(OSError, 'injected file sync failure'):
+                        transfer(source, games)
+                    stage = next(games.glob('.evcs-stage-*'))
+                    target = stage / 'journal.json' if failed_file == 1 else (
+                        stage / 'payload' / f'{failed_file - 2:02d}' if split else stage / 'payload')
+                    original = target.read_bytes()
+                    identity = target.stat()
+
+                    def fail_again(fd):
+                        info = os.fstat(fd)
+                        if (info.st_dev, info.st_ino) == (identity.st_dev, identity.st_ino):
+                            raise OSError('same file still cannot sync')
+                        return real_sync(fd)
+
+                    with patch('exodus.evcs_transfer.os.fsync', side_effect=fail_again), \
+                            patch('exodus.evcs_transfer.publish') as publication, \
+                            self.assertRaisesRegex(OSError, 'same file still cannot sync'):
+                        transfer(source, games, resume=True)
+                    publication.assert_not_called()
+                    self.assertFalse((games / source.name).exists())
+                    self.assertEqual(target.read_bytes(), original)
+                    synced = []
+
+                    def observe_sync(fd):
+                        info = os.fstat(fd)
+                        synced.append((info.st_dev, info.st_ino))
+                        return real_sync(fd)
+
+                    with patch('exodus.evcs_transfer.os.fsync', side_effect=observe_sync):
+                        self.assertEqual(transfer(source, games, resume=True)['status'], 'published_verified')
+                    self.assertIn((identity.st_dev, identity.st_ino), synced)
+                    self.assertTrue(source.exists())
+                    if split:
+                        for name in ('00', '01'):
+                            self.assertEqual((games / source.name / name).read_bytes(), (source / name).read_bytes())
+                    else:
+                        self.assertEqual((games / source.name).read_bytes(), source.read_bytes())
 
     def test_already_discoverable(self):
         self.src.rename(self.dest)
