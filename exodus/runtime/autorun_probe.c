@@ -49,8 +49,9 @@ static bool valid_nro_header(const unsigned char *header, uintmax_t file_size)
         const unsigned char *segment = header + NRO_SEGMENTS_OFFSET + i * NRO_SEGMENT_BYTES;
         uint32_t offset = read_u32_le(segment);
         uint32_t size = read_u32_le(segment + 4);
+        /* Loader permission ranges must be nonempty; BSS can supply the writable one. */
         if ((i == 0 && (offset != 0 || size < NRO_HEADER_BYTES)) ||
-            (i == 1 && size == 0) || /* The loader applies read-only permissions to this range. */
+            (i == 1 && size == 0) || (i == 2 && size == 0 && bss_size == 0) ||
             offset < previous_end || offset > image_size || size > image_size - offset ||
             offset % NRO_PAGE_BYTES != 0 || size % NRO_PAGE_BYTES != 0)
             return false;

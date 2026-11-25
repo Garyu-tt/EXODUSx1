@@ -92,6 +92,13 @@ int main(int argc, char **argv)
                  EXODUS_AUTORUN_INVALID_NRO);
 
     make_image(image);
+    write_u32_le(image + 0x34, 0);
+    expect_image("empty data and BSS range", path, image, IMAGE_BYTES, EXODUS_AUTORUN_INVALID_NRO);
+    write_u32_le(image + 0x38, 1);
+    expect_image("BSS-backed writable range retains admission", path, image, IMAGE_BYTES,
+                 EXODUS_AUTORUN_READY);
+
+    make_image(image);
     expect_image("truncated header", path, image, 0x7f, EXODUS_AUTORUN_INVALID_NRO);
     expect_image("truncated payload", path, image, IMAGE_BYTES - 1, EXODUS_AUTORUN_INVALID_NRO);
     image[0x10] = 'X';
