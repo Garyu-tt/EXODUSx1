@@ -20,7 +20,7 @@ typedef struct {
     tmr_slot *tx, *rx;
     tmr_peer peer;
     uint64_t generation, sent;
-    uint8_t role, closed;
+    uint8_t role, closed, peer_claim_seen;
 } tmr_endpoint;
 
 _Static_assert(sizeof(tmr_slot) == 64, "mailbox layout");
@@ -64,12 +64,15 @@ static int attach(tmr_endpoint *e, tmr_mailbox *m, uint8_t role,
     if (!atomic_compare_exchange_strong_explicit(&e->tx->claimed, &empty,
             generation, memory_order_acq_rel, memory_order_acquire)) return TMR_FAULT;
     e->role = role; e->generation = generation; e->closed = 0;
+    e->peer_claim_seen = peer_claim != 0;
     return TMR_OK;
 }
 static int send_frame(tmr_endpoint *e, uint64_t now) {
     if (e->closed || !tmr_tick(&e->peer, now)) return fault(e);
     uint64_t peer_claim = atomic_load_explicit(&e->rx->claimed, memory_order_acquire);
-    if (peer_claim && peer_claim != e->peer.generation) return fault(e);
+    if (peer_claim != e->peer.generation && (peer_claim || e->peer_claim_seen))
+        return fault(e);
+    if (peer_claim) e->peer_claim_seen = 1;
     uint64_t pub = atomic_load_explicit(&e->tx->published, memory_order_acquire);
     uint64_t ack = atomic_load_explicit(&e->tx->consumed, memory_order_acquire);
     if (atomic_load_explicit(&e->tx->claimed, memory_order_acquire) != e->generation ||
@@ -92,7 +95,8 @@ static int recv_frame(tmr_endpoint *e, uint64_t now) {
      * attaches, zero is legitimate only while no frame has been published. */
     uint64_t peer_claim = atomic_load_explicit(&e->rx->claimed, memory_order_acquire);
     if (atomic_load_explicit(&e->tx->claimed, memory_order_acquire) != e->generation ||
-        (peer_claim != e->peer.generation && (peer_claim || pub))) return fault(e);
+        (peer_claim != e->peer.generation && (peer_claim || pub || e->peer_claim_seen))) return fault(e);
+    if (peer_claim) e->peer_claim_seen = 1;
     if (pub == ack) return TMR_IDLE;
     uint64_t words[3]; uint8_t frame[TMR_FRAME_SIZE];
     for (unsigned i = 0; i < 3; ++i)
@@ -172,7 +176,22 @@ int main(void) {
     assert(send_frame(&b,1)==TMR_OK && recv_frame(&a,1)==TMR_OK);
     atomic_store(&m.direction[1].claimed,0);
     assert(recv_frame(&a,2)==TMR_FAULT);
-    puts("PASS: mismatched claims rejected during attach, send and idle receive");
+    /* A permanent remote claim may be absent only until first observation.
+     * Reject a cleared claim even before the peer publishes any frame. */
+    fresh(&m,&a,&b);
+    atomic_store(&m.direction[0].claimed,0);
+    assert(send_frame(&b,1)==TMR_FAULT);
+    assert(atomic_load(&m.direction[1].published)==0);
+    fresh(&m,&a,&b);
+    assert(recv_frame(&a,1)==TMR_IDLE);
+    atomic_store(&m.direction[1].claimed,0);
+    assert(recv_frame(&a,2)==TMR_FAULT);
+    fresh(&m,&a,&b);
+    assert(send_frame(&a,1)==TMR_OK);
+    atomic_store(&m.direction[1].claimed,0);
+    assert(send_frame(&a,2)==TMR_FAULT);
+    assert(atomic_load(&m.direction[0].published)==1);
+    puts("PASS: mismatched or cleared claims rejected during attach, send and idle receive");
     fresh(&m,&a,&b);
     assert(recv_frame(&a,1)==TMR_IDLE);
     assert(send_frame(&a,1)==TMR_OK && send_frame(&a,1)==TMR_IDLE);
