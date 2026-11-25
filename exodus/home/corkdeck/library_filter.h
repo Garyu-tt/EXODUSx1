@@ -25,6 +25,33 @@ static inline int exodus_filter_matches(enum exodus_filter filter, const char *p
     return !strcmp(exodus_filter_name(filter), provider);
 }
 
+/* A section is presentation only: no effect on execution backend or identity.
+ * Unknown entries remain in the main library rather than being hidden. */
+enum exodus_section { SECTION_LIBRARY, SECTION_APPLICATIONS };
+static inline int exodus_section_matches(enum exodus_section section,const char *provider)
+{
+    if (!provider) return 0;
+    int app=!strcmp(provider,"Homebrew");
+    return section==SECTION_APPLICATIONS ? app : section==SECTION_LIBRARY && !app;
+}
+static inline int exodus_section_filter_allowed(enum exodus_section section,enum exodus_filter filter)
+{
+    if (filter<0 || filter>=FILTER_COUNT) return 0;
+    if (section==SECTION_APPLICATIONS)
+        return filter==FILTER_ALL || filter==FILTER_FAVORITES || filter==FILTER_RECENT;
+    return section==SECTION_LIBRARY && filter!=FILTER_HOMEBREW;
+}
+static inline enum exodus_filter exodus_section_next_filter(enum exodus_section section,enum exodus_filter filter)
+{
+    if (section!=SECTION_LIBRARY && section!=SECTION_APPLICATIONS) return FILTER_ALL;
+    if (filter<0 || filter>=FILTER_COUNT) return FILTER_ALL;
+    for (int i=1;i<=FILTER_COUNT;++i) {
+        enum exodus_filter next=(enum exodus_filter)((filter+i)%FILTER_COUNT);
+        if (exodus_section_filter_allowed(section,next)) return next;
+    }
+    return FILTER_ALL;
+}
+
 struct exodus_card_index { size_t index; uint64_t last_played; };
 static inline int exodus_recent_compare(const void *a, const void *b)
 {
