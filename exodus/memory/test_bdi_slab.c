@@ -49,7 +49,38 @@ static void check_validation_filter(void){
  for(size_t i=0;i<S;i++)assert(!sr[i]);
  for(size_t i=0;i<R;i++)assert(!rr[i]);
 }
+/* Independent min/max oracle, unaligned buffers, exact range boundary
+ * and random blocks. Classification must equal real encoding length. */
+static void check_size_only(void){
+ uint8_t input[65],encoded[65],decoded[65];
+ uint32_t state=0x9ab3c1d5u;
+ for(size_t k=0;k<4096;k++){
+  uint32_t lo=UINT32_MAX,hi=0;
+  for(size_t i=0;i<16;i++){
+   state^=state<<13;state^=state>>17;state^=state<<5;
+   uint32_t v;
+   switch(k%4){
+   case 0:v=UINT32_MAX-255u+(state&255u);break;
+   case 1:v=i==15?256u:(uint32_t)i;break;
+   case 2:v=i==15?255u:(uint32_t)i;break;
+   default:v=state;break;
+   }
+   if(v<lo)lo=v;
+   if(v>hi)hi=v;
+   put(input+1+4*i,v);
+  }
+  size_t expected=hi-lo<=255u?20u:64u;
+  memset(encoded,0xa5,sizeof encoded);memset(decoded,0x5a,sizeof decoded);
+  assert(exodus_bdi_block_encode(input+1,NULL)==expected);
+  assert(exodus_bdi_block_encode(input+1,encoded+1)==expected);
+  assert(encoded[0]==0xa5);
+  for(size_t i=expected+1;i<sizeof encoded;i++)assert(encoded[i]==0xa5);
+  assert(exodus_bdi_block_decode(encoded+1,expected,decoded+1));
+  assert(decoded[0]==0x5a&&!memcmp(input+1,decoded+1,64));
+ }
+}
 int main(void){
+ check_size_only();
  check_validation_filter();
  assert(exodus_bdi_slab_attach_index(&pool,&index));
  for(size_t w=0;w<1024;w++)put(want[0]+4*w,1000+(uint32_t)(w/16)*1000+(uint32_t)(w%16));
