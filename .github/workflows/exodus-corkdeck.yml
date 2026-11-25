@@ -36,7 +36,7 @@ jobs:
         run: |
           set -eu
           dir=exodus/home/corkdeck
-          for test in horizon_settings launch_route runtime_handoff library_filter shell_menu control_metrics; do
+          for test in horizon_settings launch_route runtime_handoff library_filter shell_menu control_metrics native_target; do
             cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
               "$dir/test_$test.c" -o "$RUNNER_TEMP/test-$test"
             "$RUNNER_TEMP/test-$test"

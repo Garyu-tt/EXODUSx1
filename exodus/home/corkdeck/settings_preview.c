@@ -8,6 +8,7 @@
 #endif
 #include "library_catalog.h"
 #include "native_launch.h"
+#include "native_target.h"
 #include "library_filter.h"
 #include "shell_menu.h"
 #include "control_metrics.h"
@@ -443,12 +444,25 @@ int main(int argc, char **argv)
     int smoke = argc == 3 && strcmp(argv[2], "--smoke") == 0;
     int library_mode = argc == 4 && strcmp(argv[2], "--library") == 0;
     int shell_mode = argc == 4 && strcmp(argv[2], "--shell") == 0;
+    int native_mode = argc >= 2 && strcmp(argv[1], "--native-target") == 0;
+    if (native_mode && argc != 4) { fputs("usage: --native-target switch|homebrew ID\n",stderr); return 2; }
+    int exit_status = 0;
+    char native_id[512];
+    enum exodus_route native_route = EXODUS_ROUTE_INVALID;
+    if (native_mode) {
+        native_route = exodus_native_target(argv[2], argv[3], native_id);
+        if (native_route == EXODUS_ROUTE_INVALID) { fputs("Invalid native target\n", stderr); return 2; }
+#ifndef __SWITCH__
+        fputs("Native handoff unavailable on this host.\n", stderr);
+        return 1;
+#endif
+    }
     size_t size = 0;
     const char *font_path = argc >= 2 ? argv[1] : NULL;
 #ifdef __SWITCH__
-    if (argc <= 1) font_path = "sdmc:/switch/exodus-shell/font.ttf";
+    if (argc <= 1 || native_mode) font_path = "sdmc:/switch/exodus-shell/font.ttf";
 #endif
-    if (!font_path || (argc > 2 && !smoke && !library_mode && !shell_mode)) {
+    if (!font_path || (argc > 2 && !smoke && !library_mode && !shell_mode && !native_mode)) {
         fprintf(stderr, "usage: %s FONT.ttf [--smoke | --library CATALOG.json | --shell CATALOG.json]\n", argv[0]);
         return 2;
     }
@@ -460,7 +474,15 @@ int main(int argc, char **argv)
         return 1;
     }
     SDL_SetWindowTitle(ui.window, "EXODUS");
-    if (smoke) {
+    if (native_mode) {
+        char detail[640], result[256];
+        snprintf(detail,sizeof(detail),"Target: %s\n%s",exodus_route_name(native_route),native_id);
+        if (!ui_confirm(&ui,"Native target",detail,"Launch")) exit_status=3;
+        else if (!exodus_launch(native_route,native_id,result)) {
+            exit_status=1;
+            ui_message(&ui,"Launch unavailable",result);
+        }
+    } else if (smoke) {
         if (!ui_begin_frame(&ui)) {
             ui_quit(&ui);
             free(font);
@@ -477,5 +499,5 @@ int main(int argc, char **argv)
     }
     ui_quit(&ui);
     free(font);
-    return 0;
+    return exit_status;
 }
