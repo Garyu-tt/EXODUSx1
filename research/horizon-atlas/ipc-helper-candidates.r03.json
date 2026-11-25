@@ -1,0 +1,1755 @@
+{
+  "schema": "exodus.horizon-ipc-helper-candidates/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Four modules; same-line call sites only, matching argument count and named final command parameter. Not proven dispatch or unique IPC operations. Does not resolve macros, multiline calls, nested expressions or dynamic arguments. No execution authorized.",
+  "counts": {
+    "modules": 4,
+    "helper_definitions": 40,
+    "helper_call_candidates": 209
+  },
+  "records": [
+    {
+      "module": "fs",
+      "path": "nx/source/services/fs.c",
+      "blob": "ee9996d1b5612f6f677129aca3aa3f91a355179d",
+      "helpers": [
+        {
+          "name": "_fsCmdGetSession",
+          "line": 112,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsCmdNoIO",
+          "line": 119,
+          "argument_count": 2,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsCmdNoInOutU8",
+          "line": 123,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsCmdNoInOutU32",
+          "line": 127,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsCmdNoInOutS64",
+          "line": 131,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsCmdNoInOutBool",
+          "line": 135,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsCmdInSizeOutBuffer",
+          "line": 142,
+          "argument_count": 5,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsFsCmdWithInPath",
+          "line": 872,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsFsCmdWithTwoInPaths",
+          "line": 895,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsFsOpenCommon",
+          "line": 923,
+          "argument_count": 5,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsFsCmdWithInPathAndOutU64",
+          "line": 944,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_fsCmdGetAndClearStorageErrorInfo",
+          "line": 1273,
+          "argument_count": 7,
+          "command_parameter": "u32 cmd_id"
+        }
+      ],
+      "calls": [
+        {
+          "helper": "_fsCmdGetSession",
+          "line": 169,
+          "command_candidate": 2,
+          "helper_definition_line": 112,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetSession",
+          "line": 258,
+          "command_candidate": 18,
+          "helper_definition_line": 112,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutBool",
+          "line": 341,
+          "command_candidate": 27,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetSession",
+          "line": 451,
+          "command_candidate": 60,
+          "helper_definition_line": 112,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetSession",
+          "line": 512,
+          "command_candidate": 200,
+          "helper_definition_line": 112,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetSession",
+          "line": 538,
+          "command_candidate": 203,
+          "helper_definition_line": 112,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetSession",
+          "line": 545,
+          "command_candidate": 210,
+          "helper_definition_line": 112,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetSession",
+          "line": 587,
+          "command_candidate": 400,
+          "helper_definition_line": 112,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetSession",
+          "line": 591,
+          "command_candidate": 500,
+          "helper_definition_line": 112,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutBool",
+          "line": 598,
+          "command_candidate": 640,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutU32",
+          "line": 675,
+          "command_candidate": 820,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoIO",
+          "line": 682,
+          "command_candidate": 1003,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithInPath",
+          "line": 881,
+          "command_candidate": 1,
+          "helper_definition_line": 872,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithInPath",
+          "line": 885,
+          "command_candidate": 2,
+          "helper_definition_line": 872,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithInPath",
+          "line": 889,
+          "command_candidate": 3,
+          "helper_definition_line": 872,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithInPath",
+          "line": 893,
+          "command_candidate": 4,
+          "helper_definition_line": 872,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithTwoInPaths",
+          "line": 910,
+          "command_candidate": 5,
+          "helper_definition_line": 895,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithTwoInPaths",
+          "line": 914,
+          "command_candidate": 6,
+          "helper_definition_line": 895,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsOpenCommon",
+          "line": 934,
+          "command_candidate": 8,
+          "helper_definition_line": 923,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsOpenCommon",
+          "line": 938,
+          "command_candidate": 9,
+          "helper_definition_line": 923,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoIO",
+          "line": 942,
+          "command_candidate": 10,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithInPathAndOutU64",
+          "line": 953,
+          "command_candidate": 11,
+          "helper_definition_line": 944,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithInPathAndOutU64",
+          "line": 957,
+          "command_candidate": 12,
+          "helper_definition_line": 944,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsFsCmdWithInPath",
+          "line": 964,
+          "command_candidate": 13,
+          "helper_definition_line": 872,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoIO",
+          "line": 1054,
+          "command_candidate": 2,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoIO",
+          "line": 1128,
+          "command_candidate": 2,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoIO",
+          "line": 1186,
+          "command_candidate": 2,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutBool",
+          "line": 1298,
+          "command_candidate": 0,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutS64",
+          "line": 1302,
+          "command_candidate": 1,
+          "helper_definition_line": 131,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdInSizeOutBuffer",
+          "line": 1308,
+          "command_candidate": 2,
+          "helper_definition_line": 142,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutS64",
+          "line": 1314,
+          "command_candidate": 3,
+          "helper_definition_line": 131,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutS64",
+          "line": 1320,
+          "command_candidate": 4,
+          "helper_definition_line": 131,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetAndClearStorageErrorInfo",
+          "line": 1326,
+          "command_candidate": 5,
+          "helper_definition_line": 1273,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdInSizeOutBuffer",
+          "line": 1330,
+          "command_candidate": 100,
+          "helper_definition_line": 142,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutS64",
+          "line": 1334,
+          "command_candidate": 101,
+          "helper_definition_line": 131,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutU32",
+          "line": 1340,
+          "command_candidate": 112,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdGetAndClearStorageErrorInfo",
+          "line": 1346,
+          "command_candidate": 113,
+          "helper_definition_line": 1273,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdInSizeOutBuffer",
+          "line": 1352,
+          "command_candidate": 114,
+          "helper_definition_line": 142,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdNoInOutBool",
+          "line": 1356,
+          "command_candidate": 200,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdInSizeOutBuffer",
+          "line": 1398,
+          "command_candidate": 208,
+          "helper_definition_line": 142,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_fsCmdInSizeOutBuffer",
+          "line": 1410,
+          "command_candidate": 218,
+          "helper_definition_line": 142,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "ssl",
+      "path": "nx/source/services/ssl.c",
+      "blob": "5f76da3861920cc02c5805a1ab9151fd92a8d046",
+      "helpers": [
+        {
+          "name": "_sslCmdNoIO",
+          "line": 115,
+          "argument_count": 2,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdInU32NoOut",
+          "line": 119,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdInU64NoOut",
+          "line": 123,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdInU8U32NoOut",
+          "line": 127,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdInTwoU32sNoOut",
+          "line": 137,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdNoInOutU32",
+          "line": 146,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdNoInOutU64",
+          "line": 150,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdInBufNoOut",
+          "line": 154,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdNoInOutBufTwoOutU32s",
+          "line": 161,
+          "argument_count": 6,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdInBufOutU32",
+          "line": 178,
+          "argument_count": 5,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_sslCmdOutBufOutU32",
+          "line": 185,
+          "argument_count": 5,
+          "command_parameter": "u32 cmd_id"
+        }
+      ],
+      "calls": [
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 215,
+          "command_candidate": 1,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoIO",
+          "line": 366,
+          "command_candidate": 9,
+          "helper_definition_line": 115,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInU64NoOut",
+          "line": 376,
+          "command_candidate": 101,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU64",
+          "line": 386,
+          "command_candidate": 102,
+          "helper_definition_line": 150,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 430,
+          "command_candidate": 3,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInBufNoOut",
+          "line": 505,
+          "command_candidate": 9,
+          "helper_definition_line": 154,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInBufNoOut",
+          "line": 608,
+          "command_candidate": 1,
+          "helper_definition_line": 154,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInU32NoOut",
+          "line": 615,
+          "command_candidate": 2,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInU32NoOut",
+          "line": 622,
+          "command_candidate": 3,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 629,
+          "command_candidate": 4,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdOutBufOutU32",
+          "line": 639,
+          "command_candidate": 5,
+          "helper_definition_line": 185,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 646,
+          "command_candidate": 6,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 654,
+          "command_candidate": 7,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoIO",
+          "line": 667,
+          "command_candidate": 8,
+          "helper_definition_line": 115,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutBufTwoOutU32s",
+          "line": 669,
+          "command_candidate": 9,
+          "helper_definition_line": 161,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdOutBufOutU32",
+          "line": 701,
+          "command_candidate": 10,
+          "helper_definition_line": 185,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInBufOutU32",
+          "line": 711,
+          "command_candidate": 11,
+          "helper_definition_line": 178,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 718,
+          "command_candidate": 12,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdOutBufOutU32",
+          "line": 728,
+          "command_candidate": 13,
+          "helper_definition_line": 185,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoIO",
+          "line": 747,
+          "command_candidate": 15,
+          "helper_definition_line": 115,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 754,
+          "command_candidate": 16,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInU32NoOut",
+          "line": 761,
+          "command_candidate": 17,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 769,
+          "command_candidate": 18,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoIO",
+          "line": 778,
+          "command_candidate": 19,
+          "helper_definition_line": 115,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInU32NoOut",
+          "line": 785,
+          "command_candidate": 20,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 793,
+          "command_candidate": 21,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInU8U32NoOut",
+          "line": 802,
+          "command_candidate": 22,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutBufTwoOutU32s",
+          "line": 826,
+          "command_candidate": 24,
+          "helper_definition_line": 161,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInBufNoOut",
+          "line": 856,
+          "command_candidate": 26,
+          "helper_definition_line": 154,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutBufTwoOutU32s",
+          "line": 874,
+          "command_candidate": 27,
+          "helper_definition_line": 161,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInU8U32NoOut",
+          "line": 917,
+          "command_candidate": 30,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInTwoU32sNoOut",
+          "line": 919,
+          "command_candidate": 30,
+          "helper_definition_line": 137,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInBufNoOut",
+          "line": 929,
+          "command_candidate": 31,
+          "helper_definition_line": 154,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdInU32NoOut",
+          "line": 970,
+          "command_candidate": 34,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_sslCmdNoInOutU32",
+          "line": 980,
+          "command_candidate": 35,
+          "helper_definition_line": 146,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "bsd",
+      "path": "nx/source/services/bsd.c",
+      "blob": "2b1d1482034789eb503ba7afc26a53e847b45219",
+      "helpers": [
+        {
+          "name": "_bsdCmdInSockfdOutSockaddr",
+          "line": 182,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_bsdCmdInSockfdSockaddr",
+          "line": 191,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_bsdCmdInDomainTypeProtocol",
+          "line": 198,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        }
+      ],
+      "calls": [
+        {
+          "helper": "_bsdCmdInDomainTypeProtocol",
+          "line": 281,
+          "command_candidate": 2,
+          "helper_definition_line": 198,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_bsdCmdInDomainTypeProtocol",
+          "line": 285,
+          "command_candidate": 3,
+          "helper_definition_line": 198,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_bsdCmdInSockfdOutSockaddr",
+          "line": 425,
+          "command_candidate": 12,
+          "helper_definition_line": 182,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_bsdCmdInSockfdSockaddr",
+          "line": 429,
+          "command_candidate": 13,
+          "helper_definition_line": 191,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_bsdCmdInSockfdSockaddr",
+          "line": 433,
+          "command_candidate": 14,
+          "helper_definition_line": 191,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_bsdCmdInSockfdOutSockaddr",
+          "line": 437,
+          "command_candidate": 15,
+          "helper_definition_line": 182,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_bsdCmdInSockfdOutSockaddr",
+          "line": 441,
+          "command_candidate": 16,
+          "helper_definition_line": 182,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "set",
+      "path": "nx/source/services/set.c",
+      "blob": "100056311f7e72c933036fcab827bb2306494369",
+      "helpers": [
+        {
+          "name": "_setCmdGetHandle",
+          "line": 76,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdGetEvent",
+          "line": 83,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdNoInOut64",
+          "line": 92,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdNoInOutU32",
+          "line": 96,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdNoInOutU8",
+          "line": 100,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdNoInOutBool",
+          "line": 104,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdNoInOutUuid",
+          "line": 111,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdInU8NoOut",
+          "line": 115,
+          "argument_count": 3,
+          "command_parameter": "u64 cmd_id"
+        },
+        {
+          "name": "_setCmdInBoolNoOut",
+          "line": 119,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdInU32NoOut",
+          "line": 123,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdInU64NoOut",
+          "line": 127,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdInUuidNoOut",
+          "line": 131,
+          "argument_count": 3,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setCmdOutBufAliasFixed",
+          "line": 135,
+          "argument_count": 4,
+          "command_parameter": "u32 cmd_id"
+        },
+        {
+          "name": "_setsysGetFirmwareVersionImpl",
+          "line": 269,
+          "argument_count": 2,
+          "command_parameter": "u32 cmd_id"
+        }
+      ],
+      "calls": [
+        {
+          "helper": "_setCmdNoInOut64",
+          "line": 199,
+          "command_candidate": 0,
+          "helper_definition_line": 92,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 233,
+          "command_candidate": 4,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 242,
+          "command_candidate": 8,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 249,
+          "command_candidate": 11,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU64NoOut",
+          "line": 253,
+          "command_candidate": 0,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setsysGetFirmwareVersionImpl",
+          "line": 280,
+          "command_candidate": 4,
+          "helper_definition_line": 269,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setsysGetFirmwareVersionImpl",
+          "line": 282,
+          "command_candidate": 3,
+          "helper_definition_line": 269,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 291,
+          "command_candidate": 7,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 295,
+          "command_candidate": 8,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutUuid",
+          "line": 321,
+          "command_candidate": 13,
+          "helper_definition_line": 111,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInUuidNoOut",
+          "line": 325,
+          "command_candidate": 14,
+          "helper_definition_line": 131,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 373,
+          "command_candidate": 23,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 379,
+          "command_candidate": 24,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 383,
+          "command_candidate": 25,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 387,
+          "command_candidate": 26,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 391,
+          "command_candidate": 27,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 395,
+          "command_candidate": 28,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 511,
+          "command_candidate": 45,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 515,
+          "command_candidate": 46,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 519,
+          "command_candidate": 47,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 523,
+          "command_candidate": 48,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOut64",
+          "line": 535,
+          "command_candidate": 51,
+          "helper_definition_line": 92,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOut64",
+          "line": 539,
+          "command_candidate": 52,
+          "helper_definition_line": 92,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOut64",
+          "line": 551,
+          "command_candidate": 55,
+          "helper_definition_line": 92,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 562,
+          "command_candidate": 57,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 574,
+          "command_candidate": 60,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 578,
+          "command_candidate": 61,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 582,
+          "command_candidate": 62,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 587,
+          "command_candidate": 63,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 593,
+          "command_candidate": 64,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 597,
+          "command_candidate": 65,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 601,
+          "command_candidate": 66,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 613,
+          "command_candidate": 69,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 617,
+          "command_candidate": 70,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 629,
+          "command_candidate": 73,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 633,
+          "command_candidate": 74,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 645,
+          "command_candidate": 77,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 657,
+          "command_candidate": 79,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 663,
+          "command_candidate": 80,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 667,
+          "command_candidate": 81,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdGetEvent",
+          "line": 671,
+          "command_candidate": 82,
+          "helper_definition_line": 83,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 703,
+          "command_candidate": 88,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 707,
+          "command_candidate": 89,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutUuid",
+          "line": 711,
+          "command_candidate": 90,
+          "helper_definition_line": 111,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU64NoOut",
+          "line": 715,
+          "command_candidate": 91,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOut64",
+          "line": 719,
+          "command_candidate": 92,
+          "helper_definition_line": 92,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdGetEvent",
+          "line": 723,
+          "command_candidate": 93,
+          "helper_definition_line": 83,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 742,
+          "command_candidate": 95,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 749,
+          "command_candidate": 96,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 776,
+          "command_candidate": 99,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 783,
+          "command_candidate": 100,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 790,
+          "command_candidate": 101,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 797,
+          "command_candidate": 102,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 804,
+          "command_candidate": 103,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 811,
+          "command_candidate": 104,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU64NoOut",
+          "line": 818,
+          "command_candidate": 105,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOut64",
+          "line": 825,
+          "command_candidate": 106,
+          "helper_definition_line": 92,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 846,
+          "command_candidate": 109,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 853,
+          "command_candidate": 110,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 860,
+          "command_candidate": 111,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 867,
+          "command_candidate": 112,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 874,
+          "command_candidate": 113,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 881,
+          "command_candidate": 114,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 888,
+          "command_candidate": 115,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 895,
+          "command_candidate": 116,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 902,
+          "command_candidate": 117,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 909,
+          "command_candidate": 118,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 933,
+          "command_candidate": 120,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 940,
+          "command_candidate": 121,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 948,
+          "command_candidate": 122,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 957,
+          "command_candidate": 123,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 965,
+          "command_candidate": 124,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 974,
+          "command_candidate": 125,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 981,
+          "command_candidate": 126,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 988,
+          "command_candidate": 127,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 1052,
+          "command_candidate": 136,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 1061,
+          "command_candidate": 137,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1068,
+          "command_candidate": 138,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1085,
+          "command_candidate": 140,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1092,
+          "command_candidate": 141,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 1099,
+          "command_candidate": 142,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1209,
+          "command_candidate": 156,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 1216,
+          "command_candidate": 157,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU8",
+          "line": 1251,
+          "command_candidate": 162,
+          "helper_definition_line": 100,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU8NoOut",
+          "line": 1258,
+          "command_candidate": 163,
+          "helper_definition_line": 115,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1265,
+          "command_candidate": 164,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 1272,
+          "command_candidate": 165,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1279,
+          "command_candidate": 166,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 1286,
+          "command_candidate": 167,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 1313,
+          "command_candidate": 170,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 1322,
+          "command_candidate": 171,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 1330,
+          "command_candidate": 172,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 1339,
+          "command_candidate": 173,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1381,
+          "command_candidate": 179,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 1388,
+          "command_candidate": 180,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1395,
+          "command_candidate": 181,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 1402,
+          "command_candidate": 182,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 1410,
+          "command_candidate": 183,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 1419,
+          "command_candidate": 184,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 1426,
+          "command_candidate": 185,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1433,
+          "command_candidate": 186,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 1441,
+          "command_candidate": 187,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU32NoOut",
+          "line": 1450,
+          "command_candidate": 188,
+          "helper_definition_line": 123,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1537,
+          "command_candidate": 197,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutBool",
+          "line": 1574,
+          "command_candidate": 201,
+          "helper_definition_line": 104,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInBoolNoOut",
+          "line": 1581,
+          "command_candidate": 202,
+          "helper_definition_line": 119,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 1633,
+          "command_candidate": 7,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU64NoOut",
+          "line": 1648,
+          "command_candidate": 10,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdInU64NoOut",
+          "line": 1652,
+          "command_candidate": 11,
+          "helper_definition_line": 127,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1660,
+          "command_candidate": 14,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1664,
+          "command_candidate": 15,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1668,
+          "command_candidate": 16,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1672,
+          "command_candidate": 17,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1676,
+          "command_candidate": 18,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1680,
+          "command_candidate": 19,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1688,
+          "command_candidate": 21,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU32",
+          "line": 1699,
+          "command_candidate": 23,
+          "helper_definition_line": 96,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1706,
+          "command_candidate": 24,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdOutBufAliasFixed",
+          "line": 1713,
+          "command_candidate": 25,
+          "helper_definition_line": 135,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU8",
+          "line": 1762,
+          "command_candidate": 32,
+          "helper_definition_line": 100,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU8",
+          "line": 1769,
+          "command_candidate": 33,
+          "helper_definition_line": 100,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU8",
+          "line": 1790,
+          "command_candidate": 36,
+          "helper_definition_line": 100,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU8",
+          "line": 1811,
+          "command_candidate": 39,
+          "helper_definition_line": 100,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU8",
+          "line": 1825,
+          "command_candidate": 41,
+          "helper_definition_line": 100,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOut64",
+          "line": 1832,
+          "command_candidate": 42,
+          "helper_definition_line": 92,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        },
+        {
+          "helper": "_setCmdNoInOutU8",
+          "line": 1839,
+          "command_candidate": 43,
+          "helper_definition_line": 100,
+          "qualification": "literal last argument matches declared command parameter; helper body and interface not resolved"
+        }
+      ],
+      "status": "unreviewed_disabled"
+    }
+  ]
+}

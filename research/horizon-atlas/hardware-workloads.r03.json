@@ -1,0 +1,352 @@
+{
+  "schema": "exodus.hardware-workload-overlay/v1",
+  "parents": [
+    "f4a3926cc7beacefd5db6cdf2b04f99ec6ff8339",
+    "2d166130f06446a76eb9d9d5bf76cbf42093b9df"
+  ],
+  "sources": {
+    "deko": {
+      "repo": "devkitPro/deko3d",
+      "path": "README.md",
+      "blob": "c44b988af5f12df7fa304785e7fa9b37a7d2e917",
+      "scope": "documentation"
+    },
+    "nvjpg": {
+      "repo": "ITotalJustice/oss-nvjpg",
+      "ref": "45680e7",
+      "path": "lib/decoder.cpp",
+      "blob": "1ea404d1996f2720b29ae179ec5bb333f6093faf",
+      "scope": "source"
+    },
+    "nvjpg_surface": {
+      "repo": "ITotalJustice/oss-nvjpg",
+      "ref": "45680e7",
+      "path": "lib/surface.cpp",
+      "blob": "5b8616bf2e2525587cd8ee7d338f1b1ec3c0f05a",
+      "scope": "source"
+    },
+    "patch": {
+      "repo": "rashevskyv/kefir-hub",
+      "path": "sphaira/cmake/patch_nvjpg.cmake",
+      "blob": "eaccf3badb1d8ad1d7ac8997ecae75cab97976f4",
+      "scope": "documented cache-lifetime fix, not reproduced"
+    },
+    "manifest": {
+      "repo": "rashevskyv/kefir-hub",
+      "path": "sphaira/cmake/sphaira_dependencies.cmake",
+      "blob": "0abc45d954e267611e4e70185410ab8fc8981091",
+      "scope": "build manifest"
+    },
+    "ffmpeg": {
+      "url": "https://ffmpeg.org/pipermail/ffmpeg-devel/2024-May/328549.html",
+      "scope": "2024 patch submission and author-reported L4T benchmark; not a Switch measurement or proof of upstream merge"
+    },
+    "hwopus": {
+      "repo": "switchbrew/libnx",
+      "ref": "b156b4774fb2df7b93402169509266da7547fc4c",
+      "path": "nx/source/services/hwopus.c",
+      "blob": "27b42a1c33d1706f10a648a470d00685c52bfa81",
+      "scope": "source"
+    },
+    "msenc": {
+      "repo": "backupbrew/switchbrew",
+      "path": "NV services.md",
+      "blob": "71d4717a05f57b39f4faa9db41bd72793fb3da56",
+      "scope": "historical driver channel"
+    },
+    "green": {
+      "url": "https://github.com/rmrf404/green-nx",
+      "scope": "project documentation reports NVDEC/deko3d zero-copy"
+    }
+  },
+  "nodes": [
+    {
+      "id": "operation:render",
+      "operation": "render.owned",
+      "kind": "operation_candidate",
+      "source": "deko",
+      "evidence": "documentation",
+      "cpu_fallback_candidate": "CPU rasterizer for limited 2D only; not generic 3D parity",
+      "acceptance": "owned synthetic texture and render target",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:compute",
+      "operation": "compute.shader",
+      "kind": "operation_candidate",
+      "source": "deko",
+      "evidence": "documentation",
+      "cpu_fallback_candidate": "CPU algorithm with same semantics if implemented",
+      "acceptance": "compile-time shader and known vector",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:jpeg",
+      "operation": "image.jpeg.decode",
+      "kind": "operation_candidate",
+      "source": "nvjpg",
+      "evidence": "source_inspected",
+      "cpu_fallback_candidate": "software JPEG decoder",
+      "acceptance": "owned baseline/progressive test corpus; profile support unknown",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:scale",
+      "operation": "image.scale",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "CPU scaling",
+      "acceptance": "owned frame; compare layout, filter and color",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:convert",
+      "operation": "image.color.convert",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "CPU conversion",
+      "acceptance": "owned frame; compare color range/matrix",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:h264",
+      "operation": "video.h264.decode",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "software H264 decoder",
+      "acceptance": "owned clip; verify profile and output",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:hevc",
+      "operation": "video.hevc.decode",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "software HEVC decoder",
+      "acceptance": "owned clip; verify bit depth",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:vp8",
+      "operation": "video.vp8.decode",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "software VP8 decoder",
+      "acceptance": "owned clip",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:vp9",
+      "operation": "video.vp9.decode",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "software VP9 decoder",
+      "acceptance": "owned clip",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:mpeg12",
+      "operation": "video.mpeg12.decode",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "software MPEG1/2 decoder",
+      "acceptance": "owned clip",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:mpeg4",
+      "operation": "video.mpeg4.decode",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "software MPEG4 decoder",
+      "acceptance": "owned clip",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:vc1",
+      "operation": "video.vc1.decode",
+      "kind": "operation_candidate",
+      "source": "ffmpeg",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "software VC1 decoder",
+      "acceptance": "owned clip",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:encode",
+      "operation": "video.h264.encode",
+      "kind": "operation_candidate",
+      "source": "msenc",
+      "evidence": "channel_only",
+      "cpu_fallback_candidate": "software encoder if available",
+      "acceptance": "owned generated frame; native access first",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:opus",
+      "operation": "audio.opus.decode",
+      "kind": "operation_candidate",
+      "source": "hwopus",
+      "evidence": "source_inspected",
+      "cpu_fallback_candidate": "software Opus decoder",
+      "acceptance": "owned packet; hardware execution unit identity unknown",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    },
+    {
+      "id": "operation:present",
+      "operation": "video.present",
+      "kind": "operation_candidate",
+      "source": "green",
+      "evidence": "reported_implementation",
+      "cpu_fallback_candidate": "CPU upload path if implemented",
+      "acceptance": "owned decoded surface, fence and buffer layout",
+      "access": "unknown",
+      "admission": "not_admitted",
+      "device_test": "not_tested",
+      "executable": false
+    }
+  ],
+  "edges": [
+    [
+      "hw:gpu",
+      "operation:render",
+      "candidate_provider"
+    ],
+    [
+      "hw:gpu",
+      "operation:compute",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvjpg",
+      "operation:jpeg",
+      "candidate_provider"
+    ],
+    [
+      "hw:vic",
+      "operation:scale",
+      "candidate_provider"
+    ],
+    [
+      "hw:vic",
+      "operation:convert",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvdec",
+      "operation:h264",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvdec",
+      "operation:hevc",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvdec",
+      "operation:vp8",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvdec",
+      "operation:vp9",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvdec",
+      "operation:mpeg12",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvdec",
+      "operation:mpeg4",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvdec",
+      "operation:vc1",
+      "candidate_provider"
+    ],
+    [
+      "hw:nvenc",
+      "operation:encode",
+      "candidate_provider"
+    ],
+    [
+      "hw:audio",
+      "operation:opus",
+      "candidate_provider"
+    ],
+    [
+      "hw:display",
+      "operation:present",
+      "candidate_provider"
+    ]
+  ],
+  "scope": "All operations research only. CPU fallback candidates not implemented; exact operation equivalence and context-specific acceptance required.",
+  "memory_contract": {
+    "ownership": "application-owned only",
+    "lifecycle": [
+      "allocated",
+      "mapped",
+      "submitted",
+      "fence_complete",
+      "unmapped",
+      "cache_restored",
+      "released"
+    ],
+    "failure": "quarantine with bounded budget; stop further allocation when exhausted; never return uncertain pages to allocator",
+    "limits": "per-context and per-engine budgets; no automatic clock changes",
+    "notes": "Kefir patch reports cache attribute hazard; source-level observation only."
+  }
+}

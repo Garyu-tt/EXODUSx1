@@ -1,0 +1,2964 @@
+{
+  "schema": "exodus.hardware-driver-overlay/v1",
+  "hardware_graph_blob": "f4a3926cc7beacefd5db6cdf2b04f99ec6ff8339",
+  "horizon_graph_blob": "9bed1922dc4be893d9edea36b96eab4f01bfd317",
+  "libnx_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "sources": {
+    "pcv": {
+      "path": "nx/include/switch/services/pcv.h",
+      "blob": "bb55844d7115d487e9471789a948f4909df691fe"
+    },
+    "nv": {
+      "path": "nx/source/services/nv.c",
+      "blob": "0b092828b32b6e92450415343f1b2a397d755458"
+    },
+    "gpu": {
+      "path": "nx/source/nvidia/gpu.c",
+      "blob": "5e9dfb8846b065c435091d2183da33fd05912041"
+    },
+    "map": {
+      "path": "nx/include/switch/nvidia/map.h",
+      "blob": "7ace58932c701172161b9a3966a85253da63f146"
+    },
+    "as": {
+      "path": "nx/include/switch/nvidia/address_space.h",
+      "blob": "02fa0f392ff085c5168079f6035b7439ff420292"
+    },
+    "channel": {
+      "path": "nx/include/switch/nvidia/gpu_channel.h",
+      "blob": "7963a560e1fab4eb3b5ff841bba25a0c3e6ca303"
+    },
+    "wiki": {
+      "repo": "backupbrew/switchbrew",
+      "path": "NV services.md",
+      "blob": "71d4717a05f57b39f4faa9db41bd72793fb3da56"
+    },
+    "vi": {
+      "path": "nx/include/switch/services/vi.h",
+      "blob": "fd13a35d3605733fb6248b0964e10f1f5af5a632"
+    },
+    "clkrst": {
+      "path": "nx/include/switch/services/clkrst.h",
+      "blob": "57d3502c537de6c43480ce5848aac72a435dfac0"
+    },
+    "ts": {
+      "path": "nx/include/switch/services/ts.h",
+      "blob": "60ccfbfac42ac2892b59be74eb5c074afc642bd3"
+    },
+    "tc": {
+      "path": "nx/include/switch/services/tc.h",
+      "blob": "56be6c0646f6f30050b9353ebe7d7b0035b737b4"
+    },
+    "psm": {
+      "path": "nx/include/switch/services/psm.h",
+      "blob": "f37e7573db7b302a0d53033be1c7a1d150bf4aef"
+    }
+  },
+  "scope": "Source evidence only. Historical device paths and conceptual mappings, not verified access. No hardware operations.",
+  "counts": {
+    "nodes": 118,
+    "edges": 212,
+    "clock_modules": 87,
+    "clock_module_ids": 87,
+    "driver_paths": 8,
+    "ipc_wrappers": 8,
+    "service_endpoints": 4,
+    "api_candidates": 11
+  },
+  "nodes": [
+    {
+      "id": "endpoint:nvdrv",
+      "kind": "service_endpoint",
+      "label": "nvdrv",
+      "context": "application",
+      "source": "nv",
+      "line": 54,
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "endpoint:nvdrv:a",
+      "kind": "service_endpoint",
+      "label": "nvdrv:a",
+      "context": "applet",
+      "source": "nv",
+      "line": 58,
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "endpoint:nvdrv:s",
+      "kind": "service_endpoint",
+      "label": "nvdrv:s",
+      "context": "system",
+      "source": "nv",
+      "line": 62,
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "endpoint:nvdrv:t",
+      "kind": "service_endpoint",
+      "label": "nvdrv:t",
+      "context": "factory",
+      "source": "nv",
+      "line": 66,
+      "policy": "inventory_only",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvapi:nvOpen",
+      "kind": "ipc_wrapper",
+      "label": "nvOpen",
+      "command": 0,
+      "source": "nv",
+      "line": 130,
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvapi:nvIoctl",
+      "kind": "ipc_wrapper",
+      "label": "nvIoctl",
+      "command": 1,
+      "source": "nv",
+      "line": 187,
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvapi:nvIoctl2",
+      "kind": "ipc_wrapper",
+      "label": "nvIoctl2",
+      "command": 11,
+      "source": "nv",
+      "line": 230,
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvapi:nvIoctl3",
+      "kind": "ipc_wrapper",
+      "label": "nvIoctl3",
+      "command": 12,
+      "source": "nv",
+      "line": 275,
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvapi:nvClose",
+      "kind": "ipc_wrapper",
+      "label": "nvClose",
+      "command": 2,
+      "source": "nv",
+      "line": 296,
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvapi:nvQueryEvent",
+      "kind": "ipc_wrapper",
+      "label": "nvQueryEvent",
+      "command": 4,
+      "source": "nv",
+      "line": 312,
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvapi:_nvCmdInitialize",
+      "kind": "ipc_wrapper",
+      "label": "_nvCmdInitialize",
+      "command": 3,
+      "source": "nv",
+      "line": 114,
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvapi:_nvSetClientPID",
+      "kind": "ipc_wrapper",
+      "label": "_nvSetClientPID",
+      "command": 8,
+      "source": "nv",
+      "line": 121,
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvdevice:/dev/nvhost-gpu",
+      "kind": "driver_path",
+      "label": "/dev/nvhost-gpu",
+      "source": "wiki",
+      "line": 1198,
+      "evidence": "historical_documentation",
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvdevice:/dev/nvhost-msenc",
+      "kind": "driver_path",
+      "label": "/dev/nvhost-msenc",
+      "source": "wiki",
+      "line": 1199,
+      "evidence": "historical_documentation",
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvdevice:/dev/nvhost-nvdec",
+      "kind": "driver_path",
+      "label": "/dev/nvhost-nvdec",
+      "source": "wiki",
+      "line": 1200,
+      "evidence": "historical_documentation",
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvdevice:/dev/nvhost-nvjpg",
+      "kind": "driver_path",
+      "label": "/dev/nvhost-nvjpg",
+      "source": "wiki",
+      "line": 1201,
+      "evidence": "historical_documentation",
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvdevice:/dev/nvhost-vic",
+      "kind": "driver_path",
+      "label": "/dev/nvhost-vic",
+      "source": "wiki",
+      "line": 1202,
+      "evidence": "historical_documentation",
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvdevice:/dev/nvhost-display",
+      "kind": "driver_path",
+      "label": "/dev/nvhost-display",
+      "source": "wiki",
+      "line": 1203,
+      "evidence": "historical_documentation",
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvdevice:/dev/nvhost-ctrl-gpu",
+      "kind": "driver_path",
+      "label": "/dev/nvhost-ctrl-gpu",
+      "source": "gpu",
+      "line": 25,
+      "evidence": "libnx_open_call",
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "nvdevice:/dev/nvmap",
+      "kind": "driver_path",
+      "label": "/dev/nvmap",
+      "source": "wiki",
+      "line": 322,
+      "evidence": "historical_documentation",
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:CpuBus",
+      "kind": "clock_module",
+      "label": "CpuBus",
+      "legacy_enum": 0,
+      "module_id": {
+        "value": "0x40000001",
+        "line": 105
+      },
+      "source": "pcv",
+      "line": 12,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:GPU",
+      "kind": "clock_module",
+      "label": "GPU",
+      "legacy_enum": 1,
+      "module_id": {
+        "value": "0x40000002",
+        "line": 106
+      },
+      "source": "pcv",
+      "line": 13,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2S1",
+      "kind": "clock_module",
+      "label": "I2S1",
+      "legacy_enum": 2,
+      "module_id": {
+        "value": "0x40000003",
+        "line": 107
+      },
+      "source": "pcv",
+      "line": 14,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2S2",
+      "kind": "clock_module",
+      "label": "I2S2",
+      "legacy_enum": 3,
+      "module_id": {
+        "value": "0x40000004",
+        "line": 108
+      },
+      "source": "pcv",
+      "line": 15,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2S3",
+      "kind": "clock_module",
+      "label": "I2S3",
+      "legacy_enum": 4,
+      "module_id": {
+        "value": "0x40000005",
+        "line": 109
+      },
+      "source": "pcv",
+      "line": 16,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PWM",
+      "kind": "clock_module",
+      "label": "PWM",
+      "legacy_enum": 5,
+      "module_id": {
+        "value": "0x40000006",
+        "line": 110
+      },
+      "source": "pcv",
+      "line": 17,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2C1",
+      "kind": "clock_module",
+      "label": "I2C1",
+      "legacy_enum": 6,
+      "module_id": {
+        "value": "0x02000001",
+        "line": 111
+      },
+      "source": "pcv",
+      "line": 18,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2C2",
+      "kind": "clock_module",
+      "label": "I2C2",
+      "legacy_enum": 7,
+      "module_id": {
+        "value": "0x02000002",
+        "line": 112
+      },
+      "source": "pcv",
+      "line": 19,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2C3",
+      "kind": "clock_module",
+      "label": "I2C3",
+      "legacy_enum": 8,
+      "module_id": {
+        "value": "0x02000003",
+        "line": 113
+      },
+      "source": "pcv",
+      "line": 20,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2C4",
+      "kind": "clock_module",
+      "label": "I2C4",
+      "legacy_enum": 9,
+      "module_id": {
+        "value": "0x02000004",
+        "line": 114
+      },
+      "source": "pcv",
+      "line": 21,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2C5",
+      "kind": "clock_module",
+      "label": "I2C5",
+      "legacy_enum": 10,
+      "module_id": {
+        "value": "0x02000005",
+        "line": 115
+      },
+      "source": "pcv",
+      "line": 22,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2C6",
+      "kind": "clock_module",
+      "label": "I2C6",
+      "legacy_enum": 11,
+      "module_id": {
+        "value": "0x02000006",
+        "line": 116
+      },
+      "source": "pcv",
+      "line": 23,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SPI1",
+      "kind": "clock_module",
+      "label": "SPI1",
+      "legacy_enum": 12,
+      "module_id": {
+        "value": "0x07000000",
+        "line": 117
+      },
+      "source": "pcv",
+      "line": 24,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SPI2",
+      "kind": "clock_module",
+      "label": "SPI2",
+      "legacy_enum": 13,
+      "module_id": {
+        "value": "0x07000001",
+        "line": 118
+      },
+      "source": "pcv",
+      "line": 25,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SPI3",
+      "kind": "clock_module",
+      "label": "SPI3",
+      "legacy_enum": 14,
+      "module_id": {
+        "value": "0x07000002",
+        "line": 119
+      },
+      "source": "pcv",
+      "line": 26,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SPI4",
+      "kind": "clock_module",
+      "label": "SPI4",
+      "legacy_enum": 15,
+      "module_id": {
+        "value": "0x07000003",
+        "line": 120
+      },
+      "source": "pcv",
+      "line": 27,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:DISP1",
+      "kind": "clock_module",
+      "label": "DISP1",
+      "legacy_enum": 16,
+      "module_id": {
+        "value": "0x40000011",
+        "line": 121
+      },
+      "source": "pcv",
+      "line": 28,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:DISP2",
+      "kind": "clock_module",
+      "label": "DISP2",
+      "legacy_enum": 17,
+      "module_id": {
+        "value": "0x40000012",
+        "line": 122
+      },
+      "source": "pcv",
+      "line": 29,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:ISP",
+      "kind": "clock_module",
+      "label": "ISP",
+      "legacy_enum": 18,
+      "module_id": {
+        "value": "0x40000013",
+        "line": 123
+      },
+      "source": "pcv",
+      "line": 30,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:VI",
+      "kind": "clock_module",
+      "label": "VI",
+      "legacy_enum": 19,
+      "module_id": {
+        "value": "0x40000014",
+        "line": 124
+      },
+      "source": "pcv",
+      "line": 31,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SDMMC1",
+      "kind": "clock_module",
+      "label": "SDMMC1",
+      "legacy_enum": 20,
+      "module_id": {
+        "value": "0x40000015",
+        "line": 125
+      },
+      "source": "pcv",
+      "line": 32,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SDMMC2",
+      "kind": "clock_module",
+      "label": "SDMMC2",
+      "legacy_enum": 21,
+      "module_id": {
+        "value": "0x40000016",
+        "line": 126
+      },
+      "source": "pcv",
+      "line": 33,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SDMMC3",
+      "kind": "clock_module",
+      "label": "SDMMC3",
+      "legacy_enum": 22,
+      "module_id": {
+        "value": "0x40000017",
+        "line": 127
+      },
+      "source": "pcv",
+      "line": 34,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SDMMC4",
+      "kind": "clock_module",
+      "label": "SDMMC4",
+      "legacy_enum": 23,
+      "module_id": {
+        "value": "0x40000018",
+        "line": 128
+      },
+      "source": "pcv",
+      "line": 35,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:OWR",
+      "kind": "clock_module",
+      "label": "OWR",
+      "legacy_enum": 24,
+      "module_id": {
+        "value": "0x40000019",
+        "line": 129
+      },
+      "source": "pcv",
+      "line": 36,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:CSITE",
+      "kind": "clock_module",
+      "label": "CSITE",
+      "legacy_enum": 25,
+      "module_id": {
+        "value": "0x4000001A",
+        "line": 130
+      },
+      "source": "pcv",
+      "line": 37,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:TSEC",
+      "kind": "clock_module",
+      "label": "TSEC",
+      "legacy_enum": 26,
+      "module_id": {
+        "value": "0x4000001B",
+        "line": 131
+      },
+      "source": "pcv",
+      "line": 38,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:MSELECT",
+      "kind": "clock_module",
+      "label": "MSELECT",
+      "legacy_enum": 27,
+      "module_id": {
+        "value": "0x4000001C",
+        "line": 132
+      },
+      "source": "pcv",
+      "line": 39,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:HDA2CODEC_2X",
+      "kind": "clock_module",
+      "label": "HDA2CODEC_2X",
+      "legacy_enum": 28,
+      "module_id": {
+        "value": "0x4000001D",
+        "line": 133
+      },
+      "source": "pcv",
+      "line": 40,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:ACTMON",
+      "kind": "clock_module",
+      "label": "ACTMON",
+      "legacy_enum": 29,
+      "module_id": {
+        "value": "0x4000001E",
+        "line": 134
+      },
+      "source": "pcv",
+      "line": 41,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:I2C_SLOW",
+      "kind": "clock_module",
+      "label": "I2C_SLOW",
+      "legacy_enum": 30,
+      "module_id": {
+        "value": "0x4000001F",
+        "line": 135
+      },
+      "source": "pcv",
+      "line": 42,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SOR1",
+      "kind": "clock_module",
+      "label": "SOR1",
+      "legacy_enum": 31,
+      "module_id": {
+        "value": "0x40000020",
+        "line": 136
+      },
+      "source": "pcv",
+      "line": 43,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SATA",
+      "kind": "clock_module",
+      "label": "SATA",
+      "legacy_enum": 32,
+      "module_id": {
+        "value": "0x40000021",
+        "line": 137
+      },
+      "source": "pcv",
+      "line": 44,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:HDA",
+      "kind": "clock_module",
+      "label": "HDA",
+      "legacy_enum": 33,
+      "module_id": {
+        "value": "0x40000022",
+        "line": 138
+      },
+      "source": "pcv",
+      "line": 45,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_CORE_HOST",
+      "kind": "clock_module",
+      "label": "XUSB_CORE_HOST",
+      "legacy_enum": 34,
+      "module_id": {
+        "value": "0x40000023",
+        "line": 139
+      },
+      "source": "pcv",
+      "line": 46,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_FALCON",
+      "kind": "clock_module",
+      "label": "XUSB_FALCON",
+      "legacy_enum": 35,
+      "module_id": {
+        "value": "0x40000024",
+        "line": 140
+      },
+      "source": "pcv",
+      "line": 47,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_FS",
+      "kind": "clock_module",
+      "label": "XUSB_FS",
+      "legacy_enum": 36,
+      "module_id": {
+        "value": "0x40000025",
+        "line": 141
+      },
+      "source": "pcv",
+      "line": 48,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_CORE_DEV",
+      "kind": "clock_module",
+      "label": "XUSB_CORE_DEV",
+      "legacy_enum": 37,
+      "module_id": {
+        "value": "0x40000026",
+        "line": 142
+      },
+      "source": "pcv",
+      "line": 49,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_SS_HOSTDEV",
+      "kind": "clock_module",
+      "label": "XUSB_SS_HOSTDEV",
+      "legacy_enum": 38,
+      "module_id": {
+        "value": "0x40000027",
+        "line": 143
+      },
+      "source": "pcv",
+      "line": 50,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:UARTA",
+      "kind": "clock_module",
+      "label": "UARTA",
+      "legacy_enum": 39,
+      "module_id": {
+        "value": "0x03000001",
+        "line": 144
+      },
+      "source": "pcv",
+      "line": 51,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:UARTB",
+      "kind": "clock_module",
+      "label": "UARTB",
+      "legacy_enum": 40,
+      "module_id": {
+        "value": "0x35000405",
+        "line": 145
+      },
+      "source": "pcv",
+      "line": 52,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:UARTC",
+      "kind": "clock_module",
+      "label": "UARTC",
+      "legacy_enum": 41,
+      "module_id": {
+        "value": "0x3500040F",
+        "line": 146
+      },
+      "source": "pcv",
+      "line": 53,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:UARTD",
+      "kind": "clock_module",
+      "label": "UARTD",
+      "legacy_enum": 42,
+      "module_id": {
+        "value": "0x37000001",
+        "line": 147
+      },
+      "source": "pcv",
+      "line": 54,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:HOST1X",
+      "kind": "clock_module",
+      "label": "HOST1X",
+      "legacy_enum": 43,
+      "module_id": {
+        "value": "0x4000002C",
+        "line": 148
+      },
+      "source": "pcv",
+      "line": 55,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:ENTROPY",
+      "kind": "clock_module",
+      "label": "ENTROPY",
+      "legacy_enum": 44,
+      "module_id": {
+        "value": "0x4000002D",
+        "line": 149
+      },
+      "source": "pcv",
+      "line": 56,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SOC_THERM",
+      "kind": "clock_module",
+      "label": "SOC_THERM",
+      "legacy_enum": 45,
+      "module_id": {
+        "value": "0x4000002E",
+        "line": 150
+      },
+      "source": "pcv",
+      "line": 57,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:VIC",
+      "kind": "clock_module",
+      "label": "VIC",
+      "legacy_enum": 46,
+      "module_id": {
+        "value": "0x4000002F",
+        "line": 151
+      },
+      "source": "pcv",
+      "line": 58,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:NVENC",
+      "kind": "clock_module",
+      "label": "NVENC",
+      "legacy_enum": 47,
+      "module_id": {
+        "value": "0x40000030",
+        "line": 152
+      },
+      "source": "pcv",
+      "line": 59,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:NVJPG",
+      "kind": "clock_module",
+      "label": "NVJPG",
+      "legacy_enum": 48,
+      "module_id": {
+        "value": "0x40000031",
+        "line": 153
+      },
+      "source": "pcv",
+      "line": 60,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:NVDEC",
+      "kind": "clock_module",
+      "label": "NVDEC",
+      "legacy_enum": 49,
+      "module_id": {
+        "value": "0x40000032",
+        "line": 154
+      },
+      "source": "pcv",
+      "line": 61,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:QSPI",
+      "kind": "clock_module",
+      "label": "QSPI",
+      "legacy_enum": 50,
+      "module_id": {
+        "value": "0x40000033",
+        "line": 155
+      },
+      "source": "pcv",
+      "line": 62,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:VI_I2C",
+      "kind": "clock_module",
+      "label": "VI_I2C",
+      "legacy_enum": 51,
+      "module_id": {
+        "value": "0x40000034",
+        "line": 156
+      },
+      "source": "pcv",
+      "line": 63,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:TSECB",
+      "kind": "clock_module",
+      "label": "TSECB",
+      "legacy_enum": 52,
+      "module_id": {
+        "value": "0x40000035",
+        "line": 157
+      },
+      "source": "pcv",
+      "line": 64,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:APE",
+      "kind": "clock_module",
+      "label": "APE",
+      "legacy_enum": 53,
+      "module_id": {
+        "value": "0x40000036",
+        "line": 158
+      },
+      "source": "pcv",
+      "line": 65,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:ACLK",
+      "kind": "clock_module",
+      "label": "ACLK",
+      "legacy_enum": 54,
+      "module_id": {
+        "value": "0x40000037",
+        "line": 159
+      },
+      "source": "pcv",
+      "line": 66,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:UARTAPE",
+      "kind": "clock_module",
+      "label": "UARTAPE",
+      "legacy_enum": 55,
+      "module_id": {
+        "value": "0x40000038",
+        "line": 160
+      },
+      "source": "pcv",
+      "line": 67,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:EMC",
+      "kind": "clock_module",
+      "label": "EMC",
+      "legacy_enum": 56,
+      "module_id": {
+        "value": "0x40000039",
+        "line": 161
+      },
+      "source": "pcv",
+      "line": 68,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PLLE0_0",
+      "kind": "clock_module",
+      "label": "PLLE0_0",
+      "legacy_enum": 57,
+      "module_id": {
+        "value": "0x4000003A",
+        "line": 162
+      },
+      "source": "pcv",
+      "line": 69,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PLLE0_1",
+      "kind": "clock_module",
+      "label": "PLLE0_1",
+      "legacy_enum": 58,
+      "module_id": {
+        "value": "0x4000003B",
+        "line": 163
+      },
+      "source": "pcv",
+      "line": 70,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:DSI",
+      "kind": "clock_module",
+      "label": "DSI",
+      "legacy_enum": 59,
+      "module_id": {
+        "value": "0x4000003C",
+        "line": 164
+      },
+      "source": "pcv",
+      "line": 71,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:MAUD",
+      "kind": "clock_module",
+      "label": "MAUD",
+      "legacy_enum": 60,
+      "module_id": {
+        "value": "0x4000003D",
+        "line": 165
+      },
+      "source": "pcv",
+      "line": 72,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:DPAUX1",
+      "kind": "clock_module",
+      "label": "DPAUX1",
+      "legacy_enum": 61,
+      "module_id": {
+        "value": "0x4000003E",
+        "line": 166
+      },
+      "source": "pcv",
+      "line": 73,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:MIPI_CAL",
+      "kind": "clock_module",
+      "label": "MIPI_CAL",
+      "legacy_enum": 62,
+      "module_id": {
+        "value": "0x4000003F",
+        "line": 167
+      },
+      "source": "pcv",
+      "line": 74,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:UART_FST_MIPI_CAL",
+      "kind": "clock_module",
+      "label": "UART_FST_MIPI_CAL",
+      "legacy_enum": 63,
+      "module_id": {
+        "value": "0x40000040",
+        "line": 168
+      },
+      "source": "pcv",
+      "line": 75,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:OSC",
+      "kind": "clock_module",
+      "label": "OSC",
+      "legacy_enum": 64,
+      "module_id": {
+        "value": "0x40000041",
+        "line": 169
+      },
+      "source": "pcv",
+      "line": 76,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SCLK",
+      "kind": "clock_module",
+      "label": "SCLK",
+      "legacy_enum": 65,
+      "module_id": {
+        "value": "0x40000042",
+        "line": 170
+      },
+      "source": "pcv",
+      "line": 77,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:SOR_SAFE",
+      "kind": "clock_module",
+      "label": "SOR_SAFE",
+      "legacy_enum": 66,
+      "module_id": {
+        "value": "0x40000043",
+        "line": 171
+      },
+      "source": "pcv",
+      "line": 78,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_SS",
+      "kind": "clock_module",
+      "label": "XUSB_SS",
+      "legacy_enum": 67,
+      "module_id": {
+        "value": "0x40000044",
+        "line": 172
+      },
+      "source": "pcv",
+      "line": 79,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_HOST",
+      "kind": "clock_module",
+      "label": "XUSB_HOST",
+      "legacy_enum": 68,
+      "module_id": {
+        "value": "0x40000045",
+        "line": 173
+      },
+      "source": "pcv",
+      "line": 80,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_DEV",
+      "kind": "clock_module",
+      "label": "XUSB_DEV",
+      "legacy_enum": 69,
+      "module_id": {
+        "value": "0x40000046",
+        "line": 174
+      },
+      "source": "pcv",
+      "line": 81,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:EXTPERIPH1",
+      "kind": "clock_module",
+      "label": "EXTPERIPH1",
+      "legacy_enum": 70,
+      "module_id": {
+        "value": "0x40000047",
+        "line": 175
+      },
+      "source": "pcv",
+      "line": 82,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:AHUB",
+      "kind": "clock_module",
+      "label": "AHUB",
+      "legacy_enum": 71,
+      "module_id": {
+        "value": "0x40000048",
+        "line": 176
+      },
+      "source": "pcv",
+      "line": 83,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:HDA2HDMICODEC",
+      "kind": "clock_module",
+      "label": "HDA2HDMICODEC",
+      "legacy_enum": 72,
+      "module_id": {
+        "value": "0x40000049",
+        "line": 177
+      },
+      "source": "pcv",
+      "line": 84,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PLLP5",
+      "kind": "clock_module",
+      "label": "PLLP5",
+      "legacy_enum": 73,
+      "module_id": {
+        "value": "0x4000004A",
+        "line": 178
+      },
+      "source": "pcv",
+      "line": 85,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:USBD",
+      "kind": "clock_module",
+      "label": "USBD",
+      "legacy_enum": 74,
+      "module_id": {
+        "value": "0x4000004B",
+        "line": 179
+      },
+      "source": "pcv",
+      "line": 86,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:USB2",
+      "kind": "clock_module",
+      "label": "USB2",
+      "legacy_enum": 75,
+      "module_id": {
+        "value": "0x4000004C",
+        "line": 180
+      },
+      "source": "pcv",
+      "line": 87,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PCIE",
+      "kind": "clock_module",
+      "label": "PCIE",
+      "legacy_enum": 76,
+      "module_id": {
+        "value": "0x4000004D",
+        "line": 181
+      },
+      "source": "pcv",
+      "line": 88,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:AFI",
+      "kind": "clock_module",
+      "label": "AFI",
+      "legacy_enum": 77,
+      "module_id": {
+        "value": "0x4000004E",
+        "line": 182
+      },
+      "source": "pcv",
+      "line": 89,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PCIEXCLK",
+      "kind": "clock_module",
+      "label": "PCIEXCLK",
+      "legacy_enum": 78,
+      "module_id": {
+        "value": "0x4000004F",
+        "line": 183
+      },
+      "source": "pcv",
+      "line": 90,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PEX_USB_UPHY",
+      "kind": "clock_module",
+      "label": "PEX_USB_UPHY",
+      "legacy_enum": 79,
+      "module_id": {
+        "value": "0x40000050",
+        "line": 184
+      },
+      "source": "pcv",
+      "line": 91,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:XUSB_PADCTL",
+      "kind": "clock_module",
+      "label": "XUSB_PADCTL",
+      "legacy_enum": 80,
+      "module_id": {
+        "value": "0x40000051",
+        "line": 185
+      },
+      "source": "pcv",
+      "line": 92,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:APBDMA",
+      "kind": "clock_module",
+      "label": "APBDMA",
+      "legacy_enum": 81,
+      "module_id": {
+        "value": "0x40000052",
+        "line": 186
+      },
+      "source": "pcv",
+      "line": 93,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:USB2_TRK",
+      "kind": "clock_module",
+      "label": "USB2_TRK",
+      "legacy_enum": 82,
+      "module_id": {
+        "value": "0x40000053",
+        "line": 187
+      },
+      "source": "pcv",
+      "line": 94,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PLLE0_2",
+      "kind": "clock_module",
+      "label": "PLLE0_2",
+      "legacy_enum": 83,
+      "module_id": {
+        "value": "0x40000054",
+        "line": 188
+      },
+      "source": "pcv",
+      "line": 95,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:PLLE0_3",
+      "kind": "clock_module",
+      "label": "PLLE0_3",
+      "legacy_enum": 84,
+      "module_id": {
+        "value": "0x40000055",
+        "line": 189
+      },
+      "source": "pcv",
+      "line": 96,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:CEC",
+      "kind": "clock_module",
+      "label": "CEC",
+      "legacy_enum": 85,
+      "module_id": {
+        "value": "0x40000056",
+        "line": 190
+      },
+      "source": "pcv",
+      "line": 97,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "pcv:EXTPERIPH2",
+      "kind": "clock_module",
+      "label": "EXTPERIPH2",
+      "legacy_enum": 86,
+      "module_id": {
+        "value": "0x40000057",
+        "line": 191
+      },
+      "source": "pcv",
+      "line": 98,
+      "policy": "read_only_review",
+      "note": "Enumeration is not proof of enabled clocks or physical board routing",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:gpu_info",
+      "kind": "api_candidate",
+      "label": "GPU characteristics",
+      "source": "gpu",
+      "line": 25,
+      "policy": "read_only_review",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:gpu_mapping",
+      "kind": "api_candidate",
+      "label": "Owned GPU address space",
+      "source": "as",
+      "line": 11,
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:gpu_buffer",
+      "kind": "api_candidate",
+      "label": "Owned shared buffers",
+      "source": "map",
+      "line": 18,
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:gpu_submit",
+      "kind": "api_candidate",
+      "label": "GPU command queue",
+      "source": "channel",
+      "line": 25,
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:display_resolution",
+      "kind": "api_candidate",
+      "label": "Display resolution",
+      "source": "vi",
+      "line": 98,
+      "policy": "read_only_review",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:display_vsync",
+      "kind": "api_candidate",
+      "label": "Display synchronization",
+      "source": "vi",
+      "line": 102,
+      "policy": "review_required",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:clock_read",
+      "kind": "api_candidate",
+      "label": "Clock telemetry",
+      "source": "clkrst",
+      "line": 29,
+      "policy": "read_only_review",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:clock_rates",
+      "kind": "api_candidate",
+      "label": "Supported clock rates query",
+      "source": "clkrst",
+      "line": 31,
+      "policy": "read_only_review",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:temperature",
+      "kind": "api_candidate",
+      "label": "Temperature telemetry",
+      "source": "ts",
+      "line": 55,
+      "policy": "read_only_review",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:skin_temp",
+      "kind": "api_candidate",
+      "label": "Skin temperature",
+      "source": "tc",
+      "line": 25,
+      "policy": "read_only_review",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    },
+    {
+      "id": "hwapi:battery",
+      "kind": "api_candidate",
+      "label": "Battery charge",
+      "source": "psm",
+      "line": 107,
+      "policy": "read_only_review",
+      "executable": false,
+      "access": "unknown",
+      "device_test": "not_tested"
+    }
+  ],
+  "edges": [
+    [
+      "module:nv",
+      "endpoint:nvdrv",
+      "source_selects"
+    ],
+    [
+      "module:nv",
+      "endpoint:nvdrv:a",
+      "source_selects"
+    ],
+    [
+      "module:nv",
+      "endpoint:nvdrv:s",
+      "source_selects"
+    ],
+    [
+      "module:nv",
+      "endpoint:nvdrv:t",
+      "source_selects"
+    ],
+    [
+      "module:nv",
+      "nvapi:nvOpen",
+      "source_defines"
+    ],
+    [
+      "module:nv",
+      "nvapi:nvIoctl",
+      "source_defines"
+    ],
+    [
+      "module:nv",
+      "nvapi:nvIoctl2",
+      "source_defines"
+    ],
+    [
+      "module:nv",
+      "nvapi:nvIoctl3",
+      "source_defines"
+    ],
+    [
+      "module:nv",
+      "nvapi:nvClose",
+      "source_defines"
+    ],
+    [
+      "module:nv",
+      "nvapi:nvQueryEvent",
+      "source_defines"
+    ],
+    [
+      "module:nv",
+      "nvapi:_nvCmdInitialize",
+      "source_defines"
+    ],
+    [
+      "module:nv",
+      "nvapi:_nvSetClientPID",
+      "source_defines"
+    ],
+    [
+      "hw:gpu",
+      "nvdevice:/dev/nvhost-gpu",
+      "candidate_driver_route"
+    ],
+    [
+      "nvdevice:/dev/nvhost-gpu",
+      "nvapi:nvOpen",
+      "candidate_open_interface"
+    ],
+    [
+      "hw:nvenc",
+      "nvdevice:/dev/nvhost-msenc",
+      "candidate_driver_route"
+    ],
+    [
+      "nvdevice:/dev/nvhost-msenc",
+      "nvapi:nvOpen",
+      "candidate_open_interface"
+    ],
+    [
+      "hw:nvdec",
+      "nvdevice:/dev/nvhost-nvdec",
+      "candidate_driver_route"
+    ],
+    [
+      "nvdevice:/dev/nvhost-nvdec",
+      "nvapi:nvOpen",
+      "candidate_open_interface"
+    ],
+    [
+      "hw:nvjpg",
+      "nvdevice:/dev/nvhost-nvjpg",
+      "candidate_driver_route"
+    ],
+    [
+      "nvdevice:/dev/nvhost-nvjpg",
+      "nvapi:nvOpen",
+      "candidate_open_interface"
+    ],
+    [
+      "hw:vic",
+      "nvdevice:/dev/nvhost-vic",
+      "candidate_driver_route"
+    ],
+    [
+      "nvdevice:/dev/nvhost-vic",
+      "nvapi:nvOpen",
+      "candidate_open_interface"
+    ],
+    [
+      "hw:display",
+      "nvdevice:/dev/nvhost-display",
+      "candidate_driver_route"
+    ],
+    [
+      "nvdevice:/dev/nvhost-display",
+      "nvapi:nvOpen",
+      "candidate_open_interface"
+    ],
+    [
+      "hw:gpu",
+      "nvdevice:/dev/nvhost-ctrl-gpu",
+      "candidate_driver_route"
+    ],
+    [
+      "nvdevice:/dev/nvhost-ctrl-gpu",
+      "nvapi:nvOpen",
+      "candidate_open_interface"
+    ],
+    [
+      "hw:mc",
+      "nvdevice:/dev/nvmap",
+      "candidate_driver_route"
+    ],
+    [
+      "nvdevice:/dev/nvmap",
+      "nvapi:nvOpen",
+      "candidate_open_interface"
+    ],
+    [
+      "module:pcv",
+      "pcv:CpuBus",
+      "declares_module"
+    ],
+    [
+      "hw:cpu",
+      "pcv:CpuBus",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:GPU",
+      "declares_module"
+    ],
+    [
+      "hw:gpu",
+      "pcv:GPU",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2S1",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:I2S1",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2S2",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:I2S2",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2S3",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:I2S3",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PWM",
+      "declares_module"
+    ],
+    [
+      "hw:thermal",
+      "pcv:PWM",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2C1",
+      "declares_module"
+    ],
+    [
+      "hw:i2c",
+      "pcv:I2C1",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2C2",
+      "declares_module"
+    ],
+    [
+      "hw:i2c",
+      "pcv:I2C2",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2C3",
+      "declares_module"
+    ],
+    [
+      "hw:i2c",
+      "pcv:I2C3",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2C4",
+      "declares_module"
+    ],
+    [
+      "hw:i2c",
+      "pcv:I2C4",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2C5",
+      "declares_module"
+    ],
+    [
+      "hw:i2c",
+      "pcv:I2C5",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2C6",
+      "declares_module"
+    ],
+    [
+      "hw:i2c",
+      "pcv:I2C6",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SPI1",
+      "declares_module"
+    ],
+    [
+      "hw:spi",
+      "pcv:SPI1",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SPI2",
+      "declares_module"
+    ],
+    [
+      "hw:spi",
+      "pcv:SPI2",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SPI3",
+      "declares_module"
+    ],
+    [
+      "hw:spi",
+      "pcv:SPI3",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SPI4",
+      "declares_module"
+    ],
+    [
+      "hw:spi",
+      "pcv:SPI4",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:DISP1",
+      "declares_module"
+    ],
+    [
+      "hw:display",
+      "pcv:DISP1",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:DISP2",
+      "declares_module"
+    ],
+    [
+      "hw:display",
+      "pcv:DISP2",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:ISP",
+      "declares_module"
+    ],
+    [
+      "hw:isp",
+      "pcv:ISP",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:VI",
+      "declares_module"
+    ],
+    [
+      "hw:vi",
+      "pcv:VI",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SDMMC1",
+      "declares_module"
+    ],
+    [
+      "hw:sdmmc",
+      "pcv:SDMMC1",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SDMMC2",
+      "declares_module"
+    ],
+    [
+      "hw:sdmmc",
+      "pcv:SDMMC2",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SDMMC3",
+      "declares_module"
+    ],
+    [
+      "hw:sdmmc",
+      "pcv:SDMMC3",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SDMMC4",
+      "declares_module"
+    ],
+    [
+      "hw:sdmmc",
+      "pcv:SDMMC4",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:OWR",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:CSITE",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:TSEC",
+      "declares_module"
+    ],
+    [
+      "hw:tsec",
+      "pcv:TSEC",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:MSELECT",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:HDA2CODEC_2X",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:HDA2CODEC_2X",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:ACTMON",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:I2C_SLOW",
+      "declares_module"
+    ],
+    [
+      "hw:i2c",
+      "pcv:I2C_SLOW",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SOR1",
+      "declares_module"
+    ],
+    [
+      "hw:display",
+      "pcv:SOR1",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:SATA",
+      "declares_module"
+    ],
+    [
+      "hw:sata",
+      "pcv:SATA",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:HDA",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:HDA",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_CORE_HOST",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_CORE_HOST",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_FALCON",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_FALCON",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_FS",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_FS",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_CORE_DEV",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_CORE_DEV",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_SS_HOSTDEV",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_SS_HOSTDEV",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:UARTA",
+      "declares_module"
+    ],
+    [
+      "hw:uart",
+      "pcv:UARTA",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:UARTB",
+      "declares_module"
+    ],
+    [
+      "hw:uart",
+      "pcv:UARTB",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:UARTC",
+      "declares_module"
+    ],
+    [
+      "hw:uart",
+      "pcv:UARTC",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:UARTD",
+      "declares_module"
+    ],
+    [
+      "hw:uart",
+      "pcv:UARTD",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:HOST1X",
+      "declares_module"
+    ],
+    [
+      "hw:host1x",
+      "pcv:HOST1X",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:ENTROPY",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:SOC_THERM",
+      "declares_module"
+    ],
+    [
+      "hw:thermal",
+      "pcv:SOC_THERM",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:VIC",
+      "declares_module"
+    ],
+    [
+      "hw:vic",
+      "pcv:VIC",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:NVENC",
+      "declares_module"
+    ],
+    [
+      "hw:nvenc",
+      "pcv:NVENC",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:NVJPG",
+      "declares_module"
+    ],
+    [
+      "hw:nvjpg",
+      "pcv:NVJPG",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:NVDEC",
+      "declares_module"
+    ],
+    [
+      "hw:nvdec",
+      "pcv:NVDEC",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:QSPI",
+      "declares_module"
+    ],
+    [
+      "hw:spi",
+      "pcv:QSPI",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:VI_I2C",
+      "declares_module"
+    ],
+    [
+      "hw:i2c",
+      "pcv:VI_I2C",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:TSECB",
+      "declares_module"
+    ],
+    [
+      "hw:tsec",
+      "pcv:TSECB",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:APE",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:APE",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:ACLK",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:ACLK",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:UARTAPE",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:UARTAPE",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:EMC",
+      "declares_module"
+    ],
+    [
+      "hw:mc",
+      "pcv:EMC",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PLLE0_0",
+      "declares_module"
+    ],
+    [
+      "hw:pcie",
+      "pcv:PLLE0_0",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PLLE0_1",
+      "declares_module"
+    ],
+    [
+      "hw:pcie",
+      "pcv:PLLE0_1",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:DSI",
+      "declares_module"
+    ],
+    [
+      "hw:display",
+      "pcv:DSI",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:MAUD",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:MAUD",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:DPAUX1",
+      "declares_module"
+    ],
+    [
+      "hw:display",
+      "pcv:DPAUX1",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:MIPI_CAL",
+      "declares_module"
+    ],
+    [
+      "hw:mipi",
+      "pcv:MIPI_CAL",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:UART_FST_MIPI_CAL",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:OSC",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:SCLK",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:SOR_SAFE",
+      "declares_module"
+    ],
+    [
+      "hw:display",
+      "pcv:SOR_SAFE",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_SS",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_SS",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_HOST",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_HOST",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_DEV",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_DEV",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:EXTPERIPH1",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:AHUB",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:AHUB",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:HDA2HDMICODEC",
+      "declares_module"
+    ],
+    [
+      "hw:audio",
+      "pcv:HDA2HDMICODEC",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PLLP5",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:USBD",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:USBD",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:USB2",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:USB2",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PCIE",
+      "declares_module"
+    ],
+    [
+      "hw:pcie",
+      "pcv:PCIE",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:AFI",
+      "declares_module"
+    ],
+    [
+      "hw:pcie",
+      "pcv:AFI",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PCIEXCLK",
+      "declares_module"
+    ],
+    [
+      "hw:pcie",
+      "pcv:PCIEXCLK",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PEX_USB_UPHY",
+      "declares_module"
+    ],
+    [
+      "module:pcv",
+      "pcv:XUSB_PADCTL",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:XUSB_PADCTL",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:APBDMA",
+      "declares_module"
+    ],
+    [
+      "hw:dma",
+      "pcv:APBDMA",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:USB2_TRK",
+      "declares_module"
+    ],
+    [
+      "hw:xusb",
+      "pcv:USB2_TRK",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PLLE0_2",
+      "declares_module"
+    ],
+    [
+      "hw:pcie",
+      "pcv:PLLE0_2",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:PLLE0_3",
+      "declares_module"
+    ],
+    [
+      "hw:pcie",
+      "pcv:PLLE0_3",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:CEC",
+      "declares_module"
+    ],
+    [
+      "hw:display",
+      "pcv:CEC",
+      "candidate_clock_mapping"
+    ],
+    [
+      "module:pcv",
+      "pcv:EXTPERIPH2",
+      "declares_module"
+    ],
+    [
+      "hw:gpu",
+      "hwapi:gpu_info",
+      "candidate_api"
+    ],
+    [
+      "hwapi:gpu_info",
+      "module:nv",
+      "source_module"
+    ],
+    [
+      "hw:mc",
+      "hwapi:gpu_mapping",
+      "candidate_api"
+    ],
+    [
+      "hwapi:gpu_mapping",
+      "module:nv",
+      "source_module"
+    ],
+    [
+      "hw:mc",
+      "hwapi:gpu_buffer",
+      "candidate_api"
+    ],
+    [
+      "hwapi:gpu_buffer",
+      "module:nv",
+      "source_module"
+    ],
+    [
+      "hw:gpu",
+      "hwapi:gpu_submit",
+      "candidate_api"
+    ],
+    [
+      "hwapi:gpu_submit",
+      "module:nv",
+      "source_module"
+    ],
+    [
+      "hw:display",
+      "hwapi:display_resolution",
+      "candidate_api"
+    ],
+    [
+      "hwapi:display_resolution",
+      "module:vi",
+      "source_module"
+    ],
+    [
+      "hw:display",
+      "hwapi:display_vsync",
+      "candidate_api"
+    ],
+    [
+      "hwapi:display_vsync",
+      "module:vi",
+      "source_module"
+    ],
+    [
+      "hw:clocks",
+      "hwapi:clock_read",
+      "candidate_api"
+    ],
+    [
+      "hwapi:clock_read",
+      "module:clkrst",
+      "source_module"
+    ],
+    [
+      "hw:clocks",
+      "hwapi:clock_rates",
+      "candidate_api"
+    ],
+    [
+      "hwapi:clock_rates",
+      "module:clkrst",
+      "source_module"
+    ],
+    [
+      "hw:thermal",
+      "hwapi:temperature",
+      "candidate_api"
+    ],
+    [
+      "hwapi:temperature",
+      "module:ts",
+      "source_module"
+    ],
+    [
+      "hw:thermal",
+      "hwapi:skin_temp",
+      "candidate_api"
+    ],
+    [
+      "hwapi:skin_temp",
+      "module:tc",
+      "source_module"
+    ],
+    [
+      "hw:pmic",
+      "hwapi:battery",
+      "candidate_api"
+    ],
+    [
+      "hwapi:battery",
+      "module:psm",
+      "source_module"
+    ]
+  ]
+}

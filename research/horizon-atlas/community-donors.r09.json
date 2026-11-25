@@ -1,0 +1,444 @@
+{
+  "schema": "exodus.community-capability-donors/v1",
+  "scope": "Documentation inventory of upstream Kefir, Kefir Hub, Kefirosphere and inherited 4IFIR composition. No source implementation or device verification. Standalone user Kefir fork not visible among 54 accessible owner repositories; do not conflate 4IFIR with Kefir. No donor code copied.",
+  "sources": {
+    "kefir": {
+      "repo": "rashevskyv/kefir",
+      "path": "README.md",
+      "blob": "c63b395c4014ca5d6b8f77de3e4fd6e54c8738c2"
+    },
+    "hub": {
+      "repo": "rashevskyv/kefir-hub",
+      "path": "README.md",
+      "blob": "79c1910770533a50b2af8a2f03bb450ded6ed16c"
+    },
+    "sphere": {
+      "repo": "rashevskyv/Kefirosphere",
+      "path": "README.md",
+      "blob": "38d6d3656e2e31f89bb0fea099d6886aada6fd31"
+    },
+    "exodus": {
+      "repo": "Garyu-tt/EXODUSx1",
+      "path": "docs/COMPOSITION_4IFIR.md",
+      "blob": "f33ea036a78bf49b2926c6225bf781332fdebbd7"
+    }
+  },
+  "counts": {
+    "candidate": 12,
+    "review_required": 9,
+    "inventory_only": 4,
+    "blocked": 7
+  },
+  "records": [
+    {
+      "id": "homebrew.launcher",
+      "source": "hub",
+      "component": "Kefir Hub/Sphaira",
+      "evidence_domains": [
+        "domain:lifecycle",
+        "domain:display",
+        "domain:input"
+      ],
+      "policy": "candidate",
+      "notes": "Reuse navigation and local NRO catalog concepts",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "files.browser",
+      "source": "hub",
+      "component": "Local file browser",
+      "evidence_domains": [
+        "domain:filesystem"
+      ],
+      "policy": "candidate",
+      "notes": "Scoped SD paths, no protected content access",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "files.remote",
+      "source": "hub",
+      "component": "SMB/WebDAV/FTP/HTTP file sources",
+      "evidence_domains": [
+        "domain:filesystem",
+        "domain:network"
+      ],
+      "policy": "candidate",
+      "notes": "Read-only or scoped writes, authenticated transport; audit protocol libraries",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "files.web",
+      "source": "hub",
+      "component": "Web file manager",
+      "evidence_domains": [
+        "domain:filesystem",
+        "domain:network"
+      ],
+      "policy": "candidate",
+      "notes": "Authenticated local interface, remove game-install routes",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "files.mtp",
+      "source": "exodus",
+      "component": "Background MTP file transfer",
+      "evidence_domains": [
+        "domain:usb",
+        "domain:filesystem"
+      ],
+      "policy": "candidate",
+      "notes": "Separate plain file transfer from protected installation",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "files.ftp",
+      "source": "exodus",
+      "component": "Background FTP server",
+      "evidence_domains": [
+        "domain:network",
+        "domain:filesystem"
+      ],
+      "policy": "candidate",
+      "notes": "Prefer SSH/SFTP; do not expose unauthenticated FTP",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "ui.shell",
+      "source": "exodus",
+      "component": "Latitude qLaunch replacement",
+      "evidence_domains": [
+        "domain:display",
+        "domain:lifecycle",
+        "domain:input"
+      ],
+      "policy": "candidate",
+      "notes": "Use as evidence and transition reference, not final EXODUS UI",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "ui.themes",
+      "source": "hub",
+      "component": "Themes and image viewer",
+      "evidence_domains": [
+        "domain:display",
+        "domain:filesystem"
+      ],
+      "policy": "candidate",
+      "notes": "Own shell themes only; no stock system modification",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "ui.artwork",
+      "source": "exodus",
+      "component": "SteamGridDB artwork",
+      "evidence_domains": [
+        "domain:display",
+        "domain:network"
+      ],
+      "policy": "candidate",
+      "notes": "Independent artwork service, rate limits and terms",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "ui.overlay",
+      "source": "kefir",
+      "component": "Ultrahand / nx-ovlloader",
+      "evidence_domains": [
+        "domain:display",
+        "domain:lifecycle"
+      ],
+      "policy": "review_required",
+      "notes": "Audit privilege and foreground interactions; prefer owned surfaces",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "input.usb",
+      "source": "kefir",
+      "component": "sys-con",
+      "evidence_domains": [
+        "domain:usb",
+        "domain:input"
+      ],
+      "policy": "review_required",
+      "notes": "Driver and device compatibility; no input injection into protected applications",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "input.bluetooth",
+      "source": "kefir",
+      "component": "Mission Control",
+      "evidence_domains": [
+        "domain:bluetooth",
+        "domain:input"
+      ],
+      "policy": "review_required",
+      "notes": "Peripheral protocol support and permissions",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "media.capture",
+      "source": "exodus",
+      "component": "SysDVR",
+      "evidence_domains": [
+        "domain:capture",
+        "domain:network"
+      ],
+      "policy": "review_required",
+      "notes": "Only allowed capture surfaces and authorized local streaming",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "media.color",
+      "source": "exodus",
+      "component": "Fizeau",
+      "evidence_domains": [
+        "domain:display"
+      ],
+      "policy": "review_required",
+      "notes": "Owned rendering effects preferred; audit system-wide changes",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "monitor.metrics",
+      "source": "exodus",
+      "component": "Status Monitor / InfoNX",
+      "evidence_domains": [
+        "domain:power",
+        "domain:diagnostics"
+      ],
+      "policy": "candidate",
+      "notes": "Read-only local telemetry with permissions review",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "monitor.modules",
+      "source": "hub",
+      "component": "Module Manager and RAM metrics",
+      "evidence_domains": [
+        "domain:lifecycle",
+        "domain:kernel"
+      ],
+      "policy": "review_required",
+      "notes": "Read-only owned modules first; no arbitrary module control",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "power.fan",
+      "source": "hub",
+      "component": "Fan curves",
+      "evidence_domains": [
+        "domain:power"
+      ],
+      "policy": "review_required",
+      "notes": "Read-only first; hardware write separate thermal safety gate",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "power.clocks",
+      "source": "exodus",
+      "component": "sys-clk / 4IFIR Wizard",
+      "evidence_domains": [
+        "domain:power"
+      ],
+      "policy": "review_required",
+      "notes": "Document frequency capabilities; no automatic changes",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "power.memory",
+      "source": "sphere",
+      "component": "Resource pools and RAM variants",
+      "evidence_domains": [
+        "domain:kernel",
+        "domain:power"
+      ],
+      "policy": "inventory_only",
+      "notes": "Claims require source and model-specific tests; no boot patches imported",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "power.dram",
+      "source": "sphere",
+      "component": "DRAM revision support",
+      "evidence_domains": [
+        "domain:bus",
+        "domain:kernel"
+      ],
+      "policy": "inventory_only",
+      "notes": "Board-specific evidence; no assumed support",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "boot.recovery",
+      "source": "kefir",
+      "component": "Hekate / TegraExplorer",
+      "evidence_domains": [
+        "domain:filesystem",
+        "domain:lifecycle"
+      ],
+      "policy": "inventory_only",
+      "notes": "External recovery layer, not native Horizon API; no automated writes",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "storage.save",
+      "source": "hub",
+      "component": "Save manager",
+      "evidence_domains": [
+        "domain:filesystem",
+        "domain:local_data"
+      ],
+      "policy": "review_required",
+      "notes": "Own data only; consent, backup and ownership boundaries",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "storage.redirect",
+      "source": "sphere",
+      "component": "Optional save redirection",
+      "evidence_domains": [
+        "domain:filesystem"
+      ],
+      "policy": "inventory_only",
+      "notes": "Study isolation and recovery concepts; no NAND changes",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "packages.homebrew",
+      "source": "hub",
+      "component": "Homebrew AppStore",
+      "evidence_domains": [
+        "domain:network",
+        "domain:filesystem"
+      ],
+      "policy": "candidate",
+      "notes": "Only authorized homebrew; verify manifest, signatures, license and hashes",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "packages.update",
+      "source": "hub",
+      "component": "Updater",
+      "evidence_domains": [
+        "domain:network",
+        "domain:filesystem"
+      ],
+      "policy": "candidate",
+      "notes": "Separate EXODUS own signed update channel from system updates",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "risk.systemupdate",
+      "source": "hub",
+      "component": "Firmware install/downgrade",
+      "evidence_domains": [
+        "domain:official",
+        "domain:lifecycle"
+      ],
+      "policy": "blocked",
+      "notes": "No system updates from EXODUS Safe Mode",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "risk.install",
+      "source": "hub",
+      "component": "Game installation / Ownfoil / dumping",
+      "evidence_domains": [
+        "domain:official",
+        "domain:filesystem"
+      ],
+      "policy": "blocked",
+      "notes": "Do not import protected content install/dump routes",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "risk.account",
+      "source": "hub",
+      "component": "Account linking and transfer",
+      "evidence_domains": [
+        "domain:accounts"
+      ],
+      "policy": "blocked",
+      "notes": "Use independent EXODUS local profile",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "risk.patches",
+      "source": "sphere",
+      "component": "Signature verification modifications",
+      "evidence_domains": [
+        "domain:kernel",
+        "domain:official"
+      ],
+      "policy": "blocked",
+      "notes": "Do not adopt verification bypass",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "risk.logging",
+      "source": "sphere",
+      "component": "System diagnostic logging modifications",
+      "evidence_domains": [
+        "domain:diagnostics"
+      ],
+      "policy": "blocked",
+      "notes": "No telemetry manipulation",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "risk.cheats",
+      "source": "kefir",
+      "component": "Cheat overlay and process modifications",
+      "evidence_domains": [
+        "domain:lifecycle",
+        "domain:kernel"
+      ],
+      "policy": "blocked",
+      "notes": "No protected process manipulation",
+      "verification": "documentation_only",
+      "executable": false
+    },
+    {
+      "id": "risk.keys",
+      "source": "kefir",
+      "component": "Console key dumping",
+      "evidence_domains": [
+        "domain:crypto"
+      ],
+      "policy": "blocked",
+      "notes": "No protected key extraction",
+      "verification": "documentation_only",
+      "executable": false
+    }
+  ]
+}

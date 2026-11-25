@@ -1,0 +1,1154 @@
+{
+  "schema": "exodus.horizon-ipc-candidates/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Literal source candidates only, not complete interfaces or permissions. Dynamic IDs and helpers unresolved.",
+  "missing": [],
+  "counts": {
+    "requested": 8,
+    "fetched": 8,
+    "distinct_endpoint_tokens": 8,
+    "dispatch_occurrences": 59,
+    "version_check_occurrences": 118
+  },
+  "records": [
+    {
+      "module": "bt",
+      "path": "nx/source/services/bt.c",
+      "blob": "e30099328346038655804eeb5c91b83efc3fd625",
+      "line_count": 179,
+      "literal_endpoints": [
+        {
+          "name": "bt",
+          "line": 16
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btSrv",
+          "command": 0,
+          "line": 38,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btSrv",
+          "command": 1,
+          "line": 55,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btSrv",
+          "command": 2,
+          "line": 72,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btSrv",
+          "command": 3,
+          "line": 91,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btSrv",
+          "command": 6,
+          "line": 131,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btSrv",
+          "command": 7,
+          "line": 149,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btSrv",
+          "command": 8,
+          "line": 158,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btSrv",
+          "command": 9,
+          "line": 170,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 13
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "btm",
+      "path": "nx/source/services/btm.c",
+      "blob": "40f785311e4211ec43226ac517afc7ab21c65427",
+      "line_count": 656,
+      "literal_endpoints": [
+        {
+          "name": "btm",
+          "line": 12
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_btmSrv",
+          "command": 1,
+          "line": 160,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btmSrv",
+          "command": 13,
+          "line": 257,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btmSrv",
+          "command": 17,
+          "line": 273,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmSrv",
+          "command": 24,
+          "line": 325,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmSrv",
+          "command": 25,
+          "line": 332,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btmSrv",
+          "command": 31,
+          "line": 374,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btmSrv",
+          "command": 43,
+          "line": 474,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmSrv",
+          "command": 44,
+          "line": 481,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "3.0.0",
+          "line": 31
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 159
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "13.0.0",
+          "line": 170
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "9.0.0",
+          "line": 174
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "8.0.0",
+          "line": 175
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "5.1.0",
+          "line": 176
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 182
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "9.0.0",
+          "line": 197
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "13.0.0",
+          "line": 212
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 219
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "13.0.0",
+          "line": 226
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 233
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "9.0.0",
+          "line": 248
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "2.0.0",
+          "line": 280
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 287
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 294
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 301
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 308
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 315
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 322
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 329
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 336
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 343
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 350
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 357
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 364
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 371
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 378
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 385
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 392
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 399
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 401
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 407
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 414
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 416
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 422
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 424
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 433
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 435
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 444
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 446
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 452
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 459
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 466
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 478
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 488
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 495
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 497
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 506
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 508
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 525
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 527
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 533
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 535
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 553
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 555
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 561
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 563
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 569
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 571
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 577
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 579
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 591
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 593
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 599
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 601
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 607
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 609
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 615
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 617
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 628
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 630
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 636
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.1.0",
+          "line": 638
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "13.0.0",
+          "line": 644
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "14.0.0",
+          "line": 651
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "btmu",
+      "path": "nx/source/services/btmu.c",
+      "blob": "d652bfcb0502df29e176993881c57c0c9a632ace",
+      "line_count": 334,
+      "literal_endpoints": [
+        {
+          "name": "btm:u",
+          "line": 32
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 1,
+          "line": 128,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 2,
+          "line": 132,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 8,
+          "line": 162,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 18,
+          "line": 186,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 20,
+          "line": 197,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 24,
+          "line": 222,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 25,
+          "line": 226,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 27,
+          "line": 243,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 28,
+          "line": 258,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 30,
+          "line": 280,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 34,
+          "line": 309,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_btmuIBtmUserCore",
+          "command": 35,
+          "line": 321,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 29
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "hidbus",
+      "path": "nx/source/services/hidbus.c",
+      "blob": "86f2136479d6bee9b750be748883749d125cf38c",
+      "line_count": 573,
+      "literal_endpoints": [
+        {
+          "name": "hidbus",
+          "line": 29
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv",
+          "command": 1,
+          "line": 59,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 5,
+          "line": 85,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv",
+          "command": 6,
+          "line": 89,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 7,
+          "line": 93,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "srv",
+          "command": 8,
+          "line": 100,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 9,
+          "line": 108,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 11,
+          "line": 126,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 12,
+          "line": 137,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 14,
+          "line": 141,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 26
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 33
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 177
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 296
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 462
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 486
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 511
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 537
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 561
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "irs",
+      "path": "nx/source/services/irs.c",
+      "blob": "edd546d7ee11b02334d44b9eaa3df9031f1dc8ff",
+      "line_count": 1283,
+      "literal_endpoints": [
+        {
+          "name": "irs",
+          "line": 89
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_irsSrv",
+          "command": 311,
+          "line": 282,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 304,
+          "line": 433,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 305,
+          "line": 446,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 306,
+          "line": 459,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 307,
+          "line": 472,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 308,
+          "line": 486,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_irsSrv",
+          "command": 309,
+          "line": 499,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 310,
+          "line": 513,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 312,
+          "line": 525,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 313,
+          "line": 536,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 314,
+          "line": 552,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 316,
+          "line": 566,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 317,
+          "line": 583,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 318,
+          "line": 597,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_irsSrv",
+          "command": 319,
+          "line": 609,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "4.0.0",
+          "line": 71
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "5.0.0",
+          "line": 73
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 75
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "8.0.0",
+          "line": 77
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "4.0.0",
+          "line": 82
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "5.0.0",
+          "line": 84
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 86
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 93
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 286
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 333
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 542
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 574
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 589
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 628
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 897
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 1095
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 1196
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "6.0.0",
+          "line": 1203
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 1231
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "lbl",
+      "path": "nx/source/services/lbl.c",
+      "blob": "6e4916927c97cafbff073c6dd351a7323865dfbc",
+      "line_count": 160,
+      "literal_endpoints": [
+        {
+          "name": "lbl",
+          "line": 11
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_lblSrv",
+          "command": 8,
+          "line": 82,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_lblSrv",
+          "command": 16,
+          "line": 119,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 128
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 133
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 138
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 144
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 150
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "3.0.0",
+          "line": 156
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "tc",
+      "path": "nx/source/services/tc.c",
+      "blob": "dae85f88c32392aebb6774f6d8df63ed47eed12c",
+      "line_count": 48,
+      "literal_endpoints": [
+        {
+          "name": "tc",
+          "line": 12
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_tcSrv",
+          "command": 8,
+          "line": 37,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_tcSrv",
+          "command": 9,
+          "line": 46,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 43
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "ts",
+      "path": "nx/source/services/ts.c",
+      "blob": "715e6aad6707a826bbc17b898960a5824dd9bc37",
+      "line_count": 76,
+      "literal_endpoints": [
+        {
+          "name": "ts",
+          "line": 12
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_tsSrv",
+          "command": 0,
+          "line": 38,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_tsSrv",
+          "command": 4,
+          "line": 60,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&s->s",
+          "command": 4,
+          "line": 70,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 28
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 45
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "14.0.0",
+          "line": 51
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "8.0.0",
+          "line": 57
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 67
+        }
+      ],
+      "status": "unreviewed_disabled"
+    }
+  ]
+}

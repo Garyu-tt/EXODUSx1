@@ -1,0 +1,2456 @@
+{
+  "schema": "exodus.horizon-ipc-forwarding/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Experimental syntactic dataflow; BSD and DNS custom macros use argument zero as command. Branches, parameter reassignments and receiver identities unresolved. No runtime admission.",
+  "counts": {
+    "modules": 8,
+    "functions": 407,
+    "forwarding_helpers": 60,
+    "direct_literal_candidates": 95,
+    "forwarded_literal_candidates": 119
+  },
+  "records": [
+    {
+      "module": "bsd",
+      "functions": 39,
+      "forwarding_helpers": [
+        {
+          "name": "_bsdCmdInSockfdOutSockaddr",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 183
+        },
+        {
+          "name": "_bsdCmdInSockfdSockaddr",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 192
+        },
+        {
+          "name": "_bsdCmdInDomainTypeProtocol",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 199
+        }
+      ],
+      "direct": [
+        {
+          "caller": "_bsdRegisterClient",
+          "line": 98,
+          "callee": "serviceDispatchInOut",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_bsdSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_bsdStartMonitoring",
+          "line": 110,
+          "callee": "serviceDispatchIn",
+          "command": 1,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_bsdMonitor",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdOpen",
+          "line": 289,
+          "callee": "_bsdDispatchIn",
+          "command": 4,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdSelect",
+          "line": 305,
+          "callee": "_bsdDispatchIn",
+          "command": 5,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdPoll",
+          "line": 333,
+          "callee": "_bsdDispatchIn",
+          "command": 6,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdSysctl",
+          "line": 348,
+          "callee": "_bsdDispatchOut",
+          "command": 7,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdRecv",
+          "line": 368,
+          "callee": "_bsdDispatchIn",
+          "command": 8,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdRecvFrom",
+          "line": 382,
+          "callee": "_bsdDispatchInOut",
+          "command": 9,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdSend",
+          "line": 400,
+          "callee": "_bsdDispatchIn",
+          "command": 10,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdSendTo",
+          "line": 412,
+          "callee": "_bsdDispatchIn",
+          "command": 11,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdGetSockOpt",
+          "line": 453,
+          "callee": "_bsdDispatchInOut",
+          "command": 17,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdListen",
+          "line": 465,
+          "callee": "_bsdDispatchIn",
+          "command": 18,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdIoctl",
+          "line": 520,
+          "callee": "_bsdDispatchIn",
+          "command": 19,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdFcntl",
+          "line": 560,
+          "callee": "_bsdDispatchIn",
+          "command": 20,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdSetSockOpt",
+          "line": 570,
+          "callee": "_bsdDispatchIn",
+          "command": 21,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdShutdown",
+          "line": 582,
+          "callee": "_bsdDispatchIn",
+          "command": 22,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdShutdownAllSockets",
+          "line": 586,
+          "callee": "_bsdDispatchIn",
+          "command": 23,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdWrite",
+          "line": 590,
+          "callee": "_bsdDispatchIn",
+          "command": 24,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdRead",
+          "line": 597,
+          "callee": "_bsdDispatchIn",
+          "command": 25,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdClose",
+          "line": 604,
+          "callee": "_bsdDispatchIn",
+          "command": 26,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdDuplicateSocket",
+          "line": 614,
+          "callee": "_bsdDispatchIn",
+          "command": 27,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdRecvMMsg",
+          "line": 629,
+          "callee": "_bsdDispatchIn",
+          "command": 29,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdSendMMsg",
+          "line": 645,
+          "callee": "_bsdDispatchIn",
+          "command": 30,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "forwarded": [
+        {
+          "caller": "bsdSocket",
+          "line": 281,
+          "callee": "_bsdCmdInDomainTypeProtocol",
+          "command": 2,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdSocketExempt",
+          "line": 285,
+          "callee": "_bsdCmdInDomainTypeProtocol",
+          "command": 3,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdAccept",
+          "line": 425,
+          "callee": "_bsdCmdInSockfdOutSockaddr",
+          "command": 12,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdBind",
+          "line": 429,
+          "callee": "_bsdCmdInSockfdSockaddr",
+          "command": 13,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdConnect",
+          "line": 433,
+          "callee": "_bsdCmdInSockfdSockaddr",
+          "command": 14,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdGetPeerName",
+          "line": 437,
+          "callee": "_bsdCmdInSockfdOutSockaddr",
+          "command": 15,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "bsdGetSockName",
+          "line": 441,
+          "callee": "_bsdCmdInSockfdOutSockaddr",
+          "command": 16,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "source_path": "nx/source/services/bsd.c",
+      "blob": "2b1d1482034789eb503ba7afc26a53e847b45219"
+    },
+    {
+      "module": "sfdnsres",
+      "functions": 10,
+      "forwarding_helpers": [
+        {
+          "name": "_sfdnsresCmdInErrOutStr",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 66
+        }
+      ],
+      "direct": [
+        {
+          "caller": "sfdnsresGetHostByNameRequest",
+          "line": 86,
+          "callee": "_sfdnsresDispatchInOut",
+          "command": 2,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "sfdnsresGetHostByAddrRequest",
+          "line": 122,
+          "callee": "_sfdnsresDispatchInOut",
+          "command": 3,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "sfdnsresGetAddrInfoRequest",
+          "line": 163,
+          "callee": "_sfdnsresDispatchInOut",
+          "command": 6,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "sfdnsresGetNameInfoRequest",
+          "line": 200,
+          "callee": "_sfdnsresDispatchInOut",
+          "command": 7,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "sfdnsresGetCancelHandleRequest",
+          "line": 224,
+          "callee": "_sfdnsresDispatchInOut",
+          "command": 8,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "sfdnsresCancelRequest",
+          "line": 234,
+          "callee": "_sfdnsresDispatchIn",
+          "command": 9,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "forwarded": [
+        {
+          "caller": "sfdnsresGetHostStringErrorRequest",
+          "line": 143,
+          "callee": "_sfdnsresCmdInErrOutStr",
+          "command": 4,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "sfdnsresGetGaiStringErrorRequest",
+          "line": 147,
+          "callee": "_sfdnsresCmdInErrOutStr",
+          "command": 5,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "source_path": "nx/source/services/sfdnsres.c",
+      "blob": "85290b884f9b5058f5003f89f7c25261c0b579cb"
+    },
+    {
+      "module": "usbhs",
+      "functions": 43,
+      "forwarding_helpers": [
+        {
+          "name": "_usbHsGetHandle",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 47
+        },
+        {
+          "name": "_usbHsGetEvent",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 55
+        },
+        {
+          "name": "_usbHsCmdNoIO",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 64
+        },
+        {
+          "name": "_usbHsCmdInU8NoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 69
+        },
+        {
+          "name": "_usbDsCmdNoInOutU32",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 74
+        },
+        {
+          "name": "_usbHsCmdRecvBufNoOut",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 79
+        },
+        {
+          "name": "_usbHsIfGetInf",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 227
+        }
+      ],
+      "direct": [
+        {
+          "caller": "_usbHsBindClientProcess",
+          "line": 89,
+          "callee": "serviceDispatch",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_usbHsSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_usbHsAcquireUsbIfOld",
+          "line": 171,
+          "callee": "serviceDispatchIn",
+          "command": 6,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_usbHsSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_usbHsAcquireUsbIf",
+          "line": 182,
+          "callee": "serviceDispatchIn",
+          "command": 7,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_usbHsSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_usbHsIfCtrlXferAsync",
+          "line": 294,
+          "callee": "serviceDispatchIn",
+          "command": 5,
+          "command_argument_index": 1,
+          "receiver_candidate": "&s->s",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsEpPostBufferAsync",
+          "line": 415,
+          "callee": "serviceDispatchInOut",
+          "command": 4,
+          "command_argument_index": 1,
+          "receiver_candidate": "&s->s",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsEpGetXferReport",
+          "line": 424,
+          "callee": "serviceDispatchInOut",
+          "command": 5,
+          "command_argument_index": 1,
+          "receiver_candidate": "&s->s",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsEpBatchBufferAsync",
+          "line": 497,
+          "callee": "serviceDispatchInOut",
+          "command": 6,
+          "command_argument_index": 1,
+          "receiver_candidate": "&s->s",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsEpCreateSmmuSpace",
+          "line": 514,
+          "callee": "serviceDispatchIn",
+          "command": 7,
+          "command_argument_index": 1,
+          "receiver_candidate": "&s->s",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsEpShareReportRing",
+          "line": 530,
+          "callee": "serviceDispatchIn",
+          "command": 8,
+          "command_argument_index": 1,
+          "receiver_candidate": "&s->s",
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "forwarded": [
+        {
+          "caller": "usbHsAcquireUsbIf",
+          "line": 210,
+          "callee": "_usbHsGetEvent",
+          "command": 0,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsAcquireUsbIf",
+          "line": 211,
+          "callee": "_usbHsGetEvent",
+          "command": 6,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsIfSetInterface",
+          "line": 240,
+          "callee": "_usbHsIfGetInf",
+          "command": 1,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsIfGetAlternateInterface",
+          "line": 244,
+          "callee": "_usbHsIfGetInf",
+          "command": 3,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsIfGetInterface",
+          "line": 250,
+          "callee": "_usbHsCmdRecvBufNoOut",
+          "command": 2,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_usbHsIfGetCtrlXferReport",
+          "line": 298,
+          "callee": "_usbHsCmdRecvBufNoOut",
+          "command": 7,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsIfOpenUsbEp",
+          "line": 353,
+          "callee": "_usbHsCmdNoIO",
+          "command": 3,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsIfOpenUsbEp",
+          "line": 354,
+          "callee": "_usbHsGetEvent",
+          "command": 2,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbHsIfResetDevice",
+          "line": 369,
+          "callee": "_usbHsCmdNoIO",
+          "command": 8,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "source_path": "nx/source/services/usbhs.c",
+      "blob": "7b72fe3da9c1ef88bc1a65f2bd024cafae19cb49"
+    },
+    {
+      "module": "usbds",
+      "functions": 58,
+      "forwarding_helpers": [
+        {
+          "name": "_usbDsGetHandle",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 153
+        },
+        {
+          "name": "_usbDsGetEvent",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 161
+        },
+        {
+          "name": "_usbDsCmdNoIO",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 170
+        },
+        {
+          "name": "_usbDsCmdInU8NoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 175
+        },
+        {
+          "name": "_usbDsCmdInBoolNoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 180
+        },
+        {
+          "name": "_usbDsCmdInU32NoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 185
+        },
+        {
+          "name": "_usbDsCmdNoInOutU32",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 190
+        },
+        {
+          "name": "_usbDsCmdSendBufNoOut",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 195
+        },
+        {
+          "name": "_usbDsPostBuffer",
+          "command_argument_indices": [
+            4
+          ],
+          "line": 310
+        },
+        {
+          "name": "_usbDsGetReport",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 323
+        }
+      ],
+      "direct": [
+        {
+          "caller": "_usbDsInitialize",
+          "line": 39,
+          "callee": "serviceDispatch",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_usbDsRootSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_usbDsBindDevice",
+          "line": 209,
+          "callee": "serviceDispatchIn",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_usbDsSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_usbDsBindDevice",
+          "line": 218,
+          "callee": "serviceDispatch",
+          "command": 1,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_usbDsSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsInterface_GetSetupPacket",
+          "line": 580,
+          "callee": "serviceDispatch",
+          "command": 2,
+          "command_argument_index": 1,
+          "receiver_candidate": "&interface->s",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_usbDsInterface_GetDsEndpoint",
+          "line": 588,
+          "callee": "serviceDispatchOut",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "srv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsInterface_RegisterEndpoint",
+          "line": 667,
+          "callee": "serviceDispatchIn",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "&interface->s",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsInterface_AppendConfigurationData",
+          "line": 692,
+          "callee": "serviceDispatchIn",
+          "command": 12,
+          "command_argument_index": 1,
+          "receiver_candidate": "&interface->s",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsInterface_AppendConfigurationData",
+          "line": 699,
+          "callee": "serviceDispatchIn",
+          "command": 10,
+          "command_argument_index": 1,
+          "receiver_candidate": "&interface->s",
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "forwarded": [
+        {
+          "caller": "_usbDsBindDevice",
+          "line": 215,
+          "callee": "_usbDsCmdInU32NoOut",
+          "command": 0,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsSetVidPidBcd",
+          "line": 307,
+          "callee": "_usbDsCmdSendBufNoOut",
+          "command": 5,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsGetDsInterface",
+          "line": 374,
+          "callee": "_usbDsGetEvent",
+          "command": 1,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsGetDsInterface",
+          "line": 377,
+          "callee": "_usbDsGetEvent",
+          "command": 7,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsGetDsInterface",
+          "line": 380,
+          "callee": "_usbDsGetEvent",
+          "command": 9,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsRegisterInterface",
+          "line": 426,
+          "callee": "_usbDsGetEvent",
+          "command": 1,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsRegisterInterfaceEx",
+          "line": 453,
+          "callee": "_usbDsGetEvent",
+          "command": 1,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsInterface_GetDsEndpoint",
+          "line": 606,
+          "callee": "_usbDsGetEvent",
+          "command": 2,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsInterface_EnableInterface",
+          "line": 618,
+          "callee": "_usbDsCmdNoIO",
+          "command": 3,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsInterface_DisableInterface",
+          "line": 625,
+          "callee": "_usbDsCmdNoIO",
+          "command": 4,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsInterface_RegisterEndpoint",
+          "line": 672,
+          "callee": "_usbDsGetEvent",
+          "command": 2,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsEndpoint_PostBufferAsync",
+          "line": 714,
+          "callee": "_usbDsPostBuffer",
+          "command": 0,
+          "command_argument_index": 4,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsEndpoint_Cancel",
+          "line": 720,
+          "callee": "_usbDsCmdNoIO",
+          "command": 1,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsEndpoint_GetReportData",
+          "line": 726,
+          "callee": "_usbDsGetReport",
+          "command": 3,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsEndpoint_Stall",
+          "line": 732,
+          "callee": "_usbDsCmdNoIO",
+          "command": 4,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "usbDsEndpoint_SetZlt",
+          "line": 738,
+          "callee": "_usbDsCmdInBoolNoOut",
+          "command": 5,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "source_path": "nx/source/services/usbds.c",
+      "blob": "e19875adb020ff2851fc94e32181b47d6ac217a5"
+    },
+    {
+      "module": "hid",
+      "functions": 189,
+      "forwarding_helpers": [
+        {
+          "name": "_hidCmdNoIO",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 587
+        },
+        {
+          "name": "_hidCmdGetHandle",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 591
+        },
+        {
+          "name": "_hidCmdGetSession",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 598
+        },
+        {
+          "name": "_hidCmdInAruidNoOut",
+          "command_argument_indices": [
+            0
+          ],
+          "line": 605
+        },
+        {
+          "name": "_hidCmdInU8NoOut",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 613
+        },
+        {
+          "name": "_hidCmdInBoolNoOut",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 617
+        },
+        {
+          "name": "_hidCmdInU32NoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 621
+        },
+        {
+          "name": "_hidCmdInU64NoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 625
+        },
+        {
+          "name": "_hidCmdInU16U64NoOut",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 629
+        },
+        {
+          "name": "_hidCmdInU32U64NoOut",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 639
+        },
+        {
+          "name": "_hidCmdInU64U64NoOut",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 649
+        },
+        {
+          "name": "_hidCmdInU8AruidNoOut",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 658
+        },
+        {
+          "name": "_hidCmdInBoolAruidNoOut",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 670
+        },
+        {
+          "name": "_hidCmdInU32AruidNoOut",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 674
+        },
+        {
+          "name": "_hidCmdInU64AruidNoOut",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 686
+        },
+        {
+          "name": "_hidCmdInU32AruidU64NoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 697
+        },
+        {
+          "name": "_hidCmdInU8U32AruidNoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 710
+        },
+        {
+          "name": "_hidCmdInBoolU32AruidNoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 723
+        },
+        {
+          "name": "_hidCmdInU32U32AruidNoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 727
+        },
+        {
+          "name": "_hidCmdInU32AruidOutU8",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 738
+        },
+        {
+          "name": "_hidCmdInU32AruidOutBool",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 750
+        },
+        {
+          "name": "_hidCmdInU32AruidOutU64",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 757
+        },
+        {
+          "name": "_hidCmdInAruidOutU32",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 769
+        },
+        {
+          "name": "_hidCmdInAruidOutU64",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 777
+        },
+        {
+          "name": "_hidCmdNoInOutU8",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 785
+        },
+        {
+          "name": "_hidCmdNoInOutBool",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 789
+        },
+        {
+          "name": "_hidCmdNoInOutU64",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 796
+        }
+      ],
+      "direct": [
+        {
+          "caller": "_hidCreateAppletResource",
+          "line": 803,
+          "callee": "serviceDispatchIn",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "srv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetSixAxisSensorFusionParameters",
+          "line": 865,
+          "callee": "serviceDispatchIn",
+          "command": 70,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetSixAxisSensorFusionParameters",
+          "line": 884,
+          "callee": "serviceDispatchInOut",
+          "command": 71,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetGyroscopeZeroDriftMode",
+          "line": 903,
+          "callee": "serviceDispatchIn",
+          "command": 79,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetGyroscopeZeroDriftMode",
+          "line": 918,
+          "callee": "serviceDispatchInOut",
+          "command": 80,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetSupportedNpadIdType",
+          "line": 960,
+          "callee": "serviceDispatchIn",
+          "command": 102,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidAcquireNpadStyleSetUpdateEventHandle",
+          "line": 995,
+          "callee": "serviceDispatchIn",
+          "command": 106,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetPlayerLedPattern",
+          "line": 1011,
+          "callee": "serviceDispatchIn",
+          "command": 108,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadJoyAssignmentModeSingleWithDestination",
+          "line": 1087,
+          "callee": "serviceDispatchInOut",
+          "command": 133,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetVibrationDeviceInfo",
+          "line": 1143,
+          "callee": "serviceDispatchInOut",
+          "command": 200,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSendVibrationValue",
+          "line": 1154,
+          "callee": "serviceDispatchIn",
+          "command": 201,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetActualVibrationValue",
+          "line": 1166,
+          "callee": "serviceDispatchInOut",
+          "command": 202,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSendVibrationValues",
+          "line": 1190,
+          "callee": "serviceDispatchIn",
+          "command": 206,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSendVibrationGcErmCommand",
+          "line": 1213,
+          "callee": "serviceDispatchIn",
+          "command": 207,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetActualVibrationGcErmCommand",
+          "line": 1229,
+          "callee": "serviceDispatchInOut",
+          "command": 208,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidIsVibrationDeviceMounted",
+          "line": 1263,
+          "callee": "serviceDispatchInOut",
+          "command": 211,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidInitializeSevenSixAxisSensor",
+          "line": 1450,
+          "callee": "serviceDispatchIn",
+          "command": 306,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetSevenSixAxisSensorFusionStrength",
+          "line": 1520,
+          "callee": "serviceDispatchIn",
+          "command": 308,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetSevenSixAxisSensorFusionStrength",
+          "line": 1531,
+          "callee": "serviceDispatchInOut",
+          "command": 309,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidIsUsbFullKeyControllerConnected",
+          "line": 1607,
+          "callee": "serviceDispatchInOut",
+          "command": 402,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetNpadInterfaceType",
+          "line": 1617,
+          "callee": "serviceDispatchInOut",
+          "command": 405,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetNpadOfHighestBatteryLevel",
+          "line": 1627,
+          "callee": "serviceDispatchInOut",
+          "command": 407,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidAcquirePalmaOperationCompleteEvent",
+          "line": 1660,
+          "callee": "serviceDispatchIn",
+          "command": 502,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidGetPalmaOperationInfo",
+          "line": 1672,
+          "callee": "serviceDispatchInOut",
+          "command": 503,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidEnablePalmaStep",
+          "line": 1730,
+          "callee": "serviceDispatchIn",
+          "command": 507,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidReadPalmaApplicationSection",
+          "line": 1753,
+          "callee": "serviceDispatchIn",
+          "command": 509,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidWritePalmaApplicationSection",
+          "line": 1766,
+          "callee": "serviceDispatchIn",
+          "command": 510,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidWritePalmaActivityEntry",
+          "line": 1798,
+          "callee": "serviceDispatchIn",
+          "command": 513,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidWritePalmaRgbLedPatternEntry",
+          "line": 1810,
+          "callee": "serviceDispatchIn",
+          "command": 514,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidWritePalmaWaveEntry",
+          "line": 1825,
+          "callee": "serviceDispatchIn",
+          "command": 515,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetPalmaBluetoothAddress",
+          "line": 1930,
+          "callee": "serviceDispatchInOut",
+          "command": 528,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetDisallowedPalmaConnection",
+          "line": 1939,
+          "callee": "serviceDispatchIn",
+          "command": 529,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetTouchScreenConfiguration",
+          "line": 1966,
+          "callee": "serviceDispatchIn",
+          "command": 1002,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidIsFirmwareUpdateNeededForNotification",
+          "line": 1984,
+          "callee": "serviceDispatchInOut",
+          "command": 1003,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_hidSrv",
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "forwarded": [
+        {
+          "caller": "_hidGetSharedMemoryHandle",
+          "line": 811,
+          "callee": "_hidCmdGetHandle",
+          "command": 0,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidActivateTouchScreen",
+          "line": 815,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 11,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidActivateMouse",
+          "line": 819,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 21,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidActivateKeyboard",
+          "line": 823,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 31,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSendKeyboardLockKeyEvent",
+          "line": 830,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 32,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidStartSixAxisSensor",
+          "line": 838,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 66,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidStopSixAxisSensor",
+          "line": 842,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 67,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidIsSixAxisSensorFusionEnabled",
+          "line": 846,
+          "callee": "_hidCmdInU32AruidOutBool",
+          "command": 68,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidEnableSixAxisSensorFusion",
+          "line": 850,
+          "callee": "_hidCmdInBoolU32AruidNoOut",
+          "command": 69,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidResetSixAxisSensorFusionParameters",
+          "line": 893,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 72,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidResetGyroscopeZeroDriftMode",
+          "line": 926,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 81,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidIsSixAxisSensorAtRest",
+          "line": 930,
+          "callee": "_hidCmdInU32AruidOutBool",
+          "command": 82,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidIsFirmwareUpdateAvailableForSixAxisSensor",
+          "line": 937,
+          "callee": "_hidCmdInU32AruidOutBool",
+          "command": 83,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidActivateGesture",
+          "line": 943,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 91,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetSupportedNpadStyleSet",
+          "line": 947,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 100,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetSupportedNpadStyleSet",
+          "line": 952,
+          "callee": "_hidCmdInAruidOutU32",
+          "command": 101,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidActivateNpad",
+          "line": 971,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 103,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidActivateNpad",
+          "line": 981,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 109,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidDisconnectNpad",
+          "line": 1005,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 107,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadJoyHoldType",
+          "line": 1017,
+          "callee": "_hidCmdInU64AruidNoOut",
+          "command": 120,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetNpadJoyHoldType",
+          "line": 1022,
+          "callee": "_hidCmdInAruidOutU64",
+          "command": 121,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadJoyAssignmentModeSingleByDefault",
+          "line": 1028,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 122,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadJoyAssignmentModeSingle",
+          "line": 1032,
+          "callee": "_hidCmdInU32AruidU64NoOut",
+          "command": 123,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadJoyAssignmentModeDual",
+          "line": 1036,
+          "callee": "_hidCmdInU32AruidNoOut",
+          "command": 124,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidMergeSingleJoyAsDualJoy",
+          "line": 1040,
+          "callee": "_hidCmdInU32U32AruidNoOut",
+          "command": 125,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidStartLrAssignmentMode",
+          "line": 1044,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 126,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidStopLrAssignmentMode",
+          "line": 1048,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 127,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadHandheldActivationMode",
+          "line": 1052,
+          "callee": "_hidCmdInU64AruidNoOut",
+          "command": 128,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetNpadHandheldActivationMode",
+          "line": 1057,
+          "callee": "_hidCmdInAruidOutU64",
+          "command": 129,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSwapNpadAssignment",
+          "line": 1063,
+          "callee": "_hidCmdInU32U32AruidNoOut",
+          "command": 130,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidEnableUnintendedHomeButtonInputProtection",
+          "line": 1067,
+          "callee": "_hidCmdInBoolU32AruidNoOut",
+          "command": 132,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadAnalogStickUseCenterClamp",
+          "line": 1101,
+          "callee": "_hidCmdInBoolAruidNoOut",
+          "command": 134,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadCaptureButtonAssignment",
+          "line": 1108,
+          "callee": "_hidCmdInU32AruidU64NoOut",
+          "command": 135,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidClearNpadCaptureButtonAssignment",
+          "line": 1115,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 136,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidCreateActiveVibrationDeviceList",
+          "line": 1172,
+          "callee": "_hidCmdGetSession",
+          "command": 203,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidActivateVibrationDevice",
+          "line": 1176,
+          "callee": "_hidCmdInU32NoOut",
+          "command": 0,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidPermitVibration",
+          "line": 1180,
+          "callee": "_hidCmdInBoolNoOut",
+          "command": 204,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidIsVibrationPermitted",
+          "line": 1184,
+          "callee": "_hidCmdNoInOutBool",
+          "command": 205,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidBeginPermitVibrationSession",
+          "line": 1240,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 209,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidEndPermitVibrationSession",
+          "line": 1247,
+          "callee": "_hidCmdNoIO",
+          "command": 210,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidActivateConsoleSixAxisSensor",
+          "line": 1426,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 300,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidStartSevenSixAxisSensor",
+          "line": 1433,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 304,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidStopSevenSixAxisSensor",
+          "line": 1440,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 305,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidFinalizeSevenSixAxisSensor",
+          "line": 1500,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 307,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidResetSevenSixAxisSensorTimestamp",
+          "line": 1540,
+          "callee": "_hidCmdInAruidNoOut",
+          "command": 310,
+          "command_argument_index": 0,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidIsUsbFullKeyControllerEnabled",
+          "line": 1592,
+          "callee": "_hidCmdNoInOutBool",
+          "command": 400,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidEnableUsbFullKeyController",
+          "line": 1599,
+          "callee": "_hidCmdInBoolNoOut",
+          "command": 401,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetPalmaConnectionHandle",
+          "line": 1641,
+          "callee": "_hidCmdInU32AruidOutU64",
+          "command": 500,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidInitializePalma",
+          "line": 1650,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 501,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidPlayPalmaActivity",
+          "line": 1703,
+          "callee": "_hidCmdInU64U64NoOut",
+          "command": 504,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetPalmaFrModeType",
+          "line": 1710,
+          "callee": "_hidCmdInU64U64NoOut",
+          "command": 505,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidReadPalmaStep",
+          "line": 1717,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 506,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidResetPalmaStep",
+          "line": 1737,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 508,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidReadPalmaUniqueCode",
+          "line": 1776,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 511,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetPalmaUniqueCodeInvalid",
+          "line": 1783,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 512,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetPalmaDataBaseIdentificationVersion",
+          "line": 1846,
+          "callee": "_hidCmdInU32U64NoOut",
+          "command": 516,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetPalmaDataBaseIdentificationVersion",
+          "line": 1853,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 517,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSuspendPalmaFeature",
+          "line": 1860,
+          "callee": "_hidCmdInU32U64NoOut",
+          "command": 518,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidGetPalmaOperationResult",
+          "line": 1867,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 519,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidReadPalmaPlayLog",
+          "line": 1874,
+          "callee": "_hidCmdInU16U64NoOut",
+          "command": 520,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidResetPalmaPlayLog",
+          "line": 1881,
+          "callee": "_hidCmdInU16U64NoOut",
+          "command": 521,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetIsPalmaAllConnectable",
+          "line": 1888,
+          "callee": "_hidCmdInBoolAruidNoOut",
+          "command": 522,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetIsPalmaPairedConnectable",
+          "line": 1895,
+          "callee": "_hidCmdInBoolAruidNoOut",
+          "command": 523,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidPairPalma",
+          "line": 1902,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 524,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_hidSetPalmaBoostMode",
+          "line": 1909,
+          "callee": "_hidCmdInBoolNoOut",
+          "command": 525,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidCancelWritePalmaWaveEntry",
+          "line": 1916,
+          "callee": "_hidCmdInU64NoOut",
+          "command": 526,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidEnablePalmaBoostMode",
+          "line": 1923,
+          "callee": "_hidCmdInBoolAruidNoOut",
+          "command": 527,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidSetNpadCommunicationMode",
+          "line": 1947,
+          "callee": "_hidCmdInU64AruidNoOut",
+          "command": 1000,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "hidGetNpadCommunicationMode",
+          "line": 1952,
+          "callee": "_hidCmdNoInOutU64",
+          "command": 1001,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "source_path": "nx/source/services/hid.c",
+      "blob": "6ff0cd7fe4c59c33ece77d06480b029f3c8741e1"
+    },
+    {
+      "module": "audin",
+      "functions": 23,
+      "forwarding_helpers": [
+        {
+          "name": "_audinCmdGetHandle",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 82
+        },
+        {
+          "name": "_audinCmdGetEvent",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 89
+        },
+        {
+          "name": "_audinCmdNoIO",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 98
+        },
+        {
+          "name": "_audinCmdNoInOutU32",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 102
+        }
+      ],
+      "direct": [
+        {
+          "caller": "audinContainsAudioInBuffer",
+          "line": 219,
+          "callee": "serviceDispatchInOut",
+          "command": 6,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_audinIAudioIn",
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "forwarded": [
+        {
+          "caller": "audinGetAudioInState",
+          "line": 182,
+          "callee": "_audinCmdNoInOutU32",
+          "command": 0,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "audinStartAudioIn",
+          "line": 188,
+          "callee": "_audinCmdNoIO",
+          "command": 1,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "audinStopAudioIn",
+          "line": 192,
+          "callee": "_audinCmdNoIO",
+          "command": 2,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_audinRegisterBufferEvent",
+          "line": 205,
+          "callee": "_audinCmdGetEvent",
+          "command": 4,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "source_path": "nx/source/services/audin.c",
+      "blob": "5b2c96b190316f0ff76bfec051c8bff6eeb7717d"
+    },
+    {
+      "module": "audren",
+      "functions": 17,
+      "forwarding_helpers": [
+        {
+          "name": "_audrenCmdGetHandle",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 118
+        },
+        {
+          "name": "_audrenCmdGetEvent",
+          "command_argument_indices": [
+            3
+          ],
+          "line": 125
+        },
+        {
+          "name": "_audrenCmdNoIO",
+          "command_argument_indices": [
+            1
+          ],
+          "line": 134
+        },
+        {
+          "name": "_audrenCmdNoInOutU32",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 138
+        }
+      ],
+      "direct": [
+        {
+          "caller": "_audrenOpenAudioRenderer",
+          "line": 154,
+          "callee": "serviceDispatchIn",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "srv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_audrenGetWorkBufferSize",
+          "line": 164,
+          "callee": "serviceDispatchInOut",
+          "command": 1,
+          "command_argument_index": 1,
+          "receiver_candidate": "srv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "audrenSetAudioRendererRenderingTimeLimit",
+          "line": 202,
+          "callee": "serviceDispatchIn",
+          "command": 8,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_audrenIAudioRenderer",
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "forwarded": [
+        {
+          "caller": "audrenGetState",
+          "line": 168,
+          "callee": "_audrenCmdNoInOutU32",
+          "command": 3,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "audrenStartAudioRenderer",
+          "line": 190,
+          "callee": "_audrenCmdNoIO",
+          "command": 5,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "audrenStopAudioRenderer",
+          "line": 194,
+          "callee": "_audrenCmdNoIO",
+          "command": 6,
+          "command_argument_index": 1,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_audrenQuerySystemEvent",
+          "line": 198,
+          "callee": "_audrenCmdGetEvent",
+          "command": 7,
+          "command_argument_index": 3,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "source_path": "nx/source/services/audren.c",
+      "blob": "688291b77caa311ef7c9736938ce9ec64b797e35"
+    },
+    {
+      "module": "time",
+      "functions": 28,
+      "forwarding_helpers": [
+        {
+          "name": "_timeCmdGetSession",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 135
+        },
+        {
+          "name": "_timeCmdInU64NoOut",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 149
+        },
+        {
+          "name": "_timeCmdNoInOutU64",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 153
+        },
+        {
+          "name": "_appletCmdNoInOutU32",
+          "command_argument_indices": [
+            2
+          ],
+          "line": 157
+        }
+      ],
+      "direct": [
+        {
+          "caller": "_timeGetSharedMemoryNativeHandle",
+          "line": 143,
+          "callee": "serviceDispatch",
+          "command": 20,
+          "command_argument_index": 1,
+          "receiver_candidate": "srv",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeGetStandardSteadyClockTimePoint",
+          "line": 167,
+          "callee": "serviceDispatchOut",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeSteadyClock",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeGetStandardSteadyClockInternalOffset",
+          "line": 181,
+          "callee": "serviceDispatchOut",
+          "command": 200,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeSteadyClock",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeGetDeviceLocationName",
+          "line": 227,
+          "callee": "serviceDispatchOut",
+          "command": 0,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeTimeZoneService",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeSetDeviceLocationName",
+          "line": 234,
+          "callee": "serviceDispatchIn",
+          "command": 1,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeTimeZoneService",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeLoadLocationNameList",
+          "line": 248,
+          "callee": "serviceDispatchInOut",
+          "command": 3,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeTimeZoneService",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeLoadTimeZoneRule",
+          "line": 258,
+          "callee": "serviceDispatchIn",
+          "command": 4,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeTimeZoneService",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeToCalendarTime",
+          "line": 273,
+          "callee": "serviceDispatchInOut",
+          "command": 100,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeTimeZoneService",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeToCalendarTimeWithMyRule",
+          "line": 291,
+          "callee": "serviceDispatchInOut",
+          "command": 101,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeTimeZoneService",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeToPosixTime",
+          "line": 301,
+          "callee": "serviceDispatchInOut",
+          "command": 201,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeTimeZoneService",
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeToPosixTimeWithMyRule",
+          "line": 317,
+          "callee": "serviceDispatchInOut",
+          "command": 202,
+          "command_argument_index": 1,
+          "receiver_candidate": "&g_timeTimeZoneService",
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "forwarded": [
+        {
+          "caller": "_timeInitialize",
+          "line": 54,
+          "callee": "_timeCmdGetSession",
+          "command": 0,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_timeInitialize",
+          "line": 57,
+          "callee": "_timeCmdGetSession",
+          "command": 1,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_timeInitialize",
+          "line": 60,
+          "callee": "_timeCmdGetSession",
+          "command": 2,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_timeInitialize",
+          "line": 63,
+          "callee": "_timeCmdGetSession",
+          "command": 3,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "_timeInitialize",
+          "line": 66,
+          "callee": "_timeCmdGetSession",
+          "command": 4,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeGetCurrentTime",
+          "line": 205,
+          "callee": "_timeCmdNoInOutU64",
+          "command": 0,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeSetCurrentTime",
+          "line": 220,
+          "callee": "_timeCmdInU64NoOut",
+          "command": 1,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        },
+        {
+          "caller": "timeGetTotalLocationNameCount",
+          "line": 241,
+          "callee": "_appletCmdNoInOutU32",
+          "command": 2,
+          "command_argument_index": 2,
+          "receiver_candidate": null,
+          "status": "syntactic_candidate_not_admitted"
+        }
+      ],
+      "source_path": "nx/source/services/time.c",
+      "blob": "fc0cbcff7818fa434f1dfa5c88a70264113bcdfd"
+    }
+  ]
+}

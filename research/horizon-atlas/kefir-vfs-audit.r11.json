@@ -1,0 +1,203 @@
+{
+  "schema": "exodus.kefir-vfs-audit/v1",
+  "source": "rashevskyv/kefir-hub",
+  "dependency_manifest": {
+    "path": "sphaira/cmake/sphaira_dependencies.cmake",
+    "blob": "0abc45d954e267611e4e70185410ab8fc8981091"
+  },
+  "dependencies": [
+    {
+      "name": "ftpsrv",
+      "repository": "https://github.com/ITotalJustice/ftpsrv.git",
+      "revision_expression": "85b3cf0",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "libhaze",
+      "repository": "https://github.com/ITotalJustice/libhaze.git",
+      "revision_expression": "0be1523",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "nanovg",
+      "repository": "https://github.com/ITotalJustice/nanovg-deko3d.git",
+      "revision_expression": "845c9fc",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "stb",
+      "repository": "https://github.com/nothings/stb.git",
+      "revision_expression": "5c20573",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "yyjson",
+      "repository": "https://github.com/ibireme/yyjson.git",
+      "revision_expression": "0.11.1",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "minIni",
+      "repository": "https://github.com/ITotalJustice/minIni-nx.git",
+      "revision_expression": "6e952b6",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "zstd",
+      "repository": "https://github.com/facebook/zstd.git",
+      "revision_expression": "v1.5.7",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "libusbhsfs",
+      "repository": "https://github.com/ITotalJustice/libusbhsfs.git",
+      "revision_expression": "d0a973e",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "libnxtc",
+      "repository": "https://github.com/ITotalJustice/libnxtc.git",
+      "revision_expression": "0d369b8",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "nvjpg",
+      "repository": "https://github.com/ITotalJustice/oss-nvjpg.git",
+      "revision_expression": "45680e7",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "libsmb2",
+      "repository": "https://github.com/sahlberg/libsmb2.git",
+      "revision_expression": "v4.0.0",
+      "license": "unverified",
+      "admission": "not_admitted"
+    },
+    {
+      "name": "libnfs",
+      "repository": "https://github.com/ITotalJustice/libnfs.git",
+      "revision_expression": "65f3e11",
+      "license": "unverified",
+      "admission": "not_admitted"
+    }
+  ],
+  "components": [
+    {
+      "id": "vfs.core",
+      "path": "sphaira/include/fs.hpp",
+      "blob": "e64bdf576758d7f3f4342c8ed7b0545cfeaf8d5c",
+      "observation": "Mixed native, stdio, virtual handles; truncation and permissive default flags need separate boundary",
+      "disposition": "redesign",
+      "executable": false,
+      "verification": "source_inspected"
+    },
+    {
+      "id": "vfs.devoptab",
+      "path": "sphaira/source/utils/devoptab_common.cpp",
+      "blob": "039b4b42b61c003f6bef531ad7e8c882a9ae44ae",
+      "observation": "Mount registration, path adaptation, readonly dispatch table",
+      "disposition": "reference",
+      "executable": false,
+      "verification": "source_inspected"
+    },
+    {
+      "id": "vfs.devoptab.ops",
+      "path": "sphaira/source/utils/devoptab_common_ops.cpp",
+      "blob": "6ed808c8478b4d1207cd2a060b2ebdb1e0de5944",
+      "observation": "Locking, descriptor allocation, errno mapping, read-only open check",
+      "disposition": "reference",
+      "executable": false,
+      "verification": "source_inspected"
+    },
+    {
+      "id": "vfs.mount.interface",
+      "path": "sphaira/include/utils/devoptab_common.hpp",
+      "blob": "b129ff54e3750b06a70c96881084afd0079ed914",
+      "observation": "Virtual operation interface; default failures and seek semantics require review",
+      "disposition": "reference",
+      "executable": false,
+      "verification": "source_inspected"
+    },
+    {
+      "id": "vfs.smb",
+      "path": "sphaira/source/utils/devoptab_smb2.cpp",
+      "blob": "33d91af4272e01f77cbced364e541b7333187928",
+      "observation": "Read-only callback table observed; credentials and session lifetime review",
+      "disposition": "review",
+      "executable": false,
+      "verification": "source_inspected"
+    },
+    {
+      "id": "vfs.nfs",
+      "path": "sphaira/source/utils/devoptab_nfs.cpp",
+      "blob": "7f844da7c48229be81a0611844a647ca6f7e997f",
+      "observation": "Native libnfs readonly configuration, timeout and mount lifecycle",
+      "disposition": "review",
+      "executable": false,
+      "verification": "source_inspected"
+    },
+    {
+      "id": "vfs.webdav",
+      "path": "sphaira/source/utils/devoptab_curl_device.cpp",
+      "blob": "c59ec33b77daf6bb2087782e9e7d9779640bc514",
+      "observation": "URL setup and cleanup; SFTP fragment commented",
+      "disposition": "redesign",
+      "executable": false,
+      "verification": "source_inspected"
+    },
+    {
+      "id": "vfs.curl.io",
+      "path": "sphaira/source/utils/devoptab_curl_file.cpp",
+      "blob": "b7bc6c7aa2e71a189f117ec40d3077b494984b1e",
+      "observation": "TLS verification disabled; unrestricted redirect auth; do not reuse as-is",
+      "disposition": "blocked_as_is",
+      "executable": false,
+      "verification": "source_inspected"
+    },
+    {
+      "id": "vfs.tree",
+      "path": "sphaira/source/fs_virtual_tree.cpp",
+      "blob": "650c62fb6316d3f99aab65f1216f572e34d68bef",
+      "observation": "Virtual tree with normalized path lookup, directory cursor; containment not implied",
+      "disposition": "reference",
+      "executable": false,
+      "verification": "source_inspected"
+    }
+  ],
+  "security_findings": [
+    {
+      "path": "sphaira/source/utils/devoptab_curl_file.cpp",
+      "lines": [
+        93,
+        98,
+        99,
+        100
+      ],
+      "severity": "admission_blocker",
+      "required": "TLS peer and hostname verification, origin-bound credentials, redirect validation"
+    },
+    {
+      "path": "sphaira/cmake/sphaira_dependencies.cmake",
+      "finding": "explicit anonymous FTP patch",
+      "severity": "admission_blocker",
+      "required": "no anonymous FTP deployment; prefer authenticated SFTP"
+    },
+    {
+      "path": "sphaira/include/fs.hpp",
+      "finding": "bounded path truncation and ignore_read_only defaults",
+      "severity": "boundary_review",
+      "required": "reject oversize input and enforce mount policy in independent broker"
+    }
+  ],
+  "scope": "Source and build dependency inspection; no code imported or executed; dependency revisions are expressions, not verified immutable full commits."
+}

@@ -1,0 +1,464 @@
+{
+  "schema": "exodus.horizon-domain-graph/v1",
+  "source_catalog": "atlas.r01.json",
+  "nodes": [
+    {
+      "id": "kernel",
+      "description": "Process-local memory, scheduling, synchronization, handles, timing, IPC; protected process management separately reviewed",
+      "header_refs": [
+        "header:switch/kernel/svc.h",
+        "header:switch/kernel/thread.h",
+        "header:switch/kernel/virtmem.h",
+        "header:switch/kernel/jit.h"
+      ],
+      "potential_consumers": [
+        "NX-POSIX",
+        "runtime",
+        "atomizer",
+        "service supervisor"
+      ],
+      "constraints": "fork/exec, signals, shared libraries, virtual memory semantics and quotas not POSIX-equivalent",
+      "admission": "review_required"
+    },
+    {
+      "id": "ipc",
+      "description": "Client/server IPC, named ports, sessions, CMIF/TIPC, service discovery",
+      "header_refs": [
+        "header:switch/services/sm.h",
+        "header:switch/sf/hipc.h",
+        "header:switch/sf/cmif.h",
+        "header:switch/sf/tipc.h"
+      ],
+      "potential_consumers": [
+        "D-Bus-like broker",
+        "local daemon RPC"
+      ],
+      "constraints": "NPDM service ACL; server hosting not assumed",
+      "admission": "review_required"
+    },
+    {
+      "id": "filesystem",
+      "description": "SD and permitted save/storage, file/directory APIs, RomFS and devoptab",
+      "header_refs": [
+        "header:switch/services/fs.h",
+        "header:switch/runtime/devices/fs_dev.h",
+        "header:switch/runtime/devices/romfs_dev.h"
+      ],
+      "potential_consumers": [
+        "VFS",
+        "file manager",
+        "package storage",
+        "SFTP"
+      ],
+      "constraints": "mount and per-title permissions; no unrestricted NAND or other users' saves",
+      "admission": "review_required"
+    },
+    {
+      "id": "display",
+      "description": "Display layers, buffer queues, framebuffer, NVIDIA graphics, synchronization fences",
+      "header_refs": [
+        "header:switch/services/vi.h",
+        "header:switch/services/nv.h",
+        "header:switch/display/native_window.h",
+        "header:switch/display/framebuffer.h",
+        "header:switch/nvidia/gpu.h"
+      ],
+      "potential_consumers": [
+        "compositor",
+        "SDL",
+        "Qt QPA",
+        "KDE",
+        "native graphics backend"
+      ],
+      "constraints": "GPU API/driver compatibility, multiple surfaces, modes and applet ownership; Vulkan/OpenGL are separate ports",
+      "admission": "review_required"
+    },
+    {
+      "id": "audio",
+      "description": "Playback, recording, render graph and device discovery, hardware Opus decoder",
+      "header_refs": [
+        "header:switch/services/audout.h",
+        "header:switch/services/audin.h",
+        "header:switch/services/audren.h",
+        "header:switch/services/auddev.h",
+        "header:switch/services/hwopus.h"
+      ],
+      "potential_consumers": [
+        "sound server",
+        "mixer",
+        "voice apps",
+        "multimedia"
+      ],
+      "constraints": "capture consent, device/firmware capabilities; no blanket access",
+      "admission": "review_required"
+    },
+    {
+      "id": "input",
+      "description": "Controller, keyboard/mouse where supported, touch, motion, IR, vibration, attached HID devices",
+      "header_refs": [
+        "header:switch/services/hid.h",
+        "header:switch/services/hidbus.h",
+        "header:switch/services/irs.h",
+        "header:switch/runtime/pad.h"
+      ],
+      "potential_consumers": [
+        "desktop input seat",
+        "gestures",
+        "gaming",
+        "accessibility"
+      ],
+      "constraints": "model/peripheral availability; privileged injection disabled",
+      "admission": "review_required"
+    },
+    {
+      "id": "network",
+      "description": "BSD sockets, DNS, interface status, TLS, local communication",
+      "header_refs": [
+        "header:switch/services/bsd.h",
+        "header:switch/services/sfdnsres.h",
+        "header:switch/services/nifm.h",
+        "header:switch/services/ssl.h",
+        "header:switch/services/ldn.h"
+      ],
+      "potential_consumers": [
+        "SSH",
+        "SFTP",
+        "HTTP",
+        "LAN services",
+        "local discovery"
+      ],
+      "constraints": "official Nintendo network integration denied; routes/endpoints require own policy; raw sockets, TUN, netlink, WireGuard support not assumed",
+      "admission": "review_required"
+    },
+    {
+      "id": "usb",
+      "description": "Host and device interfaces and data transfer",
+      "header_refs": [
+        "header:switch/services/usbhs.h",
+        "header:switch/services/usbds.h",
+        "header:switch/runtime/devices/usb_comms.h"
+      ],
+      "potential_consumers": [
+        "USB peripherals",
+        "file transfer",
+        "tethering experiments"
+      ],
+      "constraints": "host/device role, class protocols, exclusive access; no installation of protected content",
+      "admission": "review_required"
+    },
+    {
+      "id": "bluetooth",
+      "description": "Bluetooth and BLE via permissioned services",
+      "header_refs": [
+        "header:switch/services/bt.h",
+        "header:switch/services/btmu.h",
+        "header:switch/services/btm.h"
+      ],
+      "potential_consumers": [
+        "peripherals",
+        "BLE devices",
+        "audio where supported"
+      ],
+      "constraints": "profile coverage, access and concurrency require verification",
+      "admission": "review_required"
+    },
+    {
+      "id": "power",
+      "description": "Battery, power, sleep/idle, temperatures, backlight, dock and performance control",
+      "header_refs": [
+        "header:switch/services/psm.h",
+        "header:switch/services/ts.h",
+        "header:switch/services/tc.h",
+        "header:switch/services/lbl.h",
+        "header:switch/services/apm.h",
+        "header:switch/services/omm.h"
+      ],
+      "potential_consumers": [
+        "power manager",
+        "settings",
+        "thermal monitoring",
+        "power profiles"
+      ],
+      "constraints": "read-only initially; hardware writes require separate safe review",
+      "admission": "review_required"
+    },
+    {
+      "id": "bus",
+      "description": "Hardware bus interfaces for board components",
+      "header_refs": [
+        "header:switch/services/i2c.h",
+        "header:switch/services/gpio.h",
+        "header:switch/services/uart.h"
+      ],
+      "potential_consumers": [
+        "device diagnostics and vetted drivers"
+      ],
+      "constraints": "privileged/hardware-dependent; no arbitrary hardware access",
+      "admission": "review_required"
+    },
+    {
+      "id": "lifecycle",
+      "description": "Applet and application lifecycle, loader, process metadata, dynamic code modules",
+      "header_refs": [
+        "header:switch/services/applet.h",
+        "header:switch/services/ns.h",
+        "header:switch/services/pm.h",
+        "header:switch/services/ro.h",
+        "header:switch/services/ldr.h"
+      ],
+      "potential_consumers": [
+        "HOME launcher",
+        "session manager",
+        "application lifecycle"
+      ],
+      "constraints": "registered-title launch and applet mode constraints; protected process and package operations denied",
+      "admission": "review_required"
+    },
+    {
+      "id": "settings",
+      "description": "Locale, language, fonts, permitted settings and parental controls",
+      "header_refs": [
+        "header:switch/services/set.h",
+        "header:switch/services/pl.h",
+        "header:switch/services/pctl.h"
+      ],
+      "potential_consumers": [
+        "control center",
+        "font provider",
+        "locale"
+      ],
+      "constraints": "no bypass of parental controls; system writes individually reviewed",
+      "admission": "review_required"
+    },
+    {
+      "id": "clock",
+      "description": "Wall and steady clocks, time zones",
+      "header_refs": [
+        "header:switch/services/time.h",
+        "header:switch/arm/counter.h"
+      ],
+      "potential_consumers": [
+        "scheduler",
+        "calendar",
+        "POSIX time APIs"
+      ],
+      "constraints": "clock epoch and permission semantics must be tested",
+      "admission": "review_required"
+    },
+    {
+      "id": "crypto",
+      "description": "Randomness, ARM crypto helpers and protected system crypto",
+      "header_refs": [
+        "header:switch/services/csrng.h",
+        "header:switch/crypto/aes.h",
+        "header:switch/crypto/sha256.h",
+        "header:switch/services/spl.h"
+      ],
+      "potential_consumers": [
+        "TLS",
+        "file integrity",
+        "local encrypted data"
+      ],
+      "constraints": "no protected Nintendo keys or identity manipulation",
+      "admission": "review_required"
+    },
+    {
+      "id": "capture",
+      "description": "Screenshots, album, media capture, JPEG and game recording",
+      "header_refs": [
+        "header:switch/services/caps.h",
+        "header:switch/services/capsu.h",
+        "header:switch/services/capsdc.h",
+        "header:switch/services/grc.h"
+      ],
+      "potential_consumers": [
+        "screen capture",
+        "image viewer",
+        "recording"
+      ],
+      "constraints": "application capture rights and consent; no protected content capture",
+      "admission": "review_required"
+    },
+    {
+      "id": "local_data",
+      "description": "Local play records, alarms, Mii/avatar metadata where supported",
+      "header_refs": [
+        "header:switch/services/pdm.h",
+        "header:switch/services/notif.h",
+        "header:switch/services/mii.h",
+        "header:switch/services/avm.h"
+      ],
+      "potential_consumers": [
+        "local notifications",
+        "personal dashboard"
+      ],
+      "constraints": "private data minimization; no online sync",
+      "admission": "review_required"
+    },
+    {
+      "id": "diagnostics",
+      "description": "Local error context, logging and diagnostics",
+      "header_refs": [
+        "header:switch/services/fatal.h",
+        "header:switch/services/ectx.h",
+        "header:switch/services/ins.h",
+        "header:switch/runtime/diag.h"
+      ],
+      "potential_consumers": [
+        "crash reporting",
+        "developer diagnostics"
+      ],
+      "constraints": "local-only, own app context; no tampering with system telemetry",
+      "admission": "review_required"
+    },
+    {
+      "id": "accounts",
+      "description": "Nintendo account, friends and news families",
+      "header_refs": [
+        "header:switch/services/acc.h",
+        "header:switch/services/friends.h",
+        "header:switch/services/news.h"
+      ],
+      "potential_consumers": [
+        "inventory only; EXODUS independent local profiles"
+      ],
+      "constraints": "Nintendo-linked operations disabled",
+      "admission": "review_required"
+    },
+    {
+      "id": "official",
+      "description": "Network installation and content management",
+      "header_refs": [
+        "header:switch/services/nim.h",
+        "header:switch/services/ncm.h"
+      ],
+      "potential_consumers": [
+        "inventory only; independent homebrew package manager"
+      ],
+      "constraints": "Nintendo service calls, licenses and protected content mutation disabled",
+      "admission": "review_required"
+    }
+  ],
+  "edges": [
+    {
+      "from": "kernel",
+      "to": "ipc",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "kernel",
+      "to": "clock",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "filesystem",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "display",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "audio",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "input",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "network",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "usb",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "bluetooth",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "power",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "bus",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "lifecycle",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "settings",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "crypto",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "capture",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "local_data",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "diagnostics",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "accounts",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "ipc",
+      "to": "official",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    },
+    {
+      "from": "display",
+      "to": "capture",
+      "type": "architectural_dependency_candidate",
+      "verified": false
+    }
+  ]
+}

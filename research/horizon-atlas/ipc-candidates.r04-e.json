@@ -1,0 +1,575 @@
+{
+  "schema": "exodus.horizon-ipc-candidates/v1",
+  "source_revision": "b156b4774fb2df7b93402169509266da7547fc4c",
+  "scope": "Literal source candidates only; no privilege or availability inference. Host, peer networking and hardware interfaces remain disabled until reviewed.",
+  "missing": [
+    {
+      "module": "usb",
+      "error": "NOT_FOUND: Error code: NOT_FOUND; Error: GitHub API error 404: {\"message\":\"Not Found\",\"documentation_url\":\"https://docs.github.com/rest/repos/contents#get-repository-content\",\"status\":\"404\"}"
+    }
+  ],
+  "counts": {
+    "requested": 8,
+    "fetched": 7,
+    "distinct_endpoint_tokens": 6,
+    "dispatch_occurrences": 34,
+    "version_check_occurrences": 41
+  },
+  "records": [
+    {
+      "module": "uart",
+      "path": "nx/source/services/uart.c",
+      "blob": "038364e0b6ac2544b97ba55e1f3d8815363b695d",
+      "line_count": 283,
+      "literal_endpoints": [
+        {
+          "name": "uart",
+          "line": 13
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_uartSrv",
+          "command": 6,
+          "line": 90,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&s->s",
+          "command": 3,
+          "line": 244,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&s->s",
+          "command": 5,
+          "line": 255,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&s->s",
+          "command": 6,
+          "line": 270,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 48
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 55
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 62
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 69
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 76
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 83
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 97
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "17.0.0",
+          "line": 104
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "6.0.0",
+          "line": 199
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "7.0.0",
+          "line": 201
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "async",
+      "path": "nx/source/services/async.c",
+      "blob": "9c637112e1575ff0b97743e73fe9828b60c0b643",
+      "line_count": 115,
+      "literal_endpoints": [],
+      "literal_dispatches": [],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 65
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 109
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "pgl",
+      "path": "nx/source/services/pgl.c",
+      "blob": "f94cb7d2baa8475adae7f651abf82e1ff080da5c",
+      "line_count": 260,
+      "literal_endpoints": [
+        {
+          "name": "pgl",
+          "line": 24
+        },
+        {
+          "name": "pgl",
+          "line": 32
+        }
+      ],
+      "literal_dispatches": [
+        {
+          "macro": "tipcDispatchInOut",
+          "receiver_expression": "&g_pglSrv.tipc",
+          "command": 0,
+          "line": 93,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_pglSrv.cmif",
+          "command": 0,
+          "line": 101,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchInOut",
+          "receiver_expression": "&g_pglSrv.tipc",
+          "command": 2,
+          "line": 111,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_pglSrv.cmif",
+          "command": 2,
+          "line": 116,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchOut",
+          "receiver_expression": "&g_pglSrv.tipc",
+          "command": 4,
+          "line": 125,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_pglSrv.cmif",
+          "command": 4,
+          "line": 130,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchOut",
+          "receiver_expression": "&g_pglSrv.tipc",
+          "command": 5,
+          "line": 139,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_pglSrv.cmif",
+          "command": 5,
+          "line": 141,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchInOut",
+          "receiver_expression": "&g_pglSrv.tipc",
+          "command": 7,
+          "line": 154,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchInOut",
+          "receiver_expression": "&g_pglSrv.cmif",
+          "command": 7,
+          "line": 156,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchInOut",
+          "receiver_expression": "&g_pglSrv.tipc",
+          "command": 11,
+          "line": 181,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_pglSrv.cmif",
+          "command": 12,
+          "line": 189,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatch",
+          "receiver_expression": "&g_pglSrv.tipc",
+          "command": 20,
+          "line": 197,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_pglSrv.cmif",
+          "command": 20,
+          "line": 202,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchIn",
+          "receiver_expression": "&g_pglSrv.tipc",
+          "command": 31,
+          "line": 219,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatch",
+          "receiver_expression": "&observer->t",
+          "command": 0,
+          "line": 227,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&observer->s",
+          "command": 0,
+          "line": 232,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "tipcDispatchOut",
+          "receiver_expression": "&observer->t",
+          "command": 1,
+          "line": 247,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&observer->s",
+          "command": 1,
+          "line": 249,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "12.0.0",
+          "line": 15
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "10.0.0",
+          "line": 19
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "19.0.0",
+          "line": 178
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "12.0.0",
+          "line": 185
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "23.0.0",
+          "line": 210
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "htcs",
+      "path": "nx/source/services/htcs.c",
+      "blob": "e1bfdcc4850b56d78a4d0df342106b7d92f07be8",
+      "line_count": 393,
+      "literal_endpoints": [],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_htcsSrv",
+          "command": 100,
+          "line": 78,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "&g_htcsMonitor",
+          "command": 101,
+          "line": 83,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "wlaninf",
+      "path": "nx/source/services/wlaninf.c",
+      "blob": "c03ff871cf2a107883f04a5dec6e8d6909c3760e",
+      "line_count": 39,
+      "literal_endpoints": [
+        {
+          "name": "wlan:inf",
+          "line": 14
+        }
+      ],
+      "literal_dispatches": [],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "15.0.0",
+          "line": 11
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "ldn",
+      "path": "nx/source/services/ldn.c",
+      "blob": "418f397d43059527ecb425603c312bb4ecbd7b05",
+      "line_count": 697,
+      "literal_endpoints": [
+        {
+          "name": "ldn:m",
+          "line": 96
+        },
+        {
+          "name": "ldn:u",
+          "line": 148
+        },
+        {
+          "name": "ldn:s",
+          "line": 151
+        }
+      ],
+      "literal_dispatches": [],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionAtLeast",
+          "version": "7.0.0",
+          "line": 164
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "18.0.0",
+          "line": 167
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "19.0.0",
+          "line": 169
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "20.0.0",
+          "line": 171
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "19.0.0",
+          "line": 174
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "20.0.0",
+          "line": 183
+        },
+        {
+          "operator": "hosversionAtLeast",
+          "version": "18.0.0",
+          "line": 186
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "5.0.0",
+          "line": 425
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 432
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "4.0.0",
+          "line": 561
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "19.0.0",
+          "line": 562
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 572
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 582
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 592
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "20.0.0",
+          "line": 596
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 621
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "20.0.0",
+          "line": 641
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 656
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "20.0.0",
+          "line": 660
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 681
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "18.0.0",
+          "line": 691
+        }
+      ],
+      "status": "unreviewed_disabled"
+    },
+    {
+      "module": "lp2p",
+      "path": "nx/source/services/lp2p.c",
+      "blob": "84e804895a33fc4bbb4dd046b4c5376b1554b4a4",
+      "line_count": 374,
+      "literal_endpoints": [],
+      "literal_dispatches": [
+        {
+          "macro": "serviceDispatchIn",
+          "receiver_expression": "srv",
+          "command": 8,
+          "line": 135,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_lp2pINetworkServiceMonitor",
+          "command": 264,
+          "line": 296,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_lp2pINetworkServiceMonitor",
+          "command": 272,
+          "line": 300,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_lp2pINetworkServiceMonitor",
+          "command": 288,
+          "line": 329,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_lp2pINetworkServiceMonitor",
+          "command": 296,
+          "line": 336,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_lp2pINetworkServiceMonitor",
+          "command": 304,
+          "line": 349,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatch",
+          "receiver_expression": "&g_lp2pINetworkServiceMonitor",
+          "command": 312,
+          "line": 353,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_lp2pINetworkServiceMonitor",
+          "command": 320,
+          "line": 360,
+          "resolution": "literal_candidate_only"
+        },
+        {
+          "macro": "serviceDispatchOut",
+          "receiver_expression": "&g_lp2pINetworkServiceMonitor",
+          "command": 336,
+          "line": 368,
+          "resolution": "literal_candidate_only"
+        }
+      ],
+      "version_check_candidates": [
+        {
+          "operator": "hosversionBefore",
+          "version": "9.1.0",
+          "line": 78
+        },
+        {
+          "operator": "hosversionBefore",
+          "version": "11.0.0",
+          "line": 197
+        }
+      ],
+      "status": "unreviewed_disabled"
+    }
+  ]
+}
