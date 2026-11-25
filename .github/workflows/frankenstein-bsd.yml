@@ -6,11 +6,14 @@ on:
       - 'exodus/frankenstein/tumor_reference_*'
       - 'exodus/frankenstein/linux-abi-probe.S'
       - 'exodus/frankenstein/linux-dynamic-probe.c'
+      - 'exodus/frankenstein/patches/steamos-manager-freebsd-input.patch'
+      - 'exodus/frankenstein/prepare_manager_user_data.py'
       - 'exodus/frankenstein/run-reference.sh'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/sessiond-dbus.inc'
       - 'exodus/frankenstein/test_sessiond.py'
       - 'exodus/frankenstein/test_sessiond_dbus.sh'
+      - 'exodus/frankenstein/test_manager_input_patch.py'
       - '.github/workflows/frankenstein-bsd.yml'
   workflow_dispatch:
 permissions:
@@ -52,6 +55,7 @@ jobs:
           sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
       - name: Validate scripts and run FreeBSD ARM64 workload
         run: |
+          python3 exodus/frankenstein/test_manager_input_patch.py -v
           for script in exodus/frankenstein/guest-*.sh; do sh -n "$script"; done
           sh -n exodus/frankenstein/run-reference.sh
           sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" "${{ matrix.mode }}"
