@@ -123,6 +123,18 @@ static inline int exodus_state_read(FILE *f,struct exodus_state *s)
 bad:
     exodus_state_clear(&tmp); return 0;
 }
+/* A same-generation pair is safe only when its decoded contents agree.
+ * Compare fields rather than struct padding; row order is part of the snapshot. */
+static inline int exodus_state_same(const struct exodus_state *a,const struct exodus_state *b)
+{
+    if(a->count!=b->count) return 0;
+    for(size_t i=0;i<a->count;i++){
+        const struct exodus_state_row *x=&a->rows[i],*y=&b->rows[i];
+        if(strcmp(x->provider,y->provider)||strcmp(x->id,y->id)||
+            x->requested!=y->requested||x->favorite!=y->favorite) return 0;
+    }
+    return 1;
+}
 /* Missing is distinct from corrupt/unreadable. Never overwrite two bad snapshots. */
 static inline int exodus_state_read_slot(const char *path,struct exodus_state *s)
 {
@@ -137,6 +149,11 @@ static inline void exodus_state_open(struct exodus_state *s,const char *a,const 
     struct exodus_state x={0},y={0}; x.slot=y.slot=-1;
     int ra=exodus_state_read_slot(a,&x),rb=exodus_state_read_slot(b,&y);
     exodus_state_clear(s);
+    if(ra==1 && rb==1 && x.generation==y.generation && !exodus_state_same(&x,&y)){
+        /* No authoritative newest snapshot. Preserve both for recovery. */
+        exodus_state_clear(&x); exodus_state_clear(&y);
+        return;
+    }
     if(ra==1 && (rb!=1 || x.generation>=y.generation)) {
         *s=x; s->slot=0; memset(&x,0,sizeof(x));
     } else if(rb==1) {

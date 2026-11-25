@@ -21,7 +21,28 @@ int main(void)
     assert(exodus_state_find(&s,"Switch","0000000000000001")->favorite==1);
     assert(exodus_state_find(&s,"Homebrew","app/app.nro")->requested==8);
     assert(!exodus_state_find(&s,"Steam","app/app.nro"));
-    FILE *f=fopen(b,"wb"); assert(f); assert(fputs("torn",f)>=0); assert(!fclose(f));
+    /* Two identical generations may recover; conflicting valid snapshots
+     * must disable writes and preserve both on disk. */
+    FILE *f=fopen(a,"wb"); assert(f);
+    assert(exodus_state_write(f,&s,2)); assert(!fclose(f));
+    exodus_state_open(&s,a,b);
+    assert(s.writable && s.generation==2 && s.count==2);
+    r=exodus_state_find(&s,"Homebrew","app/app.nro"); assert(r);
+    r->requested=9;
+    f=fopen(b,"wb"); assert(f);
+    assert(exodus_state_write(f,&s,2)); assert(!fclose(f));
+    exodus_state_open(&s,a,b);
+    assert(!s.writable && s.count==0 && !exodus_state_save(&s,a,b));
+    struct exodus_state x={0},y={0};
+    assert(exodus_state_read_slot(a,&x)==1 && exodus_state_read_slot(b,&y)==1);
+    assert(x.generation==2 && y.generation==2);
+    assert(exodus_state_find(&x,"Homebrew","app/app.nro")->requested==8);
+    assert(exodus_state_find(&y,"Homebrew","app/app.nro")->requested==9);
+    /* Restore the original generation-1/2 fixture for torn-write tests. */
+    x.count=1;
+    f=fopen(a,"wb"); assert(f); assert(exodus_state_write(f,&x,1)); assert(!fclose(f));
+    exodus_state_clear(&x); exodus_state_clear(&y);
+    f=fopen(b,"wb"); assert(f); assert(fputs("torn",f)>=0); assert(!fclose(f));
     exodus_state_open(&s,a,b);
     assert(s.count==1 && s.generation==1 && s.slot==0 && s.writable);
     assert(exodus_state_save(&s,a,b));
