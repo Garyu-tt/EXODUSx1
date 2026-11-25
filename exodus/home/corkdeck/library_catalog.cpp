@@ -179,6 +179,53 @@ uint64_t exodus_library_declared_group_id(const struct exodus_library *library,s
     if (!library || index>=library->declared_ids.size()) return 0;
     return library->declared_ids[index];
 }
+int exodus_library_native_detail(const struct exodus_library *library, size_t index,
+                                 char *out, size_t cap)
+{
+    if (!library || !out || !cap || index>=library->catalog.entries.size()) return 0;
+    const auto &entry=library->catalog.entries[index];
+    uint64_t id=0;
+    if (entry.provider!=Provider::Switch || !exodus_title_id(entry.id.c_str(),&id)) return 0;
+#ifdef __SWITCH__
+    if (!hosversionAtLeast(2,0,0) || R_FAILED(nsInitialize())) {
+        snprintf(out,cap,"Native metadata unavailable."); return 1;
+    }
+    ExodusNsGuard guard;
+    s32 count=0;
+    if (R_FAILED(nsCountApplicationContentMeta(id,&count)) || count<0 || count>4096) {
+        snprintf(out,cap,"Native metadata unavailable or exceeds limit."); return 1;
+    }
+    s32 offset=0;
+    unsigned base=0, patch=0, dlc=0;
+    uint32_t base_version=0, patch_version=0;
+    NsApplicationContentMetaStatus items[32];
+    while (offset<count) {
+        s32 request=count-offset<32 ? count-offset : 32, written=0;
+        if (R_FAILED(nsListApplicationContentMetaStatus(id,offset,items,request,&written)) ||
+            written<=0 || written>request) {
+            snprintf(out,cap,"Native metadata scan incomplete."); return 1;
+        }
+        for (s32 i=0;i<written;++i) {
+            const auto &m=items[i];
+            if (m.meta_type==NcmContentMetaType_Application) {
+                ++base; if (m.version>base_version) base_version=m.version;
+            } else if (m.meta_type==NcmContentMetaType_Patch) {
+                ++patch; if (m.version>patch_version) patch_version=m.version;
+            } else if (m.meta_type==NcmContentMetaType_AddOnContent) ++dlc;
+        }
+        offset+=written;
+    }
+    s32 after=0;
+    if (R_FAILED(nsCountApplicationContentMeta(id,&after)) || after!=count) {
+        snprintf(out,cap,"Native metadata changed during scan."); return 1;
+    }
+    snprintf(out,cap,"Horizon records: base %u (v%lu), patch %u (v%lu), DLC %u. Metadata only.",
+             base,(unsigned long)base_version,patch,(unsigned long)patch_version,dlc);
+#else
+    snprintf(out,cap,"Native metadata unavailable on host.");
+#endif
+    return 1;
+}
 int exodus_library_archive_detail(const struct exodus_library *library,size_t index,char *out,size_t cap)
 {
     if (!out || !cap) return 0;
