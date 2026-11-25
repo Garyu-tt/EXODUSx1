@@ -56,6 +56,22 @@ mkdir "$probe_dir/events"
 echo EXODUS_MANAGER_INOTIFY_NATIVE_PASS
 cat > "$probe_dir/udev.c" <<'EOF'
 #include <libudev.h>
+#include <fcntl.h>
+
+static int monitor(struct udev *u, const char *subsystem, const char *devtype) {
+    struct udev_monitor *m = udev_monitor_new_from_netlink(u, "udev");
+    if (!m) return 4;
+    if (udev_monitor_filter_add_match_subsystem_devtype(m, subsystem, devtype) < 0 ||
+        udev_monitor_enable_receiving(m) < 0) {
+        /* The disposable probe process exits immediately on initialization failure. */
+        return 5;
+    }
+    int fd = udev_monitor_get_fd(m);
+    int flags = fd < 0 ? -1 : fcntl(fd, F_GETFL);
+    udev_monitor_unref(m);
+    return flags < 0 || !(flags & O_NONBLOCK) ? 6 : 0;
+}
+
 int main(void) {
     struct udev *u = udev_new();
     if (!u) return 1;
@@ -63,14 +79,22 @@ int main(void) {
     if (!e) { udev_unref(u); return 2; }
     int rc = udev_enumerate_scan_devices(e);
     udev_enumerate_unref(e);
+    if (rc < 0) { udev_unref(u); return 3; }
+    rc = monitor(u, "usb", "usb_interface");
+    if (!rc) rc = monitor(u, "input", 0);
+    if (rc == 5) return rc;
     udev_unref(u);
-    return rc < 0 ? 3 : 0;
+    return rc;
 }
 EOF
 cc -std=gnu11 -Wall -Wextra -Werror $(pkgconf --cflags libudev) \
     "$probe_dir/udev.c" $(pkgconf --libs libudev) -o "$probe_dir/udev"
-"$probe_dir/udev"
+# A monitor descriptor alone is not proof of a live devd endpoint.
+service devd onestatus
+test -S /var/run/devd.seqpacket.pipe
+timeout 15s "$probe_dir/udev"
 echo EXODUS_MANAGER_DEVD_UDEV_ABI_PASS
+echo EXODUS_MANAGER_DEVD_MONITOR_SETUP_PASS
 rm -rf "$probe_dir"
 
 for tool in git rustc cargo; do command -v "$tool"; done
