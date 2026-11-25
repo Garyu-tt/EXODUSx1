@@ -5,7 +5,8 @@
     "release": "15.1-RELEASE",
     "arch": "aarch64",
     "cpu": "cortex-a57",
-    "ports_commit": "98796bd539ea8f03adb7c9d6f9f3a3d54dcca553"
+    "ports_commit": "98796bd539ea8f03adb7c9d6f9f3a3d54dcca553",
+    "scope": "ARM64 QEMU reference build only; not the physical AMP deployment target"
   },
   "nodes": [
     {
@@ -246,7 +247,7 @@
         "device-arbitration",
         "dual-kernel-reference"
       ],
-      "gate": "Genuine independent kernel liveness concurrently on physical Switch."
+      "gate": "Real FreeBSD/armv7 kernel on candidate Cortex-A9 ADSP and native Horizon on all A57 cores concurrently on physical Switch; ARM64 Bao evidence reference-only."
     },
     {
       "id": "gpu-mediation",
@@ -317,7 +318,7 @@
       "depends": [
         "tegra-board"
       ],
-      "gate": "Exact board and authorized boot context; distinguish EL0 diagnostics from EL2 evidence."
+      "gate": "Exact Erista/Mariko board and authorized ADSP availability, startup and recovery; distinguish USB mass storage from CPU execution."
     },
     {
       "id": "privileged-mediator",
@@ -326,7 +327,7 @@
       "depends": [
         "boot-context"
       ],
-      "gate": "Verified authorized platform support for isolated concurrent kernels; no security bypass."
+      "gate": "Authorized AMP startup and protected arbitration; prove ADSP boot support, not assume EL2 or Bao is required on the physical path."
     },
     {
       "id": "cpu-memory-isolation",
@@ -335,7 +336,7 @@
       "depends": [
         "privileged-mediator"
       ],
-      "gate": "Disjoint owned memory, explicit shared regions, CPU scheduling, protected monitor memory."
+      "gate": "Keep all four Cortex-A57 cores with Horizon; prove ADSP-local execution, MMU, accessible RAM, disjoint reservations, cache attributes and isolation."
     },
     {
       "id": "irq-dma-arbitration",
@@ -344,7 +345,7 @@
       "depends": [
         "cpu-memory-isolation"
       ],
-      "gate": "Verified interrupt/timer and DMA ownership; no cross-domain writes."
+      "gate": "Verify ADSP interrupt/timer availability, shared-memory visibility, notification and DMA ownership; no cross-domain writes."
     },
     {
       "id": "device-arbitration",
@@ -353,7 +354,7 @@
       "depends": [
         "irq-dma-arbitration"
       ],
-      "gate": "Single hardware owner per device; explicit handoff or mediated access; recovery."
+      "gate": "Single hardware owner per device; prove audio preservation, mediated access and recoverable handoff."
     },
     {
       "id": "interkernel-ipc",
@@ -362,7 +363,7 @@
       "depends": [
         "dual-kernel"
       ],
-      "gate": "Versioned bounded bridge, fail closed, shared memory isolation and restart tests. R32 only proves pre-kernel IPC and concurrent post-boot liveness; runtime shared channel remains unverified."
+      "gate": "Versioned bounded mixed ARMv7/AArch64 bridge; prove atomic width, cache ordering, notification, timeout and restart on target. R32/R35 only provide ARM64 reference evidence."
     },
     {
       "id": "resident-network",
@@ -373,7 +374,7 @@
         "device-arbitration",
         "resident-rc"
       ],
-      "gate": "FreeBSD network endpoint and native sshd reachable over approved LAN/VPN during Horizon title."
+      "gate": "FreeBSD/armv7 network endpoint and native sshd reachable over approved LAN/VPN during Horizon title; prove mediated or exclusive NIC ownership and ARMv7 service build."
     },
     {
       "id": "native-game-resident",
@@ -425,7 +426,7 @@
         "desktop-mode",
         "native-game-resident"
       ],
-      "gate": "Physical end-to-end acceptance, budgets, recovery, display/HID transitions and save integrity."
+      "gate": "Physical end-to-end acceptance including clean SD install and recovery, audio, CPU/RAM/frame budgets, display/HID transitions and save integrity; preserve internal eMMC."
     },
     {
       "id": "dual-kernel-reference",
@@ -441,6 +442,26 @@
       }
     }
   ],
-  "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. Reference evidence does not satisfy physical gates. No physical Switch execution or full SteamOS runtime proven.",
-  "name": "EXODUS Tumor"
+  "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. Reference evidence does not satisfy physical gates. No physical Switch execution or full SteamOS runtime proven. Physical AMP target is explicitly separate from the ARM64 reference recipes; no ADSP execution is proven.",
+  "name": "EXODUS Tumor",
+  "physical_target": {
+    "topology": "AMP",
+    "state": "needs-hardware-proof",
+    "horizon": {
+      "cpu": "cortex-a57",
+      "cores": 4,
+      "ownership": "retain all four application cores"
+    },
+    "freebsd": {
+      "cpu": "cortex-a9",
+      "arch": "armv7",
+      "release": "15.1-RELEASE",
+      "location": "ADSP candidate",
+      "state": "unverified-on-target"
+    },
+    "a53": "deferred",
+    "transport": "bounded typed mailbox IPC; coherency and notification mechanism require target proof",
+    "graphics_compute": "execution placement and ABI unresolved; ARM64 reference packages cannot execute on ARMv7",
+    "install": "clean SD only after verified target-specific candidate and recovery; preserve internal eMMC"
+  }
 }
