@@ -227,8 +227,11 @@ namespace exodus::steam_switch {
         }
         if (fetched.status == 404)
             return {SyncStatus::SessionExpired, {}};
-        if (fetched.status != 200)
+        if (fetched.status != 200) {
+            // A transport or front-end failure may leave the session unredeemed.
+            cancel();
             return {SyncStatus::GatewayUnavailable, {}};
+        }
         if (!home::IsSteamCatalog(home::ParseCatalog(fetched.body)))
             return {SyncStatus::InvalidCatalog, {}};
         return {SyncStatus::Ready, std::move(fetched.body)};
