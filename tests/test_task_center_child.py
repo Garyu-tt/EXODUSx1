@@ -61,6 +61,24 @@ class ManagedChildTests(unittest.TestCase):
             self.assertFalse(self.child.dispatch(replace(p, deadline=0)))
             kill.assert_not_called()
 
+    def test_malformed_request_never_signals_or_consumes_token(self):
+        p = self.center.request_lifecycle(self.child.key, "suspend")
+        bad = [
+            replace(p, target=("freebsd", True, "test-child", 1)),
+            replace(p, target=("freebsd", 1, "test-child", True)),
+            replace(p, sequence=True), replace(p, deadline=float("nan")),
+            replace(p, deadline=float("inf")), replace(p, deadline=10**1000),
+            replace(p, deadline="later"), replace(p, accepted=0),
+            replace(p, operation=[]),
+        ]
+        with patch("exodus.task_center_child.os.kill") as kill:
+            for request in bad:
+                with self.subTest(request=request):
+                    self.assertFalse(self.child.dispatch(request))
+            kill.assert_not_called()
+        self.assertEqual(self.child.last_token, 0)
+        self.assertTrue(self.child.dispatch(p))
+
     def test_lost_reaper_never_signals_pid(self):
         p = self.center.request_lifecycle(self.child.key, "suspend")
         # Simulate lost child authority without losing the test fixture cleanup.

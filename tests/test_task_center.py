@@ -198,6 +198,38 @@ class TaskCenterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.center.reconcile(("horizon", 1, "game", True))
 
+    def test_acknowledgment_rejects_boolean_alias(self):
+        self.center.reconcile(None)
+        h = self.center.begin(self.b.key)
+        with self.assertRaises(ValueError):
+            self.center.acknowledge(h.token, "acquire", ("freebsd", True, "game", 1))
+        self.assertEqual(self.center.owner, UNKNOWN)
+
+    def test_lifecycle_ack_and_quiescence_require_exact_typed_key(self):
+        s = Session("freebsd", 1, "game", 1, "running", frozenset({"suspend"}))
+        self.center.publish("freebsd", 1, 2, [s])
+        self.center.reconcile(None)
+        p = self.center.request_lifecycle(s.key, "suspend")
+        alias = ("freebsd", 1, "game", True)
+        with self.assertRaises(ValueError):
+            self.center.acknowledge_lifecycle(p.token, alias, True)
+        self.center.disconnect("freebsd")
+        with self.assertRaises(ValueError):
+            self.center.resolve_uncertain_lifecycle(p.token, alias, quiesced=True)
+        self.assertIsNotNone(self.center.uncertain_lifecycle)
+
+    def test_invalid_unhashable_values_fail_closed(self):
+        with self.assertRaises(ValueError):
+            self.center.publish([], 1, 1, [])
+        with self.assertRaises(ValueError):
+            self.center.disconnect([])
+        with self.assertRaises(ValueError):
+            self.center.publish("horizon", 1, 2, [Session("horizon", 1, "game", 1, [])])
+        self.center.reconcile(None)
+        with self.assertRaises(ValueError):
+            self.center.request_lifecycle(self.b.key, [])
+        self.center.publish("horizon", 1, 2, [self.a])
+
     def test_invalid_snapshot_is_atomic(self):
         for rows in ([self.a, self.a], [self.b], [Session("horizon", 1, "game", 0, "running")]):
             with self.assertRaises(ValueError):

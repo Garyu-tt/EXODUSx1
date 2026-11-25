@@ -4,11 +4,12 @@ Single serialized owner and sole waitpid reaper are required. The executable
 and argv come from trusted local configuration, never a UI request. This
 reference manages one direct child, not a process tree or hardware resources.
 """
+import math
 import os
 import signal
 import time
 
-from .task_center import Lifecycle, Session, UNKNOWN, LIMIT, positive
+from .task_center import Lifecycle, Session, UNKNOWN, LIMIT, positive, valid_key
 
 
 class ManagedChild:
@@ -72,9 +73,15 @@ class ManagedChild:
 
     def dispatch(self, request):
         """Synchronous delivery only. True means signal accepted, not completed."""
-        if (not isinstance(request, Lifecycle) or request.target != self.key
+        if (not isinstance(request, Lifecycle) or not valid_key(request.target)
+                or request.target != self.key
                 or not positive(request.token) or request.token <= self.last_token
-                or request.accepted or request.sequence != self.sequence
+                or request.accepted is not False or not positive(request.sequence)
+                or request.sequence != self.sequence
+                or type(request.operation) is not str
+                or type(request.deadline) not in (int, float)
+                or not 0 < request.deadline <= LIMIT
+                or not math.isfinite(request.deadline)
                 or request.deadline <= time.monotonic()):
             return False
         self.last_token = request.token
