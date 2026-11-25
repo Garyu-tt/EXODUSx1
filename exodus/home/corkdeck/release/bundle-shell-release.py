@@ -76,6 +76,8 @@ def reviewed_source(root, donor_pin, main_sha):
         "EXODUS-SHELL-COMMIT",
         f"{CATALOG}/catalog.cpp",
         f"{CATALOG}/catalog.hpp",
+        f"{CATALOG}/catalog_refresh.cpp",
+        f"{CATALOG}/catalog_refresh.hpp",
         f"{CATALOG}/COPYING",
         f"{SHELL}/build-host.sh",
         f"{SHELL}/build-switch.sh",
