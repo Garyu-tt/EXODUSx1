@@ -28,3 +28,16 @@ clean:
 	$(RM) test_codec$(EXEEXT) test_page_store$(EXEEXT) page_probe$(EXEEXT)
 
 .PHONY: all check clean
+
+test_compact_index$(EXEEXT): page_compact_index.c page_compact_index.h page_store.c page_store.h page_codec.c page_codec.h test_compact_index.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_compact_index.c page_store.c page_codec.c test_compact_index.c $(LDLIBS)
+
+check: check-compact-index
+check-compact-index: test_compact_index$(EXEEXT)
+	./test_compact_index$(EXEEXT)
+
+clean: clean-compact-index
+clean-compact-index:
+	$(RM) test_compact_index$(EXEEXT)
+
+.PHONY: check-compact-index clean-compact-index
