@@ -154,7 +154,16 @@ static bool pool_plan(const struct exodus_page_store *s,size_t i,size_t n,
     if(n>s->payload_capacity-other)return false;
     size_t limit=s->payload_capacity-n;
     size_t a=append?0:start_at(s,i);
-    if(a>limit||conflict(s,i,a,n)!=a){
+    /* A validated existing extent already fits a same-size or smaller
+     * replacement. No other live extent can overlap it. */
+    if(!append&&n<=old){
+        *dest=a;*live=other+n;return true;
+    }
+    /* Indexed appends have no preferred old location. First-fit alone
+     * preserves their placement policy without a redundant conflict scan. */
+    if(append&&s->page_order){
+        if(!ordered_gap(s,i,n,&a))return false;
+    }else if(a>limit||conflict(s,i,a,n)!=a){
         if(s->page_order){
             if(!ordered_gap(s,i,n,&a))return false;
         }else{
@@ -181,10 +190,13 @@ bool exodus_page_store_pool_put(struct exodus_page_store *s,size_t i,
     size_t a,live;
     if(!encoded||!pool_plan(s,i,n,&a,&live))return false;
     bool append=i==s->page_count;
-    if(s->page_order&&!append)order_remove(s,i);
+    /* The ordering key is the start, not the length. Keep the existing
+     * index untouched whenever a replacement stays at its old address. */
+    bool reorder=s->page_order&&(append||a!=start_at(s,i));
+    if(reorder&&!append)order_remove(s,i);
     memcpy(s->payload+a,encoded,n);
     set_extent(s,i,a,a+n);s->payload_used=live;
-    if(s->page_order)order_insert(s,s->page_count-(append?0:1),i);
+    if(reorder)order_insert(s,s->page_count-(append?0:1),i);
     if(append)++s->page_count;
     return true;
 }
