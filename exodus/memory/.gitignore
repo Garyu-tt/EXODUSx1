@@ -6,3 +6,7 @@
 /test_codec.exe
 /test_page_store
 /test_page_store.exe
+/test_snapshot
+/test_snapshot.exe
+/page_snapshot_probe
+/page_snapshot_probe.exe

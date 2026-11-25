@@ -46,6 +46,10 @@ jobs:
           cl /nologo /W4 /WX /TC /Fe:page_probe.exe page_probe.c page_probe_stats.c page_codec.c
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -B test_probe.py ./page_probe.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cl /nologo /W4 /WX /TC /Fe:page_snapshot_probe.exe page_snapshot_probe.c page_snapshot.c page_codec.c
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B test_snapshot_probe.py ./page_snapshot_probe.exe
 
   memory:
     name: Memory codec and probe
