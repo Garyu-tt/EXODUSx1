@@ -29,6 +29,18 @@ def snapshots(*device_lists):
     return [mtp_probe.classify(devices, USB_ID) for devices in device_lists]
 
 
+def timed_samples(*responses):
+    pending = iter(responses)
+
+    def sample(usb_id, timeout=None):
+        delay, snapshot = next(pending)
+        if delay:
+            mtp_probe.time.sleep(delay)
+        return snapshot
+
+    return sample
+
+
 class MtpProbeTests(unittest.TestCase):
     def setUp(self):
         self.ready = [node(PARENT), node(PORTABLE, "WPD", compatible=[MTP_ID], parent=PARENT.lower())]
@@ -131,6 +143,25 @@ class MtpProbeTests(unittest.TestCase):
         self.assertEqual(report["reconnect"]["last"]["state"], "wpd_ready")
         self.assertEqual(sample.call_count, 4)
 
+    def test_reconnect_counts_parent_absence_with_lingering_interface(self):
+        orphan = self.ready[1:]
+        sample = Mock(side_effect=snapshots(self.ready, orphan, self.ready, self.ready, self.ready))
+        code, report, _ = self.run_probe(sample, "--reconnect", "5")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["reconnect"], {
+            "state": "reconnected", "disconnect_seen": True, "last": report["initial"],
+        })
+
+    def test_reconnect_requires_parent_absence_when_wpd_disappears(self):
+        sample = Mock(side_effect=snapshots(
+            self.ready, [node(PARENT)], self.ready, self.ready, self.ready,
+        ))
+        code, report, _ = self.run_probe(sample, "--reconnect", "5")
+        self.assertEqual(code, 1)
+        self.assertEqual(report["reconnect"], {
+            "state": "timed_out", "disconnect_seen": False, "last": report["initial"],
+        })
+
     def test_timed_out_when_usb_remains_present(self):
         sample = Mock(return_value=snapshots(self.ready)[0])
         code, report, _ = self.run_probe(sample, "--reconnect", "5")
@@ -185,6 +216,17 @@ class MtpProbeTests(unittest.TestCase):
         self.assertEqual(report["reconnect"]["state"], "timed_out")
         sample.assert_called_with(USB_ID, timeout=4)
 
+    def test_reconnect_rejects_readiness_at_or_after_the_deadline(self):
+        ready, absent = snapshots(self.ready, [])
+        for delay in (3, 3.25):
+            with self.subTest(delay=delay):
+                sample = timed_samples((0, ready), (0, absent), (delay, ready))
+                code, report, _ = self.run_probe(sample, "--reconnect", "5")
+                self.assertEqual(code, 1)
+                self.assertEqual(report["reconnect"], {
+                    "state": "timed_out", "disconnect_seen": True, "last": absent.report(),
+                })
+
 
     def test_observe_cross_port_from_absent(self):
         other = [node(PARENT + "2"), node(PORTABLE, "WPD", compatible=[MTP_ID], parent=PARENT + "2")]
@@ -210,6 +252,19 @@ class MtpProbeTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertFalse(report["observation"]["complete"])
         self.assertEqual(report["observation"]["reason"], "query_timeout")
+
+    def test_observe_discards_a_sample_completed_at_or_after_the_deadline(self):
+        absent, ready = snapshots([], self.ready)
+        for delay in (3, 3.25):
+            with self.subTest(delay=delay):
+                sample = timed_samples((0, absent), (0, ready), (delay, absent))
+                code, report, _ = self.run_probe(sample, "--observe", "5")
+                self.assertEqual(code, 1)
+                observation = report["observation"]
+                self.assertFalse(observation["complete"])
+                self.assertEqual(observation["reason"], "query_timeout")
+                self.assertEqual([(e["elapsed_ms"], e["state"]) for e in observation["events"]],
+                                 [(0, "not_present"), (1000, "wpd_ready")])
 
     def test_observe_keeps_transitions_when_enumeration_fails_mid_window(self):
         for error, reason in ((mtp_probe.ProbeTimeout("timed out"), "query_timeout"),

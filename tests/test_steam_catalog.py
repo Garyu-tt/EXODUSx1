@@ -178,6 +178,24 @@ class SteamCatalogTests(unittest.TestCase):
                 )
                 self.assertEqual((result.returncode, json.loads(result.stdout), result.stderr), expected)
 
+    def test_win32_alias_suffixes_select_the_same_steamapps_directory(self):
+        self.manifest(self.first, 42, "Recorded title", 4)
+        expected = self.scan(self.first)
+        self.assertEqual((expected[0], expected[2]), (0, ""))
+        self.assertEqual([entry["provider_id"] for entry in expected[1]["entries"]], ["42"])
+        aliases = [Path(str(self.first) + suffix) for suffix in (".", " ")]
+
+        if os.name != "nt":
+            self.assertTrue(all(not alias.exists() for alias in aliases))
+            self.skipTest("Win32 trailing-dot and trailing-space aliases are unavailable")
+
+        canonical = self.first.resolve(strict=True)
+        for alias in aliases:
+            with self.subTest(alias=alias):
+                self.assertTrue(alias.samefile(self.first))
+                self.assertEqual(alias.resolve(strict=True), canonical)
+                self.assertEqual(self.scan(alias), expected)
+
     def test_steamapps_parent_path_respects_intermediary_access(self):
         self.manifest(self.first, 42, "Recorded title", 4)
         regular_file = self.first / "regular-file.txt"

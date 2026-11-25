@@ -66,8 +66,8 @@ namespace {
                 {"compatibility_state", "unknown"}, {"last_played", nullptr}, {"launch_mode", nullptr}};
     }
 
-    std::string SnapshotJson(std::string_view title = "Signed-in Steam title") {
-        return JSON{{"schema_version", 1}, {"entries", JSON::array({EntryJson("steam", "7", title)})}}.dump();
+    std::string SnapshotJson(std::string_view title = "Signed-in Steam title", std::string_view id = "7") {
+        return JSON{{"schema_version", 1}, {"entries", JSON::array({EntryJson("steam", id, title)})}}.dump();
     }
 
     std::string Utf16Le(std::u16string_view text) {
@@ -154,6 +154,26 @@ namespace {
         assert(Read(files.base) == manual && Read(files.store) == "occupied store path");
     }
 
+    void TestUnusableSteamAppIds() {
+        Fixture files;
+        const auto previous = SnapshotJson("Previous Steam title");
+        assert(PublishSteamSnapshot(files.store.c_str(), previous) == 1);
+        for (const auto *id : {"0", "07", "7x", "4294967296"}) {
+            const auto invalid = SnapshotJson("Invalid Steam title", id);
+            assert(ParseCatalog(invalid).status == CatalogStatus::Ready);
+            assert(!PublishSteamSnapshot(files.store.c_str(), invalid));
+        }
+        assert(!fs::exists(files.Snapshot(2)));
+
+        const auto invalid = SnapshotJson("Previously saved bad ID", "4294967296");
+        Write(files.Snapshot(2), invalid);
+        const auto fallback = files.Read();
+        assert(fallback.steam_snapshot_applied && fallback.entries.size() == 1);
+        assert(fallback.entries[0].title == "Previous Steam title");
+        assert(SteamApplicationId(fallback.entries[0]) == 7);
+        assert(Read(files.Snapshot(1)) == previous && Read(files.Snapshot(2)) == invalid);
+    }
+
     void TestRetainsValidFallbacks() {
         Fixture files;
         assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson("Original")) == 1);
@@ -223,6 +243,7 @@ int main() {
     TestReopenAndEmptySnapshot();
     TestCatalogFallback();
     TestStoreUnavailable();
+    TestUnusableSteamAppIds();
     TestRetainsValidFallbacks();
     TestMergedEntryLimit();
     TestConcurrentPublish();

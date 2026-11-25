@@ -24,11 +24,12 @@ namespace exodus::home {
         constexpr std::uint32_t FullyInstalled = 4;
         constexpr std::array<std::uint32_t, 5> MinimumUtf8Codepoint{0, 0, 0x80, 0x800, 0x10000};
 
-        bool ValidText(std::string_view text) {
+        bool ValidText(std::string_view text, bool path_component = false) {
             for (std::size_t offset = 0; offset < text.size();) {
                 const auto lead = static_cast<unsigned char>(text[offset++]);
                 if (lead < 0x80) {
-                    if ((lead < 0x20 && lead != '\t' && lead != '\n' && lead != '\r') || lead == 0x7f)
+                    if ((lead < 0x20 && (path_component || (lead != '\t' && lead != '\n' && lead != '\r')))
+                        || lead == 0x7f)
                         return false;
                     continue;
                 }
@@ -44,7 +45,8 @@ namespace exodus::home {
                         return false;
                     codepoint = (codepoint << 6) | (continuation & 0x3fu);
                 }
-                if (codepoint < MinimumUtf8Codepoint[length] || codepoint > 0x10ffff
+                if (codepoint < MinimumUtf8Codepoint[length] || (path_component && codepoint < 0xa0)
+                    || codepoint > 0x10ffff
                     || (codepoint >= 0xd800 && codepoint <= 0xdfff))
                     return false;
             }
@@ -66,7 +68,7 @@ namespace exodus::home {
         }
 
         bool IsSafeInstallDirectory(std::string_view name) {
-            if (name.empty() || name.size() > 255 || name.front() == ' '
+            if (name.empty() || name.size() > 255 || !ValidText(name, true) || name.front() == ' '
                 || name.back() == '.' || name.back() == ' '
                 || name.find_first_of("/\\:*?\"<>|\t\r\n") != std::string_view::npos)
                 return false;
@@ -76,11 +78,15 @@ namespace exodus::home {
             while (!stem.empty() && stem.back() == ' ')
                 stem.remove_suffix(1);
             if (EqualsAsciiCase(stem, "con") || EqualsAsciiCase(stem, "prn")
-                || EqualsAsciiCase(stem, "aux") || EqualsAsciiCase(stem, "nul"))
+                || EqualsAsciiCase(stem, "aux") || EqualsAsciiCase(stem, "nul")
+                || EqualsAsciiCase(stem, "conin$") || EqualsAsciiCase(stem, "conout$"))
                 return false;
-            if (stem.size() == 4 && stem.back() >= '1' && stem.back() <= '9') {
-                const auto prefix = stem.substr(0, 3);
-                return !EqualsAsciiCase(prefix, "com") && !EqualsAsciiCase(prefix, "lpt");
+            const auto prefix = stem.substr(0, 3);
+            if (EqualsAsciiCase(prefix, "com") || EqualsAsciiCase(prefix, "lpt")) {
+                const auto digit = stem.substr(3);
+                if ((digit.size() == 1 && digit.front() >= '1' && digit.front() <= '9')
+                    || digit == "\xc2\xb9" || digit == "\xc2\xb2" || digit == "\xc2\xb3")
+                    return false;
             }
             return true;
         }

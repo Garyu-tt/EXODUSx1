@@ -7,8 +7,8 @@ import unittest
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from exodus import steam_device_gateway as gateway
-from exodus.steam_catalog import steam_entry
-from tests.test_steam_sync import ACCOUNT, API_KEY, FakeSteam, assertion
+from exodus.steam_catalog import MAX_CATALOG_ENTRIES, steam_entry
+from tests.test_steam_sync import ACCOUNT, API_KEY, FakeSteam, PlayedFreeSteam, assertion
 
 
 ORIGIN = "https://exodus.example.org:8443"
@@ -128,6 +128,31 @@ class DeviceGatewayTests(unittest.TestCase):
         self.assert_device_error(self.redeem(session_id), 404, "session_not_found")
         self.assert_device_error(self.redeem(previous_session), 409, "sign_in_pending")
         self.assertEqual(self.provider.requests, [])
+
+    def test_catalog_exchange_includes_played_free_games_in_mixed_and_free_only_libraries(self):
+        for paid in (True, False):
+            with self.subTest(paid=paid):
+                self.provider = PlayedFreeSteam(paid=paid)
+                self.server.opener = self.provider
+                session_id = self.create()
+                return_to = self.redirect(session_id)
+                self.assertEqual(self.callback(return_to, assertion(return_to))[0], 303)
+                status, headers, body = self.redeem(session_id)
+                self.assertEqual((status, headers["Content-Type"]), (200, "application/json"))
+                expected = ([steam_entry("10", "Purchased game")] if paid else [])
+                expected.append(steam_entry("440", "Бесплатная игра"))
+                self.assertEqual(json.loads(body), {"schema_version": 1, "entries": expected})
+                self.assertNotIn(ACCOUNT.encode(), body)
+                self.assertNotIn(API_KEY.encode(), body)
+                self.assertEqual(len(self.provider.requests), 2)
+                self.assert_device_error(self.redeem(session_id), 404, "session_not_found")
+
+    def test_played_free_games_count_toward_the_catalog_limit(self):
+        self.server.opener = PlayedFreeSteam(free_count=MAX_CATALOG_ENTRIES)
+        session_id = self.create()
+        return_to = self.redirect(session_id)
+        self.assertEqual(self.callback(return_to, assertion(return_to))[0], 502)
+        self.assert_device_error(self.redeem(session_id), 404, "session_not_found")
 
     def test_device_cancellation_requires_proof_and_invalidates_the_browser_callback(self):
         session_id = self.create()

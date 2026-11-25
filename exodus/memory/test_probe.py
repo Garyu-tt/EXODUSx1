@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -62,6 +63,35 @@ class ProbeTests(unittest.TestCase):
                 result = subprocess.run([PROBE, *args], capture_output=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
+
+    def test_rejects_devices_and_directories(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for path in (os.devnull, tmp):
+                with self.subTest(path=path):
+                    result = subprocess.run([PROBE, path], capture_output=True, timeout=5)
+                    self.assertGreater(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+                    self.assertIn(b"regular sample file", result.stderr)
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "Requires a POSIX FIFO")
+    def test_rejects_writerless_fifo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sample.fifo"
+            os.mkfifo(path)
+            result = subprocess.run([PROBE, path], capture_output=True, timeout=5)
+            self.assertGreater(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
+            self.assertIn(b"regular sample file", result.stderr)
+
+    @unittest.skipUnless(os.name == "posix", "Requires POSIX symlinks")
+    def test_accepts_link_to_regular_sample(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sample = Path(tmp) / "sample.bin"
+            sample.write_bytes(bytes(PAGE) + b"tail")
+            link = Path(tmp) / "sample-link.bin"
+            link.symlink_to(sample.name)
+            result = subprocess.run([PROBE, link], capture_output=True, check=True, timeout=5)
+            self.assertEqual(json.loads(result.stdout)["input_bytes"], PAGE + 4)
 
     @unittest.skipUnless(sys.platform.startswith("linux") and Path("/dev/full").exists(),
                          "Requires Linux /dev/full")

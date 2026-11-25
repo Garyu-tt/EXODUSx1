@@ -62,6 +62,27 @@ class FakeSteam:
         return BytesIO(json.dumps(self.library).encode("utf-8"))
 
 
+class PlayedFreeSteam(FakeSteam):
+    """Model Valve's default exclusion of previously played free games."""
+
+    def __init__(self, *, paid=True, free_count=1):
+        super().__init__()
+        self.paid = paid
+        self.free_count = free_count
+
+    def open(self, request, *, timeout):
+        if request.full_url.split("?")[0] == sync.OWNED_GAMES:
+            options = json.loads(parse_qs(urlsplit(request.full_url).query)["input_json"][0])
+            games = []
+            if options.get("include_played_free_games") is True:
+                games.extend({"appid": 440 + index, "name": "Бесплатная игра"}
+                             for index in range(self.free_count))
+            if self.paid:
+                games.append({"appid": 10, "name": "Purchased game"})
+            self.library = {"response": {"game_count": len(games), "games": games}}
+        return super().open(request, timeout=timeout)
+
+
 class LocalBrowser:
     def __init__(self, signed_callback=assertion, wrong_path=False):
         self.signed_callback = signed_callback
@@ -155,7 +176,9 @@ class SteamSyncTests(unittest.TestCase):
         self.assertEqual(books.get_method(), "GET")
         lookup = parse_qs(urlsplit(books.full_url).query)
         self.assertEqual(lookup["key"], [API_KEY])
-        self.assertEqual(json.loads(lookup["input_json"][0]), {"steamid": int(ACCOUNT), "include_appinfo": True})
+        self.assertEqual(json.loads(lookup["input_json"][0]), {
+            "steamid": int(ACCOUNT), "include_appinfo": True, "include_played_free_games": True,
+        })
         raw = self.output.read_text(encoding="utf-8")
         self.assertNotIn(ACCOUNT, raw)
         self.assertNotIn(API_KEY, raw)
@@ -171,6 +194,35 @@ class SteamSyncTests(unittest.TestCase):
             self.run_sync(provider, browser)
         self.assertEqual(len(provider.requests), 1)
         self.assertEqual(self.output.read_bytes(), b"prior snapshot")
+
+    def test_refresh_includes_played_free_games_in_mixed_and_free_only_libraries(self):
+        homebrew = {**steam_entry("tools/local.nro", "Local Homebrew"), "provider": "switch_homebrew"}
+        for paid in (True, False):
+            with self.subTest(paid=paid):
+                self.output.write_text(json.dumps({
+                    "schema_version": 1, "entries": [steam_entry("77", "Previous Steam row"), homebrew],
+                }), encoding="utf-8")
+                provider = PlayedFreeSteam(paid=paid)
+                browser = LocalBrowser()
+                count = self.run_sync(provider, browser, self.output)
+                expected = ([steam_entry("10", "Purchased game")] if paid else [])
+                expected.append(steam_entry("440", "Бесплатная игра"))
+                self.assertEqual(count, len(expected))
+                self.assertEqual([reply[0] for reply in browser.replies], [200])
+                self.assertEqual(json.loads(self.output.read_bytes()), {
+                    "schema_version": 1, "entries": expected + [homebrew],
+                })
+                self.assertEqual(len(provider.requests), 2)
+                self.assertNotIn(ACCOUNT.encode(), self.output.read_bytes())
+                self.assertNotIn(API_KEY.encode(), self.output.read_bytes())
+
+    def test_played_free_games_count_toward_the_catalog_limit(self):
+        self.output.write_bytes(b"previous snapshot")
+        provider = PlayedFreeSteam(free_count=sync.MAX_CATALOG_ENTRIES)
+        with self.assertRaisesRegex(sync.SteamSyncError, "entry limit"):
+            self.run_sync(provider, LocalBrowser())
+        self.assertEqual(self.output.read_bytes(), b"previous snapshot")
+        self.assertEqual(list(self.output.parent.glob(".exodus-catalog-*")), [])
 
     def test_requires_matching_signed_identity_and_fresh_nonce(self):
         return_to = "http://127.0.0.1:32187/steam/callback/synthetic"
