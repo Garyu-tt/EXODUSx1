@@ -14,9 +14,7 @@ from .task_center import Lifecycle, Session, UNKNOWN, LIMIT, OPERATIONS, positiv
 
 class ManagedChild:
     def __init__(self, epoch, session_id, instance, argv):
-        if (not positive(epoch) or not positive(instance)
-                or not isinstance(session_id, str) or not 1 <= len(session_id) <= 128
-                or any(ord(ch) < 32 or ord(ch) == 127 for ch in session_id)
+        if (not valid_key(("freebsd", epoch, session_id, instance))
                 or not isinstance(argv, (tuple, list)) or not argv
                 or not all(isinstance(s, str) and "\0" not in s for s in argv)
                 or not os.path.isabs(argv[0])):

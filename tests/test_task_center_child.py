@@ -46,6 +46,17 @@ class ManagedChildTests(unittest.TestCase):
         self.assertEqual(self.center.lifecycle_result, (p.token, "confirmed"))
         self.assertEqual(self.child.state, expected)
 
+    def test_constructor_rejects_noncanonical_identity_before_spawn(self):
+        class Alias(str):
+            pass
+        with patch("exodus.task_center_child.os.posix_spawn") as spawn:
+            for epoch, name, instance in [(True, "child", 1), (1, Alias("child"), 1),
+                                          (1, "child", True), (1, "bad\nname", 1)]:
+                with self.subTest(identity=(epoch, name, instance)):
+                    with self.assertRaises(ValueError):
+                        ManagedChild(epoch, name, instance, [sys.executable])
+            spawn.assert_not_called()
+
     def test_real_child_stop_continue_term(self):
         self.operate("suspend", "suspended")
         self.operate("resume", "running")
