@@ -79,6 +79,16 @@ class ManagedChildTests(unittest.TestCase):
         self.assertEqual(self.child.last_token, 0)
         self.assertTrue(self.child.dispatch(p))
 
+    def test_deadline_expires_during_observation_never_signals(self):
+        p = self.center.request_lifecycle(self.child.key, "suspend")
+        with patch("exodus.task_center_child.time.monotonic",
+                   side_effect=[p.deadline - 1, p.deadline]), \
+                patch("exodus.task_center_child.os.kill") as kill:
+            self.assertFalse(self.child.dispatch(p))
+            kill.assert_not_called()
+        self.assertEqual(self.child.last_token, p.token)
+        self.assertFalse(self.child.dispatch(p))
+
     def test_lost_reaper_never_signals_pid(self):
         p = self.center.request_lifecycle(self.child.key, "suspend")
         # Simulate lost child authority without losing the test fixture cleanup.
