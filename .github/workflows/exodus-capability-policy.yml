@@ -1,0 +1,21 @@
+name: EXODUS capability policy
+on:
+  pull_request:
+    paths:
+      - 'exodus/security/**'
+      - '.github/workflows/exodus-capability-policy.yml'
+  push:
+    paths:
+      - 'exodus/security/**'
+      - '.github/workflows/exodus-capability-policy.yml'
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          ${{ matrix.cc }} -std=c99 -Wall -Wextra -Werror -pedantic -fsanitize=undefined exodus/security/test_capability_policy.c -o /tmp/exodus-policy
+          /tmp/exodus-policy

@@ -16,7 +16,8 @@ Keep the reported reference SHA-256 separately from the test SD. The checksum pi
 
 1. On the test SD, place the corresponding Steam-created `appmanifest_<AppID>.acf` in `/switch/exodus-steam/steamapps/` and the installed game folder in its `common/` directory. The AppID and install folder are resolved from this manifest.
 2. Put the reference in `/switch/exodus-steam/references/<AppID>.files`. Place `exodus-steam-file-check.nro` at `/switch/exodus-steam-file-check.nro` and open it from the homebrew menu.
-3. Press **A**, enter the AppID, then enter the 64 hexadecimal digits retained separately from the SD. The app checks the reference first. It then reads the listed files and reports a match, the first failing path, or cancellation. Compare the checked file count with the reference count.
+3. Press **A** to start. Use **D-Pad Up/Down** to select the displayed AppID and **A** to confirm, **X** to enter an AppID manually, or **B** to cancel. The picker shows AppIDs in numeric order using canonical `<AppID>.files` filenames for regular files from 1 byte through 8 MiB. The app opens manual entry if the directory is unavailable, has over 512 entries, or has no candidates.
+4. Enter the 64 hexadecimal digits retained separately from the SD. The filename is a selection hint. The supplied checksum pins the reference before the app reads the listed files. Compare the checked file count with the reference count after a match, or review the reported failure.
 
 The result covers the listed files and the supplied reference. Steam entitlement and the approved local runtime remain separate requirements for launch.
 
