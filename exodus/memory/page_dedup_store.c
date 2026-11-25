@@ -19,33 +19,20 @@ static bool restore_physical(const struct exodus_page_dedup_store *s,size_t i,ui
     const struct exodus_hot_entry *h=exodus_hot_find(s,i);
     return h?exodus_bdi_slab_restore(s->slab,&h->page,out):exodus_page_store_restore(&s->unique,i,out);
 }
-/* Compare raw and BDI cold records without materializing a full page.
- * Other encodings and hot records retain the validated restore path.
- * Distinguish invalid backing from a valid unequal page. */
+/* Cold encodings are compared in place. Hot records retain the validated
+ * restore path. Invalid backing is distinct from a valid unequal page. */
 static bool compare_physical(const struct exodus_page_dedup_store *s,size_t i,
                              const uint8_t *page,bool *equal)
 {
     size_t start,end;
     if(i>=s->unique.page_count)return false;
-    if(!exodus_hot_find(s,i)){
+    const struct exodus_hot_entry *h=exodus_hot_find(s,i);
+    if(!h){
         if(!exodus_page_store_extent(&s->unique,i,&start,&end))return false;
-        if(end-start==EXODUS_PAGE_BYTES){
-            *equal=memcmp(s->unique.payload+start,page,EXODUS_PAGE_BYTES)==0;
-            return true;
-        }
-        size_t size=end-start;
-        const uint8_t *src=s->unique.payload+start;
-        if((size&1u)&&src[0]==EXODUS_PAGE_BDI_VERSION){
-            /* The word reader validates the complete V3 layout before reading.
-             * Equality alone conflates malformed backing and a mismatch. */
-            uint8_t word[4];
-            if(!exodus_page_bdi_read_word(src,size,0,word))return false;
-            *equal=exodus_page_bdi_equal_page(src,size,page);
-            return true;
-        }
+        return exodus_page_compare(s->unique.payload+start,end-start,page,equal);
     }
     uint8_t restored[EXODUS_PAGE_BYTES];
-    if(!restore_physical(s,i,restored))return false;
+    if(!exodus_bdi_slab_restore(s->slab,&h->page,restored))return false;
     *equal=memcmp(restored,page,sizeof restored)==0;
     return true;
 }
