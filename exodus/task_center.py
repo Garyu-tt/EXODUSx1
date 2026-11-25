@@ -9,6 +9,10 @@ import time
 BACKENDS = frozenset({"horizon", "freebsd"})
 STATES = frozenset({"running", "suspended", "starting", "exited", "unknown"})
 UNKNOWN = "unknown"
+OPERATIONS = frozenset({"suspend", "resume", "terminate"})
+TRANSITIONS = {"suspend": ("running", "suspended"),
+               "resume": ("suspended", "running"),
+               "terminate": ("running", "exited")}
 MAX_SESSIONS = 256
 LIMIT = (1 << 64) - 1
 
@@ -24,6 +28,7 @@ class Session:
     id: str
     instance: int
     state: str
+    capabilities: frozenset = frozenset()
 
     @property
     def key(self):
@@ -39,6 +44,16 @@ class Handoff:
     deadline: float
 
 
+@dataclass(frozen=True)
+class Lifecycle:
+    token: int
+    operation: str
+    target: tuple
+    sequence: int
+    deadline: float
+    accepted: bool = False
+
+
 class TaskCenter:
     """One foreground ownership bundle: GPU, display and HID together."""
     def __init__(self, clock=time.monotonic):
@@ -47,19 +62,47 @@ class TaskCenter:
         self.owner = UNKNOWN
         self.pending = None
         self.token = 0
+        self.lifecycle = None
+        self.lifecycle_result = None
+
+    def _session(self, key, now):
+        if not isinstance(key, tuple) or len(key) != 4 or not isinstance(key[0], str):
+            return None
+        view = self.snapshots.get(key[0])
+        if view and now < view[2]:
+            return next((s for s in view[3] if s.key == key), None)
+        return None
 
     def _live(self, key, now):
-        if not isinstance(key, tuple) or len(key) != 4:
-            return False
-        view = self.snapshots.get(key[0])
-        return bool(view and now < view[2] and
-                    any(s.key == key and s.state == "running" for s in view[3]))
+        session = self._session(key, now)
+        return session is not None and session.state == "running"
+
+    def _finish_lifecycle(self, result):
+        self.lifecycle_result = (self.lifecycle.token, result)
+        self.lifecycle = None
+
+    def _check_lifecycle(self, now):
+        p = self.lifecycle
+        if not p:
+            return
+        s = self._session(p.target, now)
+        if now >= p.deadline or s is None or s.state == UNKNOWN:
+            self._finish_lifecycle(UNKNOWN)
+            return
+        if not p.accepted:
+            return
+        view = self.snapshots[s.backend]
+        if view[1] > p.sequence and s.state == TRANSITIONS[p.operation][1]:
+            self._finish_lifecycle("confirmed")
+        elif s.state == "exited":
+            self._finish_lifecycle(UNKNOWN)
 
     def _invalidate(self):
         self.owner = UNKNOWN
         self.pending = None
 
     def _tick(self, now):
+        self._check_lifecycle(now)
         p = self.pending
         if p and (now >= p.deadline or not self._live(p.target, now)):
             self._invalidate()
@@ -83,7 +126,9 @@ class TaskCenter:
                     or type(s.epoch) is not int or not positive(s.instance)
                     or not isinstance(s.id, str) or not 1 <= len(s.id) <= 128
                     or any(ord(ch) < 32 or ord(ch) == 127 for ch in s.id)
-                    or s.state not in STATES or s.id in ids):
+                    or s.state not in STATES or s.id in ids
+                    or not isinstance(s.capabilities, frozenset)
+                    or not s.capabilities <= OPERATIONS):
                 raise ValueError("invalid or duplicate session")
             ids.add(s.id)
         self.snapshots[backend] = (epoch, sequence, now + 3, tuple(sessions))
@@ -112,8 +157,8 @@ class TaskCenter:
         """
         now = self.clock()
         self._tick(now)
-        if self.pending:
-            raise ValueError("handoff pending")
+        if self.pending or self.lifecycle:
+            raise ValueError("operation pending")
         if observed_owner is not None and not self._live(observed_owner, now):
             raise ValueError("owner must be a live session or verified released")
         self.owner = observed_owner
@@ -121,7 +166,7 @@ class TaskCenter:
     def begin(self, target):
         now = self.clock()
         self._tick(now)
-        if self.pending or self.owner == UNKNOWN or not self._live(target, now):
+        if self.pending or self.lifecycle or self.owner == UNKNOWN or not self._live(target, now):
             raise ValueError("handoff unavailable")
         if target == self.owner:
             raise ValueError("already foreground")
@@ -131,6 +176,39 @@ class TaskCenter:
         self.pending = Handoff(self.token, "acquire" if self.owner is None else "release",
                                self.owner, target, now + 2)
         return self.pending
+
+    def request_lifecycle(self, target, operation):
+        """Return a typed request; never execute or optimistically change state."""
+        now = self.clock()
+        self._tick(now)
+        s = self._session(target, now)
+        if (self.pending or self.lifecycle or self.owner == UNKNOWN or self.owner == target
+                or s is None or operation not in OPERATIONS or operation not in s.capabilities):
+            raise ValueError("lifecycle unavailable")
+        initial = TRANSITIONS[operation][0]
+        if s.state != initial and not (operation == "terminate" and s.state == "suspended"):
+            raise ValueError("invalid lifecycle transition")
+        if self.token == LIMIT:
+            raise ValueError("token exhausted")
+        self.token += 1
+        self.lifecycle_result = None
+        self.lifecycle = Lifecycle(self.token, operation, s.key, self.snapshots[s.backend][1], now + 5)
+        return self.lifecycle
+
+    def acknowledge_lifecycle(self, token, target, accepted):
+        """Backend acceptance is not execution evidence. Require later snapshot."""
+        now = self.clock()
+        self._tick(now)
+        p = self.lifecycle
+        if (not p or type(token) is not int or token != p.token or target != p.target
+                or type(accepted) is not bool or p.accepted):
+            raise ValueError("unexpected lifecycle acknowledgment")
+        if not accepted:
+            self._finish_lifecycle("rejected")
+            return
+        # A snapshot predating acceptance cannot confirm the command.
+        self.lifecycle = Lifecycle(p.token, p.operation, p.target,
+                                   self.snapshots[p.target[0]][1], p.deadline, True)
 
     def acknowledge(self, token, phase, observed_owner):
         """Only mediator-confirmed observations advance the handoff.

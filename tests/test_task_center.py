@@ -85,6 +85,71 @@ class TaskCenterTests(unittest.TestCase):
         self.now += 3
         self.assertTrue(all(x["state"] == UNKNOWN for x in self.center.view()))
 
+    def test_lifecycle_requires_capability_and_confirmed_background(self):
+        self.center.reconcile(self.a.key)
+        with self.assertRaises(ValueError):
+            self.center.request_lifecycle(self.b.key, "suspend")
+        supported = Session("freebsd", 1, "game", 1, "running", frozenset({"suspend"}))
+        self.center.publish("freebsd", 1, 2, [supported])
+        p = self.center.request_lifecycle(self.b.key, "suspend")
+        with self.assertRaises(ValueError):
+            self.center.begin(self.b.key)
+        self.center.acknowledge_lifecycle(p.token, p.target, True)
+        self.assertEqual(self.center.view()[1]["state"], "running")
+        self.assertIsNotNone(self.center.lifecycle)
+        self.center.publish("freebsd", 1, 3, [Session("freebsd", 1, "game", 1, "suspended")])
+        self.assertEqual(self.center.lifecycle_result, (p.token, "confirmed"))
+        self.assertIsNone(self.center.lifecycle)
+
+    def test_lifecycle_no_confirmation_from_pre_acceptance_snapshot(self):
+        s = Session("freebsd", 1, "game", 1, "suspended", frozenset({"resume"}))
+        self.center.publish("freebsd", 1, 2, [s])
+        self.center.reconcile(self.a.key)
+        p = self.center.request_lifecycle(s.key, "resume")
+        running = Session("freebsd", 1, "game", 1, "running")
+        self.center.publish("freebsd", 1, 3, [running])
+        self.center.acknowledge_lifecycle(p.token, p.target, True)
+        self.assertIsNotNone(self.center.lifecycle)
+        self.center.publish("freebsd", 1, 4, [running])
+        self.assertEqual(self.center.lifecycle_result, (p.token, "confirmed"))
+
+    def test_lifecycle_rejects_foreground_and_unknown(self):
+        s = Session("horizon", 1, "game", 1, "running", frozenset({"terminate"}))
+        self.center.publish("horizon", 1, 2, [s])
+        with self.assertRaises(ValueError):
+            self.center.request_lifecycle(s.key, "terminate")
+        self.center.reconcile(s.key)
+        with self.assertRaises(ValueError):
+            self.center.request_lifecycle(s.key, "terminate")
+
+    def test_lifecycle_loss_is_not_exit(self):
+        s = Session("freebsd", 1, "game", 1, "running", frozenset({"terminate"}))
+        self.center.publish("freebsd", 1, 2, [s])
+        self.center.reconcile(None)
+        p = self.center.request_lifecycle(s.key, "terminate")
+        self.center.acknowledge_lifecycle(p.token, p.target, True)
+        self.center.publish("freebsd", 1, 3, [])
+        self.assertEqual(self.center.lifecycle_result, (p.token, UNKNOWN))
+        with self.assertRaises(ValueError):
+            self.center.acknowledge_lifecycle(p.token, p.target, True)
+
+    def test_lifecycle_rejection_and_deadline(self):
+        s = Session("freebsd", 1, "game", 1, "running", frozenset({"terminate"}))
+        self.center.publish("freebsd", 1, 2, [s])
+        self.center.reconcile(None)
+        p = self.center.request_lifecycle(s.key, "terminate")
+        self.center.acknowledge_lifecycle(p.token, p.target, False)
+        self.assertEqual(self.center.lifecycle_result, (p.token, "rejected"))
+        p = self.center.request_lifecycle(s.key, "terminate")
+        self.center.acknowledge_lifecycle(p.token, p.target, True)
+        self.now += 2
+        self.center.publish("freebsd", 1, 3, [s])
+        self.now += 2
+        self.center.publish("freebsd", 1, 4, [s])
+        self.now += 1
+        self.center.view()
+        self.assertEqual(self.center.lifecycle_result, (p.token, UNKNOWN))
+
     def test_invalid_snapshot_is_atomic(self):
         for rows in ([self.a, self.a], [self.b], [Session("horizon", 1, "game", 0, "running")]):
             with self.assertRaises(ValueError):
