@@ -13,7 +13,7 @@ class Region:
     owner: str
     shared: bool = False
 
-def admit(ram, regions, cores, devices):
+def admit(ram, regions, cores, devices, available_cores):
     """Reject inconsistent abstract plans, not a hardware safety certificate."""
     def span(start, size):
         if type(start) is not int or type(size) is not int:
@@ -44,9 +44,14 @@ def admit(ram, regions, cores, devices):
         raise ValueError("missing private domain")
     if set(cores) != DOMAINS:
         raise ValueError("missing CPU domain")
+    topology = tuple(available_cores)
+    if (not topology or any(type(i) is not int or i < 0 for i in topology)
+            or len(set(topology)) != len(topology)):
+        raise ValueError("invalid CPU topology")
     assigned = set()
-    for ids in cores.values():
-        if not ids or any(type(i) is not int or i < 0 for i in ids):
+    for owner, ids in cores.items():
+        # EL2 mediation can execute on guest pCPUs; no dedicated core required.
+        if (owner != "mediator" and not ids) or any(type(i) is not int or i not in topology for i in ids):
             raise ValueError("invalid CPU assignment")
         for i in ids:
             if i in assigned:
@@ -68,8 +73,9 @@ class ContractTests(unittest.TestCase):
                         Region(9 * PAGE, PAGE, "mediator", True)]
         self.cores = {"horizon": [0, 1], "freebsd": [2], "mediator": [3]}
         self.devices = dict.fromkeys(DEVICES, "horizon")
+        self.available_cores = (0, 1, 2, 3)
     def check(self):
-        return admit(self.ram, self.regions, self.cores, self.devices)
+        return admit(self.ram, self.regions, self.cores, self.devices, self.available_cores)
     def test_valid(self):
         self.assertTrue(self.check())
     def test_overlap(self):
@@ -95,6 +101,18 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.check()
     def test_missing_cpu(self):
         self.cores["freebsd"] = []
+        with self.assertRaises(ValueError): self.check()
+    def test_no_dedicated_mediator_core(self):
+        self.cores = {"horizon": [0, 1, 2], "freebsd": [3], "mediator": []}
+        self.assertTrue(self.check())
+    def test_nonexistent_cpu(self):
+        self.cores["freebsd"] = [4]
+        with self.assertRaises(ValueError): self.check()
+    def test_duplicate_topology(self):
+        self.available_cores = (0, 1, 2, 3, 3)
+        with self.assertRaises(ValueError): self.check()
+    def test_boolean_cpu(self):
+        self.cores["freebsd"] = [True]
         with self.assertRaises(ValueError): self.check()
     def test_device_double_owner(self):
         self.devices["gpu"] = ["horizon", "freebsd"]
