@@ -151,10 +151,13 @@ jobs:
   armv7-kernel-reference:
     # QEMU virt / Cortex-A15 is a 32-bit OS control, not the Cortex-A9 ADSP.
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - name: Install isolated reference emulator
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-system-arm u-boot-qemu curl xz-utils expect
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-system-arm u-boot-qemu curl xz-utils expect dosfstools mtools
       - name: Boot verified FreeBSD ARMv7 release without network
         shell: bash
         run: |
@@ -174,11 +177,35 @@ jobs:
           qemu-system-arm --version
           dpkg-query -W qemu-system-arm u-boot-qemu
           sha256sum "$uboot"
+          src="$GITHUB_WORKSPACE/exodus/frankenstein"
+          truncate -s 16M ipc-source.img
+          mkfs.vfat -n TMRIPC ipc-source.img
+          mcopy -i ipc-source.img "$src/ipc_native.c" "$src/ipc_mailbox.c" ::
+          cat > ipc-test.sh <<'SCRIPT'
+          #!/bin/sh
+          set -eu
+          work="$(mktemp -d /tmp/tmr-ipc.XXXXXX)"
+          trap 'rm -rf "$work"' EXIT
+          cp /mnt/ipc_native.c /mnt/ipc_mailbox.c "$work/"
+          cd "$work"
+          sha256 -q ipc_native.c
+          sha256 -q ipc_mailbox.c
+          cc --version
+          cc -std=c11 -O2 -Wall -Wextra -Werror -pedantic -DTMR_SELFTEST ipc_native.c -o codec
+          cc -std=c11 -O2 -Wall -Wextra -Werror -pedantic -DTMR_MAILBOX_SELFTEST ipc_mailbox.c -o mailbox
+          file codec mailbox
+          ./codec
+          ./mailbox
+          printf '%s%s\n' EXODUS_FREEBSD_ARMV7_IPC_ PASS
+          SCRIPT
+          mcopy -i ipc-source.img ipc-test.sh ::
+          sha256sum "$src/ipc_native.c" "$src/ipc_mailbox.c"
           cat > boot.exp <<'EOF'
           set timeout 420
           set uboot [lindex $argv 0]
           set image [lindex $argv 1]
-          spawn -noecho qemu-system-arm -M virt -cpu cortex-a15 -m 768 -smp 1 -nographic -monitor none -nic none -bios $uboot -drive if=virtio,file=$image,format=raw,snapshot=on -no-reboot
+          set source [lindex $argv 2]
+          spawn -noecho qemu-system-arm -M virt -cpu cortex-a15 -m 768 -smp 1 -nographic -monitor none -nic none -bios $uboot -drive if=virtio,file=$image,format=raw,snapshot=on -drive if=virtio,file=$source,format=raw,readonly=on -no-reboot
           proc fail {message} {
               puts stderr $message
               catch {exec kill -TERM [exp_pid]}
@@ -211,15 +238,24 @@ jobs:
               timeout {fail "ARMv7 reference: OS identity gate failed"}
               eof {fail "ARMv7 reference: exited before OS identity gate"}
           }
+          set timeout 180
+          send -- "mount -t msdosfs -o ro /dev/vtbd1 /mnt && /bin/sh /mnt/ipc-test.sh\r"
+          expect {
+              -re {(?m)^EXODUS_FREEBSD_ARMV7_IPC_PASS\r*$} {}
+              timeout {fail "ARMv7 reference: native IPC test failed or timed out"}
+              eof {fail "ARMv7 reference: exited before native IPC gate"}
+          }
           # Disposable snapshot only. No target device or persistent disk attached.
           catch {exec kill -TERM [exp_pid]}
           catch {close}
           catch {wait}
           exit 0
           EOF
-          timeout 9m expect boot.exp "$uboot" "$image" | tee boot.log
+          timeout 13m expect boot.exp "$uboot" "$image" ipc-source.img | tee boot.log
           tr -d '\r' < boot.log | grep -Fxq EXODUS_ARMV7_KERNEL_PASS
+          tr -d '\r' < boot.log | grep -Fxq EXODUS_FREEBSD_ARMV7_IPC_PASS
           echo TUMOR_FREEBSD_ARMV7_REFERENCE_PASS
+          echo TUMOR_FREEBSD_ARMV7_NATIVE_IPC_PASS
 
   reference-el:
     runs-on: ubuntu-24.04
