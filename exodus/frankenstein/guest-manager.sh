@@ -161,4 +161,38 @@ if [ "$manager_rc" -eq 0 ]; then
 fi
 set -e
 echo "EXODUS_MANAGER_DAEMON_CHECK_RESULT=$manager_rc"
+test "$manager_rc" -eq 0
+# Execute only help/version entrypoints. No privileged hardware methods,
+# real daemon registration or system-bus access are admitted by this test.
+stage=$(mktemp -d /var/tmp/exodus-manager-export.XXXXXX)
+for tool in steamos-manager steamosctl; do
+    test -x "target/debug/$tool"
+    cp "target/debug/$tool" "$stage/$tool"
+    strip "$stage/$tool"
+    test -s "$stage/$tool"
+    test "$(stat -f %z "$stage/$tool")" -le 50331648
+    file "$stage/$tool"
+    ldd "$stage/$tool" > "$stage/$tool.ldd.txt" 2>&1
+    cat "$stage/$tool.ldd.txt"
+    if grep -i 'not found' "$stage/$tool.ldd.txt"; then exit 1; fi
+    timeout 15s "$stage/$tool" --help > "$stage/$tool.help.txt"
+    test -s "$stage/$tool.help.txt"
+    grep -i 'usage:' "$stage/$tool.help.txt"
+done
+timeout 15s "$stage/steamosctl" --version > "$stage/steamosctl.version.txt"
+grep -F '26.4.1' "$stage/steamosctl.version.txt"
+echo EXODUS_MANAGER_EXECUTABLE_SMOKE_PASS
+pkg query -a '%n-%v %o' | sort > "$stage/dependencies.txt"
+freebsd-version -ku > "$stage/freebsd-version.txt"
+git rev-parse HEAD > "$stage/source-revision.txt"
+cp /var/tmp/exodus-manager-freebsd-tree.txt "$stage/cargo-tree.txt"
+files='steamos-manager steamosctl steamos-manager.ldd.txt steamosctl.ldd.txt steamos-manager.help.txt steamosctl.help.txt steamosctl.version.txt dependencies.txt freebsd-version.txt source-revision.txt cargo-tree.txt'
+(cd "$stage" && sha256 -r $files > SHA256SUMS)
+export_dir=$(mktemp -d /var/tmp/exodus-manager-output.XXXXXX)
+mount -t msdosfs /dev/msdosfs/EXODUSOUT "$export_dir"
+for f in $files SHA256SUMS; do cp "$stage/$f" "$export_dir/$f"; done
+sync
+umount "$export_dir"
+rmdir "$export_dir"
+echo EXODUS_MANAGER_ARTIFACT_GUEST_PASS
 echo EXODUS_MANAGER_AUDIT_COMPLETE
