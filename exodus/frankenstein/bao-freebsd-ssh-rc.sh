@@ -30,12 +30,24 @@ probe() {
         printf 'R29 keyscan exit=%s\n' "$scan_rc" >&2
         return 1
     fi
-    if ! read host keytype key < /tmp/tumor-scan; then
-        printf '%s\n' 'R29 keyscan output missing or incomplete' >&2
-        return 1
-    fi
-    if test "$keytype" != "$expected_type" || test "$key" != "$expected_key"; then
-        printf 'R29 keyscan returned unexpected host key type=%s\n' "$keytype" >&2
+    # ssh-keyscan may emit protocol banners as comment lines before the
+    # actual known_hosts record. Do not treat a banner as a key or accept
+    # a successful scan without the exact generated ED25519 public key.
+    records=0
+    while read -r host keytype key extra; do
+        case "$host" in
+            ''|\#*) continue ;;
+        esac
+        if test "$host" != '[127.0.0.1]:2222' ||
+           test "$keytype" != "$expected_type" ||
+           test "$key" != "$expected_key" || test -n "$extra"; then
+            printf 'R29 keyscan returned unexpected host/key record: host=%s type=%s\n' "$host" "$keytype" >&2
+            return 1
+        fi
+        records=$((records + 1))
+    done < /tmp/tumor-scan
+    if test "$records" -ne 1; then
+        printf 'R29 keyscan expected one verified record, got %s\n' "$records" >&2
         return 1
     fi
     if ! kill -0 "$pid"; then
