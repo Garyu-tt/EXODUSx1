@@ -17,22 +17,37 @@ printf '%s\n' 'TUMOR_BAO_REF: FREEBSD_RAMROOT_WRITABLE' > /dev/console
 # Run the actual daemon without daemonizing: use its child PID and retain
 # stderr on the console rather than racing an asynchronously written PID file.
 # All listeners remain restricted to the configured guest loopback.
-/usr/sbin/sshd -D -e -f /etc/ssh/tumor-test.conf </dev/null &
+/usr/sbin/sshd -D -e -o LogLevel=DEBUG2 -f /etc/ssh/tumor-test.conf </dev/null &
 pid=$!
 test "$pid" -gt 1
 read expected_type expected_key comment < /etc/ssh/ssh_host_ed25519_key.pub
 test "$expected_type" = ssh-ed25519
 test -n "$expected_key"
 probe() {
-    /usr/bin/ssh-keyscan -T 5 -p 2222 -t ed25519 127.0.0.1 > /tmp/tumor-scan || return 1
-    read host keytype key < /tmp/tumor-scan || return 1
-    test "$keytype" = "$expected_type" || return 1
-    test "$key" = "$expected_key" || return 1
-    kill -0 "$pid" || return 1
+    scan_rc=0
+    /usr/bin/ssh-keyscan -4 -v -T 15 -p 2222 -t ed25519 127.0.0.1 > /tmp/tumor-scan || scan_rc=$?
+    if test "$scan_rc" -ne 0; then
+        printf 'R29 keyscan exit=%s\n' "$scan_rc" >&2
+        return 1
+    fi
+    if ! read host keytype key < /tmp/tumor-scan; then
+        printf '%s\n' 'R29 keyscan output missing or incomplete' >&2
+        return 1
+    fi
+    if test "$keytype" != "$expected_type" || test "$key" != "$expected_key"; then
+        printf 'R29 keyscan returned unexpected host key type=%s\n' "$keytype" >&2
+        return 1
+    fi
+    if ! kill -0 "$pid"; then
+        printf '%s\n' 'R29 listener PID no longer alive' >&2
+        return 1
+    fi
+    printf '%s\n' 'R29 verified generated ED25519 public key' >&2
 }
 # Allow bounded listener startup, but reject a dead daemon immediately.
 ready=no
-for attempt in 1 2 3 4 5; do
+for attempt in 1 2 3 4; do
+    printf 'R29 listener attempt=%s\n' "$attempt" >&2
     kill -0 "$pid"
     if probe; then ready=yes; break; fi
     /rescue/sleep 1
