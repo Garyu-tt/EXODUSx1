@@ -44,3 +44,7 @@ are preserved until their separate Applications presentation is wired.
 The `steam_compat` module validates bounded `.exodus-target` descriptors and previews non-installable VDF manifests. The `steam_bridge` client and server use bounded JSON frames over an owner-only Unix socket, a random request ID, explicit confirmation requirement and accepted/running/exited lifecycle transitions. A missing adapter rejects requests. No automatic launch retry, shell execution, external listener, or exit inference from disconnection is provided. Both client verbs wait for a terminal event. Tests exercise simulated adapters, not actual game execution.
 
 This integration intentionally excludes the separate Horizon observer, managed applet session and Applications UI changes from #160. No native adapter is installed and no actual Steam discovery, FreeBSD execution or Switch hardware acceptance is claimed.
+
+## Native lifecycle evidence (separate integration)
+
+The `--native-observe` diagnostic samples the application PID and program ID with a PID recheck; unavailable permissions or inconsistent samples report `unknown`. A managed SystemApplet session helper requires verified target and user confirmation, and does not infer a POSIX exit code from Horizon's raw exit reason. It remains unconnected to the bridge and is not enabled in the ordinary shell UI. Host mock tests cover PM failures, cleanup, permission/context gates and lifecycle transitions. Real permissions, native session and hardware coexistence remain unverified.
