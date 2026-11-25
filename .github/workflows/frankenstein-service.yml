@@ -7,6 +7,7 @@ on:
       - 'exodus/frankenstein/partition_contract.py'
       - 'exodus/frankenstein/ipc_contract.py'
       - 'exodus/frankenstein/ipc_native.c'
+      - 'exodus/frankenstein/ipc_mailbox.c'
       - 'exodus/frankenstein/el_probe.S'
       - 'exodus/frankenstein/el_probe.ld'
       - 'exodus/frankenstein/bao_guest.S'
@@ -55,6 +56,8 @@ jobs:
           python3 -W error::ResourceWarning exodus/frankenstein/test_ipc_process.py
           cc -std=c11 -Wall -Wextra -Werror -pedantic -DTMR_SELFTEST -fsanitize=address,undefined -fno-sanitize-recover=all exodus/frankenstein/ipc_native.c -o /tmp/tumor-ipc-native
           ASAN_OPTIONS=detect_leaks=1 /tmp/tumor-ipc-native
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -DTMR_MAILBOX_SELFTEST -fsanitize=address,undefined -fno-sanitize-recover=all exodus/frankenstein/ipc_mailbox.c -o /tmp/tumor-ipc-mailbox
+          ASAN_OPTIONS=detect_leaks=1 /tmp/tumor-ipc-mailbox
           cc -std=c11 -Wall -Wextra -Werror -O2 exodus/frankenstein/sessiond.c -o /tmp/exodus-sessiond
           python3 exodus/frankenstein/test_sessiond.py /tmp/exodus-sessiond
       - name: Install native GLib and D-Bus test tools
