@@ -153,7 +153,8 @@
       "depends": [
         "gamescope",
         "steam-client",
-        "manager-dbus"
+        "manager-dbus",
+        "resident-ssh-dbus"
       ]
     },
     {
@@ -251,10 +252,29 @@
     {
       "id": "linux-glibc",
       "origin": "exodus/frankenstein/linux-dynamic-probe.c",
-      "state": "probe-pending",
+      "state": "freebsd-qemu-arm64-tested",
       "depends": [
         "linux-arm64-abi"
-      ]
+      ],
+      "evidence": {
+        "run": 45501221806,
+        "job": 138824725136,
+        "scope": "glibc 2.39 dynamic Linux AArch64 test on FreeBSD QEMU: loader, uname/getpid/clock_gettime, dlopen/dlsym, pthread create/join, exit 0; no Steam client or physical console tested."
+      }
+    },
+    {
+      "id": "resident-ssh-dbus",
+      "origin": "exodus/frankenstein/guest-resident.sh",
+      "state": "freebsd-qemu-arm64-tested",
+      "depends": [
+        "ssh",
+        "manager-dbus"
+      ],
+      "evidence": {
+        "run": 45501837956,
+        "job": 138826845885,
+        "scope": "Native OpenSSH loopback ED25519 authentication and revocation, actual D-Bus DefaultLoginMode changes through SSH, same SSH and D-Bus daemon PID, generation 3 persisted. Desired mode only, active=unknown; no graphical session or Switch hardware."
+      }
     }
   ],
   "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. No physical Switch execution or full SteamOS runtime proven.",

@@ -8,6 +8,7 @@ on:
       - 'exodus/frankenstein/test_sessiond.py'
       - 'exodus/frankenstein/sessiond-dbus.inc'
       - 'exodus/frankenstein/test_sessiond_dbus.sh'
+      - 'exodus/frankenstein/test_dbus_contract.py'
       - '.github/workflows/frankenstein-service.yml'
   workflow_dispatch:
 permissions:
@@ -34,3 +35,4 @@ jobs:
         run: |
           cc -std=c11 -Wall -Wextra -Werror -O2 -DEXODUS_DBUS exodus/frankenstein/sessiond.c $(pkg-config --cflags --libs gio-2.0) -o /tmp/exodus-sessiond-dbus
           dbus-run-session -- sh exodus/frankenstein/test_sessiond_dbus.sh /tmp/exodus-sessiond-dbus
+          dbus-run-session -- python3 exodus/frankenstein/test_dbus_contract.py /tmp/exodus-sessiond-dbus
