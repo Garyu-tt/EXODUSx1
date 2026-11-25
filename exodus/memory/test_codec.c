@@ -323,8 +323,41 @@ static void check_compare_differential(void)
     }
 }
 
+/* Mixed packed/raw BDI and wrapping deltas accepted by the decoder. */
+static void check_bdi_direct_compare(void)
+{
+    enum { packed_size=9+63*20+64 };
+    uint8_t encoded[packed_size+2]={0};
+    uint8_t decoded[EXODUS_PAGE_BYTES+2]={0};
+    uint8_t *p=encoded+1, *page=decoded+1;
+    p[0]=EXODUS_PAGE_BDI_VERSION;
+    memset(p+1,0xff,8);
+    p[8]=0x7f; /* final block is raw */
+    for(size_t b=0;b<63;b++){
+        uint8_t *block=p+9+b*20;
+        memset(block,0xff,4);
+        for(size_t w=0;w<16;w++)block[4+w]=(uint8_t)(w+b);
+    }
+    for(size_t i=0;i<64;i++)p[9+63*20+i]=(uint8_t)(i*17);
+    CHECK(exodus_page_decode(p,packed_size,page));
+    CHECK(page[0]==0xff && page[4]==0 && page[5]==0);
+    bool equal=false;
+    CHECK(exodus_page_compare(p,packed_size,page,&equal)&&equal);
+    CHECK(exodus_page_bdi_equal_page(p,packed_size,page));
+    for(size_t i=0;i<EXODUS_PAGE_BYTES;i++){
+        page[i]^=1;
+        CHECK(exodus_page_compare(p,packed_size,page,&equal)&&!equal);
+        CHECK(!exodus_page_bdi_equal_page(p,packed_size,page));
+        page[i]^=1;
+    }
+    equal=true;
+    CHECK(!exodus_page_compare(p,packed_size-2,page,&equal)&&equal);
+    CHECK(!exodus_page_bdi_equal_page(p,packed_size-2,page));
+}
+
 int main(void)
 {
+    check_bdi_direct_compare();
     check_compare_differential();
     check_compare_invalid_tail();
     check_adaptive();
