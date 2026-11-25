@@ -86,7 +86,10 @@ class ManagedChild:
             return False
         self.last_token = request.token
         self.poll()
-        if self.terminal or request.operation not in self.capabilities():
+        # poll() can be delayed by waitpid events or interruptions. Recheck
+        # expiry after observation, before issuing any process signal.
+        if (self.terminal or request.operation not in self.capabilities()
+                or request.deadline <= time.monotonic()):
             return False
         sig = {"suspend": signal.SIGSTOP, "resume": signal.SIGCONT,
                "terminate": signal.SIGTERM}[request.operation]
