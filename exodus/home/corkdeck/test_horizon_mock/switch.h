@@ -12,4 +12,13 @@ Result pmdmntGetApplicationProcessId(u64 *out);
 Result pminfoGetProgramId(u64 *out,u64 pid);
 void pmdmntExit(void);
 void pminfoExit(void);
+typedef enum { AppletType_Application, AppletType_SystemApplet } AppletType;
+typedef struct { int initialized; } AppletApplication;
+AppletType appletGetAppletType(void);
+Result appletCreateApplication(AppletApplication *a,u64 id);
+Result appletApplicationStart(AppletApplication *a);
+int appletApplicationCheckFinished(AppletApplication *a);
+void appletApplicationJoin(AppletApplication *a);
+unsigned appletApplicationGetExitReason(AppletApplication *a);
+void appletApplicationClose(AppletApplication *a);
 #endif
