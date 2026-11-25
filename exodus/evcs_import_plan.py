@@ -8,6 +8,10 @@ import stat
 
 MAX_PARTS = 100
 FAT32_MAX = (1 << 32) - 1
+# Match evcs_discovery.h and its default Switch Games root, not the host mount path.
+DISCOVERY_ROOT = 'sdmc:/Games'
+DISCOVERY_DEPTH = 8
+DISCOVERY_PATH_CAP = 512
 
 
 def is_indirect(info):
@@ -68,6 +72,28 @@ def inventory(source):
     return ordered
 
 
+def discovery_path_ok(relative, split=False):
+    """Check path admission only, not the full scanner's shared budgets."""
+    names = relative.parts
+    if not names or len(names) - 1 > DISCOVERY_DEPTH:
+        return False
+    for name in names:
+        if name in {'.', '..'} or any(
+                ord(ch) < 32 or ord(ch) == 127 or ch in '/\\\\:"' for ch in name):
+            return False
+    # The scanner treats archive directories as split containers, not folders
+    # to descend into. Its extension comparison is ASCII case-insensitive.
+    for name in names[:-1]:
+        if len(name) > 4 and name[-4:].lower() in {'.nsp', '.xci'}:
+            return False
+    try:
+        path_bytes = len((DISCOVERY_ROOT + '/' + '/'.join(names)).encode('utf-8'))
+    except UnicodeEncodeError:
+        return False
+    # Split probe also appends a slash and two-digit member name.
+    return path_bytes + (3 if split else 0) < DISCOVERY_PATH_CAP
+
+
 def plan(source, games, fat32=False):
     source = direct_path(source)
     games = direct_path(games)
@@ -83,11 +109,12 @@ def plan(source, games, fat32=False):
     free = shutil.disk_usage(games).free
     same_device = all(p.st_dev == root.st_dev for p in parts)
     already = source.is_relative_to(games)
-    if already:
+    destination = source if already else games / source.name
+    if not discovery_path_ok(destination.relative_to(games), len(parts) > 1):
+        status = "unsupported_catalog_path"
+    elif already:
         status = "already_discoverable"
-        destination = source
     else:
-        destination = games / source.name
         with os.scandir(games) as entries:
             collision = any(e.name.casefold() == source.name.casefold() for e in entries)
         if collision:
