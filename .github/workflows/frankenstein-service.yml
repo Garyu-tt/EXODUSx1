@@ -288,12 +288,13 @@ jobs:
           test -s "$bao_ssh"
           sha256sum "$out/ssh.ufs" "$out/ssh-images/guest-B.bin" "$bao_ssh"
           rc=0
-          timeout 180s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_ssh,addr=0x50000000,force-raw=on" > "$out/bao-ssh.log" 2>&1 || rc=$?
+          timeout 240s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_ssh,addr=0x50000000,force-raw=on" > "$out/bao-ssh.log" 2>&1 || rc=$?
           cat "$out/bao-ssh.log"
           test "$rc" -eq 124
           tr -d '\r' < "$out/bao-ssh.log" > "$out/bao-ssh.normalized"
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-ssh.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_RAMROOT_WRITABLE$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LISTENER_READY$' "$out/bao-ssh.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LOOPBACK_KEX$' "$out/bao-ssh.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
           echo 'R29 UFS1 control: loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
