@@ -39,7 +39,7 @@ jobs:
         run: |
           set -eu
           dir=exodus/home/corkdeck
-          for test in horizon_settings launch_route runtime_handoff library_filter shell_menu control_metrics; do
+          for test in horizon_settings launch_route runtime_handoff library_filter shell_menu control_metrics native_target; do
             cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
               "$dir/test_$test.c" -o "$RUNNER_TEMP/test-$test"
             "$RUNNER_TEMP/test-$test"
@@ -65,6 +65,12 @@ jobs:
           sh exodus/home/corkdeck/build-host.sh "$RUNNER_TEMP/corkdeck" "$RUNNER_TEMP/exodus-shell"
           SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy \
             timeout 30 "$RUNNER_TEMP/exodus-shell" /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf --smoke
+          rc=0
+          "$RUNNER_TEMP/exodus-shell" --native-target switch 010000000000abcd || rc=$?
+          test "$rc" -eq 1
+          rc=0
+          "$RUNNER_TEMP/exodus-shell" --native-target homebrew ../bad.nro || rc=$?
+          test "$rc" -eq 2
 
   native:
     runs-on: ubuntu-latest
