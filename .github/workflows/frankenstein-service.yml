@@ -18,6 +18,7 @@ on:
       - 'exodus/frankenstein/pack_bao_freebsd.py'
       - 'exodus/frankenstein/pack_bao_freebsd_root.py'
       - 'exodus/frankenstein/bao_freebsd_init_probe.S'
+      - 'exodus/frankenstein/bao-freebsd-rescue-rc.sh'
       - 'exodus/frankenstein/test_ipc_process.py'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/test_sessiond.py'
@@ -86,7 +87,7 @@ jobs:
 
   bao-reference-build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -202,3 +203,50 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_SYNTHETIC_PID1$' "$out/bao-root.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-root.normalized"; then exit 1; fi
           echo 'R27 synthetic PID1 admission only; full FreeBSD userspace and physical coexistence remain unverified'
+
+          # R28: original FreeBSD rescue init and shell, isolated custom rc.
+          # The publisher manifest must match the already pinned kernel archive.
+          release=https://download.freebsd.org/releases/arm64/aarch64/15.1-RELEASE
+          curl --fail --location --retry 2 --max-time 60 -o "$out/MANIFEST" "$release/MANIFEST"
+          kernel_manifest="$(awk '$1 == "kernel.txz" {print $2}' "$out/MANIFEST")"
+          test "$kernel_manifest" = 05f770c6af035fab312cd65592f1dbd1bff020c7daa75d8d4ecc96cae8f042c0
+          base_manifest="$(awk '$1 == "base.txz" {print $2}' "$out/MANIFEST")"
+          printf '%s\n' "$base_manifest" | grep -Ex '[a-f0-9]{64}'
+          curl --fail --location --retry 2 --max-time 300 -o "$out/base.txz" "$release/base.txz"
+          printf '%s  %s\n' "$base_manifest" "$out/base.txz" | sha256sum -c -
+          mkdir -p "$out/base" "$out/stock-root/sbin" "$out/stock-root/bin" "$out/stock-root/rescue" "$out/stock-root/etc" "$out/stock-root/dev" "$out/stock-root/var/run" "$out/stock-root/tmp" "$out/stock-images"
+          # Extract the rescue directory as a group to preserve archive hardlinks.
+          tar -tJf "$out/base.txz" | awk '/^(\.\/)?rescue\// { print }' > "$out/rescue-members"
+          test -s "$out/rescue-members"
+          tar -xJf "$out/base.txz" -C "$out/base" --no-same-owner --no-recursion -T "$out/rescue-members"
+          for tool in init sh sysctl ps; do
+            test -f "$out/base/rescue/$tool"
+            test ! -L "$out/base/rescue/$tool"
+            test -x "$out/base/rescue/$tool"
+            cmp "$out/base/rescue/init" "$out/base/rescue/$tool"
+          done
+          readelf -h "$out/base/rescue/init" | grep AArch64
+          sha256sum "$out/base/rescue/init"
+          install -m 0755 "$out/base/rescue/init" "$out/stock-root/sbin/init"
+          ln "$out/stock-root/sbin/init" "$out/stock-root/bin/sh"
+          for tool in sysctl ps; do ln "$out/stock-root/sbin/init" "$out/stock-root/rescue/$tool"; done
+          install -m 0755 "$src/bao-freebsd-rescue-rc.sh" "$out/stock-root/etc/rc"
+          : > "$out/stock-root/etc/ttys"
+          chmod 1777 "$out/stock-root/tmp"
+          makefs -t ffs -o version=2 -B little -s 64m "$out/stock.ufs" "$out/stock-root"
+          cp "$out/guest-A.bin" "$out/stock-images/guest-A.bin"
+          python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/stock.ufs" "$out/stock-images/guest-B.bin"
+          cp "$src/bao_freebsd_reference.c" "$out/config/tumor_stock.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_stock CPPFLAGS="-DTUMOR_IMAGES=$out/stock-images"
+          bao_stock="$out/bao/bin/qemu-aarch64-virt/tumor_stock/bao.bin"
+          test -s "$bao_stock"
+          sha256sum "$out/stock.ufs" "$out/stock-images/guest-B.bin" "$bao_stock"
+          rc=0
+          timeout 120s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_stock,addr=0x50000000,force-raw=on" > "$out/bao-stock.log" 2>&1 || rc=$?
+          cat "$out/bao-stock.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-stock.log" > "$out/bao-stock.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-stock.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_STOCK_INIT_RC$' "$out/bao-stock.normalized")" -eq 1
+          if grep -aiE 'panic:|fatal exception' "$out/bao-stock.normalized"; then exit 1; fi
+          echo 'R28 original rescue init and custom rc only; stock rc.d, SSH, resident peer and physical coexistence remain unverified'
