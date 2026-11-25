@@ -5,12 +5,15 @@
 import concurrent.futures
 import contextlib
 import hashlib
+import http.client
 from itertools import takewhile
 import json
 import re
 import shutil
 import tarfile
 import tempfile
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path, PurePosixPath
@@ -19,6 +22,7 @@ from pathlib import Path, PurePosixPath
 MANIFEST = Path(__file__).with_name("dependency-sources.json")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 CHUNK_SIZE = 1024 * 1024
+DOWNLOAD_ATTEMPTS = 3
 
 
 def sha256(path):
@@ -125,26 +129,34 @@ def cached_file(entry, cache, offline):
     for url in entry["urls"]:
         if urllib.parse.urlsplit(url).scheme != "https":
             raise ValueError(f"Expected HTTPS source: {url}")
-        with tempfile.NamedTemporaryFile(dir=cache, delete=False) as tmp:
-            temporary = Path(tmp.name)
-        try:
-            request = urllib.request.Request(url, headers={"User-Agent": "EXODUS-source-bundle"})
-            with urllib.request.urlopen(request, timeout=30) as response, temporary.open("wb") as target:
-                if urllib.parse.urlsplit(response.geturl()).scheme != "https":
-                    raise ValueError("Insecure source redirect")
-                remaining = entry["size"]
-                while chunk := response.read(min(CHUNK_SIZE, remaining + 1)):
-                    remaining -= len(chunk)
-                    if remaining < 0:
-                        raise ValueError("Source exceeded its pinned size")
-                    target.write(chunk)
-            check_file(temporary, entry)
-            temporary.replace(cached)
-            return cached
-        except (OSError, ValueError) as error:
-            failures.append(f"{url}: {error}")
-        finally:
-            temporary.unlink(missing_ok=True)
+        for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+            with tempfile.NamedTemporaryFile(dir=cache, delete=False) as tmp:
+                temporary = Path(tmp.name)
+            try:
+                request = urllib.request.Request(url, headers={"User-Agent": "EXODUS-source-bundle"})
+                with urllib.request.urlopen(request, timeout=30) as response, temporary.open("wb") as target:
+                    if urllib.parse.urlsplit(response.geturl()).scheme != "https":
+                        raise ValueError("Insecure source redirect")
+                    remaining = entry["size"]
+                    while chunk := response.read(min(CHUNK_SIZE, remaining + 1)):
+                        remaining -= len(chunk)
+                        if remaining < 0:
+                            raise ValueError("Source exceeded its pinned size")
+                        target.write(chunk)
+                check_file(temporary, entry)
+                temporary.replace(cached)
+                return cached
+            except (OSError, ValueError, http.client.HTTPException) as error:
+                failures.append(f"{url} attempt {attempt}: {error}")
+                transient = isinstance(error, (TimeoutError, ConnectionError,
+                                               urllib.error.URLError, http.client.IncompleteRead))
+                if isinstance(error, urllib.error.HTTPError):
+                    transient = error.code in (408, 429) or 500 <= error.code < 600
+                if not transient or attempt == DOWNLOAD_ATTEMPTS:
+                    break
+            finally:
+                temporary.unlink(missing_ok=True)
+            time.sleep(attempt)
     raise ValueError(f"Could not fetch {entry['path']}\n" + "\n".join(failures))
 
 
