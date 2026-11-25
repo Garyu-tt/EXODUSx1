@@ -16,7 +16,7 @@ class Peer:
         if role not in (1, 2) or not 0 < generation <= LIMIT or not 0 <= now <= LIMIT:
             raise ValueError('invalid local session')
         self.role, self.generation = role, generation
-        self.last = now
+        self.last = self.last_clock = now
         self.sequence = 0
         self.closed = False
 
@@ -25,8 +25,9 @@ class Peer:
         return False
 
     def tick(self, now):
-        if self.closed or not self.last <= now <= LIMIT or now - self.last >= TIMEOUT_MS:
+        if self.closed or not self.last_clock <= now <= LIMIT or now - self.last >= TIMEOUT_MS:
             return self.close()
+        self.last_clock = now
         return True
 
     def receive(self, data, now):
@@ -81,6 +82,10 @@ class IPCContractTests(unittest.TestCase):
 
     def test_clock_rollback(self):
         self.assertFalse(self.peer.receive(heartbeat(1, 9, 1), 99))
+
+    def test_clock_rollback_between_polls(self):
+        self.assertTrue(self.peer.tick(200))
+        self.assertFalse(self.peer.receive(heartbeat(1, 9, 1), 199))
 
     def test_restart_requires_local_generation(self):
         self.peer.close()
