@@ -5,6 +5,7 @@
 #include <utility>
 #ifdef __SWITCH__
 #include "live_inventory.hpp"
+#include "unified_catalog.hpp"
 #endif
 using namespace exodus::home;
 struct exodus_library { Catalog catalog; };
@@ -15,9 +16,23 @@ struct exodus_library *exodus_library_open(const char *path)
     try {
         auto catalog = ReadCatalog(path);
 #ifdef __SWITCH__
-        if (catalog.status == CatalogStatus::Unavailable &&
-            std::string_view(path) == "sdmc:/ulaunch/exodus-catalog.json")
-            catalog = exodus_live_inventory();
+        if (std::string_view(path) == "sdmc:/ulaunch/exodus-catalog.json" &&
+            (catalog.status == CatalogStatus::Ready || catalog.status == CatalogStatus::Unavailable)) {
+            auto live = exodus_live_inventory();
+            if (live.status == CatalogStatus::Ready) {
+                std::set<std::pair<Provider,std::string>> known;
+                for (const auto &e:catalog.entries) known.emplace(e.provider,e.id);
+                for (auto &e:live.entries)
+                    if (catalog.entries.size()<CatalogEntryLimit && known.emplace(e.provider,e.id).second)
+                        catalog.entries.push_back(std::move(e));
+                catalog.status=CatalogStatus::Ready;
+            }
+            MergeProvider(catalog, ReadCorkDeck("sdmc:/switch/wine/launcher-library-v2.ini"), Provider::CorkDeck);
+            auto nonsteam=std::count_if(catalog.entries.begin(),catalog.entries.end(),
+                [](const Entry &e){return e.provider!=Provider::Steam;});
+            MergeProvider(catalog,ReadSteamLatest("sdmc:/switch/exodus-steam-sync/snapshots",
+                CatalogEntryLimit-nonsteam),Provider::Steam);
+        }
 #endif
         return new exodus_library{std::move(catalog)};
     }

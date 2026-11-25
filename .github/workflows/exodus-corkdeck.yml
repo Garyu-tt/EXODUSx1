@@ -43,6 +43,8 @@ jobs:
             "$dir/test_library_catalog.cpp" "$dir/library_catalog.cpp" exodus/home/ulaunch/catalog.cpp \
             -o "$RUNNER_TEMP/test-catalog"
           "$RUNNER_TEMP/test-catalog" "$RUNNER_TEMP/catalog-fixture.json"
+          c++ -std=c++17 -Wall -Wextra -Werror -I /usr/include/nlohmann "$dir/test_unified_catalog.cpp" exodus/home/ulaunch/catalog.cpp -o "$RUNNER_TEMP/test-unified"
+          "$RUNNER_TEMP/test-unified"
       - name: Build and render home
         run: |
           sh exodus/home/corkdeck/build-host.sh "$RUNNER_TEMP/corkdeck" "$RUNNER_TEMP/exodus-shell"
@@ -58,7 +60,13 @@ jobs:
           persist-credentials: false
       - name: Install Switch portlibs and host headers
         run: |
-          dkp-pacman -Syu --noconfirm --needed switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-libjpeg-turbo
+          export PKG_CONFIG_PATH=
+          export PKG_CONFIG_LIBDIR="$DEVKITPRO/portlibs/switch/lib/pkgconfig:$DEVKITPRO/portlibs/switch/share/pkgconfig"
+          if ! pkg-config --exists sdl2 SDL2_ttf libpng libturbojpeg; then
+            dkp-pacman -S --noconfirm --needed switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-libjpeg-turbo ||
+              dkp-pacman -Syu --noconfirm --needed switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-libjpeg-turbo
+          fi
+          pkg-config --exists sdl2 SDL2_ttf libpng libturbojpeg
           apt-get update
           apt-get install -y git pkg-config nlohmann-json3-dev file
       - name: Checkout exact donor source
@@ -80,7 +88,7 @@ jobs:
       - name: Publish experimental NRO
         uses: actions/upload-artifact@v4
         with:
-          name: exodus-shell-r16-switch-arm64
+          name: exodus-shell-r17-switch-arm64
           path: |
             /tmp/exodus-build/exodus-shell.nro
             /tmp/exodus-build/SHA256SUMS
