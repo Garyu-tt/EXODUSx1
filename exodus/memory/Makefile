@@ -191,3 +191,16 @@ clean-hot-store:
 	$(RM) test_hot_store$(EXEEXT)
 
 .PHONY: check-hot-store clean-hot-store
+
+test_heat$(EXEEXT): page_codec.c page_store.c page_dedup_store.c page_read.c bdi_slab.c test_heat.c page_codec.h page_store.h page_dedup_store.h page_read.h bdi_slab.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c page_read.c bdi_slab.c test_heat.c $(LDLIBS)
+
+check: check-heat
+check-heat: test_heat$(EXEEXT)
+	./test_heat$(EXEEXT)
+
+clean: clean-heat
+clean-heat:
+	$(RM) test_heat$(EXEEXT)
+
+.PHONY: check-heat clean-heat

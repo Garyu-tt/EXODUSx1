@@ -4,6 +4,15 @@
 #include "page_store.h"
 #include "bdi_slab.h"
 
+/* Optional policy, all arrays caller-owned and initially zero. Logical heat
+ * has page_capacity bytes; scratch has unique.page_capacity uint16_t entries. */
+struct exodus_page_heat {
+    uint8_t *logical;
+    uint16_t *scratch;
+    size_t cursor;
+};
+struct exodus_heat_result { size_t attempted, promoted, demoted, failed; };
+
 struct exodus_hot_entry {
     size_t physical;
     struct exodus_bdi_slab_page page;
@@ -29,6 +38,7 @@ struct exodus_page_dedup_store {
     struct exodus_bdi_slab *slab;
     struct exodus_hot_entry *hot;
     size_t hot_capacity;
+    struct exodus_page_heat *heat;
 };
 
 /* Append one readable EXODUS_PAGE_BYTES source page, assigning the next logical
@@ -89,4 +99,11 @@ static inline const struct exodus_hot_entry *exodus_hot_find(const struct exodus
         if(s->hot[i].page.active&&s->hot[i].physical==physical)return &s->hot[i];
     return NULL;
 }
+/* Explicit maintenance epoch: max logical heat across aliases, demote first,
+ * then promote, halve counters. Budget counts attempts, not scan time.
+ * Invalid input leaves output and heat unchanged. Migration failure is
+ * reported in result.failed, not a failed write or failed tick. */
+bool exodus_page_dedup_store_heat_tick(struct exodus_page_dedup_store *,
+    uint8_t promote,uint8_t demote,size_t min_cold_bytes,size_t budget,
+    struct exodus_heat_result *out);
 #endif

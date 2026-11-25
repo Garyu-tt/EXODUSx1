@@ -28,6 +28,7 @@ static void hot_shift(struct exodus_page_dedup_store *s,size_t old)
 static bool valid_store(const struct exodus_page_dedup_store *store)
 {
     return store && store->fingerprints && store->page_refs &&
+        (!store->heat||(store->heat->logical&&store->heat->scratch&&store->slab)) &&
         ((!store->slab&&!store->hot&&!store->hot_capacity)||
          (store->slab&&store->hot&&store->hot_capacity&&store->unique.page_order)) &&
         store->unique.payload && exodus_page_store_has_index(&store->unique) &&
@@ -73,6 +74,7 @@ static bool append_page(struct exodus_page_dedup_store *store,
         store->fingerprints[physical] = hash;
     }
     store->page_refs[store->page_count] = physical;
+    if(store->heat)store->heat->logical[store->page_count]=0;
     ++store->page_count;
     return true;
 }
@@ -181,7 +183,7 @@ static bool commit_replacement(struct exodus_page_dedup_store *s,size_t index,
     return true;
 }
 
-bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *s,
+static bool replace_adaptive(struct exodus_page_dedup_store *s,
                                              size_t index,const uint8_t *page)
 {
     size_t old,owners;
@@ -325,7 +327,7 @@ bool exodus_page_dedup_store_demote(struct exodus_page_dedup_store *s,size_t ind
     return exodus_bdi_slab_release(s->slab,&h->page);
 }
 
-bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *s,
+static bool write_word(struct exodus_page_dedup_store *s,
                                        size_t index, size_t word,
                                        const uint8_t value[4])
 {
@@ -338,7 +340,69 @@ bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *s,
     uint8_t page[EXODUS_PAGE_BYTES];
     if(!exodus_page_dedup_store_restore(s,index,page))return false;
     memcpy(page + word * 4, value, 4);
-    return exodus_page_dedup_store_replace_adaptive(s, index, page);
+    return replace_adaptive(s, index, page);
+}
+
+/* Successful write requests, including no-ops, count once. */
+static void record_heat(struct exodus_page_dedup_store *s,size_t index)
+{
+    if(s->heat&&s->heat->logical[index]<UINT8_MAX)++s->heat->logical[index];
+}
+
+bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *s,
+                                             size_t index,const uint8_t *page)
+{
+    if(!replace_adaptive(s,index,page))return false;
+    record_heat(s,index);return true;
+}
+
+bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *s,
+                                       size_t index,size_t word,const uint8_t value[4])
+{
+    if(!write_word(s,index,word,value))return false;
+    record_heat(s,index);return true;
+}
+
+bool exodus_page_dedup_store_heat_tick(struct exodus_page_dedup_store *s,
+    uint8_t promote,uint8_t demote,size_t min_cold_bytes,size_t budget,
+    struct exodus_heat_result *out)
+{
+    if(!out||!valid_store(s)||!s->heat||!s->slab||promote<=demote||
+       min_cold_bytes>EXODUS_PAGE_BYTES||!exodus_page_store_validate(&s->unique))return false;
+    for(size_t i=0;i<s->page_count;i++)if(s->page_refs[i]>=s->unique.page_count)return false;
+    struct exodus_page_heat *h=s->heat;
+    struct exodus_heat_result r={0};
+    for(size_t i=0;i<s->unique.page_count;i++)h->scratch[i]=0;
+    for(size_t i=0;i<s->page_count;i++){
+        size_t p=s->page_refs[i];
+        if(h->logical[i]>h->scratch[p])h->scratch[p]=h->logical[i];
+    }
+    size_t count=s->page_count;
+    size_t begin=count?h->cursor%count:0,next=begin;
+    /* Demote first to make space. Mark attempted physical pages so aliases
+     * cannot consume the budget twice, even if a migration fails. */
+    for(unsigned phase=0;phase<2;phase++){
+        size_t i=begin;
+        for(size_t k=0;k<count&&r.attempted<budget;k++){
+            size_t p=s->page_refs[i];uint16_t score=h->scratch[p];
+            bool hot=exodus_hot_find(s,p)!=NULL;
+            if(!(score&256u)&&((phase==0&&hot&&score<=demote)||
+                              (phase==1&&!hot&&score>=promote))){
+                size_t a,b;
+                if(phase==0||(exodus_page_store_extent(&s->unique,p,&a,&b)&&b-a>=min_cold_bytes)){
+                    h->scratch[p]|=256u;++r.attempted;
+                    bool ok=phase==0?exodus_page_dedup_store_demote(s,i):exodus_page_dedup_store_promote(s,i);
+                    if(!ok)++r.failed;else if(phase==0)++r.demoted;else ++r.promoted;
+                    next=i+1==count?0:i+1;
+                }
+            }
+            i=i+1==count?0:i+1;
+        }
+    }
+    /* One epoch of decay, even when the migration budget is zero. */
+    for(size_t i=0;i<count;i++)h->logical[i]/=2;
+    h->cursor=r.attempted?next:(count&&begin+1<count?begin+1:0);
+    *out=r;return true;
 }
 
 bool exodus_page_dedup_store_compact(struct exodus_page_dedup_store *s,
