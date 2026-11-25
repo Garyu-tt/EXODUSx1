@@ -9,7 +9,7 @@
 #include "library_catalog.h"
 #include "native_launch.h"
 #include "native_target.h"
-#include "horizon_observer.h"
+#include "horizon_session.h"
 #include "library_filter.h"
 #include "shell_menu.h"
 #include "control_metrics.h"
