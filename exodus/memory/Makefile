@@ -25,19 +25,23 @@ test_snapshot$(EXEEXT): page_snapshot.c page_snapshot.h page_codec.c page_codec.
 page_snapshot_probe$(EXEEXT): page_snapshot_probe.c page_snapshot.c page_snapshot.h page_codec.c page_codec.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_snapshot_probe.c page_snapshot.c page_codec.c $(LDLIBS)
 
+test_page_dedup_store$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h page_dedup_store.c page_dedup_store.h test_page_dedup_store.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c test_page_dedup_store.c $(LDLIBS)
+
 test_store$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h test_store.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c test_store.c $(LDLIBS)
 
-check: test_store$(EXEEXT) test_codec$(EXEEXT) test_page_store$(EXEEXT) test_snapshot$(EXEEXT) page_probe$(EXEEXT) page_snapshot_probe$(EXEEXT)
+check: test_store$(EXEEXT) test_page_dedup_store$(EXEEXT) test_codec$(EXEEXT) test_page_store$(EXEEXT) test_snapshot$(EXEEXT) page_probe$(EXEEXT) page_snapshot_probe$(EXEEXT)
 	./test_codec$(EXEEXT)
 	./test_page_store$(EXEEXT)
+	./test_page_dedup_store$(EXEEXT)
 	./test_store$(EXEEXT)
 	./test_snapshot$(EXEEXT)
 	$(PYTHON) test_probe.py ./page_probe$(EXEEXT)
 	$(PYTHON) test_snapshot_probe.py ./page_snapshot_probe$(EXEEXT)
 
 clean:
-	$(RM) test_store$(EXEEXT) test_codec$(EXEEXT) test_page_store$(EXEEXT) test_snapshot$(EXEEXT) page_probe$(EXEEXT) page_snapshot_probe$(EXEEXT)
+	$(RM) test_store$(EXEEXT) test_page_dedup_store$(EXEEXT) test_codec$(EXEEXT) test_page_store$(EXEEXT) test_snapshot$(EXEEXT) page_probe$(EXEEXT) page_snapshot_probe$(EXEEXT)
 
 .PHONY: all check clean
 
