@@ -46,6 +46,20 @@ class ManagedChildTests(unittest.TestCase):
         self.assertEqual(self.center.lifecycle_result, (p.token, "confirmed"))
         self.assertEqual(self.child.state, expected)
 
+    def test_invalid_identity_never_spawns(self):
+        class Alias(str):
+            pass
+
+        argv = [sys.executable, "-c", "pass"]
+        with patch("exodus.task_center_child.os.posix_spawn") as spawn:
+            for epoch, name, instance in (
+                    (1, Alias("test-child"), 1), (True, "test-child", 1),
+                    (1, "test-child", True), (1, "", 1), (1, "bad\x7f", 1)):
+                with self.subTest(epoch=epoch, name=name, instance=instance):
+                    with self.assertRaises(ValueError):
+                        ManagedChild(epoch, name, instance, argv)
+            spawn.assert_not_called()
+
     def test_real_child_stop_continue_term(self):
         self.operate("suspend", "suspended")
         self.operate("resume", "running")
