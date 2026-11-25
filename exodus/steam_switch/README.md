@@ -25,4 +25,6 @@ If the applet cannot open, closes before sign-in completes, or catalog retrieval
 
 Install the matching patched uMenu to enable automatic refresh. A successful sync publishes a numbered Steam-only file in `/switch/exodus-steam-sync/snapshots/`. Reopen **EXODUS library** from the HOME Quick Menu to load the newest usable snapshot alongside the current Switch and homebrew entries. The viewer reads `/ulaunch/exodus-catalog.json` as the inventory source. [uMenu installation, fallback and recovery](../home/ulaunch/README.md)
 
+Before saving, Steam Sync checks the 4,096-entry HOME limit against the existing non-Steam entries and the received Steam library. A refresh that would exceed the combined limit, or that encounters an unreadable or invalid manual catalog, leaves the previous snapshots available. A missing manual catalog leaves the full limit available to Steam.
+
 A physical Switch check is needed for WebApplet sign-in, TLS trust, SD publication and HOME refresh on the target firmware. The client and adapter are licensed under [GPL-2.0-only](../home/ulaunch/COPYING).
