@@ -74,6 +74,70 @@ class UsbDiscoverTests(unittest.TestCase):
         self.assertEqual((code, report), (2, None))
         self.assertEqual(stderr, "USB discovery: Windows USB enumeration failed.\n")
 
+    def test_scan_at_or_after_deadline_is_incomplete_and_preserves_candidates(self):
+        for completed_at in (5, 5.25):
+            for earlier_candidate in (False, True):
+                with self.subTest(completed_at=completed_at, earlier_candidate=earlier_candidate):
+                    clock = 0
+                    calls = 0
+
+                    def sleep(seconds):
+                        nonlocal clock
+                        clock += seconds
+
+                    def scan():
+                        nonlocal clock, calls
+                        calls += 1
+                        if calls == 1:
+                            return Counter()
+                        if calls == 2:
+                            return Counter(["1234:0001"]) if earlier_candidate else Counter()
+                        clock = completed_at
+                        return Counter(["1234:0002"])
+
+                    stdout, stderr = StringIO(), StringIO()
+                    with patch.object(usb_discover.time, "monotonic", lambda: clock), \
+                            patch.object(usb_discover.time, "sleep", sleep), \
+                            redirect_stdout(stdout), redirect_stderr(stderr):
+                        code = usb_discover.main(["--seconds", "5"], scan=scan)
+                    self.assertEqual(code, 2)
+                    self.assertEqual(json.loads(stdout.getvalue()), {
+                        "schema_version": 1,
+                        "complete": False,
+                        "candidates": ([{"usb_id": "1234:0001", "first_seen_ms": 1000}]
+                                       if earlier_candidate else []),
+                    })
+                    self.assertIn("Windows USB enumeration exceeded the discovery window.", stderr.getvalue())
+                    self.assertEqual(calls, 3)
+
+    def test_scan_just_before_deadline_and_sleep_expiry_complete_normally(self):
+        for sleep_overrun in (0, 0.25):
+            with self.subTest(sleep_overrun=sleep_overrun):
+                clock = 0
+                calls = 0
+
+                def sleep(seconds):
+                    nonlocal clock
+                    clock += seconds + sleep_overrun
+
+                def scan():
+                    nonlocal clock, calls
+                    calls += 1
+                    if calls == 1:
+                        return Counter()
+                    clock = 4.999
+                    return Counter(["1234:0001"])
+
+                with patch.object(usb_discover.time, "monotonic", lambda: clock), \
+                        patch.object(usb_discover.time, "sleep", sleep), redirect_stderr(StringIO()):
+                    report, error = usb_discover.discover(5, scan)
+                self.assertIsNone(error)
+                self.assertEqual(report, {
+                    "schema_version": 1, "complete": True,
+                    "candidates": [{"usb_id": "1234:0001", "first_seen_ms": 4999}],
+                })
+                self.assertEqual(calls, 2)
+
     def test_counts_physical_nodes_and_excludes_interface_and_other_bus_ids(self):
         self.assertEqual(usb_discover.count_usb_ids([
             r"USB\VID_ABCD&PID_1234\private-one",
