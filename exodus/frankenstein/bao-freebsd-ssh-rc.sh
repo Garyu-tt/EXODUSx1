@@ -9,7 +9,7 @@ umask 077
 /rescue/mount -uw /
 # Prove actual write access before generating password DBs or host keys.
 : > /tmp/tumor-root-write-test
-printf '%s\\n' 'TUMOR_BAO_REF: FREEBSD_RAMROOT_WRITABLE' > /dev/console
+printf '%s\n' 'TUMOR_BAO_REF: FREEBSD_RAMROOT_WRITABLE' > /dev/console
 /rescue/ifconfig lo0 inet 127.0.0.1 up
 /usr/sbin/pwd_mkdb -p /etc/master.passwd
 /usr/bin/ssh-keygen -q -t ed25519 -N '' -f /etc/ssh/ssh_host_ed25519_key
