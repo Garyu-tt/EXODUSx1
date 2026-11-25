@@ -64,6 +64,7 @@ static void show_measurement(const char *status, const struct exodus_probe_stats
     printf("Word-run pages:       %" PRIu64 "\n", stats->word_run_pages);
     printf("Repeated-tile pages:  %" PRIu64 "\n", stats->repeated_tile_pages);
     printf("Input bytes counted:  %" PRIu64 "\n", stats->pages * EXODUS_PAGE_BYTES + stats->trailing_bytes);
+    printf("BDI pages:            %" PRIu64 "\n", stats->bdi_pages);
     printf("Payload bytes:        %" PRIu64 "\n", stats->payload_bytes);
     printf("Length index bytes:   %" PRIu64 "\n", stats->pages * 2);
     printf("Trailing bytes (raw): %zu\n", stats->trailing_bytes);

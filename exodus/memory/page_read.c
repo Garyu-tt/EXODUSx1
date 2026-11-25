@@ -15,6 +15,8 @@ bool exodus_page_read_word(const uint8_t *encoded, size_t size, size_t word,
     if (size == EXODUS_PAGE_BYTES) {
         memcpy(result, encoded + byte, WORD_BYTES);
     } else if (size & 1u) {
+        if (encoded[0] == EXODUS_PAGE_BDI_VERSION)
+            return exodus_page_bdi_read_word(encoded, size, word, out);
         if (encoded[0] == EXODUS_PAGE_REPEATED_TILE_VERSION) {
             size_t tile = size - 1;
             if (tile != 8 && tile != 16) return false;

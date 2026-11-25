@@ -11,7 +11,9 @@ static bool probe_page(const uint8_t *page, struct exodus_probe_stats *stats, bo
         return false;
     ++stats->pages;
     if (size % 2 != 0) {
-        if (encoded[0] == EXODUS_PAGE_REPEATED_TILE_VERSION)
+        if (encoded[0] == EXODUS_PAGE_BDI_VERSION)
+            ++stats->bdi_pages;
+        else if (encoded[0] == EXODUS_PAGE_REPEATED_TILE_VERSION)
             ++stats->repeated_tile_pages;
         else
             ++stats->word_run_pages;

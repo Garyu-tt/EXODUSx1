@@ -58,8 +58,8 @@ clean-compact-index:
 
 .PHONY: check-compact-index clean-compact-index
 
-test_page_read$(EXEEXT): page_read.c page_read.h page_codec.h page_store.h page_dedup_store.h test_page_read.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_read.c test_page_read.c $(LDLIBS)
+test_page_read$(EXEEXT): page_codec.c page_read.c page_read.h page_codec.h page_store.h page_dedup_store.h test_page_read.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_read.c test_page_read.c $(LDLIBS)
 
 check: check-direct-read
 check-direct-read: test_page_read$(EXEEXT)
@@ -83,3 +83,16 @@ clean-page-cow:
 	$(RM) test_page_cow$(EXEEXT)
 
 .PHONY: check-page-cow clean-page-cow
+
+test_page_bdi$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h page_dedup_store.c page_dedup_store.h page_read.c page_read.h page_snapshot.c page_snapshot.h test_page_bdi.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c page_read.c page_snapshot.c test_page_bdi.c $(LDLIBS)
+
+check: check-page-bdi
+check-page-bdi: test_page_bdi$(EXEEXT)
+	./test_page_bdi$(EXEEXT)
+
+clean: clean-page-bdi
+clean-page-bdi:
+	$(RM) test_page_bdi$(EXEEXT)
+
+.PHONY: check-page-bdi clean-page-bdi

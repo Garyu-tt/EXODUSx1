@@ -41,6 +41,7 @@ class ProbeTests(unittest.TestCase):
                     "sparse_pages": sparse_count,
                     "word_run_pages": word_run_count,
                     "repeated_tile_pages": tile_count,
+                    "bdi_pages": 0,
                     "input_bytes": len(sample),
                     "payload_bytes": payload,
                     "length_index_bytes": 2 * pages,

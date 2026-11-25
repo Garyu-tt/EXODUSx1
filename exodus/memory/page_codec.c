@@ -117,9 +117,97 @@ size_t exodus_page_encode(const uint8_t *page, uint8_t *encoded)
     return encode_page(page, encoded, false);
 }
 
+
+/* V3: version, eight-byte mask, then 64 blocks of either 20 or 64 bytes.
+ * Base and words are explicitly little-endian. Deltas are unsigned bytes;
+ * decoding uses defined modulo-2^32 arithmetic. No padding or block headers. */
+enum { BDI_HEADER = 9, BDI_BYTES = 20 };
+static uint32_t bdi_load(const uint8_t *p)
+{
+    return (uint32_t)p[0] | (uint32_t)p[1]<<8 |
+           (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24;
+}
+static void bdi_put(uint8_t *p, uint32_t v)
+{
+    for (unsigned i=0;i<4;i++) p[i]=(uint8_t)(v>>(8*i));
+}
+static size_t bdi_count(const uint8_t *mask, size_t limit)
+{
+    size_t n=0;
+    for (size_t i=0;i<limit/8;i++) {
+        unsigned b=mask[i];
+        while(b) { b &= b-1; ++n; }
+    }
+    for (size_t i=limit/8*8;i<limit;i++)
+        n += (mask[i/8]>>(i%8))&1u;
+    return n;
+}
+static size_t encode_bdi(const uint8_t *page, uint8_t *encoded, size_t best)
+{
+    uint8_t mask[MASK_BYTES]={0};
+    uint32_t bases[BLOCKS];
+    /* Even a fully compressed BDI page cannot beat a smaller existing form. */
+    if (best <= BDI_HEADER+BLOCKS*BDI_BYTES) return best;
+    for(size_t b=0;b<BLOCKS;b++) {
+        const uint8_t *p=page+b*BLOCK_BYTES;
+        uint32_t lo=bdi_load(p),hi=lo;
+        for(size_t w=1;w<BLOCK_BYTES/WORD_BYTES;w++) {
+            uint32_t v=bdi_load(p+w*WORD_BYTES);
+            if(v<lo) lo=v;
+            if(v>hi) hi=v;
+            if(hi-lo>255) break;
+        }
+        if(hi-lo<=255) { mask[b/8]|=(uint8_t)(1u<<(b%8)); bases[b]=lo; }
+    }
+    size_t n=bdi_count(mask,BLOCKS);
+    size_t size=BDI_HEADER+BLOCKS*BLOCK_BYTES-n*(BLOCK_BYTES-BDI_BYTES);
+    if(size>=best) return best;
+    encoded[0]=EXODUS_PAGE_BDI_VERSION;
+    memcpy(encoded+1,mask,MASK_BYTES);
+    size_t pos=BDI_HEADER;
+    for(size_t b=0;b<BLOCKS;b++) {
+        const uint8_t *p=page+b*BLOCK_BYTES;
+        if(mask[b/8]&(1u<<(b%8))) {
+            bdi_put(encoded+pos,bases[b]);
+            for(size_t w=0;w<16;w++) encoded[pos+4+w]=(uint8_t)(bdi_load(p+w*4)-bases[b]);
+            pos+=BDI_BYTES;
+        } else { memcpy(encoded+pos,p,BLOCK_BYTES);pos+=BLOCK_BYTES; }
+    }
+    return size;
+}
+static bool bdi_valid(const uint8_t *p,size_t size)
+{
+    return p && size>=BDI_HEADER && size<EXODUS_PAGE_BYTES &&
+        p[0]==EXODUS_PAGE_BDI_VERSION &&
+        size==BDI_HEADER+BLOCKS*BLOCK_BYTES-bdi_count(p+1,BLOCKS)*(BLOCK_BYTES-BDI_BYTES);
+}
+bool exodus_page_bdi_read_word(const uint8_t *p,size_t size,size_t word,uint8_t out[4])
+{
+    if(!out || word>=PAGE_WORDS || !bdi_valid(p,size)) return false;
+    size_t b=word/16,w=word%16;
+    size_t pos=BDI_HEADER+b*BLOCK_BYTES-bdi_count(p+1,b)*(BLOCK_BYTES-BDI_BYTES);
+    if(p[1+b/8]&(1u<<(b%8))) bdi_put(out,bdi_load(p+pos)+p[pos+4+w]);
+    else memcpy(out,p+pos+w*4,4);
+    return true;
+}
+static bool decode_bdi(const uint8_t *p,size_t size,uint8_t *page)
+{
+    if(!bdi_valid(p,size)) return false;
+    size_t pos=BDI_HEADER;
+    for(size_t b=0;b<BLOCKS;b++) {
+        uint8_t *out=page+b*BLOCK_BYTES;
+        if(p[1+b/8]&(1u<<(b%8))) {
+            uint32_t base=bdi_load(p+pos);
+            for(size_t w=0;w<16;w++) bdi_put(out+w*4,base+p[pos+4+w]);
+            pos+=BDI_BYTES;
+        } else { memcpy(out,p+pos,BLOCK_BYTES);pos+=BLOCK_BYTES; }
+    }
+    return true;
+}
+
 size_t exodus_page_encode_adaptive(const uint8_t *page, uint8_t *encoded)
 {
-    return encode_page(page, encoded, true);
+    return encode_bdi(page, encoded, encode_page(page, encoded, true));
 }
 
 static void restore_repeated_words(uint8_t *destination, const uint8_t *source, size_t count)
@@ -182,6 +270,8 @@ bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *pa
         return true;
     }
     if (encoded_size % 2 != 0) {
+        if (encoded[0] == EXODUS_PAGE_BDI_VERSION)
+            return decode_bdi(encoded, encoded_size, page);
         if (encoded[0] == EXODUS_PAGE_REPEATED_TILE_VERSION) {
             size_t tile_size = encoded_size - 1;
             if (tile_size != 8 && tile_size != 16)
