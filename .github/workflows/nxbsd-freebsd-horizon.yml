@@ -1,0 +1,86 @@
+name: NX-BSD FreeBSD Horizon compile
+on:
+  pull_request:
+    paths:
+      - 'exodus/terminal/**'
+      - '.github/workflows/nxbsd-freebsd-horizon.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nxbsd-freebsd-horizon-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: freebsd/freebsd-src
+          ref: e5477acb8a8b7f69ae9143f4fd7270ede7174884
+          path: donor-freebsd
+          sparse-checkout: |
+            bin/sh
+            lib/libedit
+            contrib/libedit
+            sys/sys
+            bin/kill
+            bin/test
+            usr.bin/printf
+          persist-credentials: false
+      - name: Verify pinned donor and generate grammar on host
+        run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out horizon-grammar
+      - name: Check portability scripts before staging
+        run: python3 -m py_compile exodus/terminal/stage_freebsd_horizon.py exodus/terminal/prepare_freebsd_host.py exodus/terminal/generate_freebsd_sh.py
+      - name: Stage verified newlib portability fixes
+        run: python3 exodus/terminal/stage_freebsd_horizon.py --checkout donor-freebsd --out horizon-donor
+      - name: Cross-compile original modules without host libc adapters
+        run: |
+          docker pull devkitpro/devkita64:latest
+          mkdir -p horizon-shell
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > horizon-shell/sdk-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash exodus/terminal/probe_freebsd_horizon.sh horizon-donor horizon-grammar horizon-shell
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: freebsd-horizon-compile-inventory
+          path: |
+            horizon-shell/*.txt
+            horizon-shell/*.tsv
+            horizon-shell/*.log
+            horizon-shell/*.map
+            horizon-shell/*.json
+            horizon-grammar/manifest.json
+          retention-days: 7
+      - name: Publish explicit compile and link result
+        if: ${{ always() }}
+        run: |
+          if [ -f horizon-shell/summary.txt ]; then
+            { echo '### Horizon shell inventory (not a device test)'; echo '```'; cat horizon-shell/summary.txt; if [ -f horizon-shell/package-status.txt ]; then cat horizon-shell/package-status.txt; fi; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'No native inventory produced; inspect failed staging or SDK step.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Archive linked ELF for engineering inspection only
+        if: ${{ success() && hashFiles('horizon-shell/shell-probe.elf') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nxbsd-shell-unvalidated-elf
+          path: horizon-shell/shell-probe.elf
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Archive structurally validated experimental NRO
+        if: ${{ success() && hashFiles('horizon-shell/nxbsd-shell.nro') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nxbsd-shell-experimental-nro
+          path: |
+            horizon-shell/nxbsd-shell.nro
+            horizon-shell/nro-validation.json
+            horizon-shell/nro-sha256.txt
+          if-no-files-found: error
+          retention-days: 7

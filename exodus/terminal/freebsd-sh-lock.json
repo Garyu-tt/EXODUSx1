@@ -1,0 +1,490 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/freebsd/freebsd-src",
+  "commit": "e5477acb8a8b7f69ae9143f4fd7270ede7174884",
+  "note": "Partial audited file set, not complete build closure. API observations are lexical examples, not a call graph. Native status not verified.",
+  "files": [
+    {
+      "path": "bin/sh/Makefile",
+      "blob": "2b1eca8e4b31fa1170b428fb610af97db9517930",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/jobs.c",
+      "blob": "af9dda11a483e574ee193d44e6e2dc16676f0aef",
+      "capability": "process.jobs",
+      "observed_calls": [
+        "fork",
+        "vfork",
+        "wait3",
+        "setpgid",
+        "tcgetpgrp",
+        "tcsetpgrp",
+        "kill",
+        "sigaction",
+        "sigprocmask"
+      ]
+    },
+    {
+      "path": "bin/sh/exec.c",
+      "blob": "42ce5414922bc764fd1c65be814528372126a483",
+      "capability": "process.exec",
+      "observed_calls": [
+        "execve",
+        "open"
+      ]
+    },
+    {
+      "path": "bin/sh/redir.c",
+      "blob": "eb0fc618a73e9833a58a2e1930e8c8a8451dbebc",
+      "capability": "fd.redirect",
+      "observed_calls": [
+        "open",
+        "dup2",
+        "fcntl",
+        "pipe"
+      ]
+    },
+    {
+      "path": "bin/sh/histedit.c",
+      "blob": "a9a4837a92e5870f459dbc8d97ab76590d1cc7a7",
+      "capability": "tty.edit",
+      "observed_calls": [
+        "history_init",
+        "el_init",
+        "isatty"
+      ]
+    },
+    {
+      "path": "bin/sh/trap.c",
+      "blob": "2863026a479403ccafc1b11c33d09d50ea763fa1",
+      "capability": "process.signals",
+      "observed_calls": [
+        "sigaction",
+        "sigprocmask",
+        "kill"
+      ]
+    },
+    {
+      "path": "bin/sh/input.c",
+      "blob": "c916fb29178bca5730d3394d1d35bf2da8ca30aa",
+      "capability": "fd.input",
+      "observed_calls": [
+        "read",
+        "open",
+        "fcntl"
+      ]
+    },
+    {
+      "path": "lib/libedit/Makefile",
+      "blob": "9161e05a7d36d09d4767073ae0fba701190b57e0",
+      "capability": "tty.edit",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/builtins.def",
+      "blob": "00f363bfb1c79e74c8f504e76dea33f5d2da4aa9",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/parser.c",
+      "blob": "f6ef8d80770486d052da9b30bf1128c5cb18b2fd",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/eval.c",
+      "blob": "b4c1924f04ad1f372a85d30b2abe1df37d843428",
+      "capability": "shell.eval",
+      "observed_calls": [
+        "pipe",
+        "dup2"
+      ]
+    },
+    {
+      "path": "bin/sh/mknodes.c",
+      "blob": "0c5dfb1accfb9df9ad610ef5fe1eaa23d8f1aca7",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mksyntax.c",
+      "blob": "60570d0f60a4379b127bb35fe9bb00d72067ab2f",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mkbuiltins",
+      "blob": "e0f997ba50aef4fbca3e531b756374b2a58cf21b",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mktokens",
+      "blob": "1b0b0b9a586af381d7e68fa002dea11d7dbef9cb",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/nodetypes",
+      "blob": "1507a7ae847e5835a5ba68ed81852744bf2a800d",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/nodes.c.pat",
+      "blob": "9cee0715d4fcb30dd19de0ed0524dc677e7f3ea2",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/parser.h",
+      "blob": "933066be87f0243af625f5bb669f4b06d6d8a206",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/shell.h",
+      "blob": "4b598899dee1f49b7067e26743ef410afd24c407",
+      "capability": "build.generated",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/expand.h",
+      "blob": "f9fce10cc76447c1297a40bd6b11bc29f9d9a257",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/options.h",
+      "blob": "2ce2e6ebedf277c6ce4941f3526512b7ffeffa96",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/input.h",
+      "blob": "4e8992a5bf605e0bf93b48f8f9cd5e73e0761bcd",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/output.h",
+      "blob": "3afc3f289ad659fd76931c1e79b8ee6215744f0f",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/var.h",
+      "blob": "800f7bcc03909554a8db911da81ad8ea64a04cce",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/error.h",
+      "blob": "80c36a7f5f2eebe867df5f3c8f2dc71e0cf1a76a",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/memalloc.h",
+      "blob": "ef090d51896da67e8a0f96426090af13a8ca5e8b",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mystring.h",
+      "blob": "d51d22de83a104bcf12a38b207e0bb9473f3c9b8",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/alias.h",
+      "blob": "473f31ece6861a0a288f68446567e22f1cba9fda",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/show.h",
+      "blob": "d57ba9aee8c08e610ab6456e1cae3b95f5be6120",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/eval.h",
+      "blob": "aaffcf9af284d2ed046679613c049f68dc665405",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/exec.h",
+      "blob": "6463a72bb06f572fa330d8c8a0cafa0e38d038a9",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/main.h",
+      "blob": "68a3ddc3312684d14558a661fffaaf6bfcaf223b",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/jobs.h",
+      "blob": "69562e8c151ac70102636e4df8b770bf98970baa",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/myhistedit.h",
+      "blob": "64539fc06c188badf89642774d1dad5055cfe926",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "contrib/libedit/histedit.h",
+      "blob": "cf6fdd4a3321a431d96b6838db4851e83967f606",
+      "capability": "tty.edit",
+      "observed_calls": []
+    },
+    {
+      "path": "contrib/libedit/filecomplete.h",
+      "blob": "884586c438f718ea770f3946d2e2cf5f5aa2cf36",
+      "capability": "tty.edit",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/redir.h",
+      "blob": "de780f0c1bfc7ed3bdbe2f1c3333caf0e6e910fe",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/trap.h",
+      "blob": "c7da3032691113400bc5f55d1cc2e7f8e8280115",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "sys/sys/param.h",
+      "blob": "04fe7b87bb0f60968d1ecd592bd847739272a121",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/memalloc.c",
+      "blob": "9c50156e8e001551d63f6a1f0725d2d297aba3f5",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mystring.c",
+      "blob": "9ac590d39f64908adb7335e12fa168333604292a",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/alias.c",
+      "blob": "7ddc2b30ec3eecbdb5b675bf863dba59bd1d10b3",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/output.c",
+      "blob": "baf4b8b7cc1779824889d30b4e910261c2e2377e",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/var.c",
+      "blob": "2f9820a91bdd44ca562dc40cd71cb18a4c63c844",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/expand.c",
+      "blob": "e1e5ac07b7bd27c836b5d1901a7fa09880dc0540",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mail.h",
+      "blob": "fd05aaddf7afd8a86c8eb51aa2366fb07ede8233",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/arith.h",
+      "blob": "1371b02a5630541dcb31df7106463baef32bb281",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "sys/sys/_align.h",
+      "blob": "09444bc4afcef344cd64a4b393c373fc7e0fa710",
+      "capability": "shell.parser",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/error.c",
+      "blob": "c634026befb5f3ea63850007276caec0172e4a33",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/options.c",
+      "blob": "92857027843ae75a8ed4ab9ce8d6b673ca91cfb5",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/cd.c",
+      "blob": "c47e39b920556a248fdd9e80d2fa80fc8975619a",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/main.c",
+      "blob": "0ca2d4942426c5e1b0ecaceb13b0c85ec969e9a6",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/miscbltin.c",
+      "blob": "d75d3390245864269f32e33838ee9323d837958e",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/mail.c",
+      "blob": "f4469399eb7ed4d12fa8cda657c428ca02c100de",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/arith_yacc.c",
+      "blob": "5c42ce0054e55d804aedf73cd5f0e262c1b89c93",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/arith_yylex.c",
+      "blob": "e6c5f39d4da43175fdab0a94dbd7696745137aea",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/cd.h",
+      "blob": "6aa046913398ac2e6af118e745195dac53280013",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/arith_yacc.h",
+      "blob": "b0e51f19c466cd57a0c0eb31b009b646b160bb27",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/bltin/echo.c",
+      "blob": "648965ba78fafaf7647f292800bde2bf9a74f928",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/sh/bltin/bltin.h",
+      "blob": "8d541ed1e138fe54f254339ab3c0c7c5df3bc48f",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "usr.bin/printf/printf.c",
+      "blob": "4d12caee154abb9d7af2a7165c80207f0be9f18b",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/test/test.c",
+      "blob": "5ba5df5d7e443d81e128c4ff125cb726a0e9b2da",
+      "capability": "shell.eval",
+      "observed_calls": []
+    },
+    {
+      "path": "bin/kill/kill.c",
+      "blob": "606c6917bbcf80e1299784c98a00847fd5eddb7e",
+      "capability": "shell.eval",
+      "observed_calls": []
+    }
+  ],
+  "providers": {
+    "build.generated": {
+      "owner": "build",
+      "status": "planned",
+      "requires": [],
+      "gate": "Run host mknodes/mksyntax and scripts; reproducible generated headers."
+    },
+    "shell.parser": {
+      "owner": "shell",
+      "status": "planned",
+      "requires": [
+        "build.generated"
+      ],
+      "gate": "Compile actual FreeBSD parser and compare syntax fixtures."
+    },
+    "fd.input": {
+      "owner": "nxposix",
+      "status": "planned",
+      "requires": [],
+      "gate": "Bounded read/EOF and descriptor flags."
+    },
+    "fd.redirect": {
+      "owner": "nxposix",
+      "status": "planned",
+      "requires": [
+        "fd.input"
+      ],
+      "gate": "Real pipes/dup2/close-on-exec and restoration."
+    },
+    "process.exec": {
+      "owner": "kernel_bridge",
+      "status": "planned",
+      "requires": [
+        "fd.redirect"
+      ],
+      "gate": "Argv/envp and exit semantics; no fake exec success."
+    },
+    "process.signals": {
+      "owner": "kernel_bridge",
+      "status": "planned",
+      "requires": [],
+      "gate": "Signal delivery and mask semantics."
+    },
+    "process.jobs": {
+      "owner": "kernel_bridge",
+      "status": "planned",
+      "requires": [
+        "process.exec",
+        "process.signals"
+      ],
+      "gate": "Fork/vfork semantics or explicitly adapted evaluation; wait and process groups."
+    },
+    "tty.edit": {
+      "owner": "terminal",
+      "status": "planned",
+      "requires": [
+        "fd.input"
+      ],
+      "gate": "PTY/termios/libedit/terminfo, history."
+    },
+    "shell.eval": {
+      "owner": "shell",
+      "status": "planned",
+      "requires": [
+        "shell.parser",
+        "fd.redirect",
+        "process.jobs"
+      ],
+      "gate": "Pipelines, subshells, builtins and status parity."
+    }
+  }
+}

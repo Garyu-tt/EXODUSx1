@@ -1,0 +1,236 @@
+name: NX-BSD FreeBSD sh generators
+on:
+  pull_request:
+    paths:
+      - 'exodus/terminal/**'
+      - '.github/workflows/nxbsd-sh-generators.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: full
+            history_flags: ""
+            runner: ubuntu-24.04
+            arch: x86_64
+          - profile: headless
+            history_flags: "-DNO_HISTORY"
+            runner: ubuntu-24.04
+            arch: x86_64
+          - profile: bridge
+            history_flags: "-DNO_HISTORY -DNXBSD_AST_BRIDGE"
+            runner: ubuntu-24.04
+            arch: x86_64
+          - profile: bridge
+            history_flags: "-DNO_HISTORY -DNXBSD_AST_BRIDGE"
+            runner: ubuntu-24.04-arm
+            arch: aarch64
+          - profile: headless
+            history_flags: "-DNO_HISTORY"
+            runner: ubuntu-24.04-arm
+            arch: aarch64
+    env:
+      NXBSD_HISTORY_FLAGS: ${{ matrix.history_flags }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: freebsd/freebsd-src
+          ref: e5477acb8a8b7f69ae9143f4fd7270ede7174884
+          path: donor-freebsd
+          sparse-checkout: |
+            bin/sh
+            lib/libedit
+            contrib/libedit
+            sys/sys
+            bin/kill
+            bin/test
+            usr.bin/printf
+          persist-credentials: false
+      - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-a"
+      - run: python3 exodus/terminal/generate_freebsd_sh.py --checkout donor-freebsd --out "$RUNNER_TEMP/grammar-b"
+      - run: diff -r "$RUNNER_TEMP/grammar-a" "$RUNNER_TEMP/grammar-b"
+      - name: Compile generated syntax tables for both char signedness modes
+        run: |
+          for mode in -fsigned-char -funsigned-char; do
+            cc -std=gnu11 "$mode" -I donor-freebsd/bin/sh -I "$RUNNER_TEMP/grammar-a" -c "$RUNNER_TEMP/grammar-a/syntax.c" -o "$RUNNER_TEMP/syntax.o"
+          done
+      - name: Compile original FreeBSD parser to a host object (no link)
+        run: |
+          cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
+            -include exodus/terminal/freebsd_parser_host.h \
+            -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+            -I "$RUNNER_TEMP/grammar-a" \
+            -c donor-freebsd/bin/sh/parser.c -o "$RUNNER_TEMP/parser.o"
+      - name: Compile original FreeBSD evaluator to a host object (no link)
+        run: |
+          source=donor-freebsd/bin/sh/eval.c
+          if [ "${{ matrix.profile }}" = bridge ]; then
+            python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module evalbridge --out "$RUNNER_TEMP/eval-bridge.c"
+            source="$RUNNER_TEMP/eval-bridge.c"
+          fi
+          cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
+            -include exodus/terminal/freebsd_parser_host.h \
+            -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+            -I "$RUNNER_TEMP/grammar-a" \
+            -c "$source" -o "$RUNNER_TEMP/eval.o"
+      - name: Inventory unresolved parser and evaluator symbols
+        run: |
+          nm -u "$RUNNER_TEMP/parser.o" > "$RUNNER_TEMP/grammar-a/parser-undefined.txt"
+          nm -u "$RUNNER_TEMP/eval.o" > "$RUNNER_TEMP/grammar-a/eval-undefined.txt"
+      - name: Compile BSD support modules and partially link shell core
+        run: |
+          mkdir "$RUNNER_TEMP/core"
+          cc -std=gnu11 -Wall -Wextra -Werror -c exodus/terminal/freebsd_stdio_host.c -o "$RUNNER_TEMP/core/stdio-host.o"
+          cc -std=gnu11 -Wall -Wextra -Werror exodus/terminal/test_freebsd_stdio.c "$RUNNER_TEMP/core/stdio-host.o" -o "$RUNNER_TEMP/test-fwopen"
+          "$RUNNER_TEMP/test-fwopen"
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --out "$RUNNER_TEMP/expand-host.c"
+          for module in memalloc mystring alias output var expand; do
+            source="donor-freebsd/bin/sh/$module.c"
+            if [ "$module" = expand ]; then source="$RUNNER_TEMP/expand-host.c"; fi
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "$source" -o "$RUNNER_TEMP/core/$module.o"
+          done
+          for module in nodes builtins; do
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I "$RUNNER_TEMP/grammar-a" \
+              -c "$RUNNER_TEMP/grammar-a/$module.c" -o "$RUNNER_TEMP/core/$module.o"
+          done
+          cc -r "$RUNNER_TEMP/parser.o" "$RUNNER_TEMP/eval.o" "$RUNNER_TEMP/syntax.o" "$RUNNER_TEMP/core/"*.o -o "$RUNNER_TEMP/shell-core.o"
+          nm -u "$RUNNER_TEMP/shell-core.o" > "$RUNNER_TEMP/grammar-a/core-undefined.txt"
+          nm --defined-only "$RUNNER_TEMP/shell-core.o" > "$RUNNER_TEMP/grammar-a/core-defined.txt"
+          test -s "$RUNNER_TEMP/grammar-a/core-defined.txt"
+      - name: Compile original BSD input, redirection and options modules
+        run: |
+          mkdir "$RUNNER_TEMP/io"
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module input --out "$RUNNER_TEMP/input-host.c"
+          for module in input redir error options; do
+            source="donor-freebsd/bin/sh/$module.c"
+            if [ "$module" = input ]; then source="$RUNNER_TEMP/input-host.c"; fi
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "$source" -o "$RUNNER_TEMP/io/$module.o"
+          done
+          cc -r "$RUNNER_TEMP/shell-core.o" "$RUNNER_TEMP/io/"*.o -o "$RUNNER_TEMP/shell-io.o"
+          nm -u "$RUNNER_TEMP/shell-io.o" > "$RUNNER_TEMP/grammar-a/io-undefined.txt"
+          nm --defined-only "$RUNNER_TEMP/shell-io.o" > "$RUNNER_TEMP/grammar-a/io-defined.txt"
+          test -s "$RUNNER_TEMP/grammar-a/io-defined.txt"
+      - name: Compile original BSD job and execution modules
+        run: |
+          mkdir "$RUNNER_TEMP/process"
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module trap --out "$RUNNER_TEMP/trap-host.c"
+          for module in jobs exec trap; do
+            source="donor-freebsd/bin/sh/$module.c"
+            if [ "$module" = trap ]; then source="$RUNNER_TEMP/trap-host.c"; fi
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "$source" -o "$RUNNER_TEMP/process/$module.o"
+          done
+          cc -r "$RUNNER_TEMP/shell-io.o" "$RUNNER_TEMP/process/"*.o -o "$RUNNER_TEMP/shell-process.o"
+          nm -u "$RUNNER_TEMP/shell-process.o" > "$RUNNER_TEMP/grammar-a/process-undefined.txt"
+          nm --defined-only "$RUNNER_TEMP/shell-process.o" > "$RUNNER_TEMP/grammar-a/process-defined.txt"
+          test -s "$RUNNER_TEMP/grammar-a/process-defined.txt"
+          cat "$RUNNER_TEMP/grammar-a/process-undefined.txt"
+      - name: Compile original shell entry point, arithmetic and basic builtins
+        run: |
+          mkdir "$RUNNER_TEMP/builtins"
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module main --out "$RUNNER_TEMP/main-host.c"
+          for module in main cd miscbltin mail arith_yacc arith_yylex bltin/echo; do
+            source="donor-freebsd/bin/sh/$module.c"
+            if [ "$module" = main ]; then source="$RUNNER_TEMP/main-host.c"; fi
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -DSHELL -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "$source" -o "$RUNNER_TEMP/builtins/${module##*/}.o"
+          done
+          cc -r "$RUNNER_TEMP/shell-process.o" "$RUNNER_TEMP/builtins/"*.o -o "$RUNNER_TEMP/shell-builtins.o"
+          nm -u "$RUNNER_TEMP/shell-builtins.o" > "$RUNNER_TEMP/grammar-a/builtins-undefined.txt"
+          nm --defined-only "$RUNNER_TEMP/shell-builtins.o" > "$RUNNER_TEMP/grammar-a/builtins-defined.txt"
+          cat "$RUNNER_TEMP/grammar-a/builtins-undefined.txt"
+      - name: Compile original printf, test and kill builtins
+        run: |
+          mkdir "$RUNNER_TEMP/tools"
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module kill --out "$RUNNER_TEMP/kill-host.c"
+          for module in printf test kill; do
+            case "$module" in
+              printf) source=donor-freebsd/usr.bin/printf/printf.c ;;
+              test) source=donor-freebsd/bin/test/test.c ;;
+              kill) source="$RUNNER_TEMP/kill-host.c" ;;
+            esac
+            cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -DSHELL -Werror=implicit-function-declaration \
+              -include exodus/terminal/freebsd_parser_host.h \
+              -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+              -I "$RUNNER_TEMP/grammar-a" \
+              -c "$source" -o "$RUNNER_TEMP/tools/$module.o"
+          done
+          cc -r "$RUNNER_TEMP/shell-builtins.o" "$RUNNER_TEMP/tools/"*.o -o "$RUNNER_TEMP/shell-tools.o"
+          nm -u "$RUNNER_TEMP/shell-tools.o" > "$RUNNER_TEMP/grammar-a/tools-undefined.txt"
+          cat "$RUNNER_TEMP/grammar-a/tools-undefined.txt"
+      - name: Install host link dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libbsd-dev libedit-dev
+      - name: Compile original FreeBSD history and line editing
+        run: |
+          python3 exodus/terminal/prepare_freebsd_host.py --checkout donor-freebsd --module histedit --out "$RUNNER_TEMP/histedit-host.c"
+          cc -std=gnu11 -funsigned-char $NXBSD_HISTORY_FLAGS -DSHELL -Werror=implicit-function-declaration \
+            -include exodus/terminal/freebsd_parser_host.h \
+            -I donor-freebsd/bin/sh -I donor-freebsd/contrib/libedit \
+            -I "$RUNNER_TEMP/grammar-a" \
+            -c "$RUNNER_TEMP/histedit-host.c" -o "$RUNNER_TEMP/histedit.o"
+      - name: Link host FreeBSD sh reference executable
+        run: |
+          edit_lib=()
+          if [ "${{ matrix.profile }}" = full ]; then edit_lib=(-ledit); fi
+          bridge=()
+          if [ "${{ matrix.profile }}" = bridge ]; then
+            bridge=(-pthread -funsigned-char -I donor-freebsd/bin/sh -I"$RUNNER_TEMP/grammar-a" exodus/terminal/nxbsd_ast_bridge.c exodus/terminal/nxbsd_pipe.c exodus/terminal/nxbsd_fd.c exodus/terminal/nxbsd_context.c exodus/terminal/nxbsd_task.c exodus/terminal/nxbsd_pipeline.c exodus/terminal/nxbsd_commands.c)
+          fi
+          cc "$RUNNER_TEMP/shell-tools.o" "$RUNNER_TEMP/histedit.o" "${bridge[@]}" "${edit_lib[@]}" -lbsd -o "$RUNNER_TEMP/nxbsd-sh"
+          file "$RUNNER_TEMP/nxbsd-sh"
+          test "$(uname -m)" = "${{ matrix.arch }}"
+          readelf -h "$RUNNER_TEMP/nxbsd-sh" | tee "$RUNNER_TEMP/grammar-a/elf-header.txt"
+          ldd "$RUNNER_TEMP/nxbsd-sh"
+          if [ "${{ matrix.profile }}" = bridge ]; then
+            python3 exodus/terminal/test_nxbsd_ast_bridge.py "$RUNNER_TEMP/nxbsd-sh"
+          else
+            python3 exodus/terminal/test_freebsd_shell_host.py "$RUNNER_TEMP/nxbsd-sh"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: freebsd-sh-grammar-${{ matrix.profile }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/grammar-a
+          retention-days: 7
+  host-compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install real BSD compatibility library
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libbsd-dev
+      - name: Verify symbolic modes and clock compatibility
+        run: |
+          cc -std=gnu11 -Wall -Wextra -Werror exodus/terminal/test_freebsd_modes.c -lbsd -o "$RUNNER_TEMP/test-modes"
+          "$RUNNER_TEMP/test-modes"

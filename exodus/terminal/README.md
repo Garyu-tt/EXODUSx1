@@ -1,0 +1,50 @@
+# EXODUS Terminal R04: NX-BSD (P0)
+
+A native libnx text console, independent of desktop graphics and optional GPU Relay. Build with devkitA64/libnx: make -C exodus/terminal. Copy the resulting NRO to the SD homebrew directory and launch through the compatible loader. Use A to enter a command via software keyboard, Plus to exit. No firmware changes or persistent installation required.
+
+Commands: help, pwd, ls [path], cd path, cat path, stat path, basename path, dirname path, echo text, id, mem, ps, svc, apps, nro path, run NAME, status, clear, exit. Filesystem inspection is read-only; no arbitrary executable launch; only the explicit NRO handoff aliases below. Output is bounded and non-ASCII/control bytes escaped, not a full Unicode/VT emulator. A path with spaces is accepted as the entire argument. No shell expansion, pipes or redirects.
+
+Host tests: python3 -m unittest discover -s exodus/terminal -v (GCC/Clang on POSIX). Native build and actual Switch execution are required before claiming device support, including the owner's target HOS 4.9 (current SDK and firmware compatibility not assumed).
+
+## P0 sequence
+1. Native local terminal and filesystem commands, hardware build and smoke tests.
+2. Connect Kernel Bridge shell #35 and its process/service provider #32–34; no duplicate lifecycle manager. Implement approved NRO launch and safe return-to-shell before general process semantics.
+3. Share a terminal line discipline between local console and SSH #37; USB keyboard/controller text input, scrollback, bounded UTF-8/VT parser.
+4. Interactive SSH PTY, nonblocking read/write/cancellation, strict host key verification, key auth, SFTP. Optional SSH server is opt-in, least privilege, no default network listener.
+5. VFS write operations, package tools, diagnostics, network management and desktop terminal frontend.
+
+GPU Relay #41 and desktop/compositor enhancements are secondary to a usable text-first environment. Keep original titles and recovery path working. Host test success cannot substitute for device testing.
+
+## R02 diagnostics
+`id` observes own PID/TID; `mem` queries own-process memory limit and usage via the read-only SVCs documented in #31. It is not global RAM or VRAM accounting. Failed queries preserve native error codes. `stat` reports file type and size. The temporary diagnostic adapter will be consolidated with Kernel Bridge #32 after that stack is integrated. `sdmc:/` paths are now accepted; other explicit device prefixes remain rejected.
+
+R01 GitHub Actions succeeded (run 45470486486). R02 CI pending at this update; no device build or execution verified.
+
+## R03 application handoff
+- `apps`: lists known aliases, not an installed application inventory.
+- `nro path`: bounded structural preflight of NRO header, image and segment extents. Does not verify signatures, code safety or compatibility. Temporary adapter to be consolidated with #11.
+- `run ssh`: schedules handoff to `sdmc:/switch/exodus-ssh/exodus-ssh.nro`, matching the SSH client's documented SD installation directory.
+- `run autorun`: schedules handoff to `sdmc:/switch/wine/wine-nx-runtime.nro`.
+- Only explicit user commands, application mode, compatible loader and successful preflight permit handoff. On successful scheduling the terminal exits. Return to terminal, app exit status, background processes and arbitrary argv are not supported yet. Host build never launches these apps.
+- `ps` reports only the current process; `svc` explicitly reports unavailable supervisor state. Integrate #32–35 after shared interfaces land rather than creating another process manager.
+
+R02 CI passed: https://github.com/Garyu-tt/EXODUSx1/actions/runs/45470950263. R03 host tests added; native build, HOS 4.9 compatibility and actual loader handoff remain unverified.
+
+The R05 return contract opts in only when the terminal receives exactly one argument, `--exodus-return-home`. An explicit `exit` command or Plus then attempts to return to the fixed `sdmc:/switch/exodus-shell/exodus-shell.nro` target. System shutdown and a scheduled application handoff do not trigger this return. Host tests verify marker admission and the known launch paths; they do not execute the native loader or establish device compatibility.
+
+## R04 FreeBSD userland direction
+Use freebsd/freebsd-src as a source donor, not as a replacement kernel or binary ABI. Imported `lib/libc/gen/basename.c` and `dirname.c` into `bsd_path.h` with original Nuxi copyright and BSD license text, private symbols and portability-only linkage/cast changes; original blob IDs are in the header. The terminal exposes the single literal argument subset, not full utility flags or POSIX shell parsing. R03 host CI succeeded: https://github.com/Garyu-tt/EXODUSx1/actions/runs/45471144070. R04 host and native checks pending.
+
+P0 follow-up: import portable FreeBSD utilities as reviewed source slices, then port actual bin/sh and libedit. Map process spawn/wait, pipes, file descriptor redirection, signals, termios and PTY to NX-POSIX/Kernel Bridge (#19, #32–35); unsupported contracts must fail explicitly. Do not pretend Capsicum, fork or FreeBSD syscalls are available, or silently bypass sandbox checks. Keep source provenance and upstream licenses, pin a verified fork commit before reproducible donor imports. Preserve native title execution. FreeBSD binary compatibility is separate and not assumed.
+
+## FreeBSD sh port preparation R05
+The upstream commit and 11 inspected file blob IDs are locked in freebsd-sh-lock.json. Run python3 exodus/terminal/audit_freebsd.py for a dependency order, or add --checkout /path/to/freebsd-src to verify the exact HEAD and audited file bytes. The manifest is a partial source inventory, not a full build manifest. The real sh requires generated C/headers, libedit/terminfo, fd redirection, process execution, wait, signals and job control. Prioritize parser and builtin parity before process adaptation; NRO handoff cannot implement fork. Native shell compilation remains pending. Do not label this the completed FreeBSD shell.
+
+## R06 original FreeBSD grammar generators
+The source lock now covers 19 files, including mknodes, mksyntax, mkbuiltins, mktokens and their inputs. Run `python3 exodus/terminal/generate_freebsd_sh.py --checkout /path/to/pinned/freebsd-src --out /path/to/new-output-directory` on a POSIX host with C compiler and shell tools. It verifies the checkout and source blobs, builds the upstream C generators with a host-only compiler annotation shim, runs all four generators in an isolated temporary directory and writes seven generated files plus SHA256 manifest. CI obtains the public pinned sparse checkout, regenerates twice, compares byte-for-byte and compiles the generated syntax tables in signed/unsigned char modes. This is not a completed parser build or a native sh binary. R05 host CI passed (run 45471680434); R06 generator CI pending at this update. Retain upstream licenses when distributing generated source and donor code.
+
+## R07–R09 shell core compilation
+R08 workflow run 45474128527 passed original FreeBSD parser and evaluator object compilation, deterministic generator checks and syntax table compilation. The R09 lock now covers 48 source files, including memalloc, mystring, alias, output, var, expand and alignment provenance. CI compiles these support modules and generated nodes/builtins, attempts a relocatable link of 11 objects, and records defined/unresolved symbols for the next provider audit. Host annotations and alignment are compile-probe adapters, not target implementations. R09 execution remains pending at this update. No executable shell or Switch binary is claimed.
+
+## R10–R14 process core and builtins
+R13 CI passed (run 45475546534): relocatable process core, IO, original jobs/exec/trap, and host fwopen/eaccess contract tests. The remaining unresolved symbols include main/startup, arithmetic, shell builtins, history/libedit and POSIX/libc APIs. R14 pins 60 donor files and adds main, cd, miscbltin, mail, arithmetic lexer/parser and builtin echo to the partial-link pipeline. Verified profile opens fail closed on the host, as verified script opens already do. The new compile/link step is not yet verified. This is still a host object build, not a complete executable or a native Horizon provider. Preserve upstream attribution in distributions.

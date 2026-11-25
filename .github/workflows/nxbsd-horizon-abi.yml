@@ -1,0 +1,56 @@
+name: NX-BSD Horizon ABI
+on:
+  pull_request:
+    paths:
+      - 'exodus/terminal/**'
+      - '.github/workflows/nxbsd-horizon-abi.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  horizon:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inventory SDK symbols and build native NRO
+        run: |
+          docker pull devkitpro/devkita64:latest
+          mkdir -p horizon-results
+          docker image inspect devkitpro/devkita64:latest --format '{{json .RepoDigests}}' > horizon-results/sdk-image.json
+          docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work devkitpro/devkita64:latest bash -ec '
+            bash exodus/terminal/probe_horizon_abi.sh horizon-results
+            make -C exodus/terminal
+            cp exodus/terminal/exodus-terminal.nro horizon-results/
+            make -C exodus/terminal build/nxbsd-pipe-probe.elf
+            cp exodus/terminal/build/nxbsd-pipe-probe.elf horizon-results/
+            make -C exodus/terminal build/nxbsd-fd-probe.elf
+            cp exodus/terminal/build/nxbsd-fd-probe.elf horizon-results/
+            make -C exodus/terminal build/nxbsd-context-probe.elf
+            cp exodus/terminal/build/nxbsd-context-probe.elf horizon-results/
+            make -C exodus/terminal build/nxbsd-task-probe.elf
+            cp exodus/terminal/build/nxbsd-task-probe.elf horizon-results/
+            make -C exodus/terminal build/nxbsd-pipeline-probe.elf
+            cp exodus/terminal/build/nxbsd-pipeline-probe.elf horizon-results/
+            make -C exodus/terminal build/nxbsd-commands-probe.elf
+            cp exodus/terminal/build/nxbsd-commands-probe.elf horizon-results/
+          '
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: nxbsd-horizon-sdk-inventory
+          path: |
+            horizon-results/*.tsv
+            horizon-results/*.txt
+            horizon-results/*.json
+            horizon-results/*.log
+            horizon-results/exodus-terminal.nro
+            horizon-results/nxbsd-pipe-probe.elf
+            horizon-results/nxbsd-fd-probe.elf
+            horizon-results/nxbsd-context-probe.elf
+            horizon-results/nxbsd-task-probe.elf
+            horizon-results/nxbsd-pipeline-probe.elf
+            horizon-results/nxbsd-commands-probe.elf
+          retention-days: 7
