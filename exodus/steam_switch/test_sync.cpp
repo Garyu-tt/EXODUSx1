@@ -71,6 +71,7 @@ namespace {
             int requests = 0;
             bool browser = false;
             bool cancelled = false;
+            const bool abandoned = !opened || (status != 200 && status != 404);
             auto result = FetchSteamSnapshot(
                 *origin, Challenge, Verifier,
                 [&](std::string_view path, std::string_view request, std::size_t limit) {
@@ -83,7 +84,7 @@ namespace {
                     assert(browser);
                     assert(payload.size() == 2 && payload["verifier"] == Verifier && payload["session"] == Session);
                     if (path == "/v1/steam/cancel") {
-                        assert(!cancelled && (!opened || status == 409));
+                        assert(!cancelled && abandoned);
                         assert(requests == (opened ? 3 : 2) && limit == 512);
                         cancelled = true;
                         return HttpReply{cancel_status, {}};
@@ -99,7 +100,6 @@ namespace {
                     browser = true;
                     return opened;
                 });
-            const bool abandoned = !opened || status == 409;
             assert(requests == (opened ? 2 : 1) + (abandoned ? 1 : 0) && browser);
             assert(cancelled == abandoned);
             if (abandoned)
@@ -113,8 +113,9 @@ namespace {
         for (const int cleanup : {200, 404, 503, 0}) {
             assert(redeem(0, {}, false, cleanup).status == SyncStatus::BrowserUnavailable);
             assert(redeem(409, {}, true, cleanup).status == SyncStatus::SignInIncomplete);
+            for (const int failure : {0, 302, 400, 403, 429, 500, 502, 503, 504})
+                assert(redeem(failure, {}, true, cleanup).status == SyncStatus::GatewayUnavailable);
         }
-        assert(redeem(302, {}).status == SyncStatus::GatewayUnavailable);
         assert(redeem(200, "{invalid").status == SyncStatus::InvalidCatalog);
         assert(redeem(200, Catalog({Entry("switch", "9", "Not from Steam")})).status == SyncStatus::InvalidCatalog);
 
