@@ -80,7 +80,7 @@ jobs:
           test -z "$(nm -u /tmp/el-probe.elf)"
           for mode in on off; do
             rc=0
-            timeout 12s qemu-system-aarch64 -machine "virt,virtualization=$mode,gic-version=2,secure=off" -cpu cortex-a57 -smp 1 -m 128 -display none -monitor none -serial stdio -no-reboot -kernel /tmp/el-probe.elf > "/tmp/el-$mode.log" 2>&1 || rc=$?
+            timeout 12s qemu-system-aarch64 -machine "virt,virtualization=$mode,gic-version=2,secure=off" -cpu cortex-a57 -smp 1 -m 128 -nic none -display none -monitor none -serial stdio -no-reboot -kernel /tmp/el-probe.elf > "/tmp/el-$mode.log" 2>&1 || rc=$?
             cat "/tmp/el-$mode.log"
             test "$rc" -eq 124
             expected=EL2
