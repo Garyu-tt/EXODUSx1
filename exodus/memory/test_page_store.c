@@ -188,8 +188,51 @@ static void check_invalid_store(void)
     check_filled(payload, sizeof(payload), 0xa3);
 }
 
+/* Equal-size replacements retain every index entry and unrelated byte,
+ * even at exact payload capacity. Reject malformed tails before writing. */
+static void check_equal_size_replace(void)
+{
+    enum { N=16, SLOT=WORD_RUN_BYTES, CAP=N*SLOT };
+    uint8_t payload[CAP+2], before[CAP+2], page[EXODUS_PAGE_BYTES];
+    uint8_t restored[EXODUS_PAGE_BYTES];
+    size_t ends[N+1], saved[N+1];
+    memset(payload,0xa5,sizeof payload);
+    for(size_t i=0;i<N+1;i++)ends[i]=SIZE_MAX;
+    struct exodus_page_store s={
+        .payload=payload+1,.payload_capacity=CAP,.page_ends=ends,.page_capacity=N
+    };
+    for(size_t i=0;i<N;i++){
+        memset(page,(int)(i+1),sizeof page);
+        CHECK(exodus_page_store_append_adaptive(&s,page));
+    }
+    CHECK(s.payload_used==CAP&&s.page_count==N);
+    memcpy(saved,ends,sizeof ends);
+    for(unsigned round=0;round<32;round++){
+        for(size_t index=0;index<N;index++){
+            memcpy(before,payload,sizeof payload);
+            memset(page,(int)(64+round),sizeof page);
+            CHECK(exodus_page_store_replace_adaptive(&s,index,page));
+            CHECK(!memcmp(ends,saved,sizeof ends));
+            CHECK(s.payload_used==CAP&&s.page_count==N);
+            CHECK(!memcmp(before,payload,1+index*SLOT));
+            CHECK(!memcmp(before+1+(index+1)*SLOT,payload+1+(index+1)*SLOT,
+                          sizeof payload-1-(index+1)*SLOT));
+            CHECK(exodus_page_store_restore(&s,index,restored));
+            CHECK(!memcmp(page,restored,sizeof page));
+        }
+    }
+    /* Full index validation remains mandatory even for equal-length edits. */
+    ends[N-1]=ends[N-2];
+    memcpy(saved,ends,sizeof ends);memcpy(before,payload,sizeof payload);
+    memset(page,0xe1,sizeof page);
+    CHECK(!exodus_page_store_replace_adaptive(&s,0,page));
+    CHECK(!memcmp(saved,ends,sizeof ends)&&!memcmp(before,payload,sizeof payload));
+    CHECK(s.payload_used==CAP&&s.page_count==N);
+}
+
 int main(void)
 {
+    check_equal_size_replace();
     check_exact_adaptive_capacity();
     check_mixed_store();
     check_append_failure_preserves_store();
