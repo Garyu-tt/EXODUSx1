@@ -21,10 +21,10 @@ class SteamCatalogTests(unittest.TestCase):
         self.first.mkdir(parents=True)
         self.second.mkdir(parents=True)
 
-    def scan(self, *paths):
+    def scan(self, *paths, cwd=None):
         result = subprocess.run(
             [sys.executable, "-X", "utf8", str(SCRIPT), *map(str, paths)],
-            capture_output=True, text=True, encoding="utf-8",
+            cwd=cwd, capture_output=True, text=True, encoding="utf-8",
         )
         return result.returncode, json.loads(result.stdout), result.stderr
 
@@ -157,6 +157,45 @@ class SteamCatalogTests(unittest.TestCase):
         code, catalog, errors = self.scan(self.first)
         self.assertEqual((code, errors), (0, ""))
         self.assertEqual(catalog, {"schema_version": 1, "entries": []})
+
+    def test_dot_and_parent_paths_select_steamapps_in_both_commands(self):
+        common = self.first / "common"
+        common.mkdir()
+        self.manifest(self.first, 42, "Recorded title", 4)
+        expected = self.scan(self.first)
+        self.assertEqual((expected[0], expected[2]), (0, ""))
+        self.assertEqual([entry["provider_id"] for entry in expected[1]["entries"]], ["42"])
+        for cwd, source in ((self.first, "."), (common, ".."), (self.first.parent, ".")):
+            with self.subTest(cwd=cwd, source=source):
+                self.assertEqual(self.scan(source, cwd=cwd), expected)
+
+        for source in (self.first, common / ".."):
+            with self.subTest(combined=source):
+                result = subprocess.run(
+                    [sys.executable, "-B", "-X", "utf8", "-m", "exodus.app_catalog",
+                     "--steam-library", str(source)],
+                    cwd=SCRIPT.parent.parent, capture_output=True, text=True, encoding="utf-8",
+                )
+                self.assertEqual((result.returncode, json.loads(result.stdout), result.stderr), expected)
+
+    def test_steamapps_parent_path_respects_intermediary_access(self):
+        self.manifest(self.first, 42, "Recorded title", 4)
+        regular_file = self.first / "regular-file.txt"
+        regular_file.write_text("sample", encoding="utf-8")
+        expected = self.scan(self.first)
+        for intermediary in (self.first / "missing", regular_file):
+            source = intermediary / ".."
+            accessible = source.is_dir()
+            for libraries in ((source,), (self.first, source), (source, self.first)):
+                with self.subTest(libraries=libraries):
+                    result = self.scan(*libraries)
+                    if accessible:
+                        self.assertEqual(result, expected)
+                    else:
+                        code, catalog, errors = result
+                        entries = expected[1]["entries"] if self.first in libraries else []
+                        self.assertEqual((code, catalog["entries"]), (1, entries))
+                        self.assertIn(str(source), errors)
 
     def test_root_named_steamapps_imports_nested_manifests_in_both_commands(self):
         library = self.first.parent / "SteamApps"

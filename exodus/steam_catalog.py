@@ -179,9 +179,16 @@ def scan_libraries(libraries, *, steam_installs=()):
     checked_steamapps_paths = set()
     for library in list(libraries) + discovered:
         nested = library / "steamapps"
-        named_steamapps = library.name.lower() == "steamapps"
-        steamapps = library if named_steamapps else nested
+        steamapps = nested
         try:
+            directory_name = library.name
+            if directory_name in ("", ".."):
+                # Check the supplied path before resolving its name can collapse "..".
+                library.stat()
+                directory_name = library.resolve(strict=True).name
+            named_steamapps = directory_name.lower() == "steamapps"
+            if named_steamapps:
+                steamapps = library
             candidate_path = steamapps.resolve()
             # A steamapps input can select a deeper directory than an ordinary root.
             checked = checked_steamapps_paths if named_steamapps else scanned
