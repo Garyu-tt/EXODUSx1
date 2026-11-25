@@ -29,8 +29,21 @@ static inline void exodus_state_clear(struct exodus_state *s)
 }
 static inline int exodus_state_key(const char *p,const char *id)
 {
+    if (p && !strcmp(p,"EVCSGroup")) {
+        uint64_t value;
+        if (!exodus_title_id(id,&value)) return 0;
+        for (const char *q=id;*q;++q) if (*q>='A' && *q<='F') return 0;
+        return 1;
+    }
     return p && id && *id && strlen(id)<=EXODUS_STATE_ID_MAX &&
         (!strcmp(p,"Switch") || !strcmp(p,"Homebrew") || !strcmp(p,"Steam") || !strcmp(p,"CorkDeck"));
+}
+/* Separate namespace: owner-declared group cannot shadow a registered title. */
+static inline const char *exodus_state_group_key(uint64_t group,char out[17])
+{
+    if (!group || !out) return NULL;
+    snprintf(out,17,"%016llx",(unsigned long long)group);
+    return out;
 }
 /* Canonical identity is for preferences only, never launch authorization. */
 static inline const char *exodus_state_identity(const char *provider,const char *id,char out[17])

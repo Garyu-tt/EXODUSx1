@@ -161,8 +161,10 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
 #ifdef __SWITCH__
     for (size_t n=0;n<total;++n) {
         char canonical[17];
-        const char *provider=exodus_library_provider(library,n);
-        const char *id=exodus_state_identity(provider,exodus_library_id(library,n),canonical);
+        const uint64_t group=exodus_library_declared_group_id(library,n);
+        const char *provider=group?"EVCSGroup":exodus_library_provider(library,n);
+        const char *id=group?exodus_state_group_key(group,canonical):
+            exodus_state_identity(provider,exodus_library_id(library,n),canonical);
         const struct exodus_state_row *row=exodus_state_find(&state,provider,id);
         if (row) favorites[n]=row->favorite;
     }
@@ -197,8 +199,10 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
 #ifdef __SWITCH__
                 if (state.writable) {
                     char canonical[17];
-                    const char *provider=exodus_library_provider(library,index);
-                    const char *id=exodus_state_identity(provider,exodus_library_id(library,index),canonical);
+                    const uint64_t group=exodus_library_declared_group_id(library,index);
+                    const char *provider=group?"EVCSGroup":exodus_library_provider(library,index);
+                    const char *id=group?exodus_state_group_key(group,canonical):
+                        exodus_state_identity(provider,exodus_library_id(library,index),canonical);
                     struct exodus_state_row *row=exodus_state_get(&state,provider,id);
                     if (row) {
                         row->favorite=favorites[index];
