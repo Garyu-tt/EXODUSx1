@@ -23,6 +23,15 @@ bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *pa
 /* Read a word from a validated V3 BDI page without full decoding. */
 bool exodus_page_bdi_read_word(const uint8_t *encoded, size_t size, size_t word, uint8_t out[4]);
 
+/* Prepare a single replacement block in independent scratch storage. The
+ * original encoded buffer is unchanged; output unchanged on invalid input. */
+struct exodus_bdi_patch {
+    size_t offset, old_len, new_len;
+    uint8_t bytes[64];
+};
+bool exodus_page_bdi_prepare_patch(const uint8_t *encoded,size_t size,size_t word,
+                                   const uint8_t value[4],struct exodus_bdi_patch *out);
+
 /* Patch only the target 64-byte block; other encoded blocks are copied.
  * Output must be a separate 4096-byte buffer. Zero means invalid input or
  * the resulting BDI representation would not fit; output stays untouched. */

@@ -152,3 +152,16 @@ clean-pool-compact32:
 	$(RM) test_pool_compact32$(EXEEXT)
 
 .PHONY: check-pool-compact32 clean-pool-compact32
+
+test_local_patch$(EXEEXT): page_codec.c page_codec.h page_store.c page_store.h page_dedup_store.c page_dedup_store.h page_read.c page_read.h test_local_patch.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c page_store.c page_dedup_store.c page_read.c test_local_patch.c $(LDLIBS)
+
+check: check-local-patch
+check-local-patch: test_local_patch$(EXEEXT)
+	./test_local_patch$(EXEEXT)
+
+clean: clean-local-patch
+clean-local-patch:
+	$(RM) test_local_patch$(EXEEXT)
+
+.PHONY: check-local-patch clean-local-patch

@@ -199,17 +199,18 @@ static void bdi_block(const uint8_t *p,bool compressed,uint8_t out[BLOCK_BYTES])
     for(size_t w=0;w<16;w++) bdi_put(out+w*4,base+p[4+w]);
 }
 
-size_t exodus_page_bdi_patch_word(const uint8_t *p,size_t size,size_t word,
-                                  const uint8_t value[4],uint8_t *out)
+/* Prepare one replacement block without materializing the encoded page. */
+bool exodus_page_bdi_prepare_patch(const uint8_t *p,size_t size,size_t word,
+                                   const uint8_t value[4],struct exodus_bdi_patch *out)
 {
-    if(!value || !out || word>=PAGE_WORDS || !bdi_valid(p,size)) return 0;
+    if(!value||!out||word>=PAGE_WORDS||!bdi_valid(p,size))return false;
     size_t b=word/16,w=word%16;
-    uint8_t bit=(uint8_t)(1u<<(b%8));
-    bool was=(p[1+b/8]&bit)!=0;
-    size_t pos=BDI_HEADER+b*BLOCK_BYTES-bdi_count(p+1,b)*(BLOCK_BYTES-BDI_BYTES);
-    size_t old_len=was?BDI_BYTES:BLOCK_BYTES;
+    bool was=(p[1+b/8]&(1u<<(b%8)))!=0;
+    struct exodus_bdi_patch patch={0};
+    patch.offset=BDI_HEADER+b*BLOCK_BYTES-bdi_count(p+1,b)*(BLOCK_BYTES-BDI_BYTES);
+    patch.old_len=was?BDI_BYTES:BLOCK_BYTES;
     uint8_t block[BLOCK_BYTES];
-    bdi_block(p+pos,was,block);
+    bdi_block(p+patch.offset,was,block);
     memcpy(block+w*4,value,4);
     uint32_t lo=bdi_load(block),hi=lo;
     for(size_t i=1;i<16;i++){
@@ -218,19 +219,29 @@ size_t exodus_page_bdi_patch_word(const uint8_t *p,size_t size,size_t word,
         if(v>hi)hi=v;
     }
     bool fits=hi-lo<=255;
-    size_t len=fits?BDI_BYTES:BLOCK_BYTES;
-    size_t total=size-old_len+len;
-    if(total>=EXODUS_PAGE_BYTES)return 0;
-    memcpy(out,p,pos);
+    patch.new_len=fits?BDI_BYTES:BLOCK_BYTES;
     if(fits){
-        out[1+b/8]|=bit;
-        bdi_put(out+pos,lo);
-        for(size_t i=0;i<16;i++)out[pos+4+i]=(uint8_t)(bdi_load(block+i*4)-lo);
-    }else{
-        out[1+b/8]&=(uint8_t)~bit;
-        memcpy(out+pos,block,BLOCK_BYTES);
-    }
-    memcpy(out+pos+len,p+pos+old_len,size-pos-old_len);
+        bdi_put(patch.bytes,lo);
+        for(size_t i=0;i<16;i++)patch.bytes[4+i]=(uint8_t)(bdi_load(block+i*4)-lo);
+    }else memcpy(patch.bytes,block,BLOCK_BYTES);
+    *out=patch;
+    return true;
+}
+
+size_t exodus_page_bdi_patch_word(const uint8_t *p,size_t size,size_t word,
+                                  const uint8_t value[4],uint8_t *out)
+{
+    struct exodus_bdi_patch patch;
+    if(!out||!exodus_page_bdi_prepare_patch(p,size,word,value,&patch))return 0;
+    size_t total=size-patch.old_len+patch.new_len;
+    if(total>=EXODUS_PAGE_BYTES)return 0;
+    size_t b=word/16,pos=patch.offset;
+    uint8_t bit=(uint8_t)(1u<<(b%8));
+    memcpy(out,p,pos);
+    if(patch.new_len==BDI_BYTES)out[1+b/8]|=bit;
+    else out[1+b/8]&=(uint8_t)~bit;
+    memcpy(out+pos,patch.bytes,patch.new_len);
+    memcpy(out+pos+patch.new_len,p+pos+patch.old_len,size-pos-patch.old_len);
     return total;
 }
 

@@ -192,9 +192,10 @@ static bool write_bdi(struct exodus_page_dedup_store *s,size_t index,size_t word
     uint8_t current[4];
     if(!exodus_page_bdi_read_word(src,size,word,current))return false;
     if(memcmp(current,value,4)==0)return true;
-    uint8_t encoded[EXODUS_PAGE_BYTES];
-    size_t n=exodus_page_bdi_patch_word(src,size,word,value,encoded);
-    if(!n){*handled=false;return false;}
+    struct exodus_bdi_patch patch;
+    if(!exodus_page_bdi_prepare_patch(src,size,word,value,&patch))return false;
+    size_t n=size-patch.old_len+patch.new_len;
+    if(n>=EXODUS_PAGE_BYTES){*handled=false;return false;}
     uint64_t hash;
     if(!exodus_page_fingerprint_update(s->fingerprints[old],word,current,value,&hash))return false;
     size_t match=s->unique.page_count;
@@ -202,8 +203,23 @@ static bool write_bdi(struct exodus_page_dedup_store *s,size_t index,size_t word
         if(i==old||s->fingerprints[i]!=hash)continue;
         uint8_t candidate[EXODUS_PAGE_BYTES];
         if(!exodus_page_store_restore(&s->unique,i,candidate))return false;
-        if(exodus_page_bdi_equal_page(encoded,n,candidate)){match=i;break;}
+        /* Compare candidate with the prospective page without copying it:
+         * undo the single edited word in the candidate scratch buffer. */
+        if(memcmp(candidate+4*word,value,4)!=0)continue;
+        memcpy(candidate+4*word,current,4);
+        if(exodus_page_bdi_equal_page(src,size,candidate)){match=i;break;}
     }
+    if(match!=s->unique.page_count)
+        return commit_replacement(s,index,old,owners,match,hash,NULL,0);
+    if(owners==1&&patch.old_len==patch.new_len){
+        /* No size change, no aliases and no equal candidate. All checks
+         * completed: update only the affected block and its fingerprint. */
+        memcpy(s->unique.payload+start+patch.offset,patch.bytes,patch.new_len);
+        s->fingerprints[old]=hash;
+        return true;
+    }
+    uint8_t encoded[EXODUS_PAGE_BYTES];
+    if(exodus_page_bdi_patch_word(src,size,word,value,encoded)!=n)return false;
     return commit_replacement(s,index,old,owners,match,hash,encoded,n);
 }
 

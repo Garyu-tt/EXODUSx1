@@ -120,3 +120,6 @@ The indexed pool can enumerate whole aligned free granules via `exodus_page_stor
 
 ### Compact physical extent metadata
 On an empty indexed pool, callers may supply starts32 (uint32_t) and lengths16 (uint16_t) instead of page_starts and page_ends. The same allocation, deduplication, compaction, direct read and discard algorithms operate on both representations. Maximum per-pool virtual range is UINT32_MAX bytes; split larger arenas into groups. On ARM64 the extent+order arrays use 10 instead of 20 bytes per reserved physical slot, excluding hashes and logical references. The descriptor grows by two pointers. Packed mode is unchanged. No wire format changes or Switch performance claim.
+
+### Local BDI mutation
+The dedup word writer now prepares one encoded replacement block. After candidate equality checks and owner counting, a same-size block belonging to an exclusive page is updated in place (20 or 64 bytes), with an incremental fingerprint update. Packed and extent layouts share this path. Shared pages or size changes retain the existing copy-on-write and allocation path. This is not yet a separate block slab: no new wire format, no automatic concurrency, and no Switch timing claim. Run make check-local-patch for 20,000 deterministic write checks against decoded pages and unchanged neighbouring bytes.
