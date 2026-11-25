@@ -8,6 +8,7 @@ mode=${2:-graphics}
 case "$mode" in
     graphics) guest=guest-build.sh; gate=EXODUS_GAMESCOPE_SOURCE_BUILD_PASS ;;
     manager) guest=guest-manager.sh; gate=EXODUS_MANAGER_AUDIT_COMPLETE ;;
+    managerprocess) guest=guest-manager-process.sh; gate=EXODUS_MANAGER_PROCESS_UNPRIVILEGED_PASS ;;
     ssh) guest=guest-ssh.sh; gate=EXODUS_SSH_REFERENCE_PASS ;;
     boot) guest=guest-boot.sh; gate=EXODUS_FREEBSD_BOOT_PASS ;;
     native) guest=guest-native.sh; gate=EXODUS_NATIVE_DBUS_PASS ;;
@@ -59,7 +60,12 @@ if [ "$mode" = linuxdynamic ]; then
     mcopy -i seed.img linux-dynamic ld-linux-aarch64.so.1 libc.so.6 ::
 fi
 if [ "$mode" = manager ]; then
-    for f in manager-inotify-probe.c bsd_process.rs apply-manager-process.sh test-bsd-process.sh; do
+    for f in manager-inotify-probe.c bsd_process.rs apply-manager-process.sh; do
+        mcopy -i seed.img "$here/$f" ::
+    done
+fi
+if [ "$mode" = managerprocess ]; then
+    for f in bsd_process.rs test-bsd-process.sh; do
         mcopy -i seed.img "$here/$f" ::
     done
 fi
@@ -82,6 +88,7 @@ test -f "$efi"
 limit=145m
 [ "$mode" != ssh ] || limit=65m
 [ "$mode" != native ] || limit=65m
+[ "$mode" != managerprocess ] || limit=65m
 [ "$mode" != resident ] || limit=65m
 [ "$mode" != rcresident ] || limit=65m
 [ "$mode" != boot ] || limit=12m

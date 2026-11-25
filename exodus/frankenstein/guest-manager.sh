@@ -48,7 +48,7 @@ done
 test -n "$seed"
 mount -t msdosfs -o ro "$seed" "$seed_dir"
 cp "$seed_dir/manager-inotify-probe.c" "$probe_dir/inotify.c"
-cp "$seed_dir/bsd_process.rs" "$seed_dir/apply-manager-process.sh" "$seed_dir/test-bsd-process.sh" "$probe_dir/"
+cp "$seed_dir/bsd_process.rs" "$seed_dir/apply-manager-process.sh" "$probe_dir/"
 umount "$seed_dir"
 rmdir "$seed_dir"
 cc -std=gnu11 -Wall -Wextra -Werror "$probe_dir/inotify.c" -o "$probe_dir/inotify"
@@ -115,10 +115,7 @@ test -f Cargo.lock
 cargo build --locked -p steamos-manager-proxy -p steamos-manager-macros
 find target/debug -maxdepth 1 -name 'libsteamos_manager*' -exec file {} \;
 echo EXODUS_MANAGER_PROTOCOL_BUILD_PASS
-# Obtain independent native process-provider evidence even when other daemon modules fail.
-process_rc=0
-sh "$probe_dir/test-bsd-process.sh" "$probe_dir/bsd_process.rs" "$PWD/Cargo.lock" || process_rc=$?
-echo "EXODUS_MANAGER_BSD_PROCESS_TEST_RESULT=$process_rc"
+# The native provider has its own required matrix job (managerprocess).
 # Apply the narrowly scoped FreeBSD process provider after the original proxy build.
 # Full daemon compilation remains a real gate; no runtime success is implied.
 sh "$probe_dir/apply-manager-process.sh" "$PWD" "$probe_dir/bsd_process.rs"
@@ -130,4 +127,3 @@ manager_rc=$?
 set -e
 echo "EXODUS_MANAGER_DAEMON_CHECK_RESULT=$manager_rc"
 echo EXODUS_MANAGER_AUDIT_COMPLETE
-test "$process_rc" -eq 0
