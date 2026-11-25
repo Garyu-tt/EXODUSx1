@@ -198,7 +198,8 @@ def check_reconnect(usb_id, initial, seconds, sample):
         last = current
         if last.state == "ambiguous" or (last.parent_id is not None and last.parent_id != initial.parent_id):
             return "target_changed", last, disconnected
-        if last.state == "not_present":
+        # Windows can still list WPD interfaces after losing the USB parent.
+        if last.parent_id is None:
             disconnected = True
         if disconnected and last.state == "wpd_ready" and (last.mtp_advertised or not initial.mtp_advertised):
             return "reconnected", last, True

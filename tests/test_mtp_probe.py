@@ -143,6 +143,25 @@ class MtpProbeTests(unittest.TestCase):
         self.assertEqual(report["reconnect"]["last"]["state"], "wpd_ready")
         self.assertEqual(sample.call_count, 4)
 
+    def test_reconnect_counts_parent_absence_with_lingering_interface(self):
+        orphan = self.ready[1:]
+        sample = Mock(side_effect=snapshots(self.ready, orphan, self.ready, self.ready, self.ready))
+        code, report, _ = self.run_probe(sample, "--reconnect", "5")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["reconnect"], {
+            "state": "reconnected", "disconnect_seen": True, "last": report["initial"],
+        })
+
+    def test_reconnect_requires_parent_absence_when_wpd_disappears(self):
+        sample = Mock(side_effect=snapshots(
+            self.ready, [node(PARENT)], self.ready, self.ready, self.ready,
+        ))
+        code, report, _ = self.run_probe(sample, "--reconnect", "5")
+        self.assertEqual(code, 1)
+        self.assertEqual(report["reconnect"], {
+            "state": "timed_out", "disconnect_seen": False, "last": report["initial"],
+        })
+
     def test_timed_out_when_usb_remains_present(self):
         sample = Mock(return_value=snapshots(self.ready)[0])
         code, report, _ = self.run_probe(sample, "--reconnect", "5")
