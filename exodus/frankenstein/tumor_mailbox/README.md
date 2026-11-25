@@ -21,3 +21,7 @@ R34 head c96b4936de00ff904ef1a77cb0c5c3800d352096 passed native load/unload twic
 ## R37 positive mapping attachment control
 
 R36 accepted 8/8 at 391e6474218c554c6bb7b846d80d325bcbc97766, merge e96a7a003b78db8235d0289fb0bffec04355ebfd. R37 consumes the exact checksum-verified module artifact from the same workflow, boots a separate Bao synthetic peer plus stock FreeBSD 15.1 RAM-root with role-2 mapping-only DTB, invokes real rescue kldload/kldunload, checks attached driver via sysctl and exact serial marker, verifies detach. No data access or coherent flag. This is not yet a two-OS exchange. Existing R32/R35 tests and base images unchanged.
+
+## R38 non-cacheable roundtrip
+
+R37 accepted actual mapping-only attach/detach under Bao at 0aea9b338af573780435cce903b5126bad6b4ccc (job 139532861661, merge f40afeec42b7281fbb084761e0d08b771a8967a5). R38 adds an explicit role-2-only roundtrip flag to mapping-only, a separate synthetic peer initializing three fixed words before kernel handoff, bounded driver polling and full-system barriers. Challenge, response and acknowledgment each have a single writer after initialization. Require exact driver marker and confirmed detach, retain separate no-access mapping control. No userspace API, no coherent cacheable exchange, no C R33 codec or physical hardware claim. The kernel polling loop is bounded at 2000 iterations of 100 microseconds delay per wait; host also has a VM timeout. No live reset or retry.
