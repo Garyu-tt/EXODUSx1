@@ -110,26 +110,29 @@ static void load_cover(struct ui *ui, const char *path, struct cover_slot *slot)
 }
 
 static size_t filter_cards(const struct exodus_library *library, enum exodus_filter filter,
-                           const unsigned char *favorites, struct exodus_card_index *cards)
+                           enum exodus_section section, const unsigned char *favorites, struct exodus_card_index *cards)
 {
     size_t count = 0;
     for (size_t n = 0; n < exodus_library_count(library); ++n) {
+        const char *provider=exodus_library_provider(library,n);
+        if (!exodus_section_matches(section,provider)) continue;
         uint64_t recent = exodus_library_last_played(library, n);
-        if (exodus_filter_matches(filter, exodus_library_provider(library, n), favorites[n], recent))
+        if (exodus_filter_matches(filter, provider, favorites[n], recent))
             cards[count++] = (struct exodus_card_index){n, recent};
     }
     if (filter == FILTER_RECENT) qsort(cards, count, sizeof(*cards), exodus_recent_compare);
     return count;
 }
 
-static int show_library(struct ui *ui, const char *path)
+static int show_library(struct ui *ui, const char *path, enum exodus_section section)
 {
+    const char *heading=section==SECTION_APPLICATIONS ? "Applications" : "EXODUS Library";
     struct exodus_library *library = exodus_library_open(path);
     size_t total = exodus_library_count(library), selection = 0, count = total;
     int handoff = 0;
     if (!total) {
         const char *status = exodus_library_status(library);
-        ui_message(ui, "EXODUS Library", strcmp(status, "Ready") == 0 ? "Empty catalog" : status);
+        ui_message(ui, heading, strcmp(status, "Ready") == 0 ? "Empty catalog" : status);
         exodus_library_close(library);
         return 0;
     }
@@ -139,10 +142,10 @@ static int show_library(struct ui *ui, const char *path)
     size_t cached_page = (size_t)-1;
     enum exodus_filter filter = FILTER_ALL;
     if (!favorites || !cards) {
-        ui_message(ui, "EXODUS Library", "Not enough memory");
+        ui_message(ui, heading, "Not enough memory");
         goto done;
     }
-    count = filter_cards(library, filter, favorites, cards);
+    count = filter_cards(library, filter, section, favorites, cards);
     const struct ui_hint hints[] = {
         {UI_A, "A: Open"}, {UI_B, "B: Back"}, {UI_L, "L: Previous"}, {UI_R, "R: Next"},
         {UI_X, "X: Favorite"}, {UI_Y, "Y: Filter"}
@@ -154,8 +157,8 @@ static int show_library(struct ui *ui, const char *path)
             size_t previous = selection;
             if (input.button == UI_B) goto done;
             if (input.button == UI_Y) {
-                filter = (enum exodus_filter)((filter + 1) % FILTER_COUNT);
-                count = filter_cards(library, filter, favorites, cards);
+                filter = exodus_section_next_filter(section,filter);
+                count = filter_cards(library, filter, section, favorites, cards);
                 selection = 0;
                 cached_page = (size_t)-1;
                 continue;
@@ -165,7 +168,7 @@ static int show_library(struct ui *ui, const char *path)
             if (input.button == UI_X) {
                 favorites[index] = !favorites[index];
                 if (filter == FILTER_FAVORITES) {
-                    count = filter_cards(library, filter, favorites, cards);
+                    count = filter_cards(library, filter, section, favorites, cards);
                     if (selection >= count) selection = count ? count - 1 : 0;
                     cached_page = (size_t)-1;
                 }
@@ -216,7 +219,7 @@ static int show_library(struct ui *ui, const char *path)
         snprintf(page, sizeof(page), "%s | %zu items | %zu / %zu", exodus_filter_name(filter),
                  count, count ? selection / 8 + 1 : 0, (count + 7) / 8);
         ui_background(ui);
-        exodus_header(ui, "EXODUS Library", page);
+        exodus_header(ui, heading, page);
         if (!count) ui_text(ui, ui->normal, 84, 180, "No matching entries. Press Y to change filter.", ui->text);
         for (size_t n = first; n < count && n < first + 8; ++n) {
             size_t index = cards[n].index;
@@ -347,11 +350,11 @@ static void draw_home(struct ui *ui, size_t selection)
     ui_background(ui);
     exodus_header(ui, "Home", "Gaming Mode");
     for (size_t n = 0; n < PAGE_COUNT; ++n) {
-        int x = 84, y = 120 + (int)n * 90;
-        ui_panel(ui, x, y, 1112, 82);
-        if (n == selection) ui_outline(ui, x, y, 1112, 82, 6, 3, ui->selection);
+        int x = 84, y = 112 + (int)n * 78;
+        ui_panel(ui, x, y, 1112, 70);
+        if (n == selection) ui_outline(ui, x, y, 1112, 70, 6, 3, ui->selection);
         ui_text(ui, ui->normal, x + 22, y + 9, exodus_pages[n].name, ui->text);
-        ui_text_fit(ui, ui->small, x + 22, y + 47, 1068,
+        ui_text_fit(ui, ui->small, x + 22, y + 40, 1068,
                     exodus_pages[n].description, ui->dim, 0);
     }
     const struct ui_hint hints[] = {{UI_A, "A: Open"}, {UI_PLUS, "+: Control Center"}, {UI_B, "B: Exit"}};
@@ -376,8 +379,8 @@ static void show_home(struct ui *ui, const char *catalog)
             if (input.button == UI_DOWN) selection = exodus_page_move(selection, 1);
             if (input.button != UI_A) continue;
             if (selection == PAGE_EXIT) return;
-            if (selection == PAGE_LIBRARY) {
-                if (show_library(ui, catalog)) return;
+            if (selection == PAGE_LIBRARY || selection == PAGE_APPLICATIONS) {
+                if (show_library(ui, catalog, selection==PAGE_APPLICATIONS ? SECTION_APPLICATIONS : SECTION_LIBRARY)) return;
             } else if (selection == PAGE_SETTINGS) {
                 show_settings(ui);
             } else if (selection == PAGE_RUNTIME) {
@@ -464,7 +467,7 @@ int main(int argc, char **argv)
         puts("EXODUS standalone donor UI frame rendered");
     } else if (library_mode) {
         SDL_SetWindowTitle(ui.window, "EXODUS Library");
-        show_library(&ui, argv[3]);
+        show_library(&ui, argv[3], SECTION_LIBRARY);
     } else {
         show_home(&ui, shell_mode ? argv[3] : "sdmc:/ulaunch/exodus-catalog.json");
     }
