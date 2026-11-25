@@ -67,6 +67,20 @@ static void check_stable_extent(bool compact){
  assert(!memcmp(saved,bytes,sizeof bytes)&&!memcmp(oldorder,order,sizeof order));
  assert(p.payload_used==30&&p.page_count==4);
  order[1]=3;assert(exodus_page_store_validate(&p));
+ /* Physical indices now differ from address order. Exercise removal,
+  * tail growth, relocation to the head, and insertion into the middle. */
+ assert(exodus_page_store_pool_remove(&p,0));
+ assert(order[0]==2&&order[1]==1&&order[2]==0);
+ assert(exodus_page_store_pool_put(&p,0,v,16));
+ assert(exodus_page_store_extent(&p,0,&a,&b)&&a==24&&b==40);
+ assert(exodus_page_store_pool_put(&p,2,v,8));
+ assert(exodus_page_store_extent(&p,2,&a,&b)&&a==0&&b==8);
+ assert(exodus_page_store_pool_put(&p,3,v,8));
+ assert(exodus_page_store_extent(&p,3,&a,&b)&&a==8&&b==16);
+ assert(order[0]==2&&order[1]==3&&order[2]==1&&order[3]==0);
+ assert(exodus_page_store_pool_remove(&p,1));
+ assert(order[0]==1&&order[1]==2&&order[2]==0);
+ assert(exodus_page_store_validate(&p)&&p.payload_used==32);
 }
 int main(void){
  check_stable_extent(false);check_stable_extent(true);
