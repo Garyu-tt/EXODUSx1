@@ -33,6 +33,7 @@ fetch -o "$work/MANIFEST" "$base/MANIFEST"
 fetch -o "$work/src.txz" "$base/src.txz"
 hash=$(awk '$1 == "src.txz" {print $2}' "$work/MANIFEST")
 test "$(printf %s "$hash" | wc -c)" -eq 64
+test "$hash" = cf5762da53fd52e1eaf0f9ceee9bf58cbe314c821031d0d9ffa76823185a89e1
 test "$(sha256 -q "$work/src.txz")" = "$hash"
 echo "EXODUS_MAILBOX_SRC_SHA256=$hash"
 tar -xJf "$work/src.txz" -C "$work/source"
@@ -42,7 +43,18 @@ make -C "$work/module" SYSDIR="$sysdir" all
 test -s "$work/module/tumor_mailbox.ko"
 file "$work/module/tumor_mailbox.ko"
 readelf -h "$work/module/tumor_mailbox.ko" | grep -F AArch64
-readelf -h "$work/module/tumor_mailbox.ko" | grep -F REL
+# arm64 bsd.kmod.mk links the intermediate REL .kld into a DYN .ko.
+readelf -h "$work/module/tumor_mailbox.ko" | grep -E 'Type:[[:space:]]+DYN'
+readelf -h "$work/module/tumor_mailbox.ko" | grep -E 'Class:[[:space:]]+ELF64'
+readelf -h "$work/module/tumor_mailbox.ko" | grep -F 'little endian'
+readelf -SW "$work/module/tumor_mailbox.ko" | grep -F set_modmetadata_set
 sha256 "$work/module/tumor_mailbox.ko"
 if kldstat -n tumor_mailbox.ko >/dev/null 2>&1; then exit 1; fi
+export_dir=$(mktemp -d /var/tmp/tumor-mailbox-out.XXXXXX)
+mount -t msdosfs /dev/msdosfs/EXODUSOUT "$export_dir"
+cp "$work/module/tumor_mailbox.ko" "$export_dir/"
+(cd "$export_dir" && sha256 -r tumor_mailbox.ko > SHA256SUMS)
+sync
+umount "$export_dir"
+rmdir "$export_dir"
 echo EXODUS_MAILBOX_NATIVE_BUILD_PASS
