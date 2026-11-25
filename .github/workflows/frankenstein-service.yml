@@ -227,7 +227,7 @@ jobs:
           tar -tJf "$out/base.txz" | awk '/^(\.\/)?rescue\// { print }' > "$out/rescue-members"
           test -s "$out/rescue-members"
           tar -xJf "$out/base.txz" -C "$out/base" --no-same-owner --no-recursion -T "$out/rescue-members"
-          for tool in init sh sysctl ps; do
+          for tool in init sh sysctl ps mount; do
             test -f "$out/base/rescue/$tool"
             test ! -L "$out/base/rescue/$tool"
             test -x "$out/base/rescue/$tool"
@@ -264,6 +264,7 @@ jobs:
           mkdir "$out/ssh-root" "$out/ssh-base" "$out/ssh-images"
           tar -xJf "$out/base.txz" -C "$out/ssh-base" --no-same-owner
           cp -a "$out/stock-root/." "$out/ssh-root/"
+          ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/mount"
           ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/ifconfig"
           ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/sleep"
           python3 "$src/prepare_bao_ssh_root.py" "$out/ssh-base" "$out/ssh-root"
@@ -292,6 +293,13 @@ jobs:
           test "$rc" -eq 124
           tr -d '\r' < "$out/bao-ssh.log" > "$out/bao-ssh.normalized"
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-ssh.normalized")" -eq 1
-          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LOOPBACK_KEX$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_RAMROOT_WRITABLE
+          if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
+          echo 'R29 UFS1 control: loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
+ "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LOOPBACK_KEX
+          if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
+          echo 'R29 UFS1 control: loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
+ "$out/bao-ssh.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
           echo 'R29 UFS1 control: loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
