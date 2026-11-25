@@ -64,6 +64,36 @@ bool exodus_page_integrity_store_append_adaptive(
     return append_page(store, page, true);
 }
 
+static bool replace_page(struct exodus_page_integrity_store *store,
+                         size_t index, const uint8_t *page, bool adaptive)
+{
+    if (!page || !metadata_valid(store) || index >= store->pages.page_count)
+        return false;
+
+    /* Capture the checksum before the base store moves payloads: a readable
+     * source page may alias that backing buffer, as with base replacement. */
+    uint32_t checksum = page_crc32(page);
+    bool replaced = adaptive ? exodus_page_store_replace_adaptive(&store->pages, index, page)
+                             : exodus_page_store_replace(&store->pages, index, page);
+    if (!replaced)
+        return false;
+
+    store->checksums[index] = checksum;
+    return true;
+}
+
+bool exodus_page_integrity_store_replace(struct exodus_page_integrity_store *store,
+                                         size_t index, const uint8_t *page)
+{
+    return replace_page(store, index, page, false);
+}
+
+bool exodus_page_integrity_store_replace_adaptive(
+    struct exodus_page_integrity_store *store, size_t index, const uint8_t *page)
+{
+    return replace_page(store, index, page, true);
+}
+
 bool exodus_page_integrity_store_restore(
     const struct exodus_page_integrity_store *store, size_t index, uint8_t *page)
 {

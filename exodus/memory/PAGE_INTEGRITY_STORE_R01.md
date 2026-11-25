@@ -17,19 +17,39 @@ payload and end-offset buffers used by `exodus_page_store`, plus a separate
 `uint32_t` checksum array. The checksum capacity may independently limit the
 logical page count. Both append variants are failure-atomic across payload,
 offset and checksum metadata. The wrapper also rejects inconsistent end-offset
-metadata before append or restore.
+metadata before append, replace or restore.
 
 Use `exodus_page_integrity_store_append()` for the legacy sparse/raw encoder or
 `exodus_page_integrity_store_append_adaptive()` for the smallest current codec
 representation. Use `exodus_page_integrity_store_restore()` with a separate
 writable 4 KiB destination.
 
+## Write back a changed page
+
+Use `exodus_page_integrity_store_replace(store, index, page)` to replace one
+logical page with legacy sparse/raw encoding, or
+`exodus_page_integrity_store_replace_adaptive(store, index, page)` for adaptive
+encoding. Both reuse the ordinary packed store's replacement algorithm and
+update the replaced page's CRC only after its payload replacement succeeds.
+The page count and logical indices stay fixed. Growth or shrinkage moves later
+payloads and their offsets while preserving those pages and their checksums.
+
+Capacity, index or metadata rejection leaves payload, offsets, checksums and
+counters unchanged. Retain the edited source until replacement succeeds. The
+source can be a readable full page within the payload buffer, as with ordinary
+store replacement: the checksum and encoding are captured before any move.
+The replacement validates index metadata; it does not recheck unrelated payload
+bytes. Subsequent restores still verify every requested page against its CRC,
+including after replacement of another page or deliberate overwrite of a
+damaged slot. These operations require serialized access and may move the
+entire following payload; they are not concurrent or crash-atomic transactions.
+
 ## Boundary and non-claims
 
 - Metadata overhead is one `uint32_t` checksum in addition to the existing
   `size_t` end offset per logical page. Restore uses a temporary 4 KiB stack
   page so damaged bytes never reach the caller's output.
-- Payload, offsets and checksums form one immutable group after construction.
+- Payload, offsets and checksums form one group managed through this wrapper.
   The caller owns capacity planning, persistence, lifetime and serialized
   access. Do not call the underlying store directly when integrity is required.
 - IEEE CRC-32 detects accidental corruption and all single-bit payload errors.
@@ -43,3 +63,5 @@ The standalone regression covers zero, sparse, word-run and raw pages; every
 retained payload byte is flipped independently and must be rejected before the
 destination changes. It also covers checksum/offset corruption, exact capacity,
 guard bytes and failure atomicity.
+Replacement regressions additionally cover growth/shrinkage, exact capacity,
+legacy/adaptive mixes, in-payload source aliases, and retained corruption checks.
