@@ -27,6 +27,11 @@ static size_t check_adaptive_round_trip(const uint8_t *page, uint8_t *encoded)
     CHECK(encoded[0] == 0xa3 && encoded[1 + size] == 0xa3);
     CHECK(exodus_page_decode(encoded + 1, size, decoded + 1));
     CHECK(memcmp(page, decoded + 1, EXODUS_PAGE_BYTES) == 0);
+    bool equal=false;
+    CHECK(exodus_page_compare(encoded+1,size,page,&equal)&&equal);
+    decoded[EXODUS_PAGE_BYTES]^=1;
+    CHECK(exodus_page_compare(encoded+1,size,decoded+1,&equal)&&!equal);
+    decoded[EXODUS_PAGE_BYTES]^=1;
     CHECK(decoded[0] == 0xc5 && decoded[sizeof(decoded) - 1] == 0xc5);
     return size;
 }
@@ -36,6 +41,8 @@ static void check_rejected_encoding(const uint8_t *encoded, size_t size)
     uint8_t decoded[EXODUS_PAGE_BYTES];
     memset(decoded, 0x6a, sizeof(decoded));
     CHECK(!exodus_page_decode(encoded, size, decoded));
+    bool equal=true;
+    CHECK(!exodus_page_compare(encoded,size,decoded,&equal)&&equal);
     for (size_t i = 0; i < sizeof(decoded); ++i)
         CHECK(decoded[i] == 0x6a);
 }
@@ -67,6 +74,11 @@ static void check_word_run_lengths(void)
 
         memset(restored, 0x6a, sizeof(restored));
         CHECK(exodus_page_decode(stream, size, restored + 1));
+        bool equal=false;
+        CHECK(exodus_page_compare(stream,size,restored+1,&equal)&&equal);
+        restored[EXODUS_PAGE_BYTES]^=1;
+        CHECK(exodus_page_compare(stream,size,restored+1,&equal)&&!equal);
+        restored[EXODUS_PAGE_BYTES]^=1;
         CHECK(restored[0] == 0x6a && restored[sizeof(restored) - 1] == 0x6a);
         for (size_t i = 0; i < page_words; ++i) {
             const uint8_t *expected = i < count ? first_word : other_word;
@@ -243,8 +255,142 @@ static void check_page_store_index_capacity(void)
         CHECK(payload[i] == 0xa3);
 }
 
+/* A late malformed command must be rejected even after an early mismatch.
+ * Exercise both padding and repeated/literal command validation. */
+static void check_compare_invalid_tail(void)
+{
+    uint8_t stream[41]={1}, page[EXODUS_PAGE_BYTES]={0};
+    for(size_t i=0;i<8;i++){
+        stream[1+i*5]=255;
+        stream[2+i*5]=1;
+    }
+    bool equal=true;
+    CHECK(exodus_page_compare(stream,sizeof stream,page,&equal)&&!equal);
+    stream[36]=128; /* Invalid repeat of one word, after the first mismatch. */
+    equal=true;
+    CHECK(!exodus_page_compare(stream,sizeof stream,page,&equal)&&equal);
+    CHECK(!exodus_page_compare(NULL,sizeof stream,page,&equal)&&equal);
+    CHECK(!exodus_page_compare(stream,0,page,&equal)&&equal);
+    CHECK(!exodus_page_compare(stream,SIZE_MAX,page,&equal)&&equal);
+}
+
+/* Compare against the original decoder for valid and mutated wire records.
+ * Mutations may produce another valid record, so do not assume rejection. */
+static void check_compare_differential(void)
+{
+    uint8_t page[EXODUS_PAGE_BYTES], encoded[EXODUS_PAGE_BYTES + 2];
+    uint8_t decoded[EXODUS_PAGE_BYTES], candidate[EXODUS_PAGE_BYTES];
+    uint8_t *wire = encoded + 1;
+    for (unsigned kind = 0; kind < 6; ++kind) {
+        for (size_t i = 0; i < sizeof page; ++i) {
+            switch (kind) {
+            case 0: page[i] = (uint8_t)next_random(); break;
+            case 1: page[i] = i / 64 % 3 == 0 ? (uint8_t)next_random() : 0; break;
+            case 2: page[i] = 0x71; break;
+            case 3: page[i] = (uint8_t)(1 + i % 8); break;
+            case 4: page[i] = (uint8_t)(1 + i % 16); break;
+            default: page[i] = i % 4 == 0 ? (uint8_t)(i / 4 % 16) :
+                               i % 4 == 2 ? 0x34 : i % 4 == 3 ? 0x12 : 0; break;
+            }
+        }
+        size_t size = exodus_page_encode_adaptive(page, wire);
+        CHECK(size > 0 && size <= sizeof page);
+        bool equal = false;
+        CHECK(exodus_page_compare(wire,size,page,&equal) && equal);
+        memcpy(candidate,page,sizeof candidate);
+        /* Exercise every byte position, not just the end of a page. */
+        for (size_t i = 0; i < sizeof candidate; ++i) {
+            candidate[i] ^= 0x80;
+            CHECK(exodus_page_compare(wire,size,candidate,&equal) && !equal);
+            candidate[i] ^= 0x80;
+        }
+        for (size_t j = 0; j < 256; ++j) {
+            size_t pos = j < size && j < 16 ? j : next_random() % size;
+            uint8_t bit = (uint8_t)(1u << (next_random() % 8));
+            wire[pos] ^= bit;
+            size_t n = j % 4 == 0 ? next_random() % (size + 1) : size;
+            bool valid = exodus_page_decode(wire,n,decoded);
+            equal = true;
+            CHECK(exodus_page_compare(wire,n,page,&equal) == valid);
+            if (valid) {
+                CHECK(equal == (memcmp(page,decoded,sizeof page) == 0));
+                CHECK(exodus_page_compare(wire,n,decoded,&equal) && equal);
+            } else {
+                CHECK(equal);
+            }
+            wire[pos] ^= bit;
+        }
+    }
+}
+
+/* Mixed packed/raw BDI and wrapping deltas accepted by the decoder. */
+static void check_bdi_direct_compare(void)
+{
+    enum { packed_size=9+63*20+64 };
+    uint8_t encoded[packed_size+2]={0};
+    uint8_t decoded[EXODUS_PAGE_BYTES+2]={0};
+    uint8_t *p=encoded+1, *page=decoded+1;
+    p[0]=EXODUS_PAGE_BDI_VERSION;
+    memset(p+1,0xff,8);
+    p[8]=0x7f; /* final block is raw */
+    for(size_t b=0;b<63;b++){
+        uint8_t *block=p+9+b*20;
+        memset(block,0xff,4);
+        for(size_t w=0;w<16;w++)block[4+w]=(uint8_t)(w+b);
+    }
+    for(size_t i=0;i<64;i++)p[9+63*20+i]=(uint8_t)(i*17);
+    CHECK(exodus_page_decode(p,packed_size,page));
+    CHECK(page[0]==0xff && page[4]==0 && page[5]==0);
+    bool equal=false;
+    CHECK(exodus_page_compare(p,packed_size,page,&equal)&&equal);
+    CHECK(exodus_page_bdi_equal_page(p,packed_size,page));
+    for(size_t i=0;i<EXODUS_PAGE_BYTES;i++){
+        page[i]^=1;
+        CHECK(exodus_page_compare(p,packed_size,page,&equal)&&!equal);
+        CHECK(!exodus_page_bdi_equal_page(p,packed_size,page));
+        page[i]^=1;
+    }
+    equal=true;
+    CHECK(!exodus_page_compare(p,packed_size-2,page,&equal)&&equal);
+    CHECK(!exodus_page_bdi_equal_page(p,packed_size-2,page));
+}
+
+/* Wire BDI permits unsigned modulo-2^32 addition even though the
+ * encoder normally chooses a non-wrapping minimum. Compare must agree
+ * with the decoder on these records, including unaligned addresses. */
+static void check_bdi_wrap_compare(void)
+{
+    uint8_t wire_storage[1290]={0}, page_storage[EXODUS_PAGE_BYTES+2]={0};
+    uint8_t *wire=wire_storage+1, *page=page_storage+1;
+    const size_t size=1289;
+    wire[0]=EXODUS_PAGE_BDI_VERSION;
+    memset(wire+1,0xff,8);
+    for(size_t b=0;b<64;b++){
+        uint8_t *block=wire+9+b*20;
+        memset(block,0xff,4);
+        for(size_t w=0;w<16;w++)block[4+w]=(uint8_t)w;
+    }
+    CHECK(exodus_page_decode(wire,size,page));
+    CHECK(page[0]==0xff && page[3]==0xff && page[4]==0 && page[8]==1);
+    bool equal=false;
+    CHECK(exodus_page_bdi_equal_page(wire,size,page));
+    CHECK(exodus_page_compare(wire,size,page,&equal)&&equal);
+    for(size_t w=0;w<EXODUS_PAGE_BYTES/4;w++){
+        page[w*4+3]^=0x80;
+        CHECK(!exodus_page_bdi_equal_page(wire,size,page));
+        CHECK(exodus_page_compare(wire,size,page,&equal)&&!equal);
+        page[w*4+3]^=0x80;
+    }
+    CHECK(exodus_page_compare(wire,size,page,&equal)&&equal);
+    CHECK(page_storage[0]==0 && page_storage[sizeof page_storage-1]==0);
+}
+
 int main(void)
 {
+    check_bdi_wrap_compare();
+    check_bdi_direct_compare();
+    check_compare_differential();
+    check_compare_invalid_tail();
     check_adaptive();
     check_repeated_tiles();
     check_word_run_lengths();

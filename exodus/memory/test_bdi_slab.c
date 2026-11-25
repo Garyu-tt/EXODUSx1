@@ -13,11 +13,30 @@ static uint32_t rng=0x9a8b7c6d;
 static uint32_t rnd(void){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;}
 static void put(uint8_t*p,uint32_t v){for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(v>>(i*8));}
 static void verify(void){uint16_t a[S]={0},b[R]={0};for(size_t i=0;i<N;i++)if(pages[i].active){assert(exodus_bdi_slab_restore(&pool,&pages[i],out)&&!memcmp(out,want[i],P));for(size_t k=0;k<64;k++){uint16_t id=pages[i].ids[k];if(id&32768)++b[id&32767];else ++a[id];}size_t w=rnd()%1024;uint8_t v[4];assert(exodus_bdi_slab_read(&pool,&pages[i],w,v)&&!memcmp(v,want[i]+w*4,4));}assert(!memcmp(a,sr,sizeof a)&&!memcmp(b,rr,sizeof b));}
+static void check_patched_compare(void){
+ bool equal=false;uint8_t v[4];put(v,UINT32_MAX);
+ assert(exodus_bdi_slab_compare_patched(&pool,&pages[0],0,want[0],&pages[1],&equal)&&equal);
+ assert(exodus_bdi_slab_compare_patched(&pool,&pages[0],0,v,&pages[1],&equal)&&!equal);
+ assert(exodus_bdi_slab_write(&pool,&pages[1],0,v));
+ assert(exodus_bdi_slab_compare_patched(&pool,&pages[0],0,v,&pages[1],&equal)&&equal);
+ /* Same prospective first word, but different final word must not merge. */
+ assert(exodus_bdi_slab_write(&pool,&pages[1],1023,v));
+ assert(exodus_bdi_slab_compare_patched(&pool,&pages[0],0,v,&pages[1],&equal)&&!equal);
+ /* Even when the first block differs, validate all slot IDs first. */
+ uint16_t saved=pages[1].ids[63];pages[1].ids[63]=pages[1].ids[62];equal=true;
+ assert(!exodus_bdi_slab_compare_patched(&pool,&pages[0],0,want[0],&pages[1],&equal)&&equal);
+ pages[1].ids[63]=saved;
+ assert(exodus_bdi_slab_write(&pool,&pages[1],1023,want[0]+4092));
+ assert(exodus_bdi_slab_write(&pool,&pages[1],0,want[0]));
+ assert(exodus_bdi_slab_compare_patched(&pool,&pages[0],0,want[0],&pages[1],&equal)&&equal);
+ verify();assert(exodus_bdi_slab_check_index(&pool));
+}
 int main(void){
  assert(exodus_bdi_slab_attach_index(&pool,&index));
  for(size_t w=0;w<1024;w++)put(want[0]+4*w,1000+(uint32_t)(w/16)*1000+(uint32_t)(w%16));
  assert(exodus_bdi_slab_import(&pool,&pages[0],want[0]));
  for(size_t i=1;i<N;i++){assert(exodus_bdi_slab_clone(&pool,&pages[i],&pages[0]));memcpy(want[i],want[0],P);}verify();
+ check_patched_compare();
  size_t transitions=0,cows=0;
  for(size_t k=0;k<20000;k++){
   size_t i=rnd()%N,w=rnd()%1024,j=rnd()%N;uint8_t v[4];

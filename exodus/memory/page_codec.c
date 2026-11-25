@@ -306,18 +306,30 @@ bool exodus_page_bdi_fingerprint(const uint8_t *p,size_t size,uint64_t *out)
     return true;
 }
 
-bool exodus_page_bdi_equal_page(const uint8_t *p,size_t size,const uint8_t *page)
+/* Caller validates the complete layout before inspecting any blocks.
+ * Raw blocks compare in place; compressed blocks compare logical words.
+ * Unsigned addition intentionally preserves the decoder's wrap semantics. */
+static bool bdi_equal_validated(const uint8_t *p,const uint8_t *page)
 {
-    if(!page || !bdi_valid(p,size))return false;
     size_t pos=BDI_HEADER;
     for(size_t b=0;b<BLOCKS;b++){
-        uint8_t block[BLOCK_BYTES];
-        bool compressed=(p[1+b/8]&(1u<<(b%8)))!=0;
-        bdi_block(p+pos,compressed,block);
-        if(memcmp(block,page+b*BLOCK_BYTES,BLOCK_BYTES)!=0)return false;
-        pos+=compressed?BDI_BYTES:BLOCK_BYTES;
+        const uint8_t *logical=page+b*BLOCK_BYTES;
+        if(p[1+b/8]&(1u<<(b%8))){
+            uint32_t base=bdi_load(p+pos);
+            for(size_t w=0;w<BLOCK_BYTES/WORD_BYTES;w++)
+                if(base+(uint32_t)p[pos+WORD_BYTES+w]!=bdi_load(logical+w*WORD_BYTES))
+                    return false;
+            pos+=BDI_BYTES;
+        }else{
+            if(memcmp(p+pos,logical,BLOCK_BYTES)!=0)return false;
+            pos+=BLOCK_BYTES;
+        }
     }
     return true;
+}
+bool exodus_page_bdi_equal_page(const uint8_t *p,size_t size,const uint8_t *page)
+{
+    return page && bdi_valid(p,size) && bdi_equal_validated(p,page);
 }
 
 static bool decode_bdi(const uint8_t *p,size_t size,uint8_t *page)
@@ -359,7 +371,8 @@ static void restore_repeated_words(uint8_t *destination, const uint8_t *source, 
     }
 }
 
-static bool read_word_runs(const uint8_t *encoded, size_t encoded_size, uint8_t *page)
+static bool read_word_runs(const uint8_t *encoded, size_t encoded_size, uint8_t *page,
+                           const uint8_t *compare, bool *match)
 {
     if (encoded[0] != WORD_RUN_VERSION)
         return false;
@@ -382,6 +395,14 @@ static bool read_word_runs(const uint8_t *encoded, size_t encoded_size, uint8_t 
                 restore_repeated_words(destination, encoded + offset, count);
             else
                 memcpy(destination, encoded + offset, payload_size);
+        }
+        if (compare && *match) {
+            const uint8_t *p=compare+word*WORD_BYTES;
+            if(repeated){
+                /* A matching first word and adjacent repetition prove the run. */
+                if(memcmp(p,encoded+offset,WORD_BYTES) ||
+                   memcmp(p,p+WORD_BYTES,(count-1)*WORD_BYTES)) *match=false;
+            }else if(memcmp(p,encoded+offset,payload_size)) *match=false;
         }
         offset += payload_size;
         word += count;
@@ -412,8 +433,8 @@ bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *pa
             return true;
         }
         /* Validate all commands and padding before touching the output page. */
-        return read_word_runs(encoded, encoded_size, NULL) &&
-               read_word_runs(encoded, encoded_size, page);
+        return read_word_runs(encoded, encoded_size, NULL, NULL, NULL) &&
+               read_word_runs(encoded, encoded_size, page, NULL, NULL);
     }
     if (encoded_size <= MASK_BYTES) {
         static const uint8_t zero_mask[MASK_BYTES] = {0};
@@ -447,5 +468,38 @@ bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *pa
             memset(block, 0, BLOCK_BYTES);
         }
     }
+    return true;
+}
+
+/* Exact comparison, retaining the decoder's validation rules and format
+ * precedence. A mismatch never suppresses validation of a later run. */
+bool exodus_page_compare(const uint8_t *p,size_t size,const uint8_t *page,bool *equal)
+{
+    if(!p||!page||!equal||!size||size>EXODUS_PAGE_BYTES)return false;
+    bool match=true;
+    if(size==EXODUS_PAGE_BYTES){
+        match=memcmp(p,page,size)==0;
+    }else if(size&1u){
+        if(p[0]==EXODUS_PAGE_BDI_VERSION){
+            if(!bdi_valid(p,size))return false;
+            match=bdi_equal_validated(p,page);
+        }else if(p[0]==EXODUS_PAGE_REPEATED_TILE_VERSION){
+            size_t tile=size-1;
+            if(tile!=8&&tile!=16)return false;
+            match=!memcmp(p+1,page,tile)&&!memcmp(page,page+tile,EXODUS_PAGE_BYTES-tile);
+        }else if(!read_word_runs(p,size,NULL,page,&match))return false;
+    }else{
+        static const uint8_t zero[BLOCK_BYTES]={0};
+        if(size<MASK_BYTES||size!=MASK_BYTES+bdi_count(p,BLOCKS)*BLOCK_BYTES)return false;
+        size_t pos=MASK_BYTES;
+        for(size_t b=0;b<BLOCKS;b++){
+            bool present=(p[b/8]&(1u<<(b%8)))!=0;
+            if(memcmp(present?p+pos:zero,page+b*BLOCK_BYTES,BLOCK_BYTES)){
+                match=false;break;
+            }
+            if(present)pos+=BLOCK_BYTES;
+        }
+    }
+    *equal=match;
     return true;
 }

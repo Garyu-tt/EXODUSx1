@@ -156,6 +156,24 @@ bool exodus_bdi_slab_restore(const struct exodus_bdi_slab *s,const struct exodus
     for(size_t i=0;i<64;i++)exodus_bdi_block_decode(slot(s,p->ids[i]),bytes(p->ids[i]),page+i*64);
     return true;
 }
+bool exodus_bdi_slab_compare_patched(const struct exodus_bdi_slab *s,
+    const struct exodus_bdi_slab_page *a,size_t word,const uint8_t value[4],
+    const struct exodus_bdi_slab_page *b,bool *equal)
+{
+    if(!value||!equal||word>=EXODUS_PAGE_BYTES/4||
+       !page_ok(s,a)||!page_ok(s,b))return false;
+    const size_t edited=word/16;
+    uint8_t left[64],right[64];
+    for(size_t i=0;i<EXODUS_BDI_SLAB_BLOCKS;i++){
+        uint16_t x=a->ids[i],y=b->ids[i];
+        if(i!=edited&&x==y)continue;
+        if(!exodus_bdi_block_decode(slot(s,x),bytes(x),left)||
+           !exodus_bdi_block_decode(slot(s,y),bytes(y),right))return false;
+        if(i==edited)memcpy(left+(word%16)*4,value,4);
+        if(memcmp(left,right,sizeof left)){*equal=false;return true;}
+    }
+    *equal=true;return true;
+}
 bool exodus_bdi_slab_read(const struct exodus_bdi_slab *s,const struct exodus_bdi_slab_page *p,size_t word,uint8_t out[4])
 {
     if(!out||!valid(s)||!p||!p->active||word>=1024)return false;

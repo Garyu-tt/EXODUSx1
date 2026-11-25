@@ -333,8 +333,139 @@ static void check_corrupt_physical_index_rejects_append(void)
     }
 }
 
+/* Equal hashes and a 4095-byte common prefix must still distinguish raw
+ * pages, including when replacement subsequently shares an equal page. */
+static void check_raw_tail_collision_and_replace(void)
+{
+    struct fixture f;
+    init_fixture(&f);
+    uint8_t a[EXODUS_PAGE_BYTES], b[EXODUS_PAGE_BYTES], restored[EXODUS_PAGE_BYTES];
+    memset(a, 0x31, sizeof a);
+    memcpy(b, a, sizeof b);
+    b[EXODUS_PAGE_BYTES - 1] = 0x72;
+    CHECK(exodus_page_dedup_store_append(&f.store, a));
+    CHECK(f.ends[0] == EXODUS_PAGE_BYTES);
+    f.hashes[0] = exodus_page_fingerprint(b); /* test-only collision */
+    CHECK(exodus_page_dedup_store_append(&f.store, b));
+    CHECK(f.store.unique.page_count == 2 && f.ends[1] == 2 * EXODUS_PAGE_BYTES);
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store, b));
+    CHECK(f.store.unique.page_count == 2 && f.refs[2] == 1);
+    CHECK(exodus_page_dedup_store_restore(&f.store, 0, restored));
+    CHECK(memcmp(restored, a, sizeof a) == 0);
+    CHECK(exodus_page_dedup_store_replace_adaptive(&f.store, 0, b));
+    CHECK(f.store.unique.page_count == 1 && f.store.page_count == 3);
+    for(size_t i=0;i<3;i++){
+        CHECK(f.refs[i] == 0);
+        CHECK(exodus_page_dedup_store_restore(&f.store, i, restored));
+        CHECK(memcmp(restored, b, sizeof b) == 0);
+    }
+}
+
+/* BDI candidates with equal hashes must be compared logically, including
+ * mixed RAW/BDI blocks and invalid layouts. */
+static void check_bdi_compare_collision_and_corruption(void)
+{
+    struct fixture f;
+    init_fixture(&f);
+    uint8_t a[EXODUS_PAGE_BYTES], b[EXODUS_PAGE_BYTES], restored[EXODUS_PAGE_BYTES];
+    for(size_t w=0;w<EXODUS_PAGE_BYTES/4;w++){
+        a[w*4]=(uint8_t)(w%16);
+        a[w*4+1]=0;
+        a[w*4+2]=0x34;
+        a[w*4+3]=0x12;
+    }
+    memcpy(b,a,sizeof b);
+    b[sizeof b-1]^=1;
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store,a));
+    CHECK(f.ends[0]==1289 && f.payload[0]==EXODUS_PAGE_BDI_VERSION);
+    f.hashes[0]=exodus_page_fingerprint(b);
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store,b));
+    CHECK(f.ends[1]-f.ends[0]==1333);
+    CHECK(f.payload[f.ends[0]]==EXODUS_PAGE_BDI_VERSION);
+    CHECK(exodus_page_dedup_store_append(&f.store,b));
+    CHECK(f.store.unique.page_count==2 && f.refs[2]==1);
+    CHECK(exodus_page_dedup_store_restore(&f.store,0,restored));
+    CHECK(memcmp(a,restored,sizeof a)==0);
+    CHECK(exodus_page_dedup_store_replace_adaptive(&f.store,0,b));
+    CHECK(f.store.unique.page_count==1 && f.store.page_count==3);
+    for(size_t i=0;i<3;i++){
+        CHECK(f.refs[i]==0);
+        CHECK(exodus_page_dedup_store_restore(&f.store,i,restored));
+        CHECK(memcmp(b,restored,sizeof b)==0);
+    }
+    /* Corrupt a mask bit without resizing the backing. A mismatch must
+     * not turn invalid backing into an accepted independent record. */
+    f.payload[1]^=1;
+    struct fixture before;
+    memcpy(&before,&f,sizeof f);
+    CHECK(!exodus_page_dedup_store_append_adaptive(&f.store,b));
+    CHECK(memcmp(&before,&f,sizeof f)==0);
+    CHECK(!exodus_page_dedup_store_replace_adaptive(&f.store,0,a));
+    CHECK(memcmp(&before,&f,sizeof f)==0);
+    check_restore_failure_unchanged(&f.store,0);
+}
+
+/* A prospective hot edit must reject the first hash collision and share
+ * the later exact candidate without changing an alias of the source.
+ * Exercise both hot-to-hot and hot-to-cold comparison paths. */
+static void check_hot_prospective_collision(void)
+{
+    enum { SLOTS=256 };
+    for (unsigned hot_candidates=0; hot_candidates<2; ++hot_candidates) {
+        struct fixture f;
+        init_fixture(&f);
+        size_t starts[UNIQUE_CAPACITY]={0};
+        uint32_t order[UNIQUE_CAPACITY]={0};
+        uint8_t small[SLOTS*20], raw[SLOTS*64];
+        uint16_t sr[SLOTS]={0}, rr[SLOTS]={0};
+        struct exodus_bdi_free_index free_index;
+        struct exodus_bdi_slab slab={
+            .small=small,.raw=raw,.small_refs=sr,.raw_refs=rr,
+            .small_capacity=SLOTS,.raw_capacity=SLOTS
+        };
+        struct exodus_hot_entry hot[UNIQUE_CAPACITY]={0};
+        CHECK(exodus_bdi_slab_attach_index(&slab,&free_index));
+        f.store.unique.page_starts=starts;
+        f.store.unique.page_order=order;
+        f.store.slab=&slab;
+        f.store.hot=hot;
+        f.store.hot_capacity=UNIQUE_CAPACITY;
+        uint8_t a[EXODUS_PAGE_BYTES], b[EXODUS_PAGE_BYTES],
+                collision[EXODUS_PAGE_BYTES], restored[EXODUS_PAGE_BYTES];
+        memset(a,0x31,sizeof a);
+        memcpy(b,a,sizeof b);
+        memset(b,0x72,4);
+        memcpy(collision,b,sizeof collision);
+        collision[sizeof collision-1]^=1;
+        CHECK(exodus_page_dedup_store_append_adaptive(&f.store,a));
+        CHECK(exodus_page_dedup_store_append_adaptive(&f.store,collision));
+        CHECK(exodus_page_dedup_store_append_adaptive(&f.store,b));
+        CHECK(exodus_page_dedup_store_append_adaptive(&f.store,a));
+        CHECK(f.refs[0]==0 && f.refs[1]==1 && f.refs[2]==2 && f.refs[3]==0);
+        CHECK(exodus_page_dedup_store_promote(&f.store,0));
+        if(hot_candidates) {
+            CHECK(exodus_page_dedup_store_promote(&f.store,1));
+            CHECK(exodus_page_dedup_store_promote(&f.store,2));
+        }
+        f.hashes[1]=f.hashes[2]; /* test-only collision */
+        CHECK(exodus_page_dedup_store_write_word(&f.store,0,0,b));
+        CHECK(f.store.unique.page_count==3 && f.store.page_count==4);
+        CHECK(f.refs[0]==f.refs[2] && f.refs[0]!=f.refs[1] && f.refs[0]!=f.refs[3]);
+        const uint8_t *expected[]={b,collision,b,a};
+        for(size_t i=0;i<4;i++) {
+            CHECK(exodus_page_dedup_store_restore(&f.store,i,restored));
+            CHECK(!memcmp(restored,expected[i],sizeof restored));
+        }
+        CHECK(exodus_page_store_validate(&f.store.unique));
+        CHECK(exodus_bdi_slab_check_index(&slab));
+    }
+}
+
 int main(void)
 {
+    check_hot_prospective_collision();
+    check_bdi_compare_collision_and_corruption();
+    check_raw_tail_collision_and_replace();
     check_corrupt_physical_index_rejects_append();
     check_adaptive_sharing();
     check_raw_sharing_and_memory_budget();
