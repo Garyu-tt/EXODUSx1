@@ -252,6 +252,10 @@ int main(int argc, char **argv)
         assert(!strcmp(exodus_library_provider(lib, i), labels[i]));
         assert(!strcmp(exodus_library_title(lib, i), "Game"));
     }
+    char native_detail[128];
+    assert(!exodus_library_native_detail(lib,0,native_detail,sizeof(native_detail)));
+    assert(!exodus_library_native_detail(lib,1,native_detail,sizeof(native_detail)));
+    assert(!exodus_library_native_detail(lib,99,native_detail,sizeof(native_detail)));
     assert(!strcmp(exodus_library_title(lib, 5), ""));
     assert(!strcmp(exodus_library_provider(lib, 5), "Unknown"));
     exodus_library_close(lib);
@@ -262,6 +266,15 @@ int main(int argc, char **argv)
     lib = exodus_library_open(argv[1]);
     assert(lib && !strcmp(exodus_library_status(lib), "Invalid catalog"));
     assert(exodus_library_count(lib) == 0);
+    exodus_library_close(lib);
+    {
+        std::ofstream f(argv[1]);
+        f << R"({"schema_version":1,"entries":[{"provider":"switch","provider_id":"0100000000001234","name":"Native","artwork":null,"installation_state":"unknown","last_played":null,"compatibility_state":"unknown","launch_mode":null}]})";
+    }
+    lib=exodus_library_open(argv[1]);
+    assert(lib && exodus_library_count(lib)==1);
+    assert(exodus_library_native_detail(lib,0,native_detail,sizeof(native_detail)));
+    assert(strstr(native_detail,"unavailable on host"));
     exodus_library_close(lib);
     std::remove(argv[1]);
 #ifndef _WIN32

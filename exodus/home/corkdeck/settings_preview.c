@@ -239,6 +239,13 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
                 if (route == EXODUS_ROUTE_SWITCH || route == EXODUS_ROUTE_HOMEBREW ||
                     route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
                     snprintf(detail, sizeof(detail), "Target: %s\n%.500s", exodus_route_name(route), id);
+                    if (route==EXODUS_ROUTE_SWITCH) {
+                        size_t used=strlen(detail);
+                        if (used+2<sizeof(detail)) {
+                            detail[used++]='\n'; detail[used]=0;
+                            exodus_library_native_detail(library,index,detail+used,sizeof(detail)-used);
+                        }
+                    }
                     if (ui_confirm(ui, exodus_library_title(library, index), detail,
                                    route == EXODUS_ROUTE_STEAM ? "Open library" : "Launch")) {
                         if (exodus_launch(route, id, result)) { handoff = 1; goto done; }
@@ -247,7 +254,8 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
                     break;
                 }
 #endif
-                if (!exodus_library_archive_detail(library,index,detail,sizeof(detail)))
+                if (!exodus_library_native_detail(library,index,detail,sizeof(detail)) &&
+                    !exodus_library_archive_detail(library,index,detail,sizeof(detail)))
                     snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
                 ui_message(ui, exodus_library_title(library, index), detail);
                 break;
