@@ -138,7 +138,7 @@ bool exodus_bdi_slab_import(struct exodus_bdi_slab *s,struct exodus_bdi_slab_pag
     if(!valid(s)||!p||p->active||!page)return false;
     uint16_t ids[64];size_t cursors[2]={0};uint8_t encoded[64];
     for(size_t i=0;i<64;i++){
-        bool raw=exodus_bdi_block_encode(page+i*64,encoded)==RAW;
+        bool raw=exodus_bdi_block_encode(page+i*64,NULL)==RAW;
         if(!reserve(s,raw,&cursors[raw],&ids[i]))return false;
     }
     for(size_t i=0;i<64;i++){
