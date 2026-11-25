@@ -181,13 +181,17 @@ jobs:
 
           # R27: actual kernel + isolated UFS RAM disk + synthetic PID1.
           # The previous rootless gate remains mandatory and independent.
+          # UFS1 control: NetBSD-derived makefs has incompatible UFS2
+          # superblock location metadata (NetBSD PR bin/60947).
+          # This run does not establish UFS2 compatibility.
+          echo 'TUMOR_ROOT_FORMAT=UFS1_CONTROL'
           mkdir -p "$out/root/sbin" "$out/root/dev" "$out/root/etc" "$out/root-images"
           clang --target=aarch64-unknown-freebsd -c "$src/bao_freebsd_init_probe.S" -o "$out/init.o"
           ld.lld -static --no-undefined -e _start "$out/init.o" -o "$out/root/sbin/init"
           chmod 0755 "$out/root/sbin/init"
           readelf -h "$out/root/sbin/init" | grep FreeBSD
           test -z "$(nm -u "$out/root/sbin/init")"
-          makefs -t ffs -o version=2 -B little -s 8m "$out/root.ufs" "$out/root"
+          makefs -t ffs -o version=1 -B little -s 8m "$out/root.ufs" "$out/root"
           clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DTUMOR_FREEBSD_NATIVE_METADATA -c "$src/bao_freebsd_boot.S" -o "$out/root-boot.o"
           ld.lld --no-undefined -T "$src/bao_guest.ld" "$out/root-boot.o" -o "$out/root-boot.elf"
           ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/root-boot.o" -o "$out/root-boot.bin"
@@ -206,7 +210,7 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-root.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_SYNTHETIC_PID1$' "$out/bao-root.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-root.normalized"; then exit 1; fi
-          echo 'R27 synthetic PID1 admission only; full FreeBSD userspace and physical coexistence remain unverified'
+          echo 'R27 UFS1 control: synthetic PID1 admission only; full FreeBSD userspace and physical coexistence remain unverified'
 
           # R28: original FreeBSD rescue init and shell, isolated custom rc.
           # The publisher manifest must match the already pinned kernel archive.
@@ -237,7 +241,7 @@ jobs:
           install -m 0755 "$src/bao-freebsd-rescue-rc.sh" "$out/stock-root/etc/rc"
           : > "$out/stock-root/etc/ttys"
           chmod 1777 "$out/stock-root/tmp"
-          makefs -t ffs -o version=2 -B little -s 64m "$out/stock.ufs" "$out/stock-root"
+          makefs -t ffs -o version=1 -B little -s 64m "$out/stock.ufs" "$out/stock-root"
           cp "$out/guest-A.bin" "$out/stock-images/guest-A.bin"
           python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/stock.ufs" "$out/stock-images/guest-B.bin"
           cp "$src/bao_freebsd_reference.c" "$out/config/tumor_stock.c"
@@ -253,7 +257,7 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-stock.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_STOCK_INIT_RC$' "$out/bao-stock.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-stock.normalized"; then exit 1; fi
-          echo 'R28 original rescue init and custom rc only; stock rc.d, SSH, resident peer and physical coexistence remain unverified'
+          echo 'R28 UFS1 control: original rescue init and custom rc only; stock rc.d, SSH, resident peer and physical coexistence remain unverified'
 
           # R29: actual release OpenSSH binaries on a separate RAM root.
           # All networking remains inside the guest, with no QEMU NIC.
@@ -273,7 +277,7 @@ jobs:
           # Only the disposable generated root is affected. sshd verifies
           # root ownership of its privilege-separation directory.
           sudo chown -R 0:0 "$out/ssh-root"
-          sudo makefs -t ffs -o version=2 -B little -s 64m "$out/ssh.ufs" "$out/ssh-root"
+          sudo makefs -t ffs -o version=1 -B little -s 64m "$out/ssh.ufs" "$out/ssh-root"
           sudo chown "$(id -u):$(id -g)" "$out/ssh.ufs"
           cp "$out/guest-A.bin" "$out/ssh-images/guest-A.bin"
           python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/ssh.ufs" "$out/ssh-images/guest-B.bin"
@@ -290,4 +294,4 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-ssh.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LOOPBACK_KEX$' "$out/bao-ssh.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
-          echo 'R29 loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
+          echo 'R29 UFS1 control: loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
