@@ -7,6 +7,7 @@ on:
       - 'exodus/frankenstein/linux-abi-probe.S'
       - 'exodus/frankenstein/linux-dynamic-probe.c'
       - 'exodus/frankenstein/patches/steamos-manager-freebsd-input.patch'
+      - 'exodus/frankenstein/patches/steamos-manager-freebsd-platform.patch'
       - 'exodus/frankenstein/prepare_manager_user_data.py'
       - 'exodus/frankenstein/run-reference.sh'
       - 'exodus/frankenstein/sessiond.c'
@@ -19,6 +20,49 @@ on:
 permissions:
   contents: read
 jobs:
+  manager-linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install pinned manager build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev libglib2.0-dev libspeechd-dev libudev-dev llvm-dev pkg-config
+      - name: Validate the Linux manager build and portable value parity
+        run: |
+          set -euxo pipefail
+          source_root=$PWD
+          manager_root=$RUNNER_TEMP/steamos-manager
+          git init "$manager_root"
+          git -C "$manager_root" remote add origin https://github.com/evlav/steamos-manager.git
+          git -C "$manager_root" fetch --depth=1 origin a0d399defebd60db30ba38325d9cf47dbda49bee
+          git -C "$manager_root" checkout --detach FETCH_HEAD
+          test "$(git -C "$manager_root" rev-parse HEAD)" = a0d399defebd60db30ba38325d9cf47dbda49bee
+          test "$(sha256sum "$manager_root/Cargo.lock" | cut -d' ' -f1)" = 001bf56bb9f357710986bea869c67473e2afd358bf2288a00b661ba8ea0027c1
+          git -C "$manager_root" apply --check "$source_root/exodus/frankenstein/patches/steamos-manager-freebsd-platform.patch"
+          git -C "$manager_root" apply "$source_root/exodus/frankenstein/patches/steamos-manager-freebsd-platform.patch"
+          test "$(sha256sum "$manager_root/Cargo.lock" | cut -d' ' -f1)" = 6035e3ec787fbad93d3dfb45f2ebc93d9b53139484cd572603ca8b1e1220da2e
+          export LIBCLANG_PATH=$(llvm-config --libdir)
+          export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/include/speech-dispatcher"
+          cd "$manager_root"
+          rustc -Vv
+          cargo -V
+          cargo fetch --locked
+          cargo tree --locked -p steamos-manager > "$RUNNER_TEMP/manager-linux-tree.txt"
+          grep -F 'inotify v0.11.4' "$RUNNER_TEMP/manager-linux-tree.txt"
+          grep -F 'inotify-sys v0.1.8' "$RUNNER_TEMP/manager-linux-tree.txt"
+          grep -F 'linux-cec v0.2.0' "$RUNNER_TEMP/manager-linux-tree.txt"
+          grep -F 'linux-cec-sys v0.1.0' "$RUNNER_TEMP/manager-linux-tree.txt"
+          cargo test --locked -p steamos-manager cec_types::tests
+          cargo check --locked -p steamos-manager
+          cargo build --locked -p steamos-manager
+          cargo build --locked -p steamos-manager --example freebsd_inotify_probe
+          timeout 15s target/debug/examples/freebsd_inotify_probe | tee "$RUNNER_TEMP/manager-linux-probe.txt"
+          grep -Fx EXODUS_MANAGER_INOTIFY_RUST_PASS "$RUNNER_TEMP/manager-linux-probe.txt"
+
   reference:
     runs-on: ubuntu-24.04-arm
     strategy:

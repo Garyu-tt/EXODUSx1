@@ -40,6 +40,7 @@ if [ "$mode" = manager ]; then
     python3 "$here/prepare_manager_user_data.py" \
         "$here/$guest" \
         "$here/patches/steamos-manager-freebsd-input.patch" \
+        "$here/patches/steamos-manager-freebsd-platform.patch" \
         user-data
 else
     cp "$here/$guest" user-data
@@ -122,6 +123,10 @@ grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
 if [ "$mode" = manager ]; then
     tr -d '\r' < "$out/serial.log" > "$out/manager-evidence.txt"
     grep -Fx EXODUS_MANAGER_PROTOCOL_BUILD_PASS "$out/manager-evidence.txt"
+    grep -Fx EXODUS_MANAGER_FREEBSD_PLATFORM_PATCH_PASS "$out/manager-evidence.txt"
+    grep -Fx EXODUS_MANAGER_FREEBSD_DEPENDENCY_TREE_PASS "$out/manager-evidence.txt"
+    grep -Fx EXODUS_MANAGER_DAEMON_BUILD_PASS "$out/manager-evidence.txt"
+    grep -Fx EXODUS_MANAGER_INOTIFY_RUST_PASS "$out/manager-evidence.txt"
     # Command substitution strips trailing newlines: count records before
     # accepting their value, including empty duplicate result records.
     if ! awk '
