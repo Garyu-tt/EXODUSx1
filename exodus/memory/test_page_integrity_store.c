@@ -195,11 +195,211 @@ static void check_failure_atomicity(void)
     check_filled(restored, sizeof(restored), 0x6a);
 }
 
+enum { REPLACEMENT_CAPACITY = 3 * EXODUS_PAGE_BYTES };
+
+struct replacement_fixture {
+    uint8_t payload[REPLACEMENT_CAPACITY + 2];
+    size_t ends[PAGE_COUNT + 2];
+    uint32_t checksums[PAGE_COUNT + 2];
+    struct exodus_page_integrity_store store;
+};
+
+typedef bool (*replace_function)(struct exodus_page_integrity_store *, size_t,
+                                 const uint8_t *);
+
+static const replace_function replacers[] = {
+    exodus_page_integrity_store_replace,
+    exodus_page_integrity_store_replace_adaptive,
+};
+
+static void prepare_replacement(struct replacement_fixture *fixture,
+                                uint8_t pages[PAGE_COUNT][EXODUS_PAGE_BYTES])
+{
+    memset(fixture, 0xa3, sizeof(*fixture));
+    for (size_t index = 0; index < PAGE_COUNT + 2; ++index)
+        fixture->ends[index] = SIZE_MAX;
+    fixture->store = make_store(fixture->payload + 1, REPLACEMENT_CAPACITY,
+                                fixture->ends + 1, PAGE_COUNT,
+                                fixture->checksums + 1, PAGE_COUNT);
+    append_fixture(&fixture->store, pages);
+}
+
+static void check_replacement_contents(
+    const struct replacement_fixture *fixture,
+    uint8_t pages[PAGE_COUNT][EXODUS_PAGE_BYTES], const size_t expected[PAGE_COUNT],
+    const size_t lengths[PAGE_COUNT], const uint32_t original_checksums[PAGE_COUNT])
+{
+    CHECK(fixture->store.pages.page_count == PAGE_COUNT);
+    size_t used = 0;
+    for (size_t index = 0; index < PAGE_COUNT; ++index) {
+        uint8_t restored[EXODUS_PAGE_BYTES + 2];
+        memset(restored, 0xc5, sizeof(restored));
+        CHECK(exodus_page_integrity_store_restore(&fixture->store, index, restored + 1));
+        CHECK(memcmp(restored + 1, pages[expected[index]], EXODUS_PAGE_BYTES) == 0);
+        CHECK(restored[0] == 0xc5 && restored[sizeof(restored) - 1] == 0xc5);
+        used += lengths[index];
+        CHECK(fixture->store.pages.page_ends[index] == used);
+        CHECK(fixture->store.checksums[index] == original_checksums[expected[index]]);
+    }
+    CHECK(fixture->store.pages.payload_used == used);
+    CHECK(fixture->payload[0] == 0xa3);
+    CHECK(fixture->payload[sizeof(fixture->payload) - 1] == 0xa3);
+    CHECK(fixture->ends[0] == SIZE_MAX && fixture->ends[PAGE_COUNT + 1] == SIZE_MAX);
+    CHECK(fixture->checksums[0] == UINT32_C(0xa3a3a3a3));
+    CHECK(fixture->checksums[PAGE_COUNT + 1] == UINT32_C(0xa3a3a3a3));
+}
+
+static void check_replacement_round_trips(void)
+{
+    uint8_t pages[PAGE_COUNT][EXODUS_PAGE_BYTES];
+    fill_pages(pages);
+    const size_t encoded_lengths[][PAGE_COUNT] = {
+        {8, 72, EXODUS_PAGE_BYTES, EXODUS_PAGE_BYTES},
+        {8, 72, WORD_RUN_BYTES, EXODUS_PAGE_BYTES},
+    };
+    const size_t operations[][2] = {
+        {0, 3}, {3, 0}, {1, 2}, {2, 1}, {0, 2}, {1, 1}, {0, 0},
+    };
+    for (size_t variant = 0; variant < sizeof(replacers) / sizeof(replacers[0]); ++variant) {
+        struct replacement_fixture fixture;
+        prepare_replacement(&fixture, pages);
+        uint32_t original_checksums[PAGE_COUNT];
+        memcpy(original_checksums, fixture.store.checksums, sizeof(original_checksums));
+        size_t expected[] = {0, 1, 2, 3};
+        size_t lengths[] = {8, 72, WORD_RUN_BYTES, EXODUS_PAGE_BYTES};
+        for (size_t operation = 0; operation < sizeof(operations) / sizeof(operations[0]); ++operation) {
+            size_t index = operations[operation][0];
+            size_t source = operations[operation][1];
+            size_t old_used = fixture.store.pages.payload_used;
+            size_t next_used = old_used - lengths[index] + encoded_lengths[variant][source];
+            /* Growth must fit at the exact byte boundary; shrinking starts
+             * with a valid, completely full store. */
+            fixture.store.pages.payload_capacity = old_used > next_used ? old_used : next_used;
+            CHECK(replacers[variant](&fixture.store, index, pages[source]));
+            expected[index] = source;
+            lengths[index] = encoded_lengths[variant][source];
+            check_replacement_contents(&fixture, pages, expected, lengths, original_checksums);
+        }
+    }
+}
+
+static void expect_replacement_rejected(struct replacement_fixture *fixture,
+                                        replace_function replace, size_t index,
+                                        const uint8_t *page)
+{
+    struct replacement_fixture before;
+    memcpy(&before, fixture, sizeof(before));
+    CHECK(!replace(&fixture->store, index, page));
+    /* Include unused backing space, guards, descriptors and every sidecar slot. */
+    CHECK(memcmp(fixture, &before, sizeof(before)) == 0);
+}
+
+static void check_replacement_failure_atomicity(void)
+{
+    uint8_t pages[PAGE_COUNT][EXODUS_PAGE_BYTES];
+    fill_pages(pages);
+    for (size_t variant = 0; variant < sizeof(replacers) / sizeof(replacers[0]); ++variant) {
+        replace_function replace = replacers[variant];
+        struct replacement_fixture fixture;
+        prepare_replacement(&fixture, pages);
+        CHECK(!replace(NULL, 0, pages[0]));
+        expect_replacement_rejected(&fixture, replace, 0, NULL);
+        expect_replacement_rejected(&fixture, replace, PAGE_COUNT, pages[0]);
+        expect_replacement_rejected(&fixture, replace, SIZE_MAX, pages[0]);
+
+        fixture.store.pages.payload_capacity = PAYLOAD_BYTES;
+        expect_replacement_rejected(&fixture, replace, 0, pages[2]);
+        expect_replacement_rejected(&fixture, replace, 0, pages[3]);
+        fixture.store.pages.payload_capacity = PAYLOAD_BYTES - 8 + EXODUS_PAGE_BYTES - 1;
+        expect_replacement_rejected(&fixture, replace, 0, pages[3]);
+
+        prepare_replacement(&fixture, pages);
+        fixture.store.checksum_capacity = PAGE_COUNT - 1;
+        expect_replacement_rejected(&fixture, replace, 0, pages[0]);
+        prepare_replacement(&fixture, pages);
+        fixture.store.pages.page_count = PAGE_COUNT + 1;
+        expect_replacement_rejected(&fixture, replace, 0, pages[0]);
+        prepare_replacement(&fixture, pages);
+        fixture.store.pages.payload_used = REPLACEMENT_CAPACITY + 1;
+        expect_replacement_rejected(&fixture, replace, 0, pages[0]);
+        prepare_replacement(&fixture, pages);
+        fixture.store.pages.page_ends[1] = fixture.store.pages.page_ends[0];
+        expect_replacement_rejected(&fixture, replace, 0, pages[0]);
+        prepare_replacement(&fixture, pages);
+        --fixture.store.pages.page_ends[PAGE_COUNT - 1];
+        expect_replacement_rejected(&fixture, replace, 0, pages[0]);
+
+        /* Monotonic offsets alone are insufficient: let the base store reject
+         * a record larger than a page, without updating the integrity sidecar. */
+        prepare_replacement(&fixture, pages);
+        for (size_t index = 0; index < PAGE_COUNT; ++index)
+            fixture.store.pages.page_ends[index] = EXODUS_PAGE_BYTES + 1 + index;
+        fixture.store.pages.payload_used = EXODUS_PAGE_BYTES + PAGE_COUNT;
+        expect_replacement_rejected(&fixture, replace, 0, pages[0]);
+    }
+}
+
+static void check_replacement_payload_aliases(void)
+{
+    uint8_t pages[PAGE_COUNT][EXODUS_PAGE_BYTES];
+    fill_pages(pages);
+    for (size_t variant = 0; variant < sizeof(replacers) / sizeof(replacers[0]); ++variant) {
+        struct replacement_fixture fixture;
+        prepare_replacement(&fixture, pages);
+        uint32_t original_checksums[PAGE_COUNT];
+        memcpy(original_checksums, fixture.store.checksums, sizeof(original_checksums));
+        const uint8_t *source = fixture.store.pages.payload + fixture.store.pages.page_ends[2];
+        CHECK(replacers[variant](&fixture.store, 0, source));
+        const size_t expected[] = {3, 1, 2, 3};
+        const size_t lengths[] = {EXODUS_PAGE_BYTES, 72, WORD_RUN_BYTES, EXODUS_PAGE_BYTES};
+        check_replacement_contents(&fixture, pages, expected, lengths, original_checksums);
+
+        /* A raw page may also replace itself without first copying it out. */
+        CHECK(replacers[variant](&fixture.store, 0, fixture.store.pages.payload));
+        check_replacement_contents(&fixture, pages, expected, lengths, original_checksums);
+    }
+}
+
+static void check_replacement_retains_corruption_checks(void)
+{
+    uint8_t pages[PAGE_COUNT][EXODUS_PAGE_BYTES];
+    fill_pages(pages);
+    for (size_t variant = 0; variant < sizeof(replacers) / sizeof(replacers[0]); ++variant) {
+        struct replacement_fixture fixture;
+        prepare_replacement(&fixture, pages);
+        uint32_t sparse_checksum = fixture.store.checksums[1];
+        fixture.store.pages.payload[fixture.store.pages.page_ends[0] + 8 + 17] ^= 1;
+        CHECK(replacers[variant](&fixture.store, 0, pages[3]));
+        CHECK(fixture.store.checksums[1] == sparse_checksum);
+        uint8_t restored[EXODUS_PAGE_BYTES];
+        memset(restored, 0x6a, sizeof(restored));
+        CHECK(!exodus_page_integrity_store_restore(&fixture.store, 1, restored));
+        check_filled(restored, sizeof(restored), 0x6a);
+
+        /* Deliberate write-back may replace a damaged page; corruption in
+         * another record or its sidecar must remain detectable. */
+        CHECK(replacers[variant](&fixture.store, 1, pages[1]));
+        CHECK(exodus_page_integrity_store_restore(&fixture.store, 1, restored));
+        CHECK(memcmp(restored, pages[1], sizeof(restored)) == 0);
+        fixture.store.checksums[2] ^= 1;
+        uint32_t damaged_checksum = fixture.store.checksums[2];
+        CHECK(replacers[variant](&fixture.store, 0, pages[0]));
+        CHECK(fixture.store.checksums[2] == damaged_checksum);
+        memset(restored, 0x6a, sizeof(restored));
+        CHECK(!exodus_page_integrity_store_restore(&fixture.store, 2, restored));
+        check_filled(restored, sizeof(restored), 0x6a);
+    }
+}
+
 int main(void)
 {
     check_round_trip_and_guards();
     check_corruption_rejected_before_output();
     check_failure_atomicity();
+    check_replacement_round_trips();
+    check_replacement_failure_atomicity();
+    check_replacement_payload_aliases();
+    check_replacement_retains_corruption_checks();
     puts("Page integrity store tests passed");
     return EXIT_SUCCESS;
 }
