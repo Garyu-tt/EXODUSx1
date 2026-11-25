@@ -29,7 +29,12 @@ pkg update -f
 pkg -vv
 pkg info
 # A real source build (not merely installation of a precompiled Wayland).
-pkg install -y git-lite meson ninja pkgconf expat libffi libxml2
+# Install the known Wayland xsltproc dependency directly from the binary repo.
+# Otherwise the pinned Ports tree may recursively rebuild gettext and Perl.
+# A missing/incompatible package must fail this reference gate, not consume
+# the entire emulation budget building unrelated dependency trees.
+pkg install -y git-lite meson ninja pkgconf expat libffi libxml2 libxslt
+command -v xsltproc
 for tool in git meson ninja pkgconf; do command -v "$tool"; done
 git init /usr/ports
 git -C /usr/ports remote add origin https://github.com/freebsd/freebsd-ports.git
@@ -43,7 +48,7 @@ for port in graphics/wayland graphics/mesa-libs graphics/mesa-dri graphics/vulka
         make -C "/usr/ports/$port" -V "$v"
     done
 done
-make -C /usr/ports/graphics/wayland BATCH=yes USE_PACKAGE_DEPENDS=yes package
+make -C /usr/ports/graphics/wayland BATCH=yes USE_PACKAGE_DEPENDS=yes USE_PACKAGE_DEPENDS_ONLY=yes package
 wayland_package=$(make -C /usr/ports/graphics/wayland -V PKGFILE)
 test -s "$wayland_package"
 sha256 "$wayland_package"
@@ -53,9 +58,9 @@ echo EXODUS_WAYLAND_SOURCE_BUILD_PASS
 echo EXODUS_GAMESCOPE_BEGIN
 port=/usr/ports/x11-wm/gamescope
 test -z "$(make -C "$port" -V IGNORE)"
-make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes all-depends-list
-make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes checksum
-make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes package
+make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes USE_PACKAGE_DEPENDS_ONLY=yes all-depends-list
+make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes USE_PACKAGE_DEPENDS_ONLY=yes checksum
+make -C "$port" BATCH=yes USE_PACKAGE_DEPENDS=yes USE_PACKAGE_DEPENDS_ONLY=yes package
 package=$(make -C "$port" -V PKGFILE)
 test -s "$package"
 sha256 "$package"
