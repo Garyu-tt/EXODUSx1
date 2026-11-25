@@ -5,6 +5,10 @@ int main(void)
 {
     assert(exodus_page_move(PAGE_LIBRARY, -1) == PAGE_EXIT);
     assert(exodus_page_move(PAGE_EXIT, 1) == PAGE_LIBRARY);
+    assert(exodus_page_move(PAGE_LIBRARY, 1) == PAGE_APPLICATIONS);
+    assert(exodus_page_move(PAGE_APPLICATIONS, 1) == PAGE_SETTINGS);
+    assert(!exodus_pages[PAGE_APPLICATIONS].nro);
+    assert(!strcmp(exodus_pages[PAGE_APPLICATIONS].name,"Applications"));
     assert(exodus_page_move(PAGE_SETTINGS, 1) == PAGE_TERMINAL);
     assert(exodus_page_move(PAGE_TERMINAL, 1) == PAGE_SSH);
     assert(exodus_page_move(PAGE_SSH, -1) == PAGE_TERMINAL);
