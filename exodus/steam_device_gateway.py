@@ -31,6 +31,7 @@ from .steam_sync import (
 
 SESSION_PATH = "/v1/steam/sessions"
 CATALOG_PATH = "/v1/steam/catalog"
+CANCEL_PATH = "/v1/steam/cancel"
 CALLBACK_PREFIX = "/v1/steam/callback/"
 DONE_PATH = "/v1/steam/done"
 TOKEN = re.compile(r"[0-9a-f]{64}", re.ASCII)
@@ -132,7 +133,7 @@ class DeviceGatewayHandler(BaseHTTPRequestHandler):
         if target is None or target.query:
             self.json_error(400, "invalid_request")
             return
-        if target.path not in (SESSION_PATH, CATALOG_PATH):
+        if target.path not in (SESSION_PATH, CATALOG_PATH, CANCEL_PATH):
             self.json_error(404, "not_found")
             return
         fields = {"challenge"} if target.path == SESSION_PATH else {"session", "verifier"}
@@ -144,8 +145,10 @@ class DeviceGatewayHandler(BaseHTTPRequestHandler):
         self.server.prune_expired()
         if target.path == SESSION_PATH:
             self.start_session(request["challenge"])
-        else:
+        elif target.path == CATALOG_PATH:
             self.redeem_catalog(request["session"], request["verifier"])
+        else:
+            self.cancel_session(request["session"], request["verifier"])
 
     def start_session(self, challenge):
         sessions = self.server.sessions
@@ -156,19 +159,32 @@ class DeviceGatewayHandler(BaseHTTPRequestHandler):
         sessions[session_id] = DeviceSession(challenge, self.server.clock() + SESSION_LIFETIME)
         self.json_reply(201, {"session": session_id})
 
-    def redeem_catalog(self, session_id, verifier):
+    def session_with_proof(self, session_id, verifier):
         session = self.server.sessions.get(session_id)
         if session is None:
             self.json_error(404, "session_not_found")
-            return
+            return None
         proof = hashlib.sha256(bytes.fromhex(verifier)).hexdigest()
         if not secrets.compare_digest(proof, session.challenge):
             self.json_error(403, "invalid_proof")
-        elif session.catalog is None:
+            return None
+        return session
+
+    def redeem_catalog(self, session_id, verifier):
+        session = self.session_with_proof(session_id, verifier)
+        if session is None:
+            return
+        if session.catalog is None:
             self.json_error(409, "sign_in_pending")
         else:
             del self.server.sessions[session_id]
             self.reply(200, session.catalog, content_type="application/json")
+
+    def cancel_session(self, session_id, verifier):
+        if self.session_with_proof(session_id, verifier) is None:
+            return
+        del self.server.sessions[session_id]
+        self.reply(200)
 
     def do_GET(self):
         target = self.request_target()

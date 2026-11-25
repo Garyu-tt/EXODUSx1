@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "verify.hpp"
 
-#include <charconv>
 #include <cinttypes>
 #include <cstdio>
+#include <optional>
 #include <switch.h>
 
 namespace {
@@ -71,21 +71,66 @@ namespace {
         return true;
     }
 
-    void CheckFiles(PadState &pad) {
+    std::optional<std::uint32_t> ReadAppId() {
         char app_text[11]{};
         if (!ReadInput("Steam AppID", "Enter the AppID of the installed game", app_text, sizeof(app_text), true, 1)) {
             std::puts("AppID entry ended.");
-            return;
-        }
-        const std::string_view app_input(app_text);
-        std::uint32_t app_id = 0;
-        const auto end = app_input.data() + app_input.size();
-        const auto parsed = std::from_chars(app_input.data(), end, app_id);
-        if (parsed.ec != std::errc{} || parsed.ptr != end || app_id == 0 || app_input.front() == '0') {
-            std::puts("Enter a positive Steam AppID without leading zeroes.");
-            return;
+            return std::nullopt;
         }
 
+        const auto app_id = exodus::steam_integrity::ParseSteamAppId(app_text);
+        if (!app_id)
+            std::puts("Enter a positive Steam AppID without leading zeroes.");
+        return app_id;
+    }
+
+    std::optional<std::uint32_t> ChooseAppId(PadState &pad) {
+        const auto app_ids = exodus::steam_integrity::ListReferenceAppIds("sdmc:");
+        if (!app_ids || app_ids->empty())
+            return ReadAppId();
+
+        const auto count = app_ids->size();
+        std::size_t selected = 0;
+        bool redraw = true;
+        while (appletMainLoop()) {
+            if (redraw) {
+                consoleClear();
+                std::puts("Steam file references on SD\n");
+                std::printf("AppID %" PRIu32 "\nReference %zu / %zu\n\n", (*app_ids)[selected], selected + 1, count);
+                std::puts("D-Pad Up/Down  Select   A  Confirm\nX  Enter AppID   B  Cancel");
+                redraw = false;
+            }
+            consoleUpdate(nullptr);
+            padUpdate(&pad);
+            const auto pressed = padGetButtonsDown(&pad);
+            if (pressed & HidNpadButton_B) {
+                consoleClear();
+                std::puts("AppID selection ended.");
+                return std::nullopt;
+            }
+            if (pressed & HidNpadButton_X) {
+                consoleClear();
+                return ReadAppId();
+            }
+            if (pressed & HidNpadButton_A)
+                return (*app_ids)[selected];
+            if (pressed & HidNpadButton_Up) {
+                selected = (selected + count - 1) % count;
+                redraw = true;
+            } else if (pressed & HidNpadButton_Down) {
+                selected = (selected + 1) % count;
+                redraw = true;
+            }
+        }
+        return std::nullopt;
+    }
+
+    void CheckFiles(PadState &pad) {
+        const auto app_id = ChooseAppId(pad);
+        if (!app_id)
+            return;
+
+        consoleClear();
         char pin[65]{};
         if (!ReadInput("Reference SHA-256", "Use the 64 hex digits saved separately from the SD card",
                 pin, sizeof(pin), false, 64)) {
@@ -93,7 +138,7 @@ namespace {
             return;
         }
         ProgressDisplay display{pad};
-        const auto result = exodus::steam_integrity::VerifySteamInstallation("sdmc:", app_id, pin,
+        const auto result = exodus::steam_integrity::VerifySteamInstallation("sdmc:", *app_id, pin,
             UpdateProgress, &display);
         consoleClear();
         std::puts(ResultText(result.status));

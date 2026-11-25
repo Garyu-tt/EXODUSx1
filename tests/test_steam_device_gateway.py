@@ -74,6 +74,12 @@ class DeviceGatewayTests(unittest.TestCase):
             "verifier": verifier,
         })
 
+    def cancel(self, session_id, verifier=VERIFIER):
+        return self.request("POST", "/v1/steam/cancel", {
+            "session": session_id,
+            "verifier": verifier,
+        })
+
     def assert_device_error(self, response, status, code):
         actual_status, headers, body = response
         self.assertEqual(actual_status, status)
@@ -121,6 +127,64 @@ class DeviceGatewayTests(unittest.TestCase):
         self.assertEqual(self.callback(return_to, assertion(previous_return))[0], 400)
         self.assert_device_error(self.redeem(session_id), 404, "session_not_found")
         self.assert_device_error(self.redeem(previous_session), 409, "sign_in_pending")
+        self.assertEqual(self.provider.requests, [])
+
+    def test_device_cancellation_requires_proof_and_invalidates_the_browser_callback(self):
+        session_id = self.create()
+        return_to = self.redirect(session_id)
+        self.assert_device_error(self.cancel(session_id, "0a" * 32), 403, "invalid_proof")
+        self.assert_device_error(self.redeem(session_id), 409, "sign_in_pending")
+        self.assertEqual(self.redirect(session_id), return_to)
+
+        status, headers, body = self.cancel(session_id)
+        self.assertEqual((status, body), (200, b""))
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assert_device_error(self.cancel(session_id), 404, "session_not_found")
+        self.assert_device_error(self.redeem(session_id), 404, "session_not_found")
+        self.assertEqual(self.request("GET", f"/v1/steam/login/{session_id}")[0], 404)
+        self.assertEqual(self.callback(return_to, assertion(return_to))[0], 404)
+        self.assertEqual(self.provider.requests, [])
+
+    def test_device_can_discard_a_ready_catalog_after_closing_the_browser(self):
+        session_id = self.create()
+        return_to = self.redirect(session_id)
+        self.assertEqual(self.callback(return_to, assertion(return_to))[0], 303)
+        self.assert_device_error(self.cancel(session_id, "0a" * 32), 403, "invalid_proof")
+        self.assertIsNotNone(self.server.sessions[session_id].catalog)
+        status, _, body = self.cancel(session_id)
+        self.assertEqual((status, body), (200, b""))
+        self.assert_device_error(self.redeem(session_id), 404, "session_not_found")
+        self.assertEqual(len(self.provider.requests), 2)
+
+    def test_cancelled_attempts_reuse_session_capacity_without_waiting_for_expiry(self):
+        sessions = [self.create() for _ in range(gateway.MAX_SESSIONS)]
+        self.assert_device_error(
+            self.request("POST", gateway.SESSION_PATH, {"challenge": CHALLENGE}),
+            503, "sessions_full",
+        )
+        for _ in range(gateway.MAX_SESSIONS + 2):
+            cancelled = sessions.pop(0)
+            self.assertEqual(self.cancel(cancelled)[0], 200)
+            sessions.append(self.create())
+        self.assertEqual(len(self.server.sessions), gateway.MAX_SESSIONS)
+        self.assertEqual(self.time, 100)
+        self.assertEqual(self.provider.requests, [])
+
+    def test_cancellation_rejects_expired_and_malformed_requests(self):
+        session_id = self.create()
+        for body in (
+            {"session": session_id},
+            {"session": session_id, "verifier": VERIFIER, "extra": "value"},
+            {"session": session_id, "verifier": VERIFIER.upper()},
+            b'{"session":"1","session":"2"}',
+        ):
+            with self.subTest(body=body):
+                self.assert_device_error(
+                    self.request("POST", "/v1/steam/cancel", body), 400, "invalid_request",
+                )
+        self.assert_device_error(self.redeem(session_id), 409, "sign_in_pending")
+        self.time += gateway.SESSION_LIFETIME
+        self.assert_device_error(self.cancel(session_id), 404, "session_not_found")
         self.assertEqual(self.provider.requests, [])
 
     def test_cancellation_and_unverified_assertion_discard_the_session(self):

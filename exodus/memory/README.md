@@ -29,4 +29,8 @@ Sparse pages start with an eight-byte bitmap for 64 consecutive 64-byte blocks. 
 
 Link `page_store.c` and `page_codec.c` to append complete pages into a caller-owned payload buffer. Initialize an `exodus_page_store` with the buffer and its byte capacity, an array of `size_t` end offsets and its entry capacity, and zero counters. Each successful append assigns the next zero-based page index. If either buffer fills, the append returns false and keeps the existing pages intact. The caller can release the input page after a successful append.
 
+Use `exodus_page_store_append_adaptive(&store, page)` to retain the adaptive encoder's output directly in the packed store. A solid RGBA8 page fits in a 41-byte payload buffer, and a page of identical wide texels can fit in 9 or 17 bytes. The store also needs one `size_t` end offset per page. The capacity check uses the selected encoded length. Encoding still uses a temporary 4096-byte stack buffer.
+
+The existing `exodus_page_store_append(&store, page)` keeps the legacy sparse/raw format. Both append functions can be used in the same store, and `exodus_page_store_restore` decodes each page by its recorded length. A failed append changes neither payload bytes, end offsets nor counters.
+
 Restore directly by index with `exodus_page_store_restore` and a separate writable page buffer. The store retains `payload_used` encoded bytes plus one `size_t` offset per page. Choose buffer capacities to fit the caller's memory budget. The caller manages the group lifetime, thread synchronization and transfers between CPU and GPU memory.

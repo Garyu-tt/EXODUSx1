@@ -211,6 +211,28 @@ class MtpProbeTests(unittest.TestCase):
         self.assertFalse(report["observation"]["complete"])
         self.assertEqual(report["observation"]["reason"], "query_timeout")
 
+    def test_observe_keeps_transitions_when_enumeration_fails_mid_window(self):
+        for error, reason in ((mtp_probe.ProbeTimeout("timed out"), "query_timeout"),
+                              (mtp_probe.ProbeError("enumeration failed"), "query_failed")):
+            with self.subTest(reason=reason):
+                sample = Mock(side_effect=[*snapshots([], self.ready, []), error])
+                code, report, errors = self.run_probe(sample, "--observe", "120")
+                self.assertEqual(code, 2)
+                self.assertIn(str(error), errors)
+                self.assertEqual(report["initial"]["state"], "not_present")
+                observation = report["observation"]
+                self.assertFalse(observation["complete"])
+                self.assertEqual(observation["reason"], reason)
+                self.assertEqual([(e["elapsed_ms"], e["state"]) for e in observation["events"]],
+                                 [(0, "not_present"), (1000, "wpd_ready"), (2000, "not_present")])
+
+    def test_observe_requires_a_successful_baseline(self):
+        sample = Mock(side_effect=mtp_probe.ProbeError("enumeration failed"))
+        code, report, errors = self.run_probe(sample, "--observe", "120")
+        self.assertEqual(code, 2)
+        self.assertIsNone(report)
+        self.assertIn("enumeration failed", errors)
+
 
 if __name__ == "__main__":
     unittest.main()

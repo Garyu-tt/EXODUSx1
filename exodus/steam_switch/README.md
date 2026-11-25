@@ -19,6 +19,8 @@ Place the NRO in `/switch/exodus-steam-sync/` on the SD card and put the gateway
 
 Open **EXODUS Steam Sync** from a homebrew launch context with WebApplet access and press **A**. Complete Steam sign-in in the applet. If the applet stays open on the completion page, close it to return to the client. An incomplete, expired or failed session produces an error.
 
+If the applet cannot open or closes before sign-in completes, the client attempts to cancel its gateway session using the same proof required to retrieve the catalog. This frees the session slot for another attempt. If cleanup fails or the gateway does not support cancellation, the original error remains and the session expires normally. A cancelled attempt does not replace saved catalogs.
+
 Install the matching patched uMenu to enable automatic refresh. A successful sync publishes a numbered Steam-only file in `/switch/exodus-steam-sync/snapshots/`. Reopen **EXODUS library** from the HOME Quick Menu to load the newest usable snapshot alongside the current Switch and homebrew entries. The viewer reads `/ulaunch/exodus-catalog.json` as the inventory source. [uMenu installation, fallback and recovery](../home/ulaunch/README.md)
 
 A physical Switch check is needed for WebApplet sign-in, TLS trust, SD publication and HOME refresh on the target firmware. The client and adapter are licensed under [GPL-2.0-only](../home/ulaunch/COPYING).
