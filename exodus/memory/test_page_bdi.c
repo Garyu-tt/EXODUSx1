@@ -7,17 +7,42 @@
 enum { P=EXODUS_PAGE_BYTES };
 static void put(uint8_t *p,uint32_t v){for(unsigned i=0;i<4;i++)p[i]=(uint8_t)(v>>(8*i));}
 static uint8_t p[P], q[P], enc[P], out[P], frame[EXODUS_SNAPSHOT_MAX_BYTES], payload[2*P];
+static uint32_t rng=0x5ca92d1u;
+static uint32_t next(void){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;}
+static void test_incremental(void){
+ uint8_t raw[P], changed[4], old[4];
+ for(size_t w=0;w<P/4;w++)put(raw+w*4,next());
+ uint64_t h=exodus_page_fingerprint(raw);
+ for(size_t i=0;i<10000;i++){
+  size_t w=next()%(P/4);memcpy(old,raw+4*w,4);put(changed,next());
+  uint64_t newhash,undo;
+  C(exodus_page_fingerprint_update(h,w,old,changed,&newhash));
+  C(exodus_page_fingerprint_update(newhash,w,changed,old,&undo)&&undo==h);
+  memcpy(raw+4*w,changed,4);
+  C(newhash==exodus_page_fingerprint(raw));h=newhash;
+ }
+ uint64_t sentinel=123;
+ C(!exodus_page_fingerprint_update(h,P/4,old,changed,&sentinel)&&sentinel==123);
+ C(!exodus_page_fingerprint_update(h,0,NULL,changed,&sentinel)&&sentinel==123);
+ memset(raw,0,P);uint64_t zero=exodus_page_fingerprint(raw);
+ put(raw,1);uint64_t first=exodus_page_fingerprint(raw);
+ put(raw,0);put(raw+4,1);C(exodus_page_fingerprint(raw)!=first&&first!=zero);
+ puts("Fingerprint v2: 10000 incremental/full comparisons and reversals passed");
+}
 int main(void){
+ test_incremental();
  for(size_t b=0;b<64;b++) for(size_t w=0;w<16;w++)
   put(p+b*64+w*4,UINT32_MAX-255-(uint32_t)b*1024+(uint32_t)w*17);
  size_t n=exodus_page_encode_adaptive(p,enc);
  C(n==1289&&enc[0]==EXODUS_PAGE_BDI_VERSION);
+ uint64_t bdi_hash;C(exodus_page_bdi_fingerprint(enc,n,&bdi_hash)&&bdi_hash==exodus_page_fingerprint(p));
  C(exodus_page_decode(enc,n,out)&&!memcmp(p,out,P));
  for(size_t i=0;i<P/4;i++){uint8_t v[4];C(exodus_page_read_word(enc,n,i,v));C(!memcmp(v,p+4*i,4));}
  memset(out,0xa5,P);C(!exodus_page_decode(enc,n-2,out));for(size_t i=0;i<P;i++)C(out[i]==0xa5);
  uint8_t v[4]={1,2,3,4};C(!exodus_page_read_word(enc,n+2,0,v)&&v[0]==1);
  memcpy(q,p,P);put(q+64,0);n=exodus_page_encode_adaptive(q,enc);
  C(n==1333&&enc[0]==EXODUS_PAGE_BDI_VERSION);
+ C(exodus_page_bdi_fingerprint(enc,n,&bdi_hash)&&bdi_hash==exodus_page_fingerprint(q));
  C(exodus_page_decode(enc,n,out)&&!memcmp(q,out,P));
  for(size_t i=0;i<P/4;i++){C(exodus_page_read_word(enc,n,i,v));C(!memcmp(v,q+4*i,4));}
  size_t ends[2],refs[2];uint64_t hashes[2];
@@ -35,6 +60,7 @@ int main(void){
  memcpy(q,p,P);put(q,UINT32_MAX-254);
  C(exodus_page_dedup_store_write_word(&s,1,0,q));
  C(s.unique.page_count==2&&s.unique.payload_used==2578);
+ C(hashes[refs[1]]==exodus_page_fingerprint(q));
  C(exodus_page_dedup_store_restore(&s,1,out)&&!memcmp(q,out,P));
  C(exodus_page_dedup_store_restore(&s,0,out)&&!memcmp(p,out,P));
  C(exodus_page_dedup_store_write_word(&s,1,0,p));
@@ -49,6 +75,7 @@ int main(void){
  s.unique.payload_capacity=oldcap;
  C(exodus_page_dedup_store_write_word(&s,1,0,q));
  C(s.unique.payload_used==1289+1333);
+ C(hashes[refs[1]]==exodus_page_fingerprint(q));
  C(exodus_page_dedup_store_write_word(&s,1,0,p));
  C(s.unique.page_count==1&&s.unique.payload_used==1289);
  /* Merge through a real matching candidate. */
@@ -74,6 +101,7 @@ int main(void){
  C(s.unique.page_count==2);
  put(q+63*64,0);C(exodus_page_dedup_store_write_word(&s,1,63*16,q+63*64));
  C(exodus_page_dedup_store_restore(&s,1,out)&&!memcmp(q,out,P));
+ C(hashes[refs[1]]==exodus_page_fingerprint(q));
  puts("BDI patch: rebase, RAW transition, shared writes, merge and budget rollback passed");
  puts("BDI: 4096 -> 1289 bytes; 2048 direct reads, mixed blocks, COW and snapshots passed");
  return 0;

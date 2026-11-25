@@ -7,6 +7,8 @@
  * Initialize both page counts and unique.payload_used to zero. Supply separate,
  * non-overlapping buffers for unique.payload, unique.page_ends, fingerprints,
  * and page_refs. fingerprints has unique.page_capacity uint64_t entries;
+ * these are runtime v2 indices, not serialized FNV-1a values. Rebuild old
+ * groups from decoded pages; do not reuse old fingerprint arrays.
  * page_refs has page_capacity size_t entries. The unique store belongs to this
  * wrapper exclusively: do not append, replace, or modify its pages directly.
  * Serialize all access and keep these buffers alive for the group's lifetime.
@@ -49,7 +51,7 @@ bool exodus_page_dedup_store_restore(const struct exodus_page_dedup_store *store
  * leaves buffers and counters unchanged. Serialize access. */
 bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *store,
                                              size_t index, const uint8_t *page);
-/* Copy-on-write of a 4-byte word in stored byte order. BDI patches only the target block and streams its logical hash. Other
+/* Copy-on-write of a 4-byte word in stored byte order. BDI patches only the target block and updates its trusted v2 hash in O(1). Other
  * formats and BDI overflow fall back to full page re-encoding. BDI may
  * retain a valid, but not globally minimal, representation until re-encoded. */
 bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *store,

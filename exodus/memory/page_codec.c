@@ -234,16 +234,45 @@ size_t exodus_page_bdi_patch_word(const uint8_t *p,size_t size,size_t word,
     return total;
 }
 
+
+/* Position-dependent word tokens. XOR makes replacement reversible; the
+ * SplitMix64 finalizer diffuses the combined index and little-endian word.
+ * This is a candidate filter, never a proof of equality or integrity. */
+static uint64_t word_token(size_t word,const uint8_t value[4])
+{
+    uint64_t x=((uint64_t)word<<32)|bdi_load(value);
+    x+=UINT64_C(0x9e3779b97f4a7c15);
+    x=(x^(x>>30))*UINT64_C(0xbf58476d1ce4e5b9);
+    x=(x^(x>>27))*UINT64_C(0x94d049bb133111eb);
+    return x^(x>>31);
+}
+
+uint64_t exodus_page_fingerprint(const uint8_t *page)
+{
+    uint64_t hash=UINT64_C(0x45584f4455530002);
+    for(size_t w=0;w<PAGE_WORDS;w++)hash^=word_token(w,page+4*w);
+    return hash;
+}
+
+bool exodus_page_fingerprint_update(uint64_t old,size_t word,
+                                     const uint8_t before[4],const uint8_t after[4],
+                                     uint64_t *out)
+{
+    if(!before||!after||!out||word>=PAGE_WORDS)return false;
+    *out=old^word_token(word,before)^word_token(word,after);
+    return true;
+}
+
 bool exodus_page_bdi_fingerprint(const uint8_t *p,size_t size,uint64_t *out)
 {
     if(!out || !bdi_valid(p,size))return false;
-    uint64_t hash=UINT64_C(14695981039346656037);
+    uint64_t hash=UINT64_C(0x45584f4455530002);
     size_t pos=BDI_HEADER;
     for(size_t b=0;b<BLOCKS;b++){
         uint8_t block[BLOCK_BYTES];
         bool compressed=(p[1+b/8]&(1u<<(b%8)))!=0;
         bdi_block(p+pos,compressed,block);
-        for(size_t i=0;i<BLOCK_BYTES;i++){hash^=block[i];hash*=UINT64_C(1099511628211);}
+        for(size_t w=0;w<16;w++)hash^=word_token(b*16+w,block+w*4);
         pos+=compressed?BDI_BYTES:BLOCK_BYTES;
     }
     *out=hash;

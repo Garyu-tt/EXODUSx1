@@ -16,17 +16,6 @@ static bool valid_store(const struct exodus_page_dedup_store *store)
          store->unique.page_ends[store->unique.page_count - 1] == store->unique.payload_used);
 }
 
-static uint64_t page_fingerprint(const uint8_t *page)
-{
-    /* FNV-1a only filters candidates. Restored bytes decide equality. */
-    uint64_t hash = UINT64_C(14695981039346656037);
-    for (size_t i = 0; i < EXODUS_PAGE_BYTES; ++i) {
-        hash ^= page[i];
-        hash *= UINT64_C(1099511628211);
-    }
-    return hash;
-}
-
 static bool append_page(struct exodus_page_dedup_store *store,
                         const uint8_t *page, bool adaptive)
 {
@@ -45,7 +34,7 @@ static bool append_page(struct exodus_page_dedup_store *store,
         previous = end;
     }
 
-    uint64_t hash = page_fingerprint(page);
+    uint64_t hash = exodus_page_fingerprint(page);
     size_t physical = store->unique.page_count;
     for (size_t i = 0; i < store->unique.page_count; ++i) {
         if (store->fingerprints[i] != hash)
@@ -165,7 +154,7 @@ bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *s,
     uint8_t restored[EXODUS_PAGE_BYTES];
     if(!exodus_page_store_restore(&s->unique,old,restored))return false;
     if(memcmp(restored,page,sizeof(restored))==0)return true;
-    uint64_t hash=page_fingerprint(page);
+    uint64_t hash=exodus_page_fingerprint(page);
     size_t match=s->unique.page_count;
     for(size_t i=0;i<s->unique.page_count;i++){
         if(i==old||s->fingerprints[i]!=hash)continue;
@@ -179,7 +168,7 @@ bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *s,
     return commit_replacement(s,index,old,owners,match,hash,encoded,size);
 }
 
-/* Fast path: only patch one BDI block. Full logical hash is streamed, and
+/* Fast path: only patch one BDI block. The logical hash is updated in O(1), and
  * candidate pages are decoded only on hash matches, never on a miss. */
 static bool write_bdi(struct exodus_page_dedup_store *s,size_t index,size_t word,
                       const uint8_t value[4],bool *handled)
@@ -200,7 +189,7 @@ static bool write_bdi(struct exodus_page_dedup_store *s,size_t index,size_t word
     size_t n=exodus_page_bdi_patch_word(src,size,word,value,encoded);
     if(!n){*handled=false;return false;}
     uint64_t hash;
-    if(!exodus_page_bdi_fingerprint(encoded,n,&hash))return false;
+    if(!exodus_page_fingerprint_update(s->fingerprints[old],word,current,value,&hash))return false;
     size_t match=s->unique.page_count;
     for(size_t i=0;i<s->unique.page_count;i++){
         if(i==old||s->fingerprints[i]!=hash)continue;

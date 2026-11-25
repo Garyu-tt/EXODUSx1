@@ -105,3 +105,6 @@ require a further integrated change. No automatic RAM/VRAM mapping or
 Switch performance claim. Run `make check-direct-read` for direct-read
 regression fixtures (raw, sparse, tiles, word runs, zero and shared logical
 references, malformed records and indices).
+
+### Incremental page fingerprints (v2)
+The dedup store now uses XOR of position-dependent mixed 32-bit word tokens. A BDI word mutation removes the old token and inserts the new token in constant hash work, with no extra per-page metadata. All codecs use the same logical-byte fingerprint. A candidate match still requires a full decoded-byte comparison; this is not a cryptographic integrity mechanism. Rebuild any in-memory group created by the earlier FNV-1a implementation from its decoded pages before using v2; snapshot wire encodings and snapshot CRC are unchanged. Linear candidate scans, owner scans and packed payload copies remain. No Switch timing claim.

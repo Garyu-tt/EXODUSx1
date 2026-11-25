@@ -28,9 +28,20 @@ bool exodus_page_bdi_read_word(const uint8_t *encoded, size_t size, size_t word,
  * the resulting BDI representation would not fit; output stays untouched. */
 size_t exodus_page_bdi_patch_word(const uint8_t *encoded,size_t size,size_t word,
                                   const uint8_t value[4],uint8_t *out);
-/* Logical FNV-1a, identical to the dedup store's uncompressed fingerprint.
+/* Logical position-dependent fingerprint v2, identical to the raw page hash.
  * Uses one 64-byte scratch block, not a fully decoded page. */
 bool exodus_page_bdi_fingerprint(const uint8_t *encoded,size_t size,uint64_t *out);
 bool exodus_page_bdi_equal_page(const uint8_t *encoded,size_t size,const uint8_t *page);
+
+/* Non-cryptographic candidate filter. Hash metadata is runtime-only;
+ * old FNV-1a indices must be rebuilt before use with this version.
+ * page points to 4096 readable bytes. */
+enum { EXODUS_PAGE_FINGERPRINT_VERSION = 2 };
+uint64_t exodus_page_fingerprint(const uint8_t *page);
+/* O(1) update of a trusted v2 hash. The word is a zero-based 4-byte index.
+ * A full byte comparison remains mandatory before deduplicating. */
+bool exodus_page_fingerprint_update(uint64_t old,size_t word,
+                                     const uint8_t before[4],const uint8_t after[4],
+                                     uint64_t *out);
 
 #endif
