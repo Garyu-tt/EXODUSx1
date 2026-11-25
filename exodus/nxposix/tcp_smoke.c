@@ -2,6 +2,7 @@
 #include "reactor.h"
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -13,6 +14,13 @@ int nx_handle_smoke(void);
 #define CHECK(expr) do { if (!(expr)) { \
     fprintf(stderr, "FAIL line %d: %s (errno=%d)\n", __LINE__, #expr, errno); \
     goto done; } } while (0)
+
+/* Keep a broken backend from trapping the diagnostic in blocking I/O. */
+static int nonblocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    return flags >= 0 && fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
+}
 
 static int run_tcp(void)
 {
@@ -26,18 +34,35 @@ static int run_tcp(void)
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     listener = socket(AF_INET, SOCK_STREAM, 0);
     CHECK(listener >= 0);
+    CHECK(nonblocking(listener));
     CHECK(bind(listener, (struct sockaddr *)&addr, sizeof(addr)) == 0);
     CHECK(getsockname(listener, (struct sockaddr *)&addr, &len) == 0);
     CHECK(addr.sin_port != 0);
     CHECK(listen(listener, 1) == 0);
     client = socket(AF_INET, SOCK_STREAM, 0);
     CHECK(client >= 0);
-    CHECK(connect(client, (struct sockaddr *)&addr, sizeof(addr)) == 0);
+    CHECK(nonblocking(client));
+    int connected = connect(client, (struct sockaddr *)&addr, sizeof(addr));
+    CHECK(connected == 0 || (connected < 0 && errno == EINPROGRESS));
+    if (connected < 0) {
+        watch.fd = client;
+        watch.events = POLLOUT;
+        CHECK(nx_reactor_wait(&watch, 1, ready, 1, 1000) == 1);
+        CHECK(ready[0].token == 42 && (ready[0].events & (POLLOUT | POLLERR | POLLHUP)));
+        int socket_error = 0;
+        socklen_t error_len = sizeof(socket_error);
+        CHECK(getsockopt(client, SOL_SOCKET, SO_ERROR, &socket_error, &error_len) == 0);
+        CHECK(error_len == sizeof(socket_error));
+        if (socket_error) errno = socket_error;
+        CHECK(socket_error == 0);
+    }
     watch.fd = listener;
+    watch.events = POLLIN;
     CHECK(nx_reactor_wait(&watch, 1, ready, 1, 1000) == 1);
     CHECK(ready[0].token == 42 && (ready[0].events & POLLIN));
     peer = accept(listener, NULL, NULL);
     CHECK(peer >= 0);
+    CHECK(nonblocking(peer));
     watch.fd = peer;
     CHECK(nx_reactor_wait(&watch, 1, ready, 1, 0) == 0);
     CHECK(send(client, &byte, 1, 0) == 1);
