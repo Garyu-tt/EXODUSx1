@@ -80,7 +80,7 @@ Actual HOS launch handoff, permissions, return-to-shell behavior and NRO argumen
 
 ## R06: installed Windows runtime and Steam library handoff
 
-The pinned CorkDeck runtime.c at adc0b52284e9e57d18808427a770a2a162c76bf0 accepts argv[1] as the selected executable. R06 uses the existing libnx next-load mechanism and fixed runtime path sdmc:/switch/wine/wine-nx-runtime.nro. It shares the exact NRO structural preflight sources from PR #11 (link exodus/runtime/autorun_probe.c in native builds). The caller confirms the target and must be in full application mode. Windows targets are bounded SD paths with .exe extension, no traversal, no embedded quotes or controls, and a readable MZ header. USB and other mounts are not supported yet. No shell or command interpreter is invoked. The MZ check is a preliminary file sanity check, not a full PE validation or compatibility guarantee.
+The pinned CorkDeck runtime.c at adc0b52284e9e57d18808427a770a2a162c76bf0 accepts argv[1] as the selected executable. R06 uses the existing libnx next-load mechanism and fixed runtime path sdmc:/switch/wine/wine-nx-runtime.nro. It shares the exact NRO structural preflight sources from PR #11 (link exodus/runtime/autorun_probe.c in native builds). The caller confirms the target and must be in full application mode. Windows targets are bounded SD paths with .exe extension, no traversal, no embedded quotes or controls, and bounded PE/COFF, optional-header and section-file ranges. USB and other mounts are not supported yet. No shell or command interpreter is invoked. This structural check does not establish machine/application compatibility or execution.
 
 Steam entries validate the numeric AppID but open the installed CorkDeck library without passing an app ID: the user selects the game there. This is not direct Steam game launch or ownership verification. The Steam snapshot/sync work in #44 is separate. A pending run-next.txt blocks both routes, because the donor prioritizes queued jobs over CLI targets. The guard cannot eliminate races with another writer. NRO structural validation does not authenticate the installed runtime or identify its version; use a compatible CorkDeck build. Return to EXODUS, low-address requirements and actual game launch need device tests.
 
@@ -201,3 +201,18 @@ Two bounded versioned CRC32 snapshots (library-state.0 and library-state.1 in th
 ## R17: unified offline catalog
 
 R16 CI 45490726459 passed all four jobs. R17 combines an existing valid base catalog with live NS/NRO inventory, replacing CorkDeck entries from a valid local launcher-library-v2.ini and Steam entries from the newest valid compatible local generation snapshot. The paths follow the pinned CorkDeck runtime and the existing Steam sync publisher. Missing or invalid provider data retains existing entries; no automatic network login, download, installation or execution. A malformed base JSON remains an explicit error. Combined catalog capped at 4096 items; INI capped at 256 games and 2 MiB; Steam enumeration capped at 4096 directory entries and eight candidate generations. Native entries from a base catalog are preserved even if no longer registered; native launch rechecks registration. INI path deduplication uses ASCII case folding, not full Unicode folding. Steam entries are metadata only and open the runtime library, not an individual game. Portable parser/merge tests added; actual snapshot directory integration and on-device latency still require testing. No changes to SD this turn.
+
+
+## R17: retain the accepted Windows PE preflight
+
+The R17 stack branched before the R12 PE fix was merged. This integration reuses [PR #79](https://github.com/Garyu-tt/EXODUSx1/pull/79), commit `8c637e775a0232ccb1f33dd41843e6faaa60f9a8`, including its unchanged validator, header, fixture test and native adapter guard. A truncated MZ/DOS file now leaves the shell open without queuing the Windows runtime. Native builds link the validator alongside the existing Autorun preflight.
+
+The additional host regression compiles the actual native adapter, Autorun probe and PE validator, substituting only Horizon entrypoints. It checks zero handoff calls for malformed PE files and preserves valid PE32/PE32+, quoted space/Unicode paths, application-mode checks, loader failures and pending runtime jobs. The fixtures use a temporary POSIX directory as the SD mount:
+
+```sh
+python3 exodus/home/corkdeck/test_native_launch.py -v
+CFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer' \
+  python3 exodus/home/corkdeck/test_native_launch.py -v
+```
+
+The harness also accepts `CC`; Windows hosts skip these POSIX path fixtures. Host admission tests do not prove a native launch, destination or return path. The pinned donor may process forwarded/resumed jobs before `argv[1]` or open its launcher when DLL preflight fails; physical-device acceptance remains necessary.
