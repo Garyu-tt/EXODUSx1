@@ -31,7 +31,12 @@ static inline int exodus_nro_path(const char *id, char out[512])
 {
     if (!id) return 0;
     size_t len = strlen(id);
-    if (len <= 4 || len >= 499 || id[0] == '/' || strcmp(id + len - 4, ".nro")) return 0;
+    if (len <= 4 || len >= 499 || id[0] == '/') return 0;
+    /* Catalogs preserve path spelling while accepting all ASCII NRO suffix cases. */
+    const char *suffix = id + len - 4;
+    if (suffix[0] != '.' || (suffix[1] != 'n' && suffix[1] != 'N') ||
+        (suffix[2] != 'r' && suffix[2] != 'R') ||
+        (suffix[3] != 'o' && suffix[3] != 'O')) return 0;
     const char *segment = id;
     for (const char *p = id; ; ++p) {
         unsigned char c = (unsigned char)*p;
