@@ -20,6 +20,11 @@ size_t exodus_page_encode_adaptive(const uint8_t *page, uint8_t *encoded);
  * Invalid encodings leave the page untouched. */
 bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *page);
 
+/* Compare any existing encoding with a logical page without full decoding.
+ * Returns false for malformed input and leaves equal unchanged; otherwise
+ * equal reports exact logical equality, not merely a fingerprint match. */
+bool exodus_page_compare(const uint8_t *encoded,size_t size,const uint8_t *page,bool *equal);
+
 /* Read a word from a validated V3 BDI page without full decoding. */
 bool exodus_page_bdi_read_word(const uint8_t *encoded, size_t size, size_t word, uint8_t out[4]);
 
