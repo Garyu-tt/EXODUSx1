@@ -34,3 +34,26 @@ jobs:
           name: mailbox-native-build-evidence
           path: ${{ runner.temp }}/mailbox-build/
           if-no-files-found: warn
+  bao-mapping-only:
+    needs: [native-module, mapping-fdt]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: mailbox-native-build-evidence
+          path: ${{ runner.temp }}/mailbox-module
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross clang lld libssl-dev qemu-system-arm device-tree-compiler curl xz-utils makefs
+      - run: |
+          sh -n exodus/frankenstein/tumor_mailbox/bao-mapping-rc.sh
+          bash -n exodus/frankenstein/tumor_mailbox/run-bao-mapping.sh
+          bash exodus/frankenstein/tumor_mailbox/run-bao-mapping.sh "$RUNNER_TEMP/mailbox-module/module" "$RUNNER_TEMP/bao-mapping"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mailbox-bao-mapping-evidence
+          path: ${{ runner.temp }}/bao-mapping/
+          if-no-files-found: warn

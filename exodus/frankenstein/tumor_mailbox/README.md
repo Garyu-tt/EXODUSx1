@@ -17,3 +17,7 @@ Exact head 63713389b18e7cbb60a61bea40c24c14d2be3209 passed seven CI jobs. Native
 ## R36 mapping-only control
 
 R34 head c96b4936de00ff904ef1a77cb0c5c3800d352096 passed native load/unload twice on stock QEMU FreeBSD (job 139521641776, artifact 15064991707). No device attached. R36 separates non-cacheable mapping-only attachment from coherent write-back mode. Exactly one zero-length FDT mode flag is required. The driver still never reads or writes mapped memory. The FDT preparation script admits only the two fixed Bao reference DTS files and roles; it creates a separate enabled node with mapping-only, never coherent-normal-memory. The original boot DTS files and disabled fragment remain unchanged. Host FDT compilation and inspection and native module build/load control are required. Actual mapping attachment under Bao remains a subsequent runtime gate; this change does not establish stage-2 coherency or permit data exchange.
+
+## R37 positive mapping attachment control
+
+R36 accepted 8/8 at 391e6474218c554c6bb7b846d80d325bcbc97766, merge e96a7a003b78db8235d0289fb0bffec04355ebfd. R37 consumes the exact checksum-verified module artifact from the same workflow, boots a separate Bao synthetic peer plus stock FreeBSD 15.1 RAM-root with role-2 mapping-only DTB, invokes real rescue kldload/kldunload, checks attached driver via sysctl and exact serial marker, verifies detach. No data access or coherent flag. This is not yet a two-OS exchange. Existing R32/R35 tests and base images unchanged.
