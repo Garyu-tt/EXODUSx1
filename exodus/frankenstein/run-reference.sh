@@ -190,14 +190,30 @@ case "$mode" in
 esac
 mkdir extracted
 mcopy -i export.img ::/SHA256SUMS extracted/guest-SHA256SUMS
-: > extracted/SHA256SUMS
+# Admit the complete manifest before copying any payload. A malformed,
+# duplicate or unexpected record must not be silently filtered out.
+awk -v files="$files" '
+    BEGIN {
+        n = split(files, names, " ")
+        for (i = 1; i <= n; i++) expected[names[i]] = 1
+    }
+    {
+        if (NF != 2 || length($1) != 64 || $1 ~ /[^0-9a-fA-F]/ ||
+            !($2 in expected) || seen[$2]++) {
+            bad = 1
+            next
+        }
+        digest[$2] = tolower($1)
+        count++
+    }
+    END {
+        if (bad || count != n) exit 1
+        for (i = 1; i <= n; i++) printf "%s  %s\n", digest[names[i]], names[i]
+    }
+' extracted/guest-SHA256SUMS > extracted/SHA256SUMS
 for f in $files; do
     mcopy -i export.img "::/$f" "extracted/$f"
     test -s "extracted/$f"
-    sum=$(awk -v name="$f" '$2==name && NF==2 {print $1}' extracted/guest-SHA256SUMS)
-    test "${#sum}" -eq 64
-    printf '%s\n' "$sum" | grep -Eq '^[0-9a-fA-F]{64}$'
-    printf '%s  %s\n' "$sum" "$f" >> extracted/SHA256SUMS
 done
 (cd extracted && sha256sum -c --strict SHA256SUMS)
 if [ "$mode" = rcresident ]; then
