@@ -1,7 +1,9 @@
 """Experimental Steam compatibility-tool protocol; no installation or native launch."""
 import argparse
 import json
+import os
 import re
+import stat
 from pathlib import Path
 
 from .native_descriptors import descriptor
@@ -19,23 +21,51 @@ def unique(pairs):
     return result
 
 
-def read_target(path):
-    path = Path(path)
-    if path.is_symlink() or not path.is_file() or path.suffix != '.exodus-target':
-        raise ValueError('expected a regular .exodus-target descriptor')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_MARKER_BYTES + 1)
-    if len(raw) > MAX_MARKER_BYTES:
-        raise ValueError('target exceeds byte limit')
-    data = json.loads(raw, object_pairs_hook=unique)
+def validate_target(data):
     if (not isinstance(data, dict) or set(data) != {'version', 'backend', 'kind', 'id'}
-            or type(data['version']) is not int or data['version'] != 1):
+            or type(data['version']) is not int or data['version'] != 1
+            or any(not isinstance(data[key], str) or not data[key]
+                   for key in ('backend', 'kind', 'id'))):
         raise ValueError('invalid target schema')
     return data
 
 
+def regular_marker(metadata):
+    return (stat.S_ISREG(metadata.st_mode)
+            and not getattr(metadata, 'st_reparse_tag', 0))
+
+
+def read_target(path):
+    path = Path(path)
+    if path.suffix != '.exodus-target':
+        raise ValueError('expected a regular .exodus-target descriptor')
+    before = path.lstat()
+    if not regular_marker(before):
+        raise ValueError('expected a regular .exodus-target descriptor')
+    # Nonblocking open prevents a substituted FIFO from hanging the caller.
+    # O_NOFOLLOW rejects final symlinks where supported; fstat checks the
+    # actual opened object before any read. The parent must be trusted.
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NONBLOCK', 0)
+    flags |= getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_CLOEXEC', 0)
+    fd = os.open(path, flags)
+    try:
+        actual = os.fstat(fd)
+        if not regular_marker(actual) or not os.path.samestat(before, actual):
+            raise ValueError('target changed or is not a regular file')
+        if actual.st_size > MAX_MARKER_BYTES:
+            raise ValueError('target exceeds byte limit')
+        with os.fdopen(fd, 'rb', closefd=False) as stream:
+            raw = stream.read(MAX_MARKER_BYTES + 1)
+    finally:
+        os.close(fd)
+    if len(raw) > MAX_MARKER_BYTES:
+        raise ValueError('target exceeds byte limit')
+    return validate_target(json.loads(raw, object_pairs_hook=unique))
+
+
 def invocation(tool, verb, target):
     """Translate a Steam invocation into a typed local bridge request, never execute."""
+    validate_target(target)
     if verb not in SUPPORTED_VERBS:
         raise ValueError('unsupported Steam verb')
     if tool not in ('exodus-horizon', 'exodus-bsd'):

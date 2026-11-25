@@ -1,7 +1,9 @@
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from exodus.steam_compat import candidate_manifests, invocation, read_target
 
@@ -44,6 +46,52 @@ class SteamCompatTest(unittest.TestCase):
                 path.write_text(data)
                 with self.assertRaises(ValueError):
                     read_target(path)
+
+    def test_direct_schema(self):
+        for target in (None, [], dict(self.target, version=True),
+                       dict(self.target, version=2), dict(self.target, extra=1),
+                       dict(self.target, backend=[]), dict(self.target, id=None)):
+            with self.subTest(target=target), self.assertRaises(ValueError):
+                invocation('exodus-horizon', 'run', target)
+
+    def test_marker_schema_and_directory(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'a.exodus-target'
+            path.mkdir()
+            with self.assertRaises(ValueError):
+                read_target(path)
+            path.rmdir()
+            path.write_text(json.dumps(dict(self.target, kind=[])))
+            with self.assertRaises(ValueError):
+                read_target(path)
+
+    @unittest.skipUnless(hasattr(os, 'mkfifo') and hasattr(os, 'O_NONBLOCK'), 'POSIX FIFO test')
+    def test_marker_substitution(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'a.exodus-target'
+            path.write_text(json.dumps(self.target))
+            original_open = os.open
+
+            def substitute(name, flags):
+                path.unlink()
+                os.mkfifo(path)
+                return original_open(name, flags)
+
+            with patch('exodus.steam_compat.os.open', side_effect=substitute):
+                with self.assertRaises(ValueError):
+                    read_target(path)
+            with self.assertRaises(ValueError):
+                read_target(path)
+
+    @unittest.skipUnless(hasattr(os, 'O_NOFOLLOW'), 'POSIX no-follow test')
+    def test_marker_symlink(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'a.exodus-target'
+            original = Path(root) / 'original'
+            original.write_text(json.dumps(self.target))
+            path.symlink_to(original)
+            with self.assertRaises(ValueError):
+                read_target(path)
 
     def test_manifest_preview(self):
         result = candidate_manifests('exodus-horizon', 'horizon', 'freebsd')
