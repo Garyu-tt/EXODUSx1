@@ -93,10 +93,26 @@ class ManagedChildTests(unittest.TestCase):
 
     def test_deadline_expires_during_observation_never_signals(self):
         p = self.center.request_lifecycle(self.child.key, "suspend")
+        ticks = iter([p.deadline - 1, p.deadline - 1])
         with patch("exodus.task_center_child.time.monotonic",
-                   side_effect=[p.deadline - 1, p.deadline]), \
+                   side_effect=lambda: next(ticks, p.deadline)), \
+                patch("exodus.task_center_child.os.waitpid", return_value=(0, 0)), \
                 patch("exodus.task_center_child.os.kill") as kill:
             self.assertFalse(self.child.dispatch(p))
+            kill.assert_not_called()
+        self.assertEqual(self.child.last_token, p.token)
+        self.assertFalse(self.child.dispatch(p))
+
+    def test_interrupted_observation_is_bounded_by_deadline(self):
+        p = self.center.request_lifecycle(self.child.key, "suspend")
+        ticks = iter([p.deadline - 1, p.deadline - 1])
+        with patch("exodus.task_center_child.time.monotonic",
+                   side_effect=lambda: next(ticks, p.deadline)), \
+                patch("exodus.task_center_child.os.waitpid",
+                      side_effect=[InterruptedError, AssertionError("waitpid after deadline")]) as wait, \
+                patch("exodus.task_center_child.os.kill") as kill:
+            self.assertFalse(self.child.dispatch(p))
+            wait.assert_called_once()
             kill.assert_not_called()
         self.assertEqual(self.child.last_token, p.token)
         self.assertFalse(self.child.dispatch(p))

@@ -31,10 +31,14 @@ class ManagedChild:
                                   setsigmask=(), setsigdef=(signal.SIGTERM, signal.SIGINT))
         self.terminal = False
 
-    def poll(self):
+    def poll(self, deadline=None):
         if self.terminal:
             return self.state
         while True:
+            # Dispatch must stop observing at its deadline even if waitpid
+            # repeatedly reports interruptions or state changes.
+            if deadline is not None and time.monotonic() >= deadline:
+                break
             try:
                 pid, status = os.waitpid(self.pid, os.WNOHANG | os.WUNTRACED | os.WCONTINUED)
             except InterruptedError:
@@ -83,7 +87,7 @@ class ManagedChild:
                 or request.deadline <= time.monotonic()):
             return False
         self.last_token = request.token
-        self.poll()
+        self.poll(deadline=request.deadline)
         # poll() can be delayed by waitpid events or interruptions. Recheck
         # expiry after observation, before issuing any process signal.
         if (self.terminal or request.operation not in self.capabilities()
@@ -96,7 +100,7 @@ class ManagedChild:
             # No other thread, handler or library may reap it.
             os.kill(self.pid, sig)
         except ProcessLookupError:
-            self.poll()
+            self.poll(deadline=request.deadline)
             return False
         except PermissionError:
             return False
