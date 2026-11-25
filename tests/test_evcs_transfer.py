@@ -83,8 +83,12 @@ class TransferTest(unittest.TestCase):
         stage = next(self.games.glob('.evcs-stage-*'))
         payload = stage / 'payload'
         payload.unlink()
+        # Link an independent file with identical content, so changing its
+        # link count cannot invalidate the original source fingerprint.
+        external = self.root / 'independent.bin'
+        external.write_bytes(self.src.read_bytes())
         try:
-            os.link(self.src, payload)
+            os.link(external, payload)
         except (OSError, NotImplementedError):
             self.skipTest('hardlinks unavailable')
         with self.assertRaisesRegex(ValueError, 'unexpected staging file'):
@@ -92,6 +96,8 @@ class TransferTest(unittest.TestCase):
         self.assertTrue(payload.exists())
         self.assertTrue(self.src.exists())
         self.assertFalse(self.dest.exists())
+        self.assertEqual(external.read_bytes(), self.src.read_bytes())
+        self.assertTrue(os.path.samefile(external, payload))
 
     def test_indirect_stage_directory_is_rejected(self):
         with patch('exodus.evcs_transfer.publish', side_effect=OSError('interrupt')), self.assertRaises(OSError):
