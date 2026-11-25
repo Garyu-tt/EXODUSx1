@@ -47,9 +47,8 @@ namespace {
     }
 
     void UpdateLibrary() {
-        const auto settings = steam::ReadTextFile(GatewayFile, 512);
-        const auto gateway = steam::ParseGatewayOrigin(settings.text);
-        if (settings.status != steam::ReadStatus::Ready || !gateway) {
+        const auto gateway = steam::ReadGatewayOrigin(GatewayFile);
+        if (!gateway) {
             std::puts("Put the operator's HTTPS origin in gateway.txt.");
             return;
         }
