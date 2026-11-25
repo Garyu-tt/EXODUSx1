@@ -22,7 +22,15 @@ struct config config = {
             .platform = {
                 .cpu_num = 3,
                 .region_num = 1,
+#ifdef TUMOR_DUAL_FREEBSD
+                .regions = (struct vm_mem_region[]) { { .base = BASE, .size = 0x10000000 } },
+                .dev_num = 1,
+                .devs = (struct vm_dev_region[]) {
+                    { .interrupt_num = 1, .interrupts = (irqid_t[]) {27} },
+                },
+#else
                 .regions = (struct vm_mem_region[]) { GUEST_MEM },
+#endif
                 .ipc_num = 1,
                 .ipcs = (struct ipc[]) { GUEST_IPC },
                 .arch = GUEST_GIC,

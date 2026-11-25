@@ -6,6 +6,17 @@ _start:
     b.ne halt
     mov x1, #0xf0000000
     add x3, x1, #64
+#ifdef TUMOR_HEADLESS_PEER
+    /* Role A mirrors the established handshake and never touches UART. */
+    mov w2, #1
+    stlr w2, [x1]
+1:  ldar w4, [x3]
+    cmp w4, #1
+    b.ne 1b
+    mov w2, #2
+    stlr w2, [x1]
+    b enter
+#else
 1:  ldar w4, [x1]
     cmp w4, #1
     b.ne 1b
@@ -22,6 +33,7 @@ _start:
     tbnz w8, #5, 4b
     str w7, [x6]
     b 3b
+#endif
 enter:
 #ifdef TUMOR_FREEBSD_NATIVE_METADATA
     /* QEMU guest bundle slot contains a FreeBSD kernel virtual pointer. */
