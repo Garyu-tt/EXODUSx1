@@ -57,3 +57,16 @@ clean-compact-index:
 	$(RM) test_compact_index$(EXEEXT)
 
 .PHONY: check-compact-index clean-compact-index
+
+test_page_read$(EXEEXT): page_read.c page_read.h page_codec.h page_store.h page_dedup_store.h test_page_read.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_read.c test_page_read.c $(LDLIBS)
+
+check: check-direct-read
+check-direct-read: test_page_read$(EXEEXT)
+	./test_page_read$(EXEEXT)
+
+clean: clean-direct-read
+clean-direct-read:
+	$(RM) test_page_read$(EXEEXT)
+
+.PHONY: check-direct-read clean-direct-read
