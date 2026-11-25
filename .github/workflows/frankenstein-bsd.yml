@@ -4,6 +4,7 @@ on:
     paths:
       - 'exodus/frankenstein/guest-*.sh'
       - 'exodus/frankenstein/linux-abi-probe.S'
+      - 'exodus/frankenstein/linux-dynamic-probe.c'
       - 'exodus/frankenstein/run-reference.sh'
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/sessiond-dbus.inc'
@@ -20,13 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - mode: native
-            minutes: 85
-          - mode: graphics
-            minutes: 165
-          - mode: manager
-            minutes: 165
-          - mode: linuxabi
+          - mode: linuxdynamic
             minutes: 35
     timeout-minutes: ${{ matrix.minutes }}
     steps:
@@ -46,6 +41,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tumor-r13-${{ matrix.mode }}-evidence
+          name: tumor-r14-${{ matrix.mode }}-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn

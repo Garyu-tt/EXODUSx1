@@ -12,6 +12,7 @@ case "$mode" in
     boot) guest=guest-boot.sh; gate=EXODUS_FREEBSD_BOOT_PASS ;;
     native) guest=guest-native.sh; gate=EXODUS_NATIVE_DBUS_PASS ;;
     linuxabi) guest=guest-linuxabi.sh; gate=EXODUS_LINUX_ABI_REFERENCE_PASS ;;
+    linuxdynamic) guest=guest-linuxdynamic.sh; gate=EXODUS_LINUX_DYNAMIC_PASS ;;
     *) echo "Unknown reference mode" >&2; exit 2 ;;
 esac
 work=$(mktemp -d)
@@ -27,7 +28,7 @@ printf '%s  %s\n' "$hash" "$image" | sha256sum -c -
 xz -dc "$image" > disk.raw
 rm "$image"
 qemu-img resize -f raw disk.raw 32G
-truncate -s 4M seed.img
+truncate -s 16M seed.img
 mkfs.vfat -n CIDATA seed.img
 # Separate output volume; no host directory or physical device is exposed.
 truncate -s 128M export.img
@@ -41,6 +42,19 @@ if [ "$mode" = linuxabi ]; then
     cc -nostdlib -static -march=armv8.1-a -DTEST_LSE -Wl,--build-id=none "$here/linux-abi-probe.S" -o linux-lse
     readelf -h -n linux-armv8 linux-lse > "$out/linux-probe-elf.txt"
     mcopy -i seed.img linux-armv8 linux-lse ::
+fi
+if [ "$mode" = linuxdynamic ]; then
+    test "$(uname -m)" = aarch64
+    cc -std=c11 -Wall -Wextra -Werror -O2 -march=armv8-a -mno-outline-atomics "$here/linux-dynamic-probe.c" -pthread -ldl -o linux-dynamic
+    readelf -h -l -d linux-dynamic > "$out/linux-dynamic-elf.txt"
+    grep -F '/lib/ld-linux-aarch64.so.1' "$out/linux-dynamic-elf.txt"
+    cp -L /lib/ld-linux-aarch64.so.1 ld-linux-aarch64.so.1
+    cp -L /lib/aarch64-linux-gnu/libc.so.6 libc.so.6
+    sha256sum linux-dynamic ld-linux-aarch64.so.1 libc.so.6 > "$out/linux-dynamic-SHA256SUMS"
+    dpkg-query -W libc6 > "$out/glibc-version.txt"
+    ./linux-dynamic | tee "$out/linux-dynamic-host.txt"
+    grep -Fx TUMOR_GLIBC_PTHREAD_OK "$out/linux-dynamic-host.txt"
+    mcopy -i seed.img linux-dynamic ld-linux-aarch64.so.1 libc.so.6 ::
 fi
 if [ "$mode" = native ]; then
     for f in sessiond.c sessiond-dbus.inc test_sessiond.py test_sessiond_dbus.sh; do
@@ -57,6 +71,7 @@ limit=145m
 [ "$mode" != native ] || limit=65m
 [ "$mode" != boot ] || limit=12m
 [ "$mode" != linuxabi ] || limit=12m
+[ "$mode" != linuxdynamic ] || limit=12m
 # Stream serial evidence even if the guest never reaches the build script.
 # Preserve QEMU/timeout status independently of log forwarding.
 : > "$out/serial.log"
