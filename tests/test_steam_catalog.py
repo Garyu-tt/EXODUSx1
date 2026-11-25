@@ -180,19 +180,22 @@ class SteamCatalogTests(unittest.TestCase):
 
     def test_steamapps_parent_path_respects_intermediary_access(self):
         self.manifest(self.first, 42, "Recorded title", 4)
-        source = self.first / "missing" / ".."
+        regular_file = self.first / "regular-file.txt"
+        regular_file.write_text("sample", encoding="utf-8")
         expected = self.scan(self.first)
-        accessible = source.is_dir()
-        for libraries in ((source,), (self.first, source), (source, self.first)):
-            with self.subTest(libraries=libraries):
-                result = self.scan(*libraries)
-                if accessible:
-                    self.assertEqual(result, expected)
-                else:
-                    code, catalog, errors = result
-                    entries = expected[1]["entries"] if self.first in libraries else []
-                    self.assertEqual((code, catalog["entries"]), (1, entries))
-                    self.assertIn(str(source), errors)
+        for intermediary in (self.first / "missing", regular_file):
+            source = intermediary / ".."
+            accessible = source.is_dir()
+            for libraries in ((source,), (self.first, source), (source, self.first)):
+                with self.subTest(libraries=libraries):
+                    result = self.scan(*libraries)
+                    if accessible:
+                        self.assertEqual(result, expected)
+                    else:
+                        code, catalog, errors = result
+                        entries = expected[1]["entries"] if self.first in libraries else []
+                        self.assertEqual((code, catalog["entries"]), (1, entries))
+                        self.assertIn(str(source), errors)
 
     def test_root_named_steamapps_imports_nested_manifests_in_both_commands(self):
         library = self.first.parent / "SteamApps"

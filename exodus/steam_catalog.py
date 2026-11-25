@@ -183,7 +183,8 @@ def scan_libraries(libraries, *, steam_installs=()):
         try:
             directory_name = library.name
             if directory_name in ("", ".."):
-                # Classify dot and parent arguments by name and open the supplied path.
+                # Check the supplied path before resolving its name can collapse "..".
+                library.stat()
                 directory_name = library.resolve(strict=True).name
             named_steamapps = directory_name.lower() == "steamapps"
             if named_steamapps:
