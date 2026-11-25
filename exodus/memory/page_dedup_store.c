@@ -19,6 +19,27 @@ static bool restore_physical(const struct exodus_page_dedup_store *s,size_t i,ui
     const struct exodus_hot_entry *h=exodus_hot_find(s,i);
     return h?exodus_bdi_slab_restore(s->slab,&h->page,out):exodus_page_store_restore(&s->unique,i,out);
 }
+/* Raw cold records already contain the complete logical page. Compare them
+ * in place; compressed and hot records retain the validated restore path.
+ * Distinguish invalid backing from a valid unequal page. */
+static bool compare_physical(const struct exodus_page_dedup_store *s,size_t i,
+                             const uint8_t *page,bool *equal)
+{
+    size_t start,end;
+    if(i>=s->unique.page_count)return false;
+    if(!exodus_hot_find(s,i)){
+        if(!exodus_page_store_extent(&s->unique,i,&start,&end))return false;
+        if(end-start==EXODUS_PAGE_BYTES){
+            *equal=memcmp(s->unique.payload+start,page,EXODUS_PAGE_BYTES)==0;
+            return true;
+        }
+    }
+    uint8_t restored[EXODUS_PAGE_BYTES];
+    if(!restore_physical(s,i,restored))return false;
+    *equal=memcmp(restored,page,sizeof restored)==0;
+    return true;
+}
+
 static void hot_shift(struct exodus_page_dedup_store *s,size_t old)
 {
     for(size_t i=0;i<s->hot_capacity;i++)
@@ -58,10 +79,10 @@ static bool append_page(struct exodus_page_dedup_store *store,
     for (size_t i = 0; i < store->unique.page_count; ++i) {
         if (store->fingerprints[i] != hash)
             continue;
-        uint8_t restored[EXODUS_PAGE_BYTES];
-        if (!restore_physical(store,i,restored))
+        bool equal;
+        if (!compare_physical(store,i,page,&equal))
             return false;
-        if (memcmp(restored, page, sizeof(restored)) == 0) {
+        if (equal) {
             physical = i;
             break;
         }
@@ -188,15 +209,15 @@ static bool replace_adaptive(struct exodus_page_dedup_store *s,
 {
     size_t old,owners;
     if(!page||!replacement_context(s,index,&old,&owners))return false;
-    uint8_t restored[EXODUS_PAGE_BYTES];
-    if(!restore_physical(s,old,restored))return false;
-    if(memcmp(restored,page,sizeof(restored))==0)return true;
+    bool equal;
+    if(!compare_physical(s,old,page,&equal))return false;
+    if(equal)return true;
     uint64_t hash=exodus_page_fingerprint(page);
     size_t match=s->unique.page_count;
     for(size_t i=0;i<s->unique.page_count;i++){
         if(i==old||s->fingerprints[i]!=hash)continue;
-        if(!restore_physical(s,i,restored))return false;
-        if(memcmp(restored,page,sizeof(restored))==0){match=i;break;}
+        if(!compare_physical(s,i,page,&equal))return false;
+        if(equal){match=i;break;}
     }
     if(match!=s->unique.page_count)
         return commit_replacement(s,index,old,owners,match,hash,NULL,0);
