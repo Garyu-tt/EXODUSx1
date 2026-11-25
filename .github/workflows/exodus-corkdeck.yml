@@ -115,7 +115,8 @@ jobs:
         run: |
           set -eu
           dir=exodus/home/corkdeck
-          python3 "$dir/stage-release-source.py" "$GITHUB_SHA" /tmp/corkdeck /tmp/exodus-source
+          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0="$(pwd -P)" \
+            python3 "$dir/stage-release-source.py" "$GITHUB_SHA" /tmp/corkdeck /tmp/exodus-source
           python3 "$dir/release/fetch-dependency-sources.py" \
             --cache-dir /tmp/exodus-source-cache --output-dir /tmp/exodus-dependency-source
           python3 "$dir/release/bundle-shell-release.py" \
