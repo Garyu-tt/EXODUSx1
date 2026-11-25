@@ -13,7 +13,8 @@ static inline enum exodus_route exodus_native_target(const char *provider, const
         uint64_t title;
         if (!exodus_title_id(id,&title)) return EXODUS_ROUTE_INVALID;
         snprintf(canonical,512,"%016llx",(unsigned long long)title);
-        return EXODUS_ROUTE_SWITCH;
+        const struct exodus_execution_target target={EXODUS_BACKEND_HORIZON,EXODUS_TARGET_TITLE_ID};
+        return exodus_backend_route(target,canonical);
     }
     if (!strcmp(provider,"homebrew")) {
         char path[512];
@@ -21,7 +22,8 @@ static inline enum exodus_route exodus_native_target(const char *provider, const
         /* Preserve the launch adapter's relative switch/ convention. */
         const char *target=!strncmp(path,"sdmc:/switch/",13) ? path+13 : path;
         snprintf(canonical,512,"%s",target);
-        return EXODUS_ROUTE_HOMEBREW;
+        const struct exodus_execution_target execution={EXODUS_BACKEND_HORIZON,EXODUS_TARGET_NRO};
+        return exodus_backend_route(execution,canonical);
     }
     return EXODUS_ROUTE_INVALID;
 }
