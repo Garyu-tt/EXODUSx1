@@ -39,7 +39,14 @@ echo EXODUS_MANAGER_LIBCLANG_READY
 pkgconf --modversion libudev
 probe_dir=$(mktemp -d /var/tmp/exodus-manager-probe.XXXXXX)
 seed_dir=$(mktemp -d /var/tmp/exodus-manager-seed.XXXXXX)
-mount -t msdosfs /dev/msdosfs/CIDATA "$seed_dir"
+seed=
+for d in /dev/msdosfs/[cC][iI][dD][aA][tT][aA]; do
+    [ -e "$d" ] || continue
+    seed=$d
+    break
+done
+test -n "$seed"
+mount -t msdosfs -o ro "$seed" "$seed_dir"
 cp "$seed_dir/manager-inotify-probe.c" "$probe_dir/inotify.c"
 umount "$seed_dir"
 rmdir "$seed_dir"
