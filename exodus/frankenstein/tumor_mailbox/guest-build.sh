@@ -1,5 +1,5 @@
 #!/bin/sh
-# Disposable FreeBSD VM; build only, never load the module.
+# Disposable stock FreeBSD VM; build and load/unload with no mailbox node.
 set -eu
 export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 exec >/dev/console 2>&1
@@ -49,7 +49,22 @@ readelf -h "$work/module/tumor_mailbox.ko" | grep -E 'Class:[[:space:]]+ELF64'
 readelf -h "$work/module/tumor_mailbox.ko" | grep -F 'little endian'
 readelf -SW "$work/module/tumor_mailbox.ko" | grep -F set_modmetadata_set
 sha256 "$work/module/tumor_mailbox.ko"
+# Stock QEMU virt has no Tumor reference FDT or shared-memory node.
+# Verify absence of an attached driver before and after registration.
 if kldstat -n tumor_mailbox.ko >/dev/null 2>&1; then exit 1; fi
+if devinfo | grep -Eq '(^|[[:space:]])tumor_mailbox[0-9]'; then exit 1; fi
+if [ "$(sysctl -n hw.fdt.model 2>/dev/null || true)" = "Tumor Bao QEMU reference" ]; then exit 1; fi
+for attempt in 1 2; do
+    kldload "$work/module/tumor_mailbox.ko"
+    kldstat -n tumor_mailbox.ko
+    kldstat -m ofwbus/tumor_mailbox
+    if devinfo | grep -Eq '(^|[[:space:]])tumor_mailbox[0-9]'; then exit 1; fi
+    kldunload tumor_mailbox.ko
+    if kldstat -n tumor_mailbox.ko >/dev/null 2>&1; then exit 1; fi
+    if kldstat -m ofwbus/tumor_mailbox >/dev/null 2>&1; then exit 1; fi
+    echo "EXODUS_MAILBOX_LOAD_UNLOAD_PASS=$attempt"
+done
+echo EXODUS_MAILBOX_NO_DEVICE_PASS
 export_dir=$(mktemp -d /var/tmp/tumor-mailbox-out.XXXXXX)
 mount -t msdosfs /dev/msdosfs/EXODUSOUT "$export_dir"
 cp "$work/module/tumor_mailbox.ko" "$export_dir/"

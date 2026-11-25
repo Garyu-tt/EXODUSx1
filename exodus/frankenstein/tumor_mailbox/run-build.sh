@@ -35,6 +35,10 @@ test "$rc" -eq 0
 tr -d '\r' < "$out/serial.log" > "$out/normalized.log"
 test "$(grep -c '^EXODUS_MAILBOX_NATIVE_BUILD_PASS$' "$out/normalized.log")" -eq 1
 test "$(grep -c '^EXODUS_MAILBOX_BUILD_RESULT=0$' "$out/normalized.log")" -eq 1
+for attempt in 1 2; do
+    test "$(grep -c "^EXODUS_MAILBOX_LOAD_UNLOAD_PASS=$attempt$" "$out/normalized.log")" -eq 1
+done
+test "$(grep -c '^EXODUS_MAILBOX_NO_DEVICE_PASS$' "$out/normalized.log")" -eq 1
 
 mkdir "$out/module"
 mcopy -i export.img ::/tumor_mailbox.ko ::/SHA256SUMS "$out/module/"
