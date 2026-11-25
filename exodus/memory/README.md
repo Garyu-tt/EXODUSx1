@@ -1,20 +1,23 @@
 # EX-005 memory page compression
 
-Use this C99 codec to store cold 4096-byte pages in smaller buffers when they contain aligned regions of zeros or runs of identical four-byte words. A solid RGBA staging page uses 41 payload bytes. Pass regular CPU-readable memory or a caller-owned CPU staging copy. The caller controls page lifetime, GPU transfer and synchronization.
+Use this C99 codec to store cold 4096-byte pages in smaller buffers when they contain aligned regions of zeros, runs of identical four-byte words, or full-page repeating 8- or 16-byte texels. A solid RGBA8 staging page uses 41 payload bytes. Repeated wide texels can use 9 or 17 bytes. Pass regular CPU-readable memory or a caller-owned CPU staging copy. The caller controls page lifetime, GPU transfer and synchronization.
 
 ## Build and measure
 
 From this directory, run `make` and then `./page_probe path/to/sample.bin`. To run the C and Python 3 tests, use `make check`. On Windows with MSYS, set `EXEEXT=.exe`. You can compile `page_codec.c` directly into a target application using its C toolchain. The codec uses only the C standard library.
 
-The probe reads a binary sample one page at a time, reconstructs every full page, and checks each byte before reporting JSON. `sparse_pages` and `word_run_pages` count the pages encoded in each compressed format. `payload_bytes` includes format overhead and raw fallback pages. A final partial page is counted at its original size. Add `length_index_bytes` to estimate storage with a two-byte length per full page. Actual resident memory also depends on allocation strategy, offsets and staging buffers.
+The probe reads a binary sample one page at a time, reconstructs every full page, and checks each byte before reporting JSON. `sparse_pages`, `word_run_pages` and `repeated_tile_pages` count the pages encoded in each compressed format. `payload_bytes` includes format overhead and raw fallback pages. A final partial page is counted at its original size. Add `length_index_bytes` to estimate storage with a two-byte length per full page. Actual resident memory also depends on allocation strategy, offsets and staging buffers.
 
 To run the same verification on Nintendo Switch, build the [hbmenu probe](switch/README.md). It includes generated sample pages and can scan a binary file from the SD card.
 
 ## Adaptive encoding
 
-Call `exodus_page_encode_adaptive(page, scratch)` to select word runs when their payload is smaller than the original sparse or raw representation. It uses the same buffers as the legacy encoder below. Decode adaptive output with the current `exodus_page_decode`.
+Call `exodus_page_encode_adaptive(page, scratch)` to try a repeated tile or word runs when their payload is smaller than the original sparse or raw representation. It uses the same buffers as the legacy encoder below. Decode adaptive output with the current `exodus_page_decode`.
 
-Odd payload lengths select the word-run format. The first byte is version `1`. Each command byte stores the word count minus one in its low seven bits. A clear high bit means the next `count × 4` bytes are literal. A set high bit means the next four bytes repeat at least twice. Words stay in their original byte order on every target. After the 1024th word, a single zero byte pads an even payload length to odd. The decoder validates the entire stream before modifying the destination.
+Odd payload lengths select an adaptive format. The first byte identifies the encoding and all payload bytes stay in their original order.
+
+- Version `1` stores word runs. Each command byte stores the word count minus one in its low seven bits. A clear high bit means the next `count × 4` bytes are literal. A set high bit means the next four bytes repeat at least twice. After the 1024th word, a single zero byte pads an even payload length to odd. The decoder validates the entire stream before modifying the destination.
+- Version `2` stores one 8- or 16-byte tile repeated until the page is full. Its only valid payload lengths are 9 and 17 bytes, including the version byte. The encoder checks the complete page before selecting this format and keeps existing 4-byte fills in version `1`. Version `2` records require an updated decoder.
 
 ## API and format
 

@@ -56,6 +56,24 @@ static size_t encode_word_runs(const uint8_t *page, uint8_t *encoded, size_t fal
     return offset;
 }
 
+static size_t encode_repeated_tile(const uint8_t *page, uint8_t *encoded)
+{
+    size_t tile_size;
+    /* Keep single-word fills on the existing word-run format. */
+    if (memcmp(page, page + WORD_BYTES, WORD_BYTES) != 0 &&
+        memcmp(page, page + 8, EXODUS_PAGE_BYTES - 8) == 0)
+        tile_size = 8;
+    else if (memcmp(page, page + 8, 8) != 0 &&
+             memcmp(page, page + 16, EXODUS_PAGE_BYTES - 16) == 0)
+        tile_size = 16;
+    else
+        return 0;
+
+    encoded[0] = EXODUS_PAGE_REPEATED_TILE_VERSION;
+    memcpy(encoded + 1, page, tile_size);
+    return 1 + tile_size;
+}
+
 static size_t encode_page(const uint8_t *page, uint8_t *encoded, bool adaptive)
 {
     static const uint8_t zero[BLOCK_BYTES] = {0};
@@ -71,7 +89,9 @@ static size_t encode_page(const uint8_t *page, uint8_t *encoded, bool adaptive)
 
     size_t fallback_size = used == BLOCKS ? EXODUS_PAGE_BYTES : MASK_BYTES + used * BLOCK_BYTES;
     if (adaptive && used != 0) {
-        size_t size = encode_word_runs(page, encoded, fallback_size);
+        size_t size = used == BLOCKS ? encode_repeated_tile(page, encoded) : 0;
+        if (size == 0)
+            size = encode_word_runs(page, encoded, fallback_size);
         if (size != 0)
             return size;
     }
@@ -145,6 +165,15 @@ bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *pa
         return true;
     }
     if (encoded_size % 2 != 0) {
+        if (encoded[0] == EXODUS_PAGE_REPEATED_TILE_VERSION) {
+            size_t tile_size = encoded_size - 1;
+            if (tile_size != 8 && tile_size != 16)
+                return false;
+            memcpy(page, encoded + 1, tile_size);
+            for (size_t filled = tile_size; filled < EXODUS_PAGE_BYTES; filled *= 2)
+                memcpy(page + filled, page, filled);
+            return true;
+        }
         /* Validate all commands and padding before touching the output page. */
         return read_word_runs(encoded, encoded_size, NULL) &&
                read_word_runs(encoded, encoded_size, page);

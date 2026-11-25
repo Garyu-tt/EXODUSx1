@@ -31,7 +31,7 @@ static size_t check_adaptive_round_trip(const uint8_t *page, uint8_t *encoded)
     return size;
 }
 
-static void check_rejected_word_runs(const uint8_t *encoded, size_t size)
+static void check_rejected_encoding(const uint8_t *encoded, size_t size)
 {
     uint8_t decoded[EXODUS_PAGE_BYTES];
     memset(decoded, 0x6a, sizeof(decoded));
@@ -65,13 +65,13 @@ static void check_adaptive(void)
         CHECK(memcmp(encoded + i + 1, pixel, sizeof(pixel)) == 0);
     }
     for (size_t i = 0; i < size; ++i)
-        check_rejected_word_runs(encoded + 1, i);
-    check_rejected_word_runs(encoded + 1, size + 2);
-    encoded[1] = 2;
-    check_rejected_word_runs(encoded + 1, size);
+        check_rejected_encoding(encoded + 1, i);
+    check_rejected_encoding(encoded + 1, size + 2);
+    encoded[1] = 3;
+    check_rejected_encoding(encoded + 1, size);
     encoded[1] = 1;
     encoded[2] = 0x80;
-    check_rejected_word_runs(encoded + 1, size);
+    check_rejected_encoding(encoded + 1, size);
 
     /* 128 literals, a repeat crossing its 128-word limit, then other runs. */
     for (size_t i = 0; i < 128 * sizeof(pixel); ++i)
@@ -80,7 +80,7 @@ static void check_adaptive(void)
     size = check_adaptive_round_trip(page, encoded);
     CHECK(size == 555 && encoded[size] == 0);
     encoded[size] = 1;
-    check_rejected_word_runs(encoded + 1, size);
+    check_rejected_encoding(encoded + 1, size);
 
     /* Seven full repeats, one 127-word repeat and a two-word overrun. */
     uint8_t overrun[47] = {1};
@@ -88,7 +88,33 @@ static void check_adaptive(void)
         overrun[i] = 0xff;
     overrun[36] = 0xfe;
     overrun[41] = 0x81;
-    check_rejected_word_runs(overrun, sizeof(overrun));
+    check_rejected_encoding(overrun, sizeof(overrun));
+}
+
+static void check_repeated_tiles(void)
+{
+    uint8_t page[EXODUS_PAGE_BYTES];
+    uint8_t encoded[EXODUS_PAGE_BYTES + 2];
+    static const size_t tile_sizes[] = {8, 16};
+
+    for (size_t i = 0; i < sizeof(tile_sizes) / sizeof(tile_sizes[0]); ++i) {
+        size_t tile_size = tile_sizes[i];
+        for (size_t offset = 0; offset < sizeof(page); ++offset)
+            page[offset] = (uint8_t)(1 + offset % tile_size);
+        CHECK(exodus_page_encode(page, encoded) == EXODUS_PAGE_BYTES);
+        CHECK(memcmp(page, encoded, sizeof(page)) == 0);
+
+        size_t encoded_size = check_adaptive_round_trip(page, encoded);
+        CHECK(encoded_size == 1 + tile_size);
+        CHECK(encoded[1] == EXODUS_PAGE_REPEATED_TILE_VERSION);
+        CHECK(memcmp(encoded + 2, page, tile_size) == 0);
+        check_rejected_encoding(encoded + 1, encoded_size - 2);
+        check_rejected_encoding(encoded + 1, encoded_size + 2);
+
+        /* Even a mismatch at the final byte must defeat this representation. */
+        page[sizeof(page) - 1] ^= 0xff;
+        CHECK(check_adaptive_round_trip(page, encoded) == EXODUS_PAGE_BYTES);
+    }
 }
 
 static void check_layout(uint64_t present)
@@ -185,6 +211,7 @@ static void check_page_store_index_capacity(void)
 int main(void)
 {
     check_adaptive();
+    check_repeated_tiles();
     check_layout(0);
     check_layout(UINT64_MAX);
     for (unsigned i = 0; i < BLOCKS; ++i) {
