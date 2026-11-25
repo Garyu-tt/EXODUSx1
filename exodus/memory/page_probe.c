@@ -45,10 +45,10 @@ static int measure_sample(FILE *input, const char *error_label)
         return EXIT_FAILURE;
 
     if (printf("{\"pages\":%" PRIu64 ",\"sparse_pages\":%" PRIu64
-               ",\"word_run_pages\":%" PRIu64
+               ",\"word_run_pages\":%" PRIu64 ",\"repeated_tile_pages\":%" PRIu64
                ",\"input_bytes\":%" PRIu64 ",\"payload_bytes\":%" PRIu64
                ",\"length_index_bytes\":%" PRIu64 ",\"trailing_bytes\":%zu}\n",
-               stats.pages, stats.sparse_pages, stats.word_run_pages,
+               stats.pages, stats.sparse_pages, stats.word_run_pages, stats.repeated_tile_pages,
                stats.pages * EXODUS_PAGE_BYTES + stats.trailing_bytes,
                stats.payload_bytes, stats.pages * 2, stats.trailing_bytes) < 0 ||
         fflush(stdout) == EOF) {

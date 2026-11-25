@@ -10,6 +10,7 @@ struct exodus_probe_stats {
     uint64_t payload_bytes;
     size_t trailing_bytes;
     uint64_t word_run_pages;
+    uint64_t repeated_tile_pages;
 };
 
 enum exodus_probe_result {

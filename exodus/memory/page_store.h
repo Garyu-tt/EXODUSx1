@@ -19,7 +19,7 @@ struct exodus_page_store {
  * encoder. A capacity failure leaves the store unchanged. */
 bool exodus_page_store_append(struct exodus_page_store *store, const uint8_t *page);
 
-/* Append with word runs when smaller than sparse/raw encoding. Capacity is
+/* Append with the adaptive encoder. Capacity is
  * checked against the selected encoded length. May share a store with legacy
  * appends; a capacity failure leaves the store unchanged. */
 bool exodus_page_store_append_adaptive(struct exodus_page_store *store, const uint8_t *page);
