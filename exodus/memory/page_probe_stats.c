@@ -10,11 +10,14 @@ static bool probe_page(const uint8_t *page, struct exodus_probe_stats *stats, bo
     if (!exodus_page_decode(encoded, size, decoded) || memcmp(decoded, page, sizeof(decoded)) != 0)
         return false;
     ++stats->pages;
-    /* Odd payload lengths identify word runs. */
-    if (size % 2 != 0)
-        ++stats->word_run_pages;
-    else if (size < EXODUS_PAGE_BYTES)
+    if (size % 2 != 0) {
+        if (encoded[0] == EXODUS_PAGE_REPEATED_TILE_VERSION)
+            ++stats->repeated_tile_pages;
+        else
+            ++stats->word_run_pages;
+    } else if (size < EXODUS_PAGE_BYTES) {
         ++stats->sparse_pages;
+    }
     stats->payload_bytes += size;
     return true;
 }
