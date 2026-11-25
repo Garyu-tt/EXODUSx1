@@ -147,6 +147,79 @@ jobs:
           done
           echo TUMOR_MIXED_WIDTH_IPC_REFERENCE_PASS
 
+  armv7-kernel-reference:
+    # QEMU virt / Cortex-A15 is a 32-bit OS control, not the Cortex-A9 ADSP.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Install isolated reference emulator
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-system-arm u-boot-qemu curl xz-utils expect
+      - name: Boot verified FreeBSD ARMv7 release without network
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(mktemp -d)"
+          trap 'rm -rf "$out"' EXIT
+          cd "$out"
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 240 \
+            "https://download.freebsd.org/releases/arm/armv7/ISO-IMAGES/15.1/$image.xz" -o "$image.xz"
+          # Official release announcement, SHA512 and SHA256 for compressed image.
+          printf '%s  %s\n' a50077a25a44a38cf3ff55b0a6e3da839ea96b829e5d975f27e1f3c0a6f0f68ef97a7d5ce845f3f0d76fce800814e57ff9c3499d518257210eb7e32913c720f5 "$image.xz" | sha512sum -c -
+          printf '%s  %s\n' d568d7324825af9072405b11b7d0f4ba892d10ca05687fe4fd65e328e72cf7b8 "$image.xz" | sha256sum -c -
+          xz -d "$image.xz"
+          uboot=/usr/lib/u-boot/qemu_arm/u-boot.bin
+          test -s "$uboot"
+          qemu-system-arm --version
+          dpkg-query -W qemu-system-arm u-boot-qemu
+          sha256sum "$uboot"
+          cat > boot.exp <<'EOF'
+          set timeout 420
+          set uboot [lindex $argv 0]
+          set image [lindex $argv 1]
+          spawn -noecho qemu-system-arm -M virt -cpu cortex-a15 -m 768 -smp 1 -nographic -monitor none -nic none -bios $uboot -drive if=virtio,file=$image,format=raw,snapshot=on -no-reboot
+          proc fail {message} {
+              puts stderr $message
+              catch {exec kill -TERM [exp_pid]}
+              catch {close}
+              catch {wait}
+              exit 1
+          }
+          expect {
+              -re {login: *$} {}
+              timeout {fail "ARMv7 reference: login timed out"}
+              eof {fail "ARMv7 reference: emulator exited before login"}
+          }
+          set timeout 30
+          send -- "root\r"
+          expect {
+              -re {Password: *$} {
+                  send -- "root\r"
+                  exp_continue
+              }
+              -re {# *$} {}
+              -re {Login incorrect} {fail "ARMv7 reference: console login rejected"}
+              timeout {fail "ARMv7 reference: shell unavailable"}
+              eof {fail "ARMv7 reference: unexpected emulator exit"}
+          }
+          # Split marker so terminal echo of the command cannot satisfy the gate.
+          send -- {/bin/sh -c 'uname -a; test "$(uname -s)" = FreeBSD && test "$(uname -p)" = armv7 && case "$(uname -r)" in 15.1-RELEASE*) printf "%s%s\n" EXODUS_ARMV7_KERNEL_ PASS;; esac'}
+          send -- "\r"
+          expect {
+              -re {(?m)^EXODUS_ARMV7_KERNEL_PASS\r*$} {}
+              timeout {fail "ARMv7 reference: OS identity gate failed"}
+              eof {fail "ARMv7 reference: exited before OS identity gate"}
+          }
+          # Disposable snapshot only. No target device or persistent disk attached.
+          catch {exec kill -TERM [exp_pid]}
+          catch {close}
+          catch {wait}
+          exit 0
+          EOF
+          timeout 9m expect boot.exp "$uboot" "$image" | tee boot.log
+          tr -d '\r' < boot.log | grep -Fxq EXODUS_ARMV7_KERNEL_PASS
+          echo TUMOR_FREEBSD_ARMV7_REFERENCE_PASS
+
   reference-el:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
