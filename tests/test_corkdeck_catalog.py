@@ -30,6 +30,55 @@ class CorkDeckCatalogTests(unittest.TestCase):
         self.assertEqual(entries[0]["name"], "Example.exe")
         self.assertEqual(entries[0]["artwork"], "sdmc:/art.jpg")
 
+    def test_last_artwork_alias_wins_in_both_versions(self):
+        for version in (2, 3):
+            for first, last in (("portrait-art", "landscape-art"),
+                                ("landscape-art", "portrait-art")):
+                with self.subTest(version=version, last=last):
+                    entries = parse_catalog(
+                        f"version={version}\n[game 1]\npath=sdmc:/Wine/Game.exe\n"
+                        "square-art=sdmc:/square.png\nhero-art=sdmc:/hero.png\n"
+                        f"{first}=sdmc:/old.png\n{last}=sdmc:/new%20cover.png\n"
+                    )
+                    self.assertEqual(entries[0]["artwork"], "sdmc:/new cover.png")
+
+    def test_empty_last_alias_clears_portrait_before_independent_fallbacks(self):
+        fallbacks = (
+            ("hero-art=sdmc:/hero.png\nsquare-art=sdmc:/square.png\n", "sdmc:/square.png"),
+            ("square-art=\nhero-art=sdmc:/hero.png\n", "sdmc:/hero.png"),
+            ("", None),
+        )
+        for version in (2, 3):
+            for first, last in (("portrait-art", "landscape-art"),
+                                ("landscape-art", "portrait-art")):
+                for fields, expected in fallbacks:
+                    with self.subTest(version=version, last=last, fallback=expected):
+                        entries = parse_catalog(
+                            f"version={version}\n[game 1]\npath=sdmc:/Wine/Game.exe\n"
+                            f"{fields}{first}=sdmc:/old.png\n{last}=\n"
+                        )
+                        self.assertEqual(entries[0]["artwork"], expected)
+
+    def test_invalid_superseded_or_unselected_artwork_is_still_rejected(self):
+        invalid = ("bad%GG", "bad%FF", "bad%00", "bad%09", "a" * 512)
+        for key in ("portrait-art", "landscape-art", "square-art", "hero-art"):
+            later_alias = "landscape-art" if key == "portrait-art" else "portrait-art"
+            for value in invalid:
+                with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                    parse_catalog(
+                        "version=3\n[game 1]\npath=sdmc:/Wine/Game.exe\n"
+                        f"{key}={value}\n{later_alias}=sdmc:/valid.png\n"
+                    )
+
+    def test_alias_resolution_preserves_duplicate_and_unknown_key_handling(self):
+        header = "version=3\n[game 1]\npath=sdmc:/Wine/Game.exe\n"
+        for key in ("portrait-art", "landscape-art", "square-art", "hero-art", "custom"):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                parse_catalog(header + f"{key}=first\n{key}=last\n")
+        entries = parse_catalog(header + "custom=ignored%GG\nportrait-art=sdmc:/cover.png\n")
+        self.assertEqual(entries[0]["artwork"], "sdmc:/cover.png")
+        self.assertNotIn("custom", entries[0])
+
     def test_reject_invalid(self):
         for text in (
             "version=4\n",

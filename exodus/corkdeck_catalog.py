@@ -73,11 +73,15 @@ def parse_catalog(text):
         if not path or identity in paths:
             raise ValueError("missing or duplicate program path")
         paths.add(identity)
-        artwork = None
-        for key in ("portrait-art", "landscape-art", "square-art", "hero-art"):
-            value = decode_value(record.get(key, ""), 512)
-            if value and artwork is None:
-                artwork = value
+        covers = {}
+        for key, value in record.items():
+            if key in ("portrait-art", "landscape-art", "square-art", "hero-art"):
+                # The donor stores both aliases in the same portrait field.
+                # Validate each supplied value before a later alias replaces it.
+                slot = "portrait-art" if key == "landscape-art" else key
+                covers[slot] = decode_value(value, 512)
+        artwork = (covers.get("portrait-art") or covers.get("square-art")
+                   or covers.get("hero-art") or None)
         entries.append({
             "provider": "corkdeck",
             "provider_id": path,

@@ -68,13 +68,54 @@ class CombinedCorkDeckTests(unittest.TestCase):
                          ["steam", "switch_homebrew", "corkdeck"])
         self.assertEqual(catalog["entries"][2], {
             "provider": "corkdeck", "provider_id": "sdmc:/switch/wine/A%B.exe",
-            "name": "Игра=One", "artwork": "sdmc:/art/cover one.png",
+            "name": "Игра=One", "artwork": "sdmc:/art/other.png",
             "installation_state": "unknown", "last_played": None,
             "compatibility_state": "unknown", "launch_mode": None,
         })
         self.assertNotIn(str(source).encode(), result.stdout)
         self.assertNotIn(b"\r\n", result.stdout)
         result.stdout.decode("ascii")
+
+    def test_artwork_alias_order_survives_standalone_combined_and_atomic_output(self):
+        cases = (
+            (("portrait-art", "sdmc:/old.png"), ("landscape-art", "sdmc:/new%20cover.png"),
+             "sdmc:/new cover.png"),
+            (("landscape-art", "sdmc:/old.png"), ("portrait-art", "sdmc:/new%20cover.png"),
+             "sdmc:/new cover.png"),
+            (("portrait-art", "sdmc:/old.png"), ("landscape-art", ""), "sdmc:/square.png"),
+            (("landscape-art", "sdmc:/old.png"), ("portrait-art", ""), "sdmc:/square.png"),
+        )
+        for version in (2, 3):
+            for first, last, expected in cases:
+                with self.subTest(version=version, first=first, last=last):
+                    source = self.source("artwork.ini", [{
+                        "path": "sdmc:/Wine/%CE%A9%25Game.exe", "title": "Игра%3DOne",
+                        "hero-art": "sdmc:/hero.png", "square-art": "sdmc:/square.png",
+                        first[0]: first[1], last[0]: last[1],
+                    }], version)
+                    original = source.read_bytes()
+                    standalone = subprocess.run(
+                        [sys.executable, "-B", "-X", "utf8", "-m", "exodus.corkdeck_catalog", str(source)],
+                        cwd=REPO, capture_output=True, check=False,
+                    )
+                    self.assertEqual((standalone.returncode, standalone.stderr), (0, b""))
+                    combined = self.command("--corkdeck-catalog", source)
+                    self.assertEqual((combined.returncode, combined.stderr), (0, b""))
+                    self.assertEqual(combined.stdout, standalone.stdout)
+                    entry, = json.loads(combined.stdout)["entries"]
+                    self.assertEqual(entry, {
+                        "provider": "corkdeck", "provider_id": "sdmc:/Wine/Ω%Game.exe",
+                        "name": "Игра=One", "artwork": expected,
+                        "installation_state": "unknown", "last_played": None,
+                        "compatibility_state": "unknown", "launch_mode": None,
+                    })
+                    output = self.root / "artwork.json"
+                    output.write_bytes(b"prior snapshot")
+                    saved = self.command("--corkdeck-catalog", source, "--output", output)
+                    self.assertEqual((saved.returncode, saved.stdout, saved.stderr), (0, b"", b""))
+                    self.assertEqual(output.read_bytes(), combined.stdout)
+                    self.assertEqual(source.read_bytes(), original)
+                    self.assertEqual(list(self.root.glob(".exodus-catalog-*")), [])
 
     def test_runtime_source_works_alone_for_both_versions_and_empty_catalog(self):
         for version in (2, 3):
