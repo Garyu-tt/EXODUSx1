@@ -8,6 +8,9 @@
 #include "native_launch.h"
 #include "native_target.h"
 #include "horizon_session.h"
+#ifdef __SWITCH__
+#include "library_state.h"
+#endif
 #include "library_filter.h"
 #include "shell_menu.h"
 #include "control_metrics.h"
@@ -136,6 +139,14 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
         exodus_library_close(library);
         return 0;
     }
+#ifdef __SWITCH__
+    const char *state_a="sdmc:/switch/exodus-shell/library-state.0";
+    const char *state_b="sdmc:/switch/exodus-shell/library-state.1";
+    struct exodus_state state={0};
+    exodus_state_open(&state,state_a,state_b);
+    if (!state.writable)
+        ui_message(ui,"Favorites","Preferences unreadable. Session only; snapshots preserved.");
+#endif
     unsigned char *favorites = calloc(total, 1);
     struct exodus_card_index *cards = calloc(total, sizeof(*cards));
     struct cover_slot covers[8] = {{0}};
@@ -145,6 +156,15 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
         ui_message(ui, heading, "Not enough memory");
         goto done;
     }
+#ifdef __SWITCH__
+    for (size_t n=0;n<total;++n) {
+        char canonical[17];
+        const char *provider=exodus_library_provider(library,n);
+        const char *id=exodus_state_identity(provider,exodus_library_id(library,n),canonical);
+        const struct exodus_state_row *row=exodus_state_find(&state,provider,id);
+        if (row) favorites[n]=row->favorite;
+    }
+#endif
     count = filter_cards(library, filter, section, favorites, cards);
     const struct ui_hint hints[] = {
         {UI_A, "A: Open"}, {UI_B, "B: Back"}, {UI_L, "L: Previous"}, {UI_R, "R: Next"},
@@ -167,6 +187,21 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
             size_t index = cards[selection].index;
             if (input.button == UI_X) {
                 favorites[index] = !favorites[index];
+#ifdef __SWITCH__
+                if (state.writable) {
+                    char canonical[17];
+                    const char *provider=exodus_library_provider(library,index);
+                    const char *id=exodus_state_identity(provider,exodus_library_id(library,index),canonical);
+                    struct exodus_state_row *row=exodus_state_get(&state,provider,id);
+                    if (row) {
+                        row->favorite=favorites[index];
+                        if (!exodus_state_save(&state,state_a,state_b)) {
+                            state.writable=0;
+                            ui_message(ui,"Favorites","Cannot save preferences. Session only.");
+                        }
+                    } else ui_message(ui,"Favorites","Favorite kept for this session only.");
+                }
+#endif
                 if (filter == FILTER_FAVORITES) {
                     count = filter_cards(library, filter, section, favorites, cards);
                     if (selection >= count) selection = count ? count - 1 : 0;
@@ -251,6 +286,9 @@ done:
     clear_covers(covers);
     free(cards);
     free(favorites);
+#ifdef __SWITCH__
+    exodus_state_clear(&state);
+#endif
     exodus_library_close(library);
     return handoff;
 }
