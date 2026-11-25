@@ -1,0 +1,5 @@
+# R35 stage-2 shared window control
+
+Source audit of pinned Bao 0af4a1ab558ad60c9658af4f43756c4536dd3141: src/core/vm.c vm_init_ipc() resolves shmem_id, uses the shared physical region, then vm_map_mem_region() calls mem_alloc_map() with PTE_VM_FLAGS. The pinned armv8 page_table.h defines normal inner/outer write-back, PTE_SH_NS, read/write and access flag. Both guest configurations use the same shmem_id. This establishes intended mapping, not actual effective cacheability or hardware coherence.
+
+Separate synthetic QEMU guest pair checks EL1 and disabled stage-1 translation, performs 256 rounds each of role-specific 64-bit payload publication, acquire observation and release acknowledgment, and requires both guests to finish before the single UART marker. Uses an offset inside the already configured 64 KiB reference window, not an arbitrary device address. Host bounded timeout rejects hangs. This does not execute the C R33 codec, test enabled stage-1 translation, prove hardware memory ordering, or load the R34 driver. No change to Bao flags or accepted R32 images. Runtime stage-1/2 attributes and actual FreeBSD driver attachment remain gates.
