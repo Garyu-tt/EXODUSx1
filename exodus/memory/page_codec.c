@@ -199,6 +199,33 @@ static void bdi_block(const uint8_t *p,bool compressed,uint8_t out[BLOCK_BYTES])
     for(size_t w=0;w<16;w++) bdi_put(out+w*4,base+p[4+w]);
 }
 
+/* Shared 64-byte block primitives for packed BDI and hot slabs. */
+size_t exodus_bdi_block_encode(const uint8_t *block,uint8_t *out)
+{
+    uint32_t lo=bdi_load(block),hi=lo;
+    for(size_t i=1;i<16;i++){
+        uint32_t v=bdi_load(block+i*4);
+        if(v<lo)lo=v;
+        if(v>hi)hi=v;
+    }
+    if(hi-lo>255){memcpy(out,block,BLOCK_BYTES);return BLOCK_BYTES;}
+    bdi_put(out,lo);
+    for(size_t i=0;i<16;i++)out[4+i]=(uint8_t)(bdi_load(block+i*4)-lo);
+    return BDI_BYTES;
+}
+bool exodus_bdi_block_decode(const uint8_t *encoded,size_t n,uint8_t *out)
+{
+    if(!encoded||!out||(n!=BDI_BYTES&&n!=BLOCK_BYTES))return false;
+    bdi_block(encoded,n==BDI_BYTES,out);return true;
+}
+bool exodus_bdi_block_read(const uint8_t *encoded,size_t n,size_t word,uint8_t out[4])
+{
+    if(!encoded||!out||word>=16||(n!=BDI_BYTES&&n!=BLOCK_BYTES))return false;
+    if(n==BDI_BYTES)bdi_put(out,bdi_load(encoded)+encoded[4+word]);
+    else memcpy(out,encoded+4*word,4);
+    return true;
+}
+
 /* Prepare one replacement block without materializing the encoded page. */
 bool exodus_page_bdi_prepare_patch(const uint8_t *p,size_t size,size_t word,
                                    const uint8_t value[4],struct exodus_bdi_patch *out)
@@ -212,18 +239,7 @@ bool exodus_page_bdi_prepare_patch(const uint8_t *p,size_t size,size_t word,
     uint8_t block[BLOCK_BYTES];
     bdi_block(p+patch.offset,was,block);
     memcpy(block+w*4,value,4);
-    uint32_t lo=bdi_load(block),hi=lo;
-    for(size_t i=1;i<16;i++){
-        uint32_t v=bdi_load(block+i*4);
-        if(v<lo)lo=v;
-        if(v>hi)hi=v;
-    }
-    bool fits=hi-lo<=255;
-    patch.new_len=fits?BDI_BYTES:BLOCK_BYTES;
-    if(fits){
-        bdi_put(patch.bytes,lo);
-        for(size_t i=0;i<16;i++)patch.bytes[4+i]=(uint8_t)(bdi_load(block+i*4)-lo);
-    }else memcpy(patch.bytes,block,BLOCK_BYTES);
+    patch.new_len=exodus_bdi_block_encode(block,patch.bytes);
     *out=patch;
     return true;
 }

@@ -165,3 +165,16 @@ clean-local-patch:
 	$(RM) test_local_patch$(EXEEXT)
 
 .PHONY: check-local-patch clean-local-patch
+
+test_bdi_slab$(EXEEXT): page_codec.c page_codec.h bdi_slab.c bdi_slab.h test_bdi_slab.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ page_codec.c bdi_slab.c test_bdi_slab.c $(LDLIBS)
+
+check: check-bdi-slab
+check-bdi-slab: test_bdi_slab$(EXEEXT)
+	./test_bdi_slab$(EXEEXT)
+
+clean: clean-bdi-slab
+clean-bdi-slab:
+	$(RM) test_bdi_slab$(EXEEXT)
+
+.PHONY: check-bdi-slab clean-bdi-slab
