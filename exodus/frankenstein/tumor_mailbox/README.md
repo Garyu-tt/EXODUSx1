@@ -13,3 +13,7 @@ Initial native build job 139503559909 completed compilation and linking of the f
 ## Native build acceptance and loader control
 
 Exact head 63713389b18e7cbb60a61bea40c24c14d2be3209 passed seven CI jobs. Native job 139515365030 (run 45702329404) produced artifact 15064386832, with guest build result 0 and independent host checksum/ELF gate PASS. Next control loads and unloads the same module twice on ordinary disposable FreeBSD ARM64 QEMU virt with no reference mailbox node. Require kernel module registration, absence of attached devices and removal of registration. This does not enable the FDT fragment, touch shared memory, or establish Bao coherency. The stage-2 gate remains independent.
+
+## R36 mapping-only control
+
+R34 head c96b4936de00ff904ef1a77cb0c5c3800d352096 passed native load/unload twice on stock QEMU FreeBSD (job 139521641776, artifact 15064991707). No device attached. R36 separates non-cacheable mapping-only attachment from coherent write-back mode. Exactly one zero-length FDT mode flag is required. The driver still never reads or writes mapped memory. The FDT preparation script admits only the two fixed Bao reference DTS files and roles; it creates a separate enabled node with mapping-only, never coherent-normal-memory. The original boot DTS files and disabled fragment remain unchanged. Host FDT compilation and inspection and native module build/load control are required. Actual mapping attachment under Bao remains a subsequent runtime gate; this change does not establish stage-2 coherency or permit data exchange.
