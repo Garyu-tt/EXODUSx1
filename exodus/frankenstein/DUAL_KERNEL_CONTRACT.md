@@ -5,6 +5,37 @@ defines the target, not a claim of physical coexistence. Existing QEMU evidence
 remains reference-only. No boot payload, firmware changes or raw register writes
 are authorized by this document.
 
+## Physical target clarification (2026-11-26)
+
+Owner direction: [#103](https://github.com/Garyu-tt/EXODUSx1/issues/103#issuecomment-7176567653).
+The physical candidate is asymmetric multiprocessing (AMP): retain all four
+Cortex-A57 application cores for Horizon and investigate the separate
+Cortex-A9 ADSP for resident FreeBSD/armv7. A53 exploration stays deferred.
+The ARM64 Bao/QEMU results below are reference controls, not the physical
+boot design. EL2 mediation on the application cores is not an assumed
+requirement for AMP; an authorized ADSP bootstrap and device arbitration
+still need proof.
+
+Admission sequence for this candidate:
+- Verify exact board revision and ADSP availability, supported startup,
+  instruction set, MMU, usable RAM, timer/IRQ and safe recovery.
+- Build a separate FreeBSD armv7 kernel and minimal userspace. ARM64
+  artifacts are not installable on this core. FreeBSD armv7 is Tier 2.
+- Demonstrate a bounded, versioned mixed-width IPC channel. In particular,
+  verify aligned atomic width, ordering and cache visibility across domains;
+  ARM64 acquire/release evidence cannot establish ADSP coherence.
+- Keep audio and Horizon service behavior intact. Device ownership,
+  graphics/compute execution placement and Steam ABI remain independent
+  gates; do not assume an ARM64 client can execute on the Cortex-A9.
+- Admit a clean SD install only when a target-specific bootable candidate,
+  recovery procedure and exact SD destination are verified. Preserve eMMC.
+
+Sources: [FreeBSD platform support](https://www.freebsd.org/platforms/),
+[FreeBSD ARM project](https://www.freebsd.org/platforms/arm/),
+[Linux Tegra210 SoC description](https://kernel.googlesource.com/pub/scm/linux/kernel/git/arm64/linux/+/06898e5320b5c12dd8c21d0ee8d5a68347001746/drivers/soc/tegra/Kconfig).
+No physical hardware test or firmware change is asserted here. The following
+historical reference topology and results are retained for reproducibility.
+
 ## Bootstrap gate
 
 User-visible order: Horizon starts, then FreeBSD starts and becomes the control
