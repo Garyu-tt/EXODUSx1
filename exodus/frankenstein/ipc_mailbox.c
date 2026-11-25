@@ -58,6 +58,8 @@ static int attach(tmr_endpoint *e, tmr_mailbox *m, uint8_t role,
     if (atomic_load_explicit(&e->tx->published, memory_order_acquire) ||
         atomic_load_explicit(&e->tx->consumed, memory_order_acquire) ||
         atomic_load_explicit(&e->rx->consumed, memory_order_acquire)) return TMR_FAULT;
+    uint64_t peer_claim = atomic_load_explicit(&e->rx->claimed, memory_order_acquire);
+    if (peer_claim && peer_claim != peer_generation) return TMR_FAULT;
     uint64_t empty = 0;
     if (!atomic_compare_exchange_strong_explicit(&e->tx->claimed, &empty,
             generation, memory_order_acq_rel, memory_order_acquire)) return TMR_FAULT;
@@ -66,6 +68,8 @@ static int attach(tmr_endpoint *e, tmr_mailbox *m, uint8_t role,
 }
 static int send_frame(tmr_endpoint *e, uint64_t now) {
     if (e->closed || !tmr_tick(&e->peer, now)) return fault(e);
+    uint64_t peer_claim = atomic_load_explicit(&e->rx->claimed, memory_order_acquire);
+    if (peer_claim && peer_claim != e->peer.generation) return fault(e);
     uint64_t pub = atomic_load_explicit(&e->tx->published, memory_order_acquire);
     uint64_t ack = atomic_load_explicit(&e->tx->consumed, memory_order_acquire);
     if (atomic_load_explicit(&e->tx->claimed, memory_order_acquire) != e->generation ||
@@ -84,8 +88,12 @@ static int recv_frame(tmr_endpoint *e, uint64_t now) {
     uint64_t ack = atomic_load_explicit(&e->rx->consumed, memory_order_acquire);
     uint64_t pub = atomic_load_explicit(&e->rx->published, memory_order_acquire);
     if (ack != e->peer.sequence || pub < ack || pub-ack > 1) return fault(e);
+    /* Read the remote claim after acquiring publication. Before the peer
+     * attaches, zero is legitimate only while no frame has been published. */
+    uint64_t peer_claim = atomic_load_explicit(&e->rx->claimed, memory_order_acquire);
+    if (atomic_load_explicit(&e->tx->claimed, memory_order_acquire) != e->generation ||
+        (peer_claim != e->peer.generation && (peer_claim || pub))) return fault(e);
     if (pub == ack) return TMR_IDLE;
-    if (atomic_load_explicit(&e->rx->claimed, memory_order_acquire) != e->peer.generation) return fault(e);
     uint64_t words[3]; uint8_t frame[TMR_FRAME_SIZE];
     for (unsigned i = 0; i < 3; ++i)
         words[i] = atomic_load_explicit(&e->rx->words[i], memory_order_relaxed);
@@ -138,6 +146,34 @@ int main(void) {
     assert(atomic_load(&m.direction[0].claimed)==100);
     assert(atomic_load(&m.direction[1].claimed)==200);
     puts("PASS: duplicate producer rejected before first frame");
+    /* Legitimate late peer attachment remains supported, even when the
+     * first producer has already published. A wrong generation must not
+     * consume the other direction's permanent claim. */
+    assert(mailbox_init(&m));
+    assert(attach(&a,&m,1,100,200,0)==TMR_OK);
+    assert(recv_frame(&a,1)==TMR_IDLE);
+    assert(send_frame(&a,1)==TMR_OK);
+    assert(attach(&b,&m,2,200,101,1)==TMR_FAULT);
+    assert(atomic_load(&m.direction[1].claimed)==0);
+    assert(attach(&b,&m,2,200,100,1)==TMR_OK);
+    assert(recv_frame(&b,2)==TMR_OK);
+    fresh(&m,&a,&b);
+    atomic_store(&m.direction[1].claimed,201);
+    assert(recv_frame(&a,1)==TMR_FAULT);
+    assert(atomic_load(&m.direction[1].consumed)==0);
+    fresh(&m,&a,&b);
+    atomic_store(&m.direction[1].claimed,201);
+    assert(send_frame(&a,1)==TMR_FAULT);
+    assert(atomic_load(&m.direction[0].published)==0);
+    fresh(&m,&a,&b);
+    atomic_store(&m.direction[0].claimed,0);
+    assert(recv_frame(&a,1)==TMR_FAULT);
+    fresh(&m,&a,&b);
+    assert(send_frame(&b,1)==TMR_OK && recv_frame(&a,1)==TMR_OK);
+    atomic_store(&m.direction[1].claimed,0);
+    assert(recv_frame(&a,2)==TMR_FAULT);
+    puts("PASS: mismatched claims rejected during attach, send and idle receive");
+    fresh(&m,&a,&b);
     assert(recv_frame(&a,1)==TMR_IDLE);
     assert(send_frame(&a,1)==TMR_OK && send_frame(&a,1)==TMR_IDLE);
     assert(send_frame(&b,1)==TMR_OK);
