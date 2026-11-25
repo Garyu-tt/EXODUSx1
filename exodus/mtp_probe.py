@@ -50,6 +50,14 @@ class ProbeTimeout(ProbeError):
     """Windows enumeration exceeded its time budget."""
 
 
+class ObservationError(ProbeError):
+    """Enumeration failed after at least one sample was recorded."""
+
+    def __init__(self, message, observation):
+        super().__init__(message)
+        self.observation = observation
+
+
 @dataclass(frozen=True)
 class Snapshot:
     state: str
@@ -212,10 +220,13 @@ def observe(usb_id, initial, seconds, sample):
             break
         try:
             current = sample(usb_id, timeout=min(remaining, QUERY_TIMEOUT))
-        except ProbeTimeout:
-            if remaining > QUERY_TIMEOUT:
-                raise
-            return {"events": events, "complete": False, "reason": "query_timeout"}
+        except ProbeError as exc:
+            timed_out = isinstance(exc, ProbeTimeout)
+            partial = {"events": events, "complete": False,
+                       "reason": "query_timeout" if timed_out else "query_failed"}
+            if timed_out and remaining <= QUERY_TIMEOUT:
+                return partial
+            raise ObservationError(str(exc), partial) from exc
         changed = (current.parent_id is not None and last_parent is not None
                    and current.parent_id != last_parent)
         if current.parent_id is not None:
@@ -255,15 +266,19 @@ def main(argv=None, sample=read_windows):
         elif args.observe is not None:
             observation = observe(usb_id, initial, args.observe, sample)
             success = observation["complete"]
+        exit_code = 0 if success else 1
     except ProbeError as exc:
         print(f"MTP probe: {exc}", file=sys.stderr)
-        return 2
+        if not isinstance(exc, ObservationError):
+            return 2
+        observation = exc.observation
+        exit_code = 2
 
     report = {"schema_version": 1, "usb_id": usb_id, "initial": initial.report(), "reconnect": reconnect}
     if observation is not None:
         report["observation"] = observation
     print(json.dumps(report))
-    return 0 if success else 1
+    return exit_code
 
 
 if __name__ == "__main__":
