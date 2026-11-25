@@ -86,9 +86,9 @@ for file in "$here/settings_preview.c" "$here/windows_pe.c" "$here/../../runtime
         -ffunction-sections -fdata-sections -I"$nx/include" -I"$src" \
         -c "$file" -o "$tmp/$object"
 done
-for file in "$here/library_catalog.cpp" "$here/../ulaunch/catalog.cpp"; do
+for file in "$here/library_catalog.cpp" "$here/../ulaunch/catalog.cpp" "$here/../ulaunch/catalog_refresh.cpp"; do
     object="$(basename "$file").o"
-    "$cxx" $arch -D__SWITCH__ -std=c++17 -O2 -Wall -Wextra "$@" "-frandom-seed=$object" \
+    "$cxx" $arch -D__SWITCH__ -std=gnu++17 -O2 -Wall -Wextra "$@" "-frandom-seed=$object" \
         -ffunction-sections -fdata-sections -I"$tmp/json-headers" -I"$tmp/json-headers/nlohmann" -I"$nx/include" \
         -c "$file" -o "$tmp/$object"
 done
