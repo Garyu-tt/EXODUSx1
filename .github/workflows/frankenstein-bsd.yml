@@ -8,6 +8,8 @@ on:
       - 'exodus/frankenstein/linux-dynamic-probe.c'
       - 'exodus/frankenstein/run-reference.sh'
       - 'exodus/frankenstein/manager-inotify-probe.c'
+      - 'exodus/frankenstein/bsd_process.rs'
+      - 'exodus/frankenstein/apply-manager-process.sh'
       - 'exodus/frankenstein/verify-manager-evidence.sh'
       - 'exodus/frankenstein/test_manager_gate.py'
       - 'exodus/frankenstein/verify-guest-evidence.sh'
@@ -59,6 +61,7 @@ jobs:
         run: |
           for script in exodus/frankenstein/guest-*.sh; do sh -n "$script"; done
           sh -n exodus/frankenstein/run-reference.sh
+          sh -n exodus/frankenstein/apply-manager-process.sh
           sh -n exodus/frankenstein/verify-manager-evidence.sh
           sh -n exodus/frankenstein/verify-guest-evidence.sh
           sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" "${{ matrix.mode }}"

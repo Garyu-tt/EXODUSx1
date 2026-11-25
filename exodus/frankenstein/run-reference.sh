@@ -59,7 +59,9 @@ if [ "$mode" = linuxdynamic ]; then
     mcopy -i seed.img linux-dynamic ld-linux-aarch64.so.1 libc.so.6 ::
 fi
 if [ "$mode" = manager ]; then
-    mcopy -i seed.img "$here/manager-inotify-probe.c" ::
+    for f in manager-inotify-probe.c bsd_process.rs apply-manager-process.sh; do
+        mcopy -i seed.img "$here/$f" ::
+    done
 fi
 if [ "$mode" = rcresident ]; then
     for f in sessiond.c sessiond-dbus.inc tumor_reference_bus tumor_reference_session; do mcopy -i seed.img "$here/$f" ::; done

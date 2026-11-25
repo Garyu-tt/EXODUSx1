@@ -48,6 +48,7 @@ done
 test -n "$seed"
 mount -t msdosfs -o ro "$seed" "$seed_dir"
 cp "$seed_dir/manager-inotify-probe.c" "$probe_dir/inotify.c"
+cp "$seed_dir/bsd_process.rs" "$seed_dir/apply-manager-process.sh" "$probe_dir/"
 umount "$seed_dir"
 rmdir "$seed_dir"
 cc -std=gnu11 -Wall -Wextra -Werror "$probe_dir/inotify.c" -o "$probe_dir/inotify"
@@ -95,7 +96,7 @@ test -S /var/run/devd.seqpacket.pipe
 timeout 15s "$probe_dir/udev"
 echo EXODUS_MANAGER_DEVD_UDEV_ABI_PASS
 echo EXODUS_MANAGER_DEVD_MONITOR_SETUP_PASS
-rm -rf "$probe_dir"
+
 
 for tool in git rustc cargo; do command -v "$tool"; done
 rustc -Vv
@@ -114,8 +115,11 @@ test -f Cargo.lock
 cargo build --locked -p steamos-manager-proxy -p steamos-manager-macros
 find target/debug -maxdepth 1 -name 'libsteamos_manager*' -exec file {} \;
 echo EXODUS_MANAGER_PROTOCOL_BUILD_PASS
-# Collect real compiler diagnostics for the untouched upstream daemon.
-# A successful check is not runtime proof; failure remains a port blocker.
+# Apply the narrowly scoped FreeBSD process provider after the original proxy build.
+# Full daemon compilation remains a real gate; no runtime success is implied.
+sh "$probe_dir/apply-manager-process.sh" "$PWD" "$probe_dir/bsd_process.rs"
+echo EXODUS_MANAGER_BSD_PROCESS_PATCH_APPLIED
+rm -rf "$probe_dir"
 set +e
 cargo check --locked -p steamos-manager
 manager_rc=$?
