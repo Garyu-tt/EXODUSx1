@@ -306,18 +306,30 @@ bool exodus_page_bdi_fingerprint(const uint8_t *p,size_t size,uint64_t *out)
     return true;
 }
 
-bool exodus_page_bdi_equal_page(const uint8_t *p,size_t size,const uint8_t *page)
+/* Caller validates the complete layout before inspecting any blocks.
+ * Raw blocks compare in place; compressed blocks compare logical words.
+ * Unsigned addition intentionally preserves the decoder's wrap semantics. */
+static bool bdi_equal_validated(const uint8_t *p,const uint8_t *page)
 {
-    if(!page || !bdi_valid(p,size))return false;
     size_t pos=BDI_HEADER;
     for(size_t b=0;b<BLOCKS;b++){
-        uint8_t block[BLOCK_BYTES];
-        bool compressed=(p[1+b/8]&(1u<<(b%8)))!=0;
-        bdi_block(p+pos,compressed,block);
-        if(memcmp(block,page+b*BLOCK_BYTES,BLOCK_BYTES)!=0)return false;
-        pos+=compressed?BDI_BYTES:BLOCK_BYTES;
+        const uint8_t *logical=page+b*BLOCK_BYTES;
+        if(p[1+b/8]&(1u<<(b%8))){
+            uint32_t base=bdi_load(p+pos);
+            for(size_t w=0;w<BLOCK_BYTES/WORD_BYTES;w++)
+                if(base+(uint32_t)p[pos+WORD_BYTES+w]!=bdi_load(logical+w*WORD_BYTES))
+                    return false;
+            pos+=BDI_BYTES;
+        }else{
+            if(memcmp(p+pos,logical,BLOCK_BYTES)!=0)return false;
+            pos+=BLOCK_BYTES;
+        }
     }
     return true;
+}
+bool exodus_page_bdi_equal_page(const uint8_t *p,size_t size,const uint8_t *page)
+{
+    return page && bdi_valid(p,size) && bdi_equal_validated(p,page);
 }
 
 static bool decode_bdi(const uint8_t *p,size_t size,uint8_t *page)
@@ -470,7 +482,7 @@ bool exodus_page_compare(const uint8_t *p,size_t size,const uint8_t *page,bool *
     }else if(size&1u){
         if(p[0]==EXODUS_PAGE_BDI_VERSION){
             if(!bdi_valid(p,size))return false;
-            match=exodus_page_bdi_equal_page(p,size,page);
+            match=bdi_equal_validated(p,page);
         }else if(p[0]==EXODUS_PAGE_REPEATED_TILE_VERSION){
             size_t tile=size-1;
             if(tile!=8&&tile!=16)return false;
