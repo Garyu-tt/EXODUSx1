@@ -304,8 +304,38 @@ static void check_adaptive_sharing(void)
     check_restore_failure_unchanged(&f.store, 1);
 }
 
+static void check_corrupt_physical_index_rejects_append(void)
+{
+    struct fixture f;
+    uint8_t pages[4][EXODUS_PAGE_BYTES] = {{0}};
+    pages[1][0] = 1;
+    pages[2][0] = 2;
+    pages[3][0] = 3;
+    for (size_t scenario = 0; scenario < 4; ++scenario) {
+        init_fixture(&f);
+        for (size_t i = 0; i < 3; ++i)
+            CHECK(exodus_page_dedup_store_append(&f.store, pages[i]));
+        switch (scenario) {
+        case 0: f.ends[0] = 0; break;
+        case 1: f.ends[1] = f.ends[0]; break;
+        case 2: f.ends[1] = f.store.unique.payload_used + 1; break;
+        case 3: f.ends[0] = EXODUS_PAGE_BYTES + 1; break;
+        }
+        /* Distinct input skips all hash candidates; zero can match early. */
+        for (size_t candidate = 0; candidate < 4; candidate += 3) {
+            struct fixture before;
+            memcpy(&before, &f, sizeof(f));
+            CHECK(!exodus_page_dedup_store_append(&f.store, pages[candidate]));
+            CHECK(memcmp(&f, &before, sizeof(f)) == 0);
+            CHECK(!exodus_page_dedup_store_append_adaptive(&f.store, pages[candidate]));
+            CHECK(memcmp(&f, &before, sizeof(f)) == 0);
+        }
+    }
+}
+
 int main(void)
 {
+    check_corrupt_physical_index_rejects_append();
     check_adaptive_sharing();
     check_raw_sharing_and_memory_budget();
     check_mixed_pages_and_full_physical_capacity();
