@@ -37,6 +37,7 @@ class LicenseStatus(str, Enum):
     UNSUPPORTED_APP = "unsupported_app"
     PUBLISHER_NOT_CONFIGURED = "publisher_not_configured"
     SIGN_IN_UNAVAILABLE = "sign_in_unavailable"
+    ACCOUNT_MISMATCH = "account_mismatch"
     OWNERSHIP_UNAVAILABLE = "ownership_unavailable"
 
 
@@ -100,7 +101,8 @@ def _read_ownership_reply(opener, request):
     return body if len(body) == expected_bytes else None
 
 
-def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, opener=None, open_browser=None):
+def check_entitlement(app_id, *, publisher_app_id, publisher_key, expected_steam_id=None,
+                      timeout=180, opener=None, open_browser=None):
     """Return a live license status for an identity confirmed through Steam OpenID."""
     app_id = parse_identifier(app_id, MAX_APP_ID)
     publisher_app_id = parse_identifier(publisher_app_id, MAX_APP_ID)
@@ -110,6 +112,10 @@ def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, o
         return LicenseStatus.UNSUPPORTED_APP
     if type(publisher_key) is not str or PUBLISHER_KEY.fullmatch(publisher_key) is None:
         return LicenseStatus.PUBLISHER_NOT_CONFIGURED
+    if expected_steam_id is not None:
+        expected_steam_id = parse_identifier(expected_steam_id, MAX_STEAM_ID)
+        if expected_steam_id is None:
+            return LicenseStatus.SIGN_IN_UNAVAILABLE
     if type(timeout) is not int or not 1 <= timeout <= 900:
         return LicenseStatus.SIGN_IN_UNAVAILABLE
 
@@ -121,6 +127,8 @@ def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, o
         return LicenseStatus.SIGN_IN_UNAVAILABLE
     if steam_id is None:
         return LicenseStatus.SIGN_IN_UNAVAILABLE
+    if expected_steam_id is not None and steam_id != expected_steam_id:
+        return LicenseStatus.ACCOUNT_MISMATCH
 
     params = urlencode({"appid": app_id, "steamid": steam_id, "format": "json"})
     request = Request(CHECK_APP_OWNERSHIP + "?" + params, headers={"Accept": "application/json"})
@@ -138,12 +146,20 @@ def check_entitlement(app_id, *, publisher_app_id, publisher_key, timeout=180, o
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--app-id", required=True, help="canonical decimal Steam AppID")
+    parser.add_argument("--expect-steam-id", help="canonical SteamID64 of the intended test account")
     parser.add_argument("--timeout", type=int, default=180, metavar="SECONDS",
                         help="time to complete Steam sign-in in the browser")
-    args = parser.parse_args(argv)
+    args, unknown = parser.parse_known_args(argv)
+    if unknown:
+        parser.error("unrecognized arguments")
     app_id = parse_identifier(args.app_id, MAX_APP_ID)
     if app_id is None:
         parser.error("--app-id must be a canonical positive uint32")
+    expected_steam_id = None
+    if args.expect_steam_id is not None:
+        expected_steam_id = parse_identifier(args.expect_steam_id, MAX_STEAM_ID)
+        if expected_steam_id is None:
+            parser.error("--expect-steam-id must be a canonical positive uint64")
     if not 1 <= args.timeout <= 900:
         parser.error("--timeout must be between 1 and 900 seconds")
 
@@ -152,7 +168,7 @@ def main(argv=None):
     os.environ.pop(LIBRARY_KEY_ENV, None)
     try:
         status = check_entitlement(app_id, publisher_app_id=os.environ.get(PUBLISHER_APP_ID_ENV),
-                                   publisher_key=publisher_key, timeout=args.timeout)
+                                   publisher_key=publisher_key, expected_steam_id=expected_steam_id, timeout=args.timeout)
     except KeyboardInterrupt:
         status = LicenseStatus.OWNERSHIP_UNAVAILABLE
     print(json.dumps({"appid": app_id, "status": status.value}))
