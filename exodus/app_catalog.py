@@ -114,6 +114,17 @@ def scan_homebrew(sd_root):
         print(error, file=sys.stderr)
         errors = True
 
+    try:
+        root_info = switch_dir.lstat()
+    except OSError as exc:
+        report_error(exc)
+        return entries, errors
+    if (stat.S_ISLNK(root_info.st_mode)
+            or (os.name == "nt" and getattr(root_info, "st_reparse_tag", None)
+                == stat.IO_REPARSE_TAG_MOUNT_POINT)):
+        report_error(f"{switch_dir}: switch directory must not be a link or junction")
+        return entries, errors
+
     for directory, subdirs, files in os.walk(switch_dir, onerror=report_error):
         folder = Path(directory)
         if os.name == "nt":
