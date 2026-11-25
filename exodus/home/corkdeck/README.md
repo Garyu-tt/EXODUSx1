@@ -67,7 +67,7 @@ The shared parser carries GPL-2.0-only. Its source and license accompany the she
 
 ## R05: explicit provider launch routing
 
-Native Switch title IDs are 16 hexadecimal characters (nonzero) and must appear in a fresh NS application inventory before appletRequestLaunchApplication. Library applet launches require HOS 5.0 or later; unsupported contexts fail closed. Homebrew IDs are relative to sdmc:/switch, must use .nro, cannot traverse directories, and must pass the shared structural NRO preflight before envSetNextLoad. A supported loader must be present. The user must confirm the target; accepted requests exit the preview normally. This is a request handoff, not proof that the title executed. Steam and CorkDeck are recognized routes but have no active backend yet; the host never launches anything. No arbitrary command strings are executed.
+Native Switch title IDs are 16 hexadecimal characters (nonzero) and must appear in a fresh NS application inventory before appletRequestLaunchApplication. Library applet launches require HOS 5.0 or later; unsupported contexts fail closed. Homebrew IDs are relative to sdmc:/switch, must use .nro (in any ASCII letter case, preserving the original path spelling), cannot traverse directories, and must pass the shared structural NRO preflight before envSetNextLoad. A supported loader must be present. The user must confirm the target; accepted requests exit the preview normally. This is a request handoff, not proof that the title executed. Steam and CorkDeck are recognized routes but have no active backend yet; the host never launches anything. No arbitrary command strings are executed.
 
 Portable routing test (no SDL or libnx needed):
 
