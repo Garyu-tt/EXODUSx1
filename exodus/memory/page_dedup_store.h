@@ -24,7 +24,8 @@ struct exodus_page_dedup_store {
  * may reuse the source. Equal pages share backing only after a full byte check;
  * a fingerprint match alone never establishes equality. A duplicate can fit
  * even when the unique-page or payload capacity is exhausted. Failure leaves
- * all buffers and counters unchanged.
+ * all buffers and counters unchanged. Append validates every physical end
+ * offset before admitting either a duplicate or a new unique page.
  */
 bool exodus_page_dedup_store_append(struct exodus_page_dedup_store *store,
                                    const uint8_t *page);
