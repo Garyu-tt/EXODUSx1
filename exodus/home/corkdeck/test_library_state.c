@@ -25,9 +25,22 @@ int main(void)
     assert(exodus_state_find(&s,"Switch","0000000000000001")->favorite==1);
     assert(exodus_state_find(&s,"Homebrew","app/app.nro")->requested==8);
     assert(!exodus_state_find(&s,"Steam","app/app.nro"));
+    assert(!exodus_state_group_key(0,canonical));
+    assert(!exodus_state_get(&s,"EVCSGroup","0000000000000000"));
+    assert(!exodus_state_get(&s,"EVCSGroup","010000000000ABCD"));
+    assert(!exodus_state_get(&s,"EVCSGroup","arbitrary"));
+    r=exodus_state_get(&s,"EVCSGroup",exodus_state_group_key(1,canonical));
+    assert(r); r->favorite=1;
+    assert(exodus_state_save(&s,a,b) && s.generation==3 && s.slot==0);
+    exodus_state_open(&s,a,b);
+    assert(s.count==3 && s.generation==3);
+    assert(exodus_state_find(&s,"EVCSGroup","0000000000000001")->favorite==1);
+    assert(exodus_state_find(&s,"Switch","0000000000000001")->requested==7);
+    /* Preserve the new namespace across the existing torn-write test. */
+    assert(exodus_state_save(&s,a,b) && s.generation==4 && s.slot==1);
     FILE *f=fopen(b,"wb"); assert(f); assert(fputs("torn",f)>=0); assert(!fclose(f));
     exodus_state_open(&s,a,b);
-    assert(s.count==1 && s.generation==1 && s.slot==0 && s.writable);
+    assert(s.count==3 && s.generation==3 && s.slot==0 && s.writable);
     assert(exodus_state_save(&s,a,b));
     f=fopen(a,"wb"); assert(f); assert(!fclose(f));
     f=fopen(b,"r+b"); assert(f); assert(!fseek(f,20,SEEK_SET)); assert(fputc(0xff,f)!=EOF); assert(!fclose(f));

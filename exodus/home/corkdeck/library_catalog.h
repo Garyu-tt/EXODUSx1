@@ -14,6 +14,11 @@ struct exodus_library *exodus_library_open(const char *path);
 struct exodus_library *exodus_library_open_with_games(const char *path,const char *root);
 const char *exodus_library_discovery_status(const struct exodus_library *library);
 int exodus_library_is_discovered(const struct exodus_library *library,size_t index);
+/* Informational owner-declared grouping only; raw file indices are preserved. */
+size_t exodus_library_group_representative(const struct exodus_library *library,size_t index);
+size_t exodus_library_group_size(const struct exodus_library *library,size_t index);
+/* Preference identity only, zero for undeclared or rejected groups. */
+uint64_t exodus_library_declared_group_id(const struct exodus_library *library,size_t index);
 /* Selected discovered file diagnostics only; never returns launch permission. */
 int exodus_library_archive_detail(const struct exodus_library *library,size_t index,char *out,size_t cap);
 void exodus_library_close(struct exodus_library *library);

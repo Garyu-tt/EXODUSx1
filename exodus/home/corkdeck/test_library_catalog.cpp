@@ -99,6 +99,47 @@ static void verify_games_inventory(const char *fixture)
     assert(!strcmp(exodus_library_discovery_status(lib),"Games folder unavailable"));
     exodus_library_close(lib);
     assert(fs::remove_all(root)==6);
+    assert(fs::create_directory(root));
+    const auto base=root+"/Base.nsp", patch=root+"/Patch.nsp", dlc=root+"/DLC.nsp", orphan=root+"/Orphan.xci";
+    for (const auto &path:{base,patch,dlc,orphan}) { std::ofstream f(path); f<<"fixture"; }
+    { std::ofstream f(base+".evcs"); f<<"EVCS1 0000000000000001 0000000000000001 0 base\n"; }
+    { std::ofstream f(patch+".evcs"); f<<"EVCS1 0000000000000001 0000000000000002 2 update\n"; }
+    { std::ofstream f(dlc+".evcs"); f<<"EVCS1 0000000000000001 0000000000000003 1 dlc\n"; }
+    { std::ofstream f(orphan+".evcs"); f<<"EVCS1 0000000000000004 0000000000000005 1 update\n"; }
+    lib=exodus_library_open_with_games(fixture,root.c_str());
+    assert(lib && exodus_library_count(lib)==9);
+    size_t base_index=SIZE_MAX,orphan_index=SIZE_MAX;
+    for(size_t n=5;n<9;++n) {
+        if (base==exodus_library_id(lib,n)) base_index=n;
+        if (orphan==exodus_library_id(lib,n)) orphan_index=n;
+    }
+    assert(base_index!=SIZE_MAX && orphan_index!=SIZE_MAX);
+    for(size_t n=5;n<9;++n) {
+        assert(exodus_library_execution_target(lib,n).backend==EXODUS_BACKEND_NONE);
+        assert(exodus_library_group_representative(lib,n)==(n==orphan_index?n:base_index));
+        assert(exodus_library_group_size(lib,n)==(n==orphan_index?1:3));
+        assert(exodus_library_declared_group_id(lib,n)==(n==orphan_index?0:1));
+    }
+    assert(exodus_library_group_representative(lib,99)==SIZE_MAX);
+    exodus_library_close(lib);
+    const auto moved=root+"/Renamed.nsp";
+    fs::rename(base,moved);
+    fs::rename(base+".evcs",moved+".evcs");
+    lib=exodus_library_open_with_games(fixture,root.c_str());
+    assert(lib && exodus_library_count(lib)==9);
+    for(size_t n=5;n<9;++n)
+        assert(exodus_library_declared_group_id(lib,n)==(orphan==exodus_library_id(lib,n)?0:1));
+    exodus_library_close(lib);
+    { std::ofstream f(patch+".evcs"); f<<"EVCS1 0000000000000001 0000000000000001 0 base\n"; }
+    lib=exodus_library_open_with_games(fixture,root.c_str());
+    assert(lib && exodus_library_count(lib)==9);
+    assert(strstr(exodus_library_discovery_status(lib),"metadata rejected"));
+    for(size_t n=5;n<9;++n) {
+        assert(exodus_library_group_representative(lib,n)==n);
+        assert(!exodus_library_declared_group_id(lib,n));
+    }
+    exodus_library_close(lib);
+    assert(fs::remove_all(root)==9);
 }
 static void verify_default_catalog_refresh(const char *fixture)
 {
