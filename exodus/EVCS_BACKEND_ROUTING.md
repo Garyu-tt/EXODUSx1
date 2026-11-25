@@ -85,3 +85,26 @@ Do not assume that an ordinary NRO can obtain that role. Homebrew NRO
 handoff also requires separate observation because the host process
 can persist across loader transitions. Local PM test shims do not prove
 hardware permissions or SDK compatibility.
+
+## Managed Horizon session (next acceptance batch)
+
+`horizon_session.h` implements a single managed application accessor
+for an already-permitted SystemApplet. The caller must verify the
+installed title and obtain explicit local confirmation. It does not
+change process role, rights, boot configuration or privileges. The
+existing NRO launch path remains unchanged.
+
+Create/start success is acceptance. A new matching process identity
+after a known baseline is evidence of presence, not proof of gameplay.
+Only an application-accessor finish event allows Join/GetExitReason.
+Exit before observed presence is UNOBSERVED_EXIT, not a fabricated
+running event. Losing observation does not prove exit. Raw Horizon
+exit reason is preserved, not reinterpreted as a POSIX exit code.
+Local accessor detach reports UNKNOWN; no termination is requested.
+
+API is included in native shell compilation, but not wired to the
+default UI, actual SystemApplet host or Steam bridge. No hardware test
+or native SDK build has passed this batch. Native permissions, account
+selection, foreground transitions, and NRO lifecycle remain open.
+References: libnx applet.h, appletCreateApplication,
+appletApplicationStart/CheckFinished/Join/GetExitReason/Close.
