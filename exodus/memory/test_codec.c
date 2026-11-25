@@ -274,8 +274,58 @@ static void check_compare_invalid_tail(void)
     CHECK(!exodus_page_compare(stream,SIZE_MAX,page,&equal)&&equal);
 }
 
+/* Compare against the original decoder for valid and mutated wire records.
+ * Mutations may produce another valid record, so do not assume rejection. */
+static void check_compare_differential(void)
+{
+    uint8_t page[EXODUS_PAGE_BYTES], encoded[EXODUS_PAGE_BYTES + 2];
+    uint8_t decoded[EXODUS_PAGE_BYTES], candidate[EXODUS_PAGE_BYTES];
+    uint8_t *wire = encoded + 1;
+    for (unsigned kind = 0; kind < 6; ++kind) {
+        for (size_t i = 0; i < sizeof page; ++i) {
+            switch (kind) {
+            case 0: page[i] = (uint8_t)next_random(); break;
+            case 1: page[i] = i / 64 % 3 == 0 ? (uint8_t)next_random() : 0; break;
+            case 2: page[i] = 0x71; break;
+            case 3: page[i] = (uint8_t)(1 + i % 8); break;
+            case 4: page[i] = (uint8_t)(1 + i % 16); break;
+            default: page[i] = i % 4 == 0 ? (uint8_t)(i / 4 % 16) :
+                               i % 4 == 2 ? 0x34 : i % 4 == 3 ? 0x12 : 0; break;
+            }
+        }
+        size_t size = exodus_page_encode_adaptive(page, wire);
+        CHECK(size > 0 && size <= sizeof page);
+        bool equal = false;
+        CHECK(exodus_page_compare(wire,size,page,&equal) && equal);
+        memcpy(candidate,page,sizeof candidate);
+        /* Exercise every byte position, not just the end of a page. */
+        for (size_t i = 0; i < sizeof candidate; ++i) {
+            candidate[i] ^= 0x80;
+            CHECK(exodus_page_compare(wire,size,candidate,&equal) && !equal);
+            candidate[i] ^= 0x80;
+        }
+        for (size_t j = 0; j < 256; ++j) {
+            size_t pos = j < size && j < 16 ? j : next_random() % size;
+            uint8_t bit = (uint8_t)(1u << (next_random() % 8));
+            wire[pos] ^= bit;
+            size_t n = j % 4 == 0 ? next_random() % (size + 1) : size;
+            bool valid = exodus_page_decode(wire,n,decoded);
+            equal = true;
+            CHECK(exodus_page_compare(wire,n,page,&equal) == valid);
+            if (valid) {
+                CHECK(equal == (memcmp(page,decoded,sizeof page) == 0));
+                CHECK(exodus_page_compare(wire,n,decoded,&equal) && equal);
+            } else {
+                CHECK(equal);
+            }
+            wire[pos] ^= bit;
+        }
+    }
+}
+
 int main(void)
 {
+    check_compare_differential();
     check_compare_invalid_tail();
     check_adaptive();
     check_repeated_tiles();
