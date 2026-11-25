@@ -23,7 +23,17 @@ typedef struct {
     uint8_t role, closed, peer_claim_seen;
 } tmr_endpoint;
 
+/* The shared ABI must be identical for ARMv7 and AArch64. Local
+ * endpoint objects (including pointers) are never shared. Both domains
+ * must use little endian, coherent normal RAM and verified atomics. */
+_Static_assert(sizeof(_Atomic uint64_t) == 8, "atomic width");
+_Static_assert(_Alignof(tmr_slot) == 64, "slot alignment");
+_Static_assert(offsetof(tmr_slot, published) == 0, "published offset");
+_Static_assert(offsetof(tmr_slot, consumed) == 8, "consumed offset");
+_Static_assert(offsetof(tmr_slot, words) == 16, "words offset");
+_Static_assert(offsetof(tmr_slot, claimed) == 40, "claimed offset");
 _Static_assert(sizeof(tmr_slot) == 64, "mailbox layout");
+_Static_assert(offsetof(tmr_mailbox, direction[1]) == 64, "slot stride");
 _Static_assert(sizeof(tmr_mailbox) == 128, "mailbox layout");
 
 static int mailbox_init(tmr_mailbox *m) {
