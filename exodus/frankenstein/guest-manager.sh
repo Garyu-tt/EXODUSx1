@@ -17,7 +17,7 @@ input_patch=/var/tmp/steamos-manager-freebsd-input.patch
 cat > "$input_patch" <<'EXODUS_INPUT_PATCH'
 __EXODUS_MANAGER_INPUT_PATCH__
 EXODUS_INPUT_PATCH
-test "$(sha256 -q "$input_patch")" = 9593be92ac52caab7e1b2c0429d86c12ac5d7c22bf4a11c1447d07ede4ab8109
+test "$(sha256 -q "$input_patch")" = 1a20c9f9d73f1e09cd863fb70937ce4ab361fc8732b42602e54a06ed8d9ab571
 uname -a
 test "$(uname -s)" = FreeBSD
 test "$(uname -m)" = arm64
@@ -61,15 +61,22 @@ test -d "$1"
 input_linux_dir=$1
 registry_root=$(dirname "$input_sys_dir")
 test "$(dirname "$input_linux_dir")" = "$registry_root"
-test "$(sha256 -q "$input_sys_dir/src/input.rs")" = 7b64aa98481fa7340ace5d81abfe4d3e3c453ee8096b0b0d75d868f00b3e84a2
+test "$(sha256 -q "$input_sys_dir/src/input.rs")" = e1a14a5fb13c2900df9065126b21b2aa0b803c1e7d95349b34fd2df37de944c4
+test "$(sha256 -q "$input_sys_dir/src/uinput.rs")" = 4773765ef58720a1343d937d306acdc80a9029761fa6ebd395ad537f774a747e
 test "$(sha256 -q "$input_linux_dir/src/evdev.rs")" = 4c8c9aeaa750990684685833a23191f155089c0727979c9277965421c0994c4f
 test "$(sha256 -q "$input_linux_dir/src/macros.rs")" = caa32d0238b1a7903a071e58610fc85a69ca094ef46eb478ea1e876ecfcdae25
+test "$(sha256 -q "$input_linux_dir/src/uinput.rs")" = f835460c74d09976ac081067688ffa77f713300a8e921db40cea64f6ab0760c8
 test ! -e "$input_sys_dir/src/freebsd.rs"
+# This patch supports the FreeBSD uinput operations used by steamos-manager.
+# Other input-linux helpers are outside that runtime claim; mismatched
+# Linux-only ioctl encodings stay unavailable.
 patch -d "$registry_root" -p1 < "$input_patch"
-test "$(sha256 -q "$input_sys_dir/src/input.rs")" = 72be8567d25772bece9c583fc52d7e234639e5a389517a953bd8b2c71ce8cf34
+test "$(sha256 -q "$input_sys_dir/src/input.rs")" = b5e04123a2083c4fc7c71949f2d1bc6d99a3137489cacaf7832952bbe1f8930e
+test "$(sha256 -q "$input_sys_dir/src/uinput.rs")" = 5aad07c3495bc285f146c5d47617631e168bebec182a20051a4f5aa1a5a384b9
 test "$(sha256 -q "$input_sys_dir/src/freebsd.rs")" = 7a5fe5d71004fbe9f69935d1fdd1579e1386be75e26c190f68773c74974af131
-test "$(sha256 -q "$input_linux_dir/src/evdev.rs")" = c8454750f93bced19f42106352c7cc8ee49ee3e93ef113d2b6dc8109ba6e6b9f
+test "$(sha256 -q "$input_linux_dir/src/evdev.rs")" = 68cdf000ac6b523ca1293bed15236ec82457380e86b68e3536c38c5da17306fa
 test "$(sha256 -q "$input_linux_dir/src/macros.rs")" = 6f202c72bb420c242a5775afc0435e4cb23f16f9602f89f65aff85a9953bde0f
+test "$(sha256 -q "$input_linux_dir/src/uinput.rs")" = a65615795b8f9b137ad3c23af876056b02bfd5679e1a16e1117b94a4810b2293
 echo EXODUS_MANAGER_FREEBSD_INPUT_PATCH_PASS
 
 cat > /var/tmp/exodus-manager-input-abi.c <<'EOF'

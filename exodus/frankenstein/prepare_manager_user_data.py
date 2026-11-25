@@ -40,10 +40,12 @@ def render(template_path: Path, patch_path: Path) -> bytes:
     if any(line == HEREDOC_END for line in patch.splitlines()):
         raise PreparationError("manager input patch terminates its embedding heredoc")
     expected_diffs = (
-        "diff --git a/input-linux-sys-0.9.0/src/input.rs b/input-linux-sys-0.9.0/src/input.rs",
-        "diff --git a/input-linux-sys-0.9.0/src/freebsd.rs b/input-linux-sys-0.9.0/src/freebsd.rs",
         "diff --git a/input-linux-0.7.1/src/evdev.rs b/input-linux-0.7.1/src/evdev.rs",
         "diff --git a/input-linux-0.7.1/src/macros.rs b/input-linux-0.7.1/src/macros.rs",
+        "diff --git a/input-linux-0.7.1/src/uinput.rs b/input-linux-0.7.1/src/uinput.rs",
+        "diff --git a/input-linux-sys-0.9.0/src/freebsd.rs b/input-linux-sys-0.9.0/src/freebsd.rs",
+        "diff --git a/input-linux-sys-0.9.0/src/input.rs b/input-linux-sys-0.9.0/src/input.rs",
+        "diff --git a/input-linux-sys-0.9.0/src/uinput.rs b/input-linux-sys-0.9.0/src/uinput.rs",
     )
     if tuple(line for line in patch.splitlines() if line.startswith("diff --git ")) != expected_diffs:
         raise PreparationError("manager input patch changes unexpected crate paths")

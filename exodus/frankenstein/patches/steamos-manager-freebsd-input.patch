@@ -1,47 +1,139 @@
-diff --git a/input-linux-sys-0.9.0/src/input.rs b/input-linux-sys-0.9.0/src/input.rs
-index 0305c29..d202ac3 100644
---- a/input-linux-sys-0.9.0/src/input.rs
-+++ b/input-linux-sys-0.9.0/src/input.rs
-@@ -9,13 +9,21 @@ use nix::{
- };
- use libc::{c_char, c_int, c_uint, clockid_t, ioctl};
+diff --git a/input-linux-0.7.1/src/evdev.rs b/input-linux-0.7.1/src/evdev.rs
+index a554018..2706c72 100644
+--- a/input-linux-0.7.1/src/evdev.rs
++++ b/input-linux-0.7.1/src/evdev.rs
+@@ -153,10 +153,12 @@ impl<F: AsRawFd> EvdevHandle<F> {
+         }
+         {
+             /// `EVIOCGKEYCODE`
++            #[cfg(not(target_os = "freebsd"))]
+             @get keycode_legacy = ev_get_keycode -> [u32; 2]
+         }
+         {
+             /// `EVIOCGKEYCODE_V2`
++            #[cfg(not(target_os = "freebsd"))]
+             @get keycode = ev_get_keycode_v2 -> sys::input_keymap_entry
+         }
+         {
+@@ -222,6 +224,7 @@ impl<F: AsRawFd> EvdevHandle<F> {
+     /// `EVIOCGMTSLOTS`
+     ///
+     /// Warning: the current implementation can leak uninitialized heap memory into `values`
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn multi_touch_slots(&self, code: AbsoluteAxis, values: &mut [i32]) -> io::Result<()> {
+         let input_len = values.len() + 1;
+         let mut buf = Vec::<i32>::with_capacity(input_len);
+@@ -297,6 +300,7 @@ impl<F: AsRawFd> EvdevHandle<F> {
+     }
  
-+pub use libc::timeval;
-+
+     /// `EVIOCGMASK`
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn event_mask_raw(&self, kind: EventKind, buffer: &mut [u8]) -> io::Result<()> {
+         unsafe {
+             let mut mask = sys::input_mask {
+@@ -312,6 +316,7 @@ impl<F: AsRawFd> EvdevHandle<F> {
+     }
+ 
+     /// `EVIOCSMASK`
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn set_event_mask_raw(&self, kind: EventKind, buffer: &[u8]) -> io::Result<()> {
+         unsafe {
+             let mask = sys::input_mask {
+@@ -346,6 +351,7 @@ impl<F: AsRawFd> EvdevHandle<F> {
+     }
+ 
+     /// `EVIOCSABS`
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn set_absolute_info(&self, abs: AbsoluteAxis, info: &AbsoluteInfo) -> io::Result<()> {
+         unsafe {
+             let info: &sys::input_absinfo = info.into();
+diff --git a/input-linux-0.7.1/src/macros.rs b/input-linux-0.7.1/src/macros.rs
+index 7991bdf..6a4aab8 100644
+--- a/input-linux-0.7.1/src/macros.rs
++++ b/input-linux-0.7.1/src/macros.rs
+@@ -170,12 +170,14 @@ macro_rules! ioctl_impl {
+ macro_rules! impl_bitmasks {
+     { $kind:path, $event: expr, $name_mask:ident, $name_mask_set:ident, $name_bits:ident } => {
+         /// `EVIOCGMASK`
++        #[cfg(not(target_os = "freebsd"))]
+         pub fn $name_mask(&self) -> io::Result<crate::bitmask::Bitmask<$kind>> {
+             let mut bitmask = crate::bitmask::Bitmask::default();
+             self.event_mask_raw($event, &mut bitmask).map(|_| bitmask)
+         }
+ 
+         /// `EVIOCSMASK`
++        #[cfg(not(target_os = "freebsd"))]
+         pub fn $name_mask_set(&self, bitmask: &crate::bitmask::Bitmask<$kind>) -> io::Result<()> {
+             self.set_event_mask_raw($event, bitmask)
+         }
+diff --git a/input-linux-0.7.1/src/uinput.rs b/input-linux-0.7.1/src/uinput.rs
+index e6b727d..ee58c91 100644
+--- a/input-linux-0.7.1/src/uinput.rs
++++ b/input-linux-0.7.1/src/uinput.rs
+@@ -1,14 +1,19 @@
+ //! An interface to the Linux uinput kernel module that can be used to create
+ //! virtual input devices.
+ 
+-use std::{io, fs, ptr};
++use std::{io, ptr};
 +#[cfg(not(target_os = "freebsd"))]
- pub use libc::{
--    timeval,
-     input_event, input_id, input_absinfo, input_keymap_entry, input_mask,
-     ff_replay, ff_trigger, ff_envelope, ff_effect, ff_constant_effect,
-     ff_ramp_effect, ff_condition_effect, ff_periodic_effect, ff_rumble_effect,
- };
- 
-+#[cfg(target_os = "freebsd")]
-+#[path = "freebsd.rs"]
-+mod freebsd;
-+#[cfg(target_os = "freebsd")]
-+pub use self::freebsd::*;
-+
- /// Protocol version.
- pub const EV_VERSION: c_int = 0x010001;
- 
-@@ -329,11 +337,13 @@ ioctl_write_int! {
-     ev_revoke, b'E', 0x91
- }
- 
++use std::fs;
+ use std::os::unix::io::{RawFd, AsRawFd, IntoRawFd, FromRawFd};
 +#[cfg(not(target_os = "freebsd"))]
- ioctl_read! {
-     /// Retrieve current event mask
-     ev_get_mask, b'E', 0x92, input_mask
- }
- 
+ use std::os::unix::ffi::OsStrExt;
+ use std::os::fd::{AsFd, BorrowedFd, OwnedFd};
+ use std::os::raw::c_char;
+ use std::mem::{MaybeUninit, size_of};
 +#[cfg(not(target_os = "freebsd"))]
- ioctl_write_ptr! {
-     /// Set event mask
-     ev_set_mask, b'E', 0x93, input_mask
+ use std::path::{Path, PathBuf};
+ use std::slice::{from_raw_parts, from_raw_parts_mut};
++#[cfg(not(target_os = "freebsd"))]
+ use std::ffi::{OsStr, OsString, CStr};
+ use crate::sys;
+ use nix;
+@@ -153,6 +158,7 @@ impl<F: AsRawFd> UInputHandle<F> {
+     /// Returns the sysfs directory for the input device.
+     ///
+     /// Note that this path may not exist if sysfs is not mounted in the standard `/sys` location.
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn sys_path(&self) -> io::Result<PathBuf> {
+         let sys = self.sys_name()?;
+         let sys = CStr::from_bytes_with_nul(&sys).map(|c| c.to_bytes()).unwrap_or(&sys);
+@@ -160,6 +166,7 @@ impl<F: AsRawFd> UInputHandle<F> {
+     }
+ 
+     /// The device name of the input device.
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn evdev_name(&self) -> io::Result<OsString> {
+         let sys = self.sys_path()?;
+         fs::read_dir(&sys)?.filter_map(|e| match e {
+@@ -182,6 +189,7 @@ impl<F: AsRawFd> UInputHandle<F> {
+     /// The device node path of the input device.
+     ///
+     /// Note that this path may not exist if `/dev/input/*` isn't mounted properly.
++    #[cfg(not(target_os = "freebsd"))]
+     pub fn evdev_path(&self) -> io::Result<PathBuf> {
+         self.evdev_name().map(|ev| Path::new("/dev/input/").join(ev))
+     }
+@@ -237,6 +245,7 @@ impl<F: AsRawFd> UInputHandle<F> {
+         }
+         {
+             /// `UI_SET_PHYS`
++            #[cfg(not(target_os = "freebsd"))]
+             @set_str set_phys = ui_set_phys
+         }
+         {
+@@ -265,6 +274,7 @@ impl<F: AsRawFd> UInputHandle<F> {
+         }
+         {
+             /// `UI_GET_SYSNAME`
++            #[cfg(not(target_os = "freebsd"))]
+             @get_str sys_name, sys_name_buf = ui_get_sysname
+         }
+         {
 diff --git a/input-linux-sys-0.9.0/src/freebsd.rs b/input-linux-sys-0.9.0/src/freebsd.rs
 new file mode 100644
-index 0000000..99581f9
+index 0000000..7207ce5
 --- /dev/null
 +++ b/input-linux-sys-0.9.0/src/freebsd.rs
 @@ -0,0 +1,177 @@
@@ -222,42 +314,110 @@ index 0000000..99581f9
 +    assert!(align_of::<ff_effect_data>() == 8);
 +    assert!(size_of::<ff_effect>() == 48);
 +};
-diff --git a/input-linux-0.7.1/src/evdev.rs b/input-linux-0.7.1/src/evdev.rs
-index a554018..ebcc38a 100644
---- a/input-linux-0.7.1/src/evdev.rs
-+++ b/input-linux-0.7.1/src/evdev.rs
-@@ -297,6 +297,7 @@ impl<F: AsRawFd> EvdevHandle<F> {
-     }
+diff --git a/input-linux-sys-0.9.0/src/input.rs b/input-linux-sys-0.9.0/src/input.rs
+index b25e542..7bf46f3 100644
+--- a/input-linux-sys-0.9.0/src/input.rs
++++ b/input-linux-sys-0.9.0/src/input.rs
+@@ -1,4 +1,6 @@
+-use std::mem::{size_of, size_of_val};
++use std::mem::size_of;
++#[cfg(not(target_os = "freebsd"))]
++use std::mem::size_of_val;
+ use nix::{
+ 	self,
+ 	sys::ioctl::ioctl_num_type,
+@@ -9,13 +11,21 @@ use nix::{
+ };
+ use libc::{c_char, c_int, c_uint, clockid_t, ioctl};
  
-     /// `EVIOCGMASK`
-+    #[cfg(not(target_os = "freebsd"))]
-     pub fn event_mask_raw(&self, kind: EventKind, buffer: &mut [u8]) -> io::Result<()> {
-         unsafe {
-             let mut mask = sys::input_mask {
-@@ -312,6 +313,7 @@ impl<F: AsRawFd> EvdevHandle<F> {
-     }
++pub use libc::timeval;
++
++#[cfg(not(target_os = "freebsd"))]
+ pub use libc::{
+-	timeval,
+ 	input_event, input_id, input_absinfo, input_keymap_entry, input_mask,
+ 	ff_replay, ff_trigger, ff_envelope, ff_effect, ff_constant_effect,
+ 	ff_ramp_effect, ff_condition_effect, ff_periodic_effect, ff_rumble_effect,
+ };
  
-     /// `EVIOCSMASK`
-+    #[cfg(not(target_os = "freebsd"))]
-     pub fn set_event_mask_raw(&self, kind: EventKind, buffer: &[u8]) -> io::Result<()> {
-         unsafe {
-             let mask = sys::input_mask {
-diff --git a/input-linux-0.7.1/src/macros.rs b/input-linux-0.7.1/src/macros.rs
-index 7991bdf..6a4aab8 100644
---- a/input-linux-0.7.1/src/macros.rs
-+++ b/input-linux-0.7.1/src/macros.rs
-@@ -170,12 +170,14 @@ macro_rules! ioctl_impl {
- macro_rules! impl_bitmasks {
-     { $kind:path, $event: expr, $name_mask:ident, $name_mask_set:ident, $name_bits:ident } => {
-         /// `EVIOCGMASK`
-+        #[cfg(not(target_os = "freebsd"))]
-         pub fn $name_mask(&self) -> io::Result<crate::bitmask::Bitmask<$kind>> {
-             let mut bitmask = crate::bitmask::Bitmask::default();
-             self.event_mask_raw($event, &mut bitmask).map(|_| bitmask)
-         }
++#[cfg(target_os = "freebsd")]
++#[path = "freebsd.rs"]
++mod freebsd;
++#[cfg(target_os = "freebsd")]
++pub use self::freebsd::*;
++
+ /// Protocol version.
+ pub const EV_VERSION: c_int = 0x010001;
  
-         /// `EVIOCSMASK`
-+        #[cfg(not(target_os = "freebsd"))]
-         pub fn $name_mask_set(&self, bitmask: &crate::bitmask::Bitmask<$kind>) -> io::Result<()> {
-             self.set_event_mask_raw($event, bitmask)
-         }
+@@ -98,6 +108,7 @@ pub struct ff_effect_union {
+ 	pub u: [u32; 7],
+ }
+ 
++#[cfg(not(target_os = "freebsd"))]
+ impl<'a> From<&'a ff_effect> for &'a ff_effect_union {
+ 	fn from(effect: &'a ff_effect) -> Self {
+ 		unsafe {
+@@ -107,6 +118,7 @@ impl<'a> From<&'a ff_effect> for &'a ff_effect_union {
+ 	}
+ }
+ 
++#[cfg(not(target_os = "freebsd"))]
+ impl<'a> From<&'a mut ff_effect> for &'a mut ff_effect_union {
+ 	fn from(effect: &'a mut ff_effect) -> Self {
+ 		unsafe {
+@@ -222,11 +234,13 @@ ioctl_write_ptr! {
+ 	ev_set_rep, b'E', 0x03, repeat_settings
+ }
+ 
++#[cfg(not(target_os = "freebsd"))]
+ ioctl_read! {
+ 	/// get keycode
+ 	ev_get_keycode, b'E', 0x04, [c_uint; 2]
+ }
+ 
++#[cfg(not(target_os = "freebsd"))]
+ ioctl_read! {
+ 	/// get keycode
+ 	ev_get_keycode_v2, b'E', 0x04, input_keymap_entry
+@@ -263,6 +277,7 @@ ioctl_read_buf! {
+ }
+ 
+ /// get MT slot values
++#[cfg(not(target_os = "freebsd"))]
+ pub unsafe fn ev_get_mtslots(fd: c_int, buf: *mut input_mt_request_layout) -> nix::Result<i32> {
+ 	// for some reason this isn't _IORW?
+ 	convert_ioctl_res!(ioctl(fd, request_code_read!(b'E', 0x0a, size_of_val(&*buf)) as ioctl_num_type, buf))
+@@ -299,6 +314,7 @@ pub unsafe fn ev_get_abs(fd: c_int, abs: u32, buf: *mut input_absinfo) -> nix::R
+ }
+ 
+ /// set abs value/limits
++#[cfg(not(target_os = "freebsd"))]
+ pub unsafe fn ev_set_abs(fd: c_int, abs: u32, buf: *const input_absinfo) -> nix::Result<i32> {
+ 	convert_ioctl_res!(ioctl(fd, request_code_read!(b'E', 0x40 + abs, size_of::<input_absinfo>()) as ioctl_num_type, buf))
+ }
+@@ -329,11 +345,13 @@ ioctl_write_int! {
+ 	ev_revoke, b'E', 0x91
+ }
+ 
++#[cfg(not(target_os = "freebsd"))]
+ ioctl_read! {
+ 	/// Retrieve current event mask
+ 	ev_get_mask, b'E', 0x92, input_mask
+ }
+ 
++#[cfg(not(target_os = "freebsd"))]
+ ioctl_write_ptr! {
+ 	/// Set event mask
+ 	ev_set_mask, b'E', 0x93, input_mask
+diff --git a/input-linux-sys-0.9.0/src/uinput.rs b/input-linux-sys-0.9.0/src/uinput.rs
+index c0fd3f9..bce4022 100644
+--- a/input-linux-sys-0.9.0/src/uinput.rs
++++ b/input-linux-sys-0.9.0/src/uinput.rs
+@@ -80,6 +80,7 @@ ioctl_write_int!(ui_set_mscbit, b'U', 104);
+ ioctl_write_int!(ui_set_ledbit, b'U', 105);
+ ioctl_write_int!(ui_set_sndbit, b'U', 106);
+ ioctl_write_int!(ui_set_ffbit, b'U', 107);
++#[cfg(not(target_os = "freebsd"))]
+ ioctl_write_ptr!(ui_set_phys, b'U', 108, c_char);
+ ioctl_write_int!(ui_set_swbit, b'U', 109);
+ ioctl_write_int!(ui_set_propbit, b'U', 110);
