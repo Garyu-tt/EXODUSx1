@@ -23,4 +23,14 @@ bool exodus_page_decode(const uint8_t *encoded, size_t encoded_size, uint8_t *pa
 /* Read a word from a validated V3 BDI page without full decoding. */
 bool exodus_page_bdi_read_word(const uint8_t *encoded, size_t size, size_t word, uint8_t out[4]);
 
+/* Patch only the target 64-byte block; other encoded blocks are copied.
+ * Output must be a separate 4096-byte buffer. Zero means invalid input or
+ * the resulting BDI representation would not fit; output stays untouched. */
+size_t exodus_page_bdi_patch_word(const uint8_t *encoded,size_t size,size_t word,
+                                  const uint8_t value[4],uint8_t *out);
+/* Logical FNV-1a, identical to the dedup store's uncompressed fingerprint.
+ * Uses one 64-byte scratch block, not a fully decoded page. */
+bool exodus_page_bdi_fingerprint(const uint8_t *encoded,size_t size,uint64_t *out);
+bool exodus_page_bdi_equal_page(const uint8_t *encoded,size_t size,const uint8_t *page);
+
 #endif

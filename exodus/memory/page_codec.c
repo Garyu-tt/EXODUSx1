@@ -190,6 +190,80 @@ bool exodus_page_bdi_read_word(const uint8_t *p,size_t size,size_t word,uint8_t 
     else memcpy(out,p+pos+w*4,4);
     return true;
 }
+
+/* Decode only one block at a time; used for patching and logical equality. */
+static void bdi_block(const uint8_t *p,bool compressed,uint8_t out[BLOCK_BYTES])
+{
+    if (!compressed) { memcpy(out,p,BLOCK_BYTES); return; }
+    uint32_t base=bdi_load(p);
+    for(size_t w=0;w<16;w++) bdi_put(out+w*4,base+p[4+w]);
+}
+
+size_t exodus_page_bdi_patch_word(const uint8_t *p,size_t size,size_t word,
+                                  const uint8_t value[4],uint8_t *out)
+{
+    if(!value || !out || word>=PAGE_WORDS || !bdi_valid(p,size)) return 0;
+    size_t b=word/16,w=word%16;
+    uint8_t bit=(uint8_t)(1u<<(b%8));
+    bool was=(p[1+b/8]&bit)!=0;
+    size_t pos=BDI_HEADER+b*BLOCK_BYTES-bdi_count(p+1,b)*(BLOCK_BYTES-BDI_BYTES);
+    size_t old_len=was?BDI_BYTES:BLOCK_BYTES;
+    uint8_t block[BLOCK_BYTES];
+    bdi_block(p+pos,was,block);
+    memcpy(block+w*4,value,4);
+    uint32_t lo=bdi_load(block),hi=lo;
+    for(size_t i=1;i<16;i++){
+        uint32_t v=bdi_load(block+i*4);
+        if(v<lo)lo=v;
+        if(v>hi)hi=v;
+    }
+    bool fits=hi-lo<=255;
+    size_t len=fits?BDI_BYTES:BLOCK_BYTES;
+    size_t total=size-old_len+len;
+    if(total>=EXODUS_PAGE_BYTES)return 0;
+    memcpy(out,p,pos);
+    if(fits){
+        out[1+b/8]|=bit;
+        bdi_put(out+pos,lo);
+        for(size_t i=0;i<16;i++)out[pos+4+i]=(uint8_t)(bdi_load(block+i*4)-lo);
+    }else{
+        out[1+b/8]&=(uint8_t)~bit;
+        memcpy(out+pos,block,BLOCK_BYTES);
+    }
+    memcpy(out+pos+len,p+pos+old_len,size-pos-old_len);
+    return total;
+}
+
+bool exodus_page_bdi_fingerprint(const uint8_t *p,size_t size,uint64_t *out)
+{
+    if(!out || !bdi_valid(p,size))return false;
+    uint64_t hash=UINT64_C(14695981039346656037);
+    size_t pos=BDI_HEADER;
+    for(size_t b=0;b<BLOCKS;b++){
+        uint8_t block[BLOCK_BYTES];
+        bool compressed=(p[1+b/8]&(1u<<(b%8)))!=0;
+        bdi_block(p+pos,compressed,block);
+        for(size_t i=0;i<BLOCK_BYTES;i++){hash^=block[i];hash*=UINT64_C(1099511628211);}
+        pos+=compressed?BDI_BYTES:BLOCK_BYTES;
+    }
+    *out=hash;
+    return true;
+}
+
+bool exodus_page_bdi_equal_page(const uint8_t *p,size_t size,const uint8_t *page)
+{
+    if(!page || !bdi_valid(p,size))return false;
+    size_t pos=BDI_HEADER;
+    for(size_t b=0;b<BLOCKS;b++){
+        uint8_t block[BLOCK_BYTES];
+        bool compressed=(p[1+b/8]&(1u<<(b%8)))!=0;
+        bdi_block(p+pos,compressed,block);
+        if(memcmp(block,page+b*BLOCK_BYTES,BLOCK_BYTES)!=0)return false;
+        pos+=compressed?BDI_BYTES:BLOCK_BYTES;
+    }
+    return true;
+}
+
 static bool decode_bdi(const uint8_t *p,size_t size,uint8_t *page)
 {
     if(!bdi_valid(p,size)) return false;

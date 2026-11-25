@@ -49,8 +49,9 @@ bool exodus_page_dedup_store_restore(const struct exodus_page_dedup_store *store
  * leaves buffers and counters unchanged. Serialize access. */
 bool exodus_page_dedup_store_replace_adaptive(struct exodus_page_dedup_store *store,
                                              size_t index, const uint8_t *page);
-/* Copy-on-write of a 4-byte word in stored byte order. Currently restores
- * and re-encodes one page; does not yet implement in-place BDI mutation. */
+/* Copy-on-write of a 4-byte word in stored byte order. BDI patches only the target block and streams its logical hash. Other
+ * formats and BDI overflow fall back to full page re-encoding. BDI may
+ * retain a valid, but not globally minimal, representation until re-encoded. */
 bool exodus_page_dedup_store_write_word(struct exodus_page_dedup_store *store,
                                        size_t index, size_t word,
                                        const uint8_t value[4]);

@@ -29,6 +29,52 @@ int main(void){
  C(exodus_page_dedup_store_replace_adaptive(&s,1,p)&&s.unique.page_count==1&&s.unique.payload_used==1289);
  size_t f=exodus_snapshot_encode(p,NULL,frame);C(exodus_snapshot_decode(frame,f,NULL,out)&&!memcmp(p,out,P));
  f=exodus_snapshot_encode(q,p,frame);C(exodus_snapshot_decode(frame,f,p,out)&&!memcmp(q,out,P));
+ 
+ /* A shared page splits and merges via direct word writes. Rebase, RAW
+  * transition, hash equivalence and failure atomicity. */
+ memcpy(q,p,P);put(q,UINT32_MAX-254);
+ C(exodus_page_dedup_store_write_word(&s,1,0,q));
+ C(s.unique.page_count==2&&s.unique.payload_used==2578);
+ C(exodus_page_dedup_store_restore(&s,1,out)&&!memcmp(q,out,P));
+ C(exodus_page_dedup_store_restore(&s,0,out)&&!memcmp(p,out,P));
+ C(exodus_page_dedup_store_write_word(&s,1,0,p));
+ C(s.unique.page_count==1&&s.unique.payload_used==1289);
+ put(q,0);
+ size_t oldcap=s.unique.payload_capacity;
+ s.unique.payload_capacity=s.unique.payload_used;
+ uint8_t before[sizeof(payload)];memcpy(before,payload,sizeof(payload));
+ uint64_t h=hashes[0];
+ C(!exodus_page_dedup_store_write_word(&s,1,0,q));
+ C(s.unique.page_count==1&&s.unique.payload_used==1289&&hashes[0]==h&&!memcmp(before,payload,sizeof(payload)));
+ s.unique.payload_capacity=oldcap;
+ C(exodus_page_dedup_store_write_word(&s,1,0,q));
+ C(s.unique.payload_used==1289+1333);
+ C(exodus_page_dedup_store_write_word(&s,1,0,p));
+ C(s.unique.page_count==1&&s.unique.payload_used==1289);
+ /* Merge through a real matching candidate. */
+ put(q,UINT32_MAX-254);
+ C(exodus_page_dedup_store_write_word(&s,1,0,q));
+ uint64_t actual=hashes[0],fake;
+ /* Force a collision with the prospective new contents of page 1. */
+ put(q,UINT32_MAX-253);
+ size_t encoded_size=exodus_page_encode_adaptive(q,enc);
+ C(exodus_page_bdi_fingerprint(enc,encoded_size,&fake));
+ hashes[0]=fake;
+ C(exodus_page_dedup_store_write_word(&s,1,0,q));
+ C(s.unique.page_count==2);
+ C(exodus_page_dedup_store_restore(&s,0,out)&&!memcmp(p,out,P));
+ C(exodus_page_dedup_store_restore(&s,1,out)&&!memcmp(q,out,P));
+ hashes[0]=actual;
+ C(exodus_page_dedup_store_write_word(&s,0,0,q));
+ C(s.unique.page_count==1&&s.unique.payload_used==1289);
+ C(exodus_page_dedup_store_restore(&s,0,out)&&!memcmp(q,out,P));
+ C(exodus_page_dedup_store_restore(&s,1,out)&&!memcmp(q,out,P));
+ /* Last BDI block expands: fall back to RAW with correct logical bytes. */
+ for(size_t b=0;b<63;b++){put(q+b*64,0);C(exodus_page_dedup_store_write_word(&s,1,b*16,q+b*64));}
+ C(s.unique.page_count==2);
+ put(q+63*64,0);C(exodus_page_dedup_store_write_word(&s,1,63*16,q+63*64));
+ C(exodus_page_dedup_store_restore(&s,1,out)&&!memcmp(q,out,P));
+ puts("BDI patch: rebase, RAW transition, shared writes, merge and budget rollback passed");
  puts("BDI: 4096 -> 1289 bytes; 2048 direct reads, mixed blocks, COW and snapshots passed");
  return 0;
 }
