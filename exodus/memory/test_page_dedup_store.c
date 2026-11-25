@@ -361,8 +361,53 @@ static void check_raw_tail_collision_and_replace(void)
     }
 }
 
+/* BDI candidates with equal hashes must be compared logically, including
+ * mixed RAW/BDI blocks and invalid layouts. */
+static void check_bdi_compare_collision_and_corruption(void)
+{
+    struct fixture f;
+    init_fixture(&f);
+    uint8_t a[EXODUS_PAGE_BYTES], b[EXODUS_PAGE_BYTES], restored[EXODUS_PAGE_BYTES];
+    for(size_t w=0;w<EXODUS_PAGE_BYTES/4;w++){
+        a[w*4]=(uint8_t)(w%16);
+        a[w*4+1]=0;
+        a[w*4+2]=0x34;
+        a[w*4+3]=0x12;
+    }
+    memcpy(b,a,sizeof b);
+    b[sizeof b-1]^=1;
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store,a));
+    CHECK(f.ends[0]==1289 && f.payload[0]==EXODUS_PAGE_BDI_VERSION);
+    f.hashes[0]=exodus_page_fingerprint(b);
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store,b));
+    CHECK(f.ends[1]-f.ends[0]==1333);
+    CHECK(f.payload[f.ends[0]]==EXODUS_PAGE_BDI_VERSION);
+    CHECK(exodus_page_dedup_store_append(&f.store,b));
+    CHECK(f.store.unique.page_count==2 && f.refs[2]==1);
+    CHECK(exodus_page_dedup_store_restore(&f.store,0,restored));
+    CHECK(memcmp(a,restored,sizeof a)==0);
+    CHECK(exodus_page_dedup_store_replace_adaptive(&f.store,0,b));
+    CHECK(f.store.unique.page_count==1 && f.store.page_count==3);
+    for(size_t i=0;i<3;i++){
+        CHECK(f.refs[i]==0);
+        CHECK(exodus_page_dedup_store_restore(&f.store,i,restored));
+        CHECK(memcmp(b,restored,sizeof b)==0);
+    }
+    /* Corrupt a mask bit without resizing the backing. A mismatch must
+     * not turn invalid backing into an accepted independent record. */
+    f.payload[1]^=1;
+    struct fixture before;
+    memcpy(&before,&f,sizeof f);
+    CHECK(!exodus_page_dedup_store_append_adaptive(&f.store,b));
+    CHECK(memcmp(&before,&f,sizeof f)==0);
+    CHECK(!exodus_page_dedup_store_replace_adaptive(&f.store,0,a));
+    CHECK(memcmp(&before,&f,sizeof f)==0);
+    check_restore_failure_unchanged(&f.store,0);
+}
+
 int main(void)
 {
+    check_bdi_compare_collision_and_corruption();
     check_raw_tail_collision_and_replace();
     check_corrupt_physical_index_rejects_append();
     check_adaptive_sharing();
