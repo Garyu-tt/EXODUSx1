@@ -7,7 +7,8 @@
 #include <stdio.h>
 
 enum exodus_route { EXODUS_ROUTE_INVALID, EXODUS_ROUTE_SWITCH, EXODUS_ROUTE_HOMEBREW,
-                    EXODUS_ROUTE_WINDOWS, EXODUS_ROUTE_STEAM, EXODUS_ROUTE_UNSUPPORTED };
+                    EXODUS_ROUTE_WINDOWS, EXODUS_ROUTE_STEAM, EXODUS_ROUTE_RUNTIME_LIBRARY,
+                    EXODUS_ROUTE_UNSUPPORTED };
 
 static inline int exodus_title_id(const char *s, uint64_t *out)
 {
@@ -31,7 +32,12 @@ static inline int exodus_nro_path(const char *id, char out[512])
 {
     if (!id) return 0;
     size_t len = strlen(id);
-    if (len <= 4 || len >= 499 || id[0] == '/' || strcmp(id + len - 4, ".nro")) return 0;
+    if (len <= 4 || len >= 499 || id[0] == '/') return 0;
+    /* Catalogs preserve path spelling while accepting all ASCII NRO suffix cases. */
+    const char *suffix = id + len - 4;
+    if (suffix[0] != '.' || (suffix[1] != 'n' && suffix[1] != 'N') ||
+        (suffix[2] != 'r' && suffix[2] != 'R') ||
+        (suffix[3] != 'o' && suffix[3] != 'O')) return 0;
     const char *segment = id;
     for (const char *p = id; ; ++p) {
         unsigned char c = (unsigned char)*p;
@@ -70,6 +76,7 @@ static inline const char *exodus_route_name(enum exodus_route route)
         case EXODUS_ROUTE_HOMEBREW: return "Homebrew loader";
         case EXODUS_ROUTE_WINDOWS: return "CorkDeck runtime";
         case EXODUS_ROUTE_STEAM: return "Open CorkDeck library (select Steam game there)";
+        case EXODUS_ROUTE_RUNTIME_LIBRARY: return "Windows Runtime";
         case EXODUS_ROUTE_INVALID: return "Invalid target";
         default: return "Unsupported provider";
     }

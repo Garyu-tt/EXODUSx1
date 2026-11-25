@@ -17,6 +17,8 @@ namespace exodus::steam_switch {
 
         using JSON = nlohmann::json;
         constexpr std::size_t SessionBodyLimit = 512;
+        constexpr std::size_t GatewayTextLimit = 512;
+        constexpr std::size_t GatewayFileLimit = 2 * (GatewayTextLimit + 1);
         constexpr std::string_view SessionsPath = "/v1/steam/sessions";
         constexpr std::string_view SnapshotPath = "/v1/steam/catalog";
         constexpr std::string_view CancelPath = "/v1/steam/cancel";
@@ -104,6 +106,25 @@ namespace exodus::steam_switch {
     }
 
     std::optional<GatewayOrigin> ParseGatewayOrigin(std::string_view text) {
+        std::string decoded;
+        if (text.substr(0, 3) == "\xef\xbb\xbf") {
+            text.remove_prefix(3);
+        } else if (text.substr(0, 2) == "\xff\xfe") {
+            text.remove_prefix(2);
+            if (text.size() % 2 != 0 || text.size() / 2 > GatewayTextLimit)
+                return std::nullopt;
+            // Gateway origins use ASCII, even when the configuration file is UTF-16LE.
+            decoded.reserve(text.size() / 2);
+            for (std::size_t offset = 0; offset < text.size(); offset += 2) {
+                const auto byte = static_cast<unsigned char>(text[offset]);
+                if (byte == 0 || byte > 0x7f || text[offset + 1] != '\0')
+                    return std::nullopt;
+                decoded.push_back(text[offset]);
+            }
+            text = decoded;
+        }
+        if (text.size() > GatewayTextLimit)
+            return std::nullopt;
         text = Trim(text, " \t\r\n");
         constexpr std::string_view scheme = "https://";
         if (text.substr(0, scheme.size()) != scheme)
@@ -206,8 +227,11 @@ namespace exodus::steam_switch {
         }
         if (fetched.status == 404)
             return {SyncStatus::SessionExpired, {}};
-        if (fetched.status != 200)
+        if (fetched.status != 200) {
+            // A transport or front-end failure may leave the session unredeemed.
+            cancel();
             return {SyncStatus::GatewayUnavailable, {}};
+        }
         if (!home::IsSteamCatalog(home::ParseCatalog(fetched.body)))
             return {SyncStatus::InvalidCatalog, {}};
         return {SyncStatus::Ready, std::move(fetched.body)};
@@ -233,6 +257,13 @@ namespace exodus::steam_switch {
         if (!good || closed != 0)
             return {ReadStatus::Error, {}};
         return {ReadStatus::Ready, std::move(text)};
+    }
+
+    std::optional<GatewayOrigin> ReadGatewayOrigin(const char *path) {
+        const auto settings = ReadTextFile(path, GatewayFileLimit);
+        if (settings.status != ReadStatus::Ready)
+            return std::nullopt;
+        return ParseGatewayOrigin(settings.text);
     }
 
 }

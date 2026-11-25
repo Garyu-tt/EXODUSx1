@@ -67,7 +67,7 @@ The shared parser carries GPL-2.0-only. Its source and license accompany the she
 
 ## R05: explicit provider launch routing
 
-Native Switch title IDs are 16 hexadecimal characters (nonzero) and must appear in a fresh NS application inventory before appletRequestLaunchApplication. Library applet launches require HOS 5.0 or later; unsupported contexts fail closed. Homebrew IDs are relative to sdmc:/switch, must use .nro, cannot traverse directories, and must pass the shared structural NRO preflight before envSetNextLoad. A supported loader must be present. The user must confirm the target; accepted requests exit the preview normally. This is a request handoff, not proof that the title executed. Steam and CorkDeck are recognized routes but have no active backend yet; the host never launches anything. No arbitrary command strings are executed.
+Native Switch title IDs are 16 hexadecimal characters (nonzero) and must appear in a fresh NS application inventory before appletRequestLaunchApplication. Library applet launches require HOS 5.0 or later; unsupported contexts fail closed. Homebrew IDs are relative to sdmc:/switch, must use .nro (in any ASCII letter case, preserving the original path spelling), cannot traverse directories, and must pass the shared structural NRO preflight before envSetNextLoad. A supported loader must be present. The user must confirm the target; accepted requests exit the preview normally. This is a request handoff, not proof that the title executed. Steam and CorkDeck are recognized routes but have no active backend yet; the host never launches anything. No arbitrary command strings are executed.
 
 Portable routing test (no SDL or libnx needed):
 
@@ -80,9 +80,18 @@ Actual HOS launch handoff, permissions, return-to-shell behavior and NRO argumen
 
 ## R06: installed Windows runtime and Steam library handoff
 
-The pinned CorkDeck runtime.c at adc0b52284e9e57d18808427a770a2a162c76bf0 accepts argv[1] as the selected executable. R06 uses the existing libnx next-load mechanism and fixed runtime path sdmc:/switch/wine/wine-nx-runtime.nro. It shares the exact NRO structural preflight sources from PR #11 (link exodus/runtime/autorun_probe.c in native builds). The caller confirms the target and must be in full application mode. Windows targets are bounded SD paths with .exe extension and without traversal, embedded quotes or controls. The shell checks the PE32 or PE32+ executable headers and on-disk section ranges before handing off. An invalid target leaves the shell open and shows an error. Machine and application compatibility depend on the installed runtime. USB and other mounts are not supported yet. The handoff does not start a command interpreter.
+The pinned CorkDeck runtime.c at adc0b52284e9e57d18808427a770a2a162c76bf0 accepts argv[1] as the selected executable. R06 uses the existing libnx next-load mechanism and fixed runtime path sdmc:/switch/wine/wine-nx-runtime.nro. It shares the exact NRO structural preflight sources from PR #11 (link exodus/runtime/autorun_probe.c in native builds). The caller confirms the target and must be in full application mode. Windows targets are bounded SD paths with .exe extension and without traversal, embedded quotes or controls. The shell checks the PE executable headers and on-disk section ranges before handing off. Unsupported machine and format combinations leave the shell open with a separate error. Eligible combinations are x86 PE32 and x64 or ARM64 PE32+, matching the pinned CorkDeck build family. x86 and x64 still require the corresponding translator support in the installed runtime. USB and other mounts are not supported yet. The handoff does not start a command interpreter.
 
-Steam entries validate the numeric AppID but open the installed CorkDeck library without passing an app ID: the user selects the game there. This is not direct Steam game launch or ownership verification. The Steam snapshot/sync work in #44 is separate. A pending run-next.txt blocks both routes, because the donor prioritizes queued jobs over CLI targets. The guard cannot eliminate races with another writer. NRO structural validation does not authenticate the installed runtime or identify its version; use a compatible CorkDeck build. Return to EXODUS, low-address requirements and actual game launch need device tests.
+Steam entries validate the numeric AppID and open the installed CorkDeck library, where the user selects the game. Select **Windows Runtime** on Home to open that same launcher without a catalog or a Steam entry. Both launcher paths pass only the NRO path as argv[0]. A pending run-next.txt blocks all runtime handoffs because the donor prioritizes queued jobs over CLI targets. The guard cannot eliminate races with another writer. NRO structural validation does not authenticate the installed runtime or identify its version; use a compatible CorkDeck build. Return to EXODUS, low-address requirements and actual game launch need device tests.
+
+The shared NRO preflight also requires nonempty read-only and writable permission ranges, plus a page-padded image-plus-BSS extent that fits the NRO's 32-bit size range. BSS can supply the writable range even when the data segment is empty, and does not require bytes in the file. These checks prevent known malformed headers from reaching the loader; they do not measure its available heap or establish runtime compatibility. The file-based regression uses small fixtures even at the mapped-size boundary:
+
+```sh
+cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_autorun_probe.c exodus/runtime/autorun_probe.c -o /tmp/exodus-nro-check
+nro_test_dir=$(mktemp -d)
+/tmp/exodus-nro-check "$nro_test_dir/runtime.nro" "$nro_test_dir"
+rmdir "$nro_test_dir"
+```
 
 Run the portable argument and PE preflight tests.
 
@@ -93,7 +102,7 @@ cc -std=c11 -Wall -Wextra -Werror exodus/home/corkdeck/test_windows_pe.c exodus/
 /tmp/exodus-pe-check
 ```
 
-Native compilation, loader buffer limits on the installed loader, and physical-device handoff remain unverified. No new runtime is installed and no system firmware or HOME changes are made.
+For device acceptance, start EXODUS Shell in full application mode with no catalog and confirm that **Windows Runtime** opens the installed launcher. Check that a queued run-next.txt or a missing runtime NRO produces a diagnostic and leaves the shell open.
 
 ## R07: offline artwork and library filters
 
@@ -114,7 +123,7 @@ Native build, interaction, rendering and performance acceptance remain pending.
 
 ## R08: unified shell
 
-The default view is now Gaming Mode home. Up/down moves among Library, Settings, Terminal, SSH and Exit; A opens, B returns/exits. Library and settings are internal views. A successful launch handoff leaves the shell rather than returning to its menu. Missing tools report an error without scheduling a launch.
+The default view is Gaming Mode home. Up/down moves among Library, Settings, Terminal, SSH, Windows Runtime and Exit. A opens and B returns or exits. Library and settings are internal views. A successful launch handoff leaves the shell. Missing tools report an error without scheduling a launch.
 
 Host: /tmp/exodus-settings FONT.ttf --shell CATALOG.json (or FONT.ttf alone with the default catalog path). The explicit --library mode remains available. --smoke draws the home screen. Native no-argument startup expects a user-supplied font at sdmc:/switch/exodus-shell/font.ttf and catalog at sdmc:/ulaunch/exodus-catalog.json. The standalone NRO build is documented under R10.
 

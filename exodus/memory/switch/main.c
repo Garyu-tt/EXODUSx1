@@ -1,3 +1,4 @@
+#include "page_compact_index.h"
 #include "page_probe_stats.h"
 #include "page_store.h"
 
@@ -18,14 +19,15 @@ static void make_demo_page(uint8_t *page, size_t index)
 static void show_demo(void)
 {
     static const char *const names[] = {"Zero page", "One live block", "Dense page"};
+    enum { DEMO_PAGES = sizeof(names) / sizeof(names[0]) };
     uint8_t page[EXODUS_PAGE_BYTES], restored[EXODUS_PAGE_BYTES];
     uint8_t payload[2 * EXODUS_PAGE_BYTES];
-    size_t ends[sizeof(names) / sizeof(names[0])];
+    size_t ends[DEMO_PAGES];
     struct exodus_page_store store = {
         .payload = payload,
         .payload_capacity = sizeof(payload),
         .page_ends = ends,
-        .page_capacity = sizeof(ends) / sizeof(ends[0])
+        .page_capacity = DEMO_PAGES
     };
     puts("Generated 4096-byte pages");
     for (size_t i = 0; i < store.page_capacity; ++i) {
@@ -35,17 +37,23 @@ static void show_demo(void)
             return;
         }
     }
-    size_t start = 0;
-    for (size_t i = 0; i < store.page_count; ++i) {
+    uint16_t lengths[DEMO_PAGES];
+    size_t checkpoints[(DEMO_PAGES + EXODUS_COMPACT_INDEX_STRIDE - 1) / EXODUS_COMPACT_INDEX_STRIDE];
+    struct exodus_page_compact_index index;
+    if (!exodus_page_compact_build(&store, &index, lengths, DEMO_PAGES,
+                                  checkpoints, sizeof(checkpoints) / sizeof(checkpoints[0]))) {
+        puts("Could not compact the demo index");
+        return;
+    }
+    for (size_t i = 0; i < index.page_count; ++i) {
         make_demo_page(page, i);
-        if (exodus_page_store_restore(&store, i, restored) && memcmp(page, restored, sizeof(page)) == 0)
-            printf("%-16s %4zu payload bytes   byte check passed\n", names[i], ends[i] - start);
+        if (exodus_page_compact_restore(&index, i, restored) && memcmp(page, restored, sizeof(page)) == 0)
+            printf("%-16s %4zu payload bytes   byte check passed\n", names[i], (size_t)lengths[i]);
         else
             printf("%-16s round-trip verification FAILED\n", names[i]);
-        start = ends[i];
     }
-    printf("Packed group: %zu payload bytes + %zu index bytes\n",
-           store.payload_used, store.page_count * sizeof(ends[0]));
+    printf("Packed group: %zu payload bytes + %zu compact index bytes\n",
+           index.payload_used, sizeof(lengths) + sizeof(checkpoints));
 }
 
 static void show_measurement(const char *status, const struct exodus_probe_stats *stats)

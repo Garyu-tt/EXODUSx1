@@ -1,6 +1,12 @@
+/test_compact_index
+/test_compact_index.exe
 /page_probe
 /page_probe.exe
 /test_codec
 /test_codec.exe
 /test_page_store
 /test_page_store.exe
+/test_snapshot
+/test_snapshot.exe
+/page_snapshot_probe
+/page_snapshot_probe.exe

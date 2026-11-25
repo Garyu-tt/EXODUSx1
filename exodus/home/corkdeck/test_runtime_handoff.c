@@ -17,6 +17,11 @@ int main(void)
     assert(!exodus_runtime_args(EXODUS_ROUTE_STEAM, "4294967296", args));
     assert(!exodus_runtime_args(EXODUS_ROUTE_STEAM, "0", args));
     assert(!exodus_runtime_args(EXODUS_ROUTE_STEAM, "42;other", args));
+    assert(!exodus_runtime_args(EXODUS_ROUTE_STEAM, NULL, args));
+    assert(exodus_runtime_args(EXODUS_ROUTE_RUNTIME_LIBRARY, NULL, args));
+    assert(!strcmp(args, EXODUS_AUTORUN_PATH));
+    assert(!exodus_runtime_args(EXODUS_ROUTE_RUNTIME_LIBRARY, "sdmc:/Games/My Game.EXE", args));
+    assert(!args[0]);
     assert(!exodus_runtime_args(EXODUS_ROUTE_SWITCH, "42", args));
     char long_path[512];
     memset(long_path, 'a', sizeof(long_path));

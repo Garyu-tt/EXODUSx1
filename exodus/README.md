@@ -39,7 +39,21 @@ python -m exodus.app_catalog --switch-sd F:/ --steam-library "D:/SteamLibrary" -
 
 Supply either source on its own or repeat `--steam-library` for additional Steam libraries. The catalog keeps both providers in the same `entries` array. It lists Steam entries by numeric App ID, followed by `switch_homebrew` entries sorted by their paths relative to the SD card's `switch` directory. That relative path uses forward slashes and is the provider ID.
 
-The homebrew scan reads `.nro` metadata under `switch` and uses the first nonempty UTF-8 title from the embedded NACP data. It supports both plain and DEFLATE-compressed NACP title tables. Files without a title use their filename stem. A readable NRO is marked `reported_installed` based on its presence on the SD card, with compatibility unknown and launch mode unset. The scan emits readable entries and returns 1 if it encounters unreadable inputs or malformed metadata.
+The homebrew scan rejects a `switch` directory that is a symbolic link or Windows junction, and reads `.nro` metadata under `switch` and uses the first nonempty UTF-8 title from the embedded NACP data. It supports both plain and DEFLATE-compressed NACP title tables. Files without a title use their filename stem. A readable NRO is marked `reported_installed` based on its presence on the SD card, with compatibility unknown and launch mode unset. The scan emits readable entries and returns 1 if it encounters unreadable inputs or malformed metadata.
+
+## Include CorkDeck Windows Runtime libraries
+
+Pass a selected CorkDeck v2/v3 `launcher-library-v2.ini` with `--corkdeck-catalog` to include its programs in the same offline snapshot:
+
+```shell
+python -m exodus.app_catalog --switch-sd F:/ --steam-library "D:/SteamLibrary" --corkdeck-catalog launcher-library-v2.ini --output catalog.json
+```
+
+The INI can be read from the mounted storage or from a local copy. The option also works on its own, and can be repeated for additional runtime catalogs. It uses the existing CorkDeck importer, which accepts at most 256 games and 2 MiB per INI. CorkDeck rows follow the Steam and homebrew rows, retaining their source order. They preserve the decoded program path as `provider_id`, the title or filename fallback, and the first available artwork path. Installation and compatibility remain `unknown`, and `last_played` and `launch_mode` remain `null`.
+
+Repeated CorkDeck program paths are compared after percent decoding, ignoring ASCII letter case, including across different input files. Non-ASCII UTF-8 bytes remain distinct, matching the runtime: `Straße.exe` and `STRASSE.exe` keep separate rows. The first occurrence of an actual duplicate keeps its original path spelling and metadata. This deduplication applies within the CorkDeck provider; an equal ID in another provider remains a separate entry. Repeating an input file therefore does not create duplicate rows or consume additional catalog slots.
+
+An unreadable or malformed runtime catalog contributes no rows, produces a diagnostic on stderr, and makes the command exit 1. Readable Steam, homebrew and other CorkDeck sources still appear in the partial snapshot. A valid empty runtime catalog is a successful input. The same combined output limits and atomic `--output` behavior below apply to all three providers.
 
 ## Catalog output limits
 
@@ -55,7 +69,9 @@ On a PC, supply your Steam Web API key in the command's `STEAM_WEB_API_KEY` envi
 python -m exodus.steam_sync --output steam-catalog.json
 ```
 
-The command verifies the one-time browser callback with Steam and uses `GetOwnedGames` for the verified SteamID. The key and the account's game-details visibility determine which library data the API returns. An inaccessible library, a cancelled sign-in or a failed request leaves any previous output in place. An explicitly empty library is exported as an empty Steam list. [Steam GetOwnedGames](https://partner.steamgames.com/doc/webapi/IPlayerService#GetOwnedGames)
+The command verifies the one-time browser callback with Steam and uses `GetOwnedGames` for the verified SteamID. The request includes purchased games and previously played free games, both for this desktop command and the device gateway. The key and the account's game-details visibility determine which library data the API returns. An inaccessible library, a cancelled sign-in or a failed request leaves any previous output in place. An explicitly empty library is exported as an empty Steam list. [Steam GetOwnedGames](https://partner.steamgames.com/doc/webapi/IPlayerService#GetOwnedGames)
+
+`--timeout SECONDS` bounds acceptance of the browser sign-in, including Steam's identity verification (default: 180 seconds). Verification must complete before the deadline; a late result leaves the previous catalog intact and does not start a library request. The verification request uses the remaining sign-in time, capped at ten seconds. Library retrieval after an accepted sign-in keeps its separate request timeout.
 
 To refresh the Steam rows of an existing HOME snapshot, pass it as `--base-catalog`. The sync keeps the existing Switch and homebrew entries and replaces only the Steam entries. The output path can be the base catalog itself. Base snapshots may use UTF-8 or UTF-16LE with a BOM, as written by Windows PowerShell 5.1 redirection. A successful refresh writes UTF-8 JSON; invalid input preserves the existing output and stops before sign-in.
 

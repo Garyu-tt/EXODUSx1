@@ -57,6 +57,7 @@ namespace exodus::steam_switch {
                                   std::string_view verifier, const PostRequest &post,
                                   const OpenLogin &open_login);
     TextFile ReadTextFile(const char *path, std::size_t limit);
+    std::optional<GatewayOrigin> ReadGatewayOrigin(const char *path);
 
 #ifdef __SWITCH__
     HttpReply PostHttps(const GatewayOrigin &origin, std::string_view path,

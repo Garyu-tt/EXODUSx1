@@ -3,9 +3,11 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <openssl/evp.h>
 #include <sys/stat.h>
@@ -173,6 +175,43 @@ namespace {
         return ++*static_cast<std::size_t *>(context) < 6;
     }
 
+    struct Mutation {
+        std::size_t checked;
+        std::uint64_t bytes;
+        std::function<void()> action;
+        bool performed = false;
+        std::size_t ready_callbacks_to_skip = 0;
+    };
+
+    bool MutateDuringCheck(std::size_t checked, std::size_t total, std::uint64_t bytes, void *context) {
+        auto &mutation = *static_cast<Mutation *>(context);
+        if (!mutation.performed && total != 0 && checked >= mutation.checked && bytes >= mutation.bytes) {
+            if (mutation.ready_callbacks_to_skip != 0) {
+                --mutation.ready_callbacks_to_skip;
+            } else {
+                mutation.action();
+                mutation.performed = true;
+            }
+        }
+        return true;
+    }
+
+    void CheckMutation(const Fixture &fixture, Mutation &mutation, std::string_view path, std::string_view label) {
+        const auto result = VerifySteamInstallation(fixture.mount.string(), AppId, ReferencePin,
+            MutateDuringCheck, &mutation);
+        Require(mutation.performed, "The fixture must change during the check");
+        Expect(result, Status::ChangedDuringCheck, label);
+        Require(result.path == path && result.total_files == 3 && result.checked_files <= 3
+                && result.compared_bytes <= LargeSize + 3,
+            "A changed file must retain its path and bounded comparison accounting");
+    }
+
+    bool CancelDuringRecheck(std::size_t checked, std::size_t total, std::uint64_t, void *context) {
+        if (total != 0 && checked == total)
+            return ++*static_cast<std::size_t *>(context) < 2;
+        return true;
+    }
+
 }
 
 int main() {
@@ -184,6 +223,109 @@ int main() {
     Expect(matched, Status::Match, "All listed files match the pinned reference");
     Require(matched.checked_files == 3 && matched.total_files == 3 && matched.compared_bytes == LargeSize + 3
             && matched.path.empty(), "The complete streamed comparison must account for all listed files and bytes");
+
+    {
+        Fixture changed;
+        const auto path = changed.Game() / "Тест/large.bin";
+        Mutation replacement{0, LargeSize + 3, [&] {
+            fs::rename(path, path.string() + ".old");
+            Write(path, std::string(LargeSize, 'y'));
+        }};
+        CheckMutation(changed, replacement, "Тест/large.bin", "Replacement after the last read cannot match");
+    }
+    {
+        Fixture changed;
+        const auto path = changed.Game() / "Тест/large.bin";
+        Mutation overwrite{2, 64 * 1024 + 3, [&] {
+            // Change only bytes already hashed; the remaining bytes still match.
+            const auto timestamp = fs::last_write_time(path);
+            std::fstream file(path, std::ios::binary | std::ios::in | std::ios::out);
+            Require(static_cast<bool>(file.write("y", 1)), "Could not mutate an already read byte");
+            file.close();
+            fs::last_write_time(path, timestamp + std::chrono::seconds(2));
+        }};
+        CheckMutation(changed, overwrite, "Тест/large.bin", "In-place changes to previously read bytes cannot match");
+    }
+    for (const bool remove : {false, true}) {
+        Fixture changed;
+        const auto path = changed.Game() / "Bin/engine.bin";
+        Mutation earlier{2, 64 * 1024 + 3, [&] {
+            if (remove) {
+                fs::remove(path);
+            } else {
+                const auto timestamp = fs::last_write_time(path);
+                Write(path, "def");
+                fs::last_write_time(path, timestamp + std::chrono::seconds(2));
+            }
+        }};
+        CheckMutation(changed, earlier, "Bin/engine.bin", "Recheck a changed or removed earlier file");
+    }
+    for (const bool replace : {false, true}) {
+        Fixture changed;
+        const auto path = changed.Game() / "Docs/empty.dat";
+        Mutation empty{2, 3, [&] {
+            if (replace) {
+                fs::rename(path, path.string() + ".old");
+                Write(path, "");
+            } else {
+                Write(path, "not empty anymore");
+            }
+        }};
+        CheckMutation(changed, empty, "Docs/empty.dat", "Zero-byte files need the same final identity check");
+    }
+    {
+        Fixture changed;
+        Mutation directory{0, LargeSize + 3, [&] {
+            const auto original = changed.mount / "original-game";
+            fs::rename(changed.Game(), original);
+            fs::copy(original, changed.Game(), fs::copy_options::recursive);
+        }};
+        CheckMutation(changed, directory, "Bin/engine.bin", "Reopen the game directory before checking current paths");
+    }
+    for (const std::size_t skip : {1u, 2u}) {
+        Fixture changed;
+        Mutation directory{3, LargeSize + 3, [&] {
+            const auto original = changed.mount / "detached-original";
+            fs::rename(changed.Game(), original);
+            fs::copy(original, changed.Game(), fs::copy_options::recursive);
+            Write(changed.Game() / "Тест/large.bin", std::string(LargeSize, 'y'));
+        }};
+        // Skip the final hash notification, and optionally the first metadata callback.
+        directory.ready_callbacks_to_skip = skip;
+        CheckMutation(changed, directory, skip == 1 ? "Bin/engine.bin" : "Docs/empty.dat",
+            "Resolve the game directory after each final metadata callback");
+    }
+    {
+        Fixture changed;
+        Fixture detached;
+        fs::remove_all(detached.mount);
+        Mutation root{3, LargeSize + 3, [&] {
+            fs::rename(changed.mount, detached.mount);
+            fs::copy(detached.mount, changed.mount, fs::copy_options::recursive);
+            Write(changed.Game() / "Тест/large.bin", std::string(LargeSize, 'y'));
+        }};
+        root.ready_callbacks_to_skip = 1;
+        CheckMutation(changed, root, "Bin/engine.bin",
+            "Resolve the SD root after a final metadata callback replaces it");
+    }
+    for (const std::size_t skip : {1u, 3u}) {
+        Fixture changed;
+        Mutation manifest{3, LargeSize + 3, [&] {
+            const auto other = changed.Game().parent_path() / "Other Game";
+            fs::copy(changed.Game(), other, fs::copy_options::recursive);
+            Write(other / "Тест/large.bin", std::string(LargeSize, 'y'));
+            Write(changed.Acf(), "AppState { appid 730 installdir \"Other Game\" StateFlags 4 }");
+        }};
+        manifest.ready_callbacks_to_skip = skip;
+        CheckMutation(changed, manifest, {}, "The final callback must not change the selected Steam installation");
+    }
+    std::size_t final_polls = 0;
+    const auto stopped_during_recheck = VerifySteamInstallation(fixture.mount.string(), AppId, ReferencePin,
+        CancelDuringRecheck, &final_polls);
+    Expect(stopped_during_recheck, Status::Cancelled, "The final metadata pass remains cancellable");
+    Require(final_polls == 2 && stopped_during_recheck.checked_files == 3
+            && stopped_during_recheck.compared_bytes == LargeSize + 3,
+        "Metadata checks do not count file bytes or completed hashes twice");
 
     Write(fixture.Game() / "Тест/large.bin", std::string(LargeSize, 'y'));
     const auto corrupted = fixture.Verify();

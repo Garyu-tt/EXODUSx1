@@ -71,6 +71,7 @@ namespace {
             int requests = 0;
             bool browser = false;
             bool cancelled = false;
+            const bool abandoned = !opened || (status != 200 && status != 404);
             auto result = FetchSteamSnapshot(
                 *origin, Challenge, Verifier,
                 [&](std::string_view path, std::string_view request, std::size_t limit) {
@@ -83,7 +84,7 @@ namespace {
                     assert(browser);
                     assert(payload.size() == 2 && payload["verifier"] == Verifier && payload["session"] == Session);
                     if (path == "/v1/steam/cancel") {
-                        assert(!cancelled && (!opened || status == 409));
+                        assert(!cancelled && abandoned);
                         assert(requests == (opened ? 3 : 2) && limit == 512);
                         cancelled = true;
                         return HttpReply{cancel_status, {}};
@@ -99,7 +100,6 @@ namespace {
                     browser = true;
                     return opened;
                 });
-            const bool abandoned = !opened || status == 409;
             assert(requests == (opened ? 2 : 1) + (abandoned ? 1 : 0) && browser);
             assert(cancelled == abandoned);
             if (abandoned)
@@ -113,10 +113,18 @@ namespace {
         for (const int cleanup : {200, 404, 503, 0}) {
             assert(redeem(0, {}, false, cleanup).status == SyncStatus::BrowserUnavailable);
             assert(redeem(409, {}, true, cleanup).status == SyncStatus::SignInIncomplete);
+            for (const int failure : {0, 302, 400, 403, 429, 500, 502, 503, 504})
+                assert(redeem(failure, {}, true, cleanup).status == SyncStatus::GatewayUnavailable);
         }
-        assert(redeem(302, {}).status == SyncStatus::GatewayUnavailable);
         assert(redeem(200, "{invalid").status == SyncStatus::InvalidCatalog);
         assert(redeem(200, Catalog({Entry("switch", "9", "Not from Steam")})).status == SyncStatus::InvalidCatalog);
+        for (const auto *id : {"0", "0123", "123x", "4294967296"}) {
+            const auto unusable = redeem(200, Catalog({Entry("steam", id, "Invalid AppID")}));
+            assert(unusable.status == SyncStatus::InvalidCatalog && unusable.catalog.empty());
+        }
+        const auto largest = Catalog({Entry("steam", "4294967295", "Largest valid AppID")});
+        const auto largest_result = redeem(200, largest);
+        assert(largest_result.status == SyncStatus::Ready && largest_result.catalog == largest);
 
         const auto invalid = "{\"session\":\"" + Session + "\",\"session\":\"" + Session + "\"}";
         const auto refused = FetchSteamSnapshot(
@@ -135,15 +143,50 @@ namespace {
         assert(directory_path);
         const std::string directory(directory_path);
         const auto path = directory + "/gateway.txt";
-        constexpr std::string_view settings = "https://steam.example.test\n";
-        auto *file = std::fopen(path.c_str(), "wb");
-        assert(file);
-        assert(std::fwrite(settings.data(), 1, settings.size(), file) == settings.size());
-        assert(std::fclose(file) == 0);
+        static const std::string settings = "https://steam.example.test:8443/\r\n";
+        const auto write_settings = [&](std::string_view text) {
+            auto *file = std::fopen(path.c_str(), "wb");
+            assert(file);
+            assert(std::fwrite(text.data(), 1, text.size(), file) == text.size());
+            assert(std::fclose(file) == 0);
+        };
+        const auto utf16le = [](std::string_view text) {
+            std::string encoded = "\xff\xfe";
+            for (char ch : text) {
+                encoded.push_back(ch);
+                encoded.push_back('\0');
+            }
+            return encoded;
+        };
+        const auto expect_origin = [&](std::string_view text) {
+            write_settings(text);
+            const auto origin = ReadGatewayOrigin(path.c_str());
+            assert(origin && origin->url == "https://steam.example.test:8443" &&
+                   origin->hostname == "steam.example.test" && origin->port == "8443");
+        };
+
+        assert(!ReadGatewayOrigin((directory + "/missing").c_str()));
+        expect_origin(settings);
         assert(ReadTextFile(path.c_str(), 16).status == ReadStatus::Error);
         assert(ReadTextFile((directory + "/missing").c_str(), 512).status == ReadStatus::Missing);
         const auto saved = ReadTextFile(path.c_str(), 512);
         assert(saved.status == ReadStatus::Ready && saved.text == settings);
+        expect_origin("\xef\xbb\xbf" + settings);
+        expect_origin(utf16le(settings));
+
+        const std::string exact = settings + std::string(512 - settings.size(), ' ');
+        expect_origin(exact);
+        expect_origin("\xef\xbb\xbf" + exact);
+        expect_origin(utf16le(exact));
+        auto bad_unit = utf16le(settings);
+        bad_unit[3] = '\x01';
+        for (const auto &invalid : {exact + " ", "\xef\xbb\xbf" + exact + " ",
+                                    utf16le(exact + " "), utf16le(settings) + "x", bad_unit,
+                                    utf16le("https://steam.example.test/path"),
+                                    utf16le("http://steam.example.test")}) {
+            write_settings(invalid);
+            assert(!ReadGatewayOrigin(path.c_str()));
+        }
         assert(std::remove(path.c_str()) == 0);
         assert(rmdir(directory.c_str()) == 0);
     }

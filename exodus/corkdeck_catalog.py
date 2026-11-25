@@ -18,6 +18,11 @@ SECTION = re.compile(r"\[game ([1-9][0-9]{0,9})\]")
 BAD_ESCAPE = re.compile(r"%(?![0-9a-fA-F]{2})")
 
 
+def program_path_key(path):
+    """Match CorkDeck's ASCII-insensitive comparison of UTF-8 path bytes."""
+    return path.encode("utf-8").lower()
+
+
 def decode_value(value, limit):
     if BAD_ESCAPE.search(value):
         raise ValueError("invalid percent escape")
@@ -64,9 +69,10 @@ def parse_catalog(text):
     for record in records:
         path = decode_value(record.get("path", ""), 512)
         title = decode_value(record.get("title", ""), 128)
-        if not path or path.casefold() in paths:
+        identity = program_path_key(path)
+        if not path or identity in paths:
             raise ValueError("missing or duplicate program path")
-        paths.add(path.casefold())
+        paths.add(identity)
         artwork = None
         for key in ("portrait-art", "landscape-art", "square-art", "hero-art"):
             value = decode_value(record.get(key, ""), 512)

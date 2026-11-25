@@ -56,7 +56,8 @@ static inline int exodus_launch(enum exodus_route route, const char *id, char me
         }
         snprintf(args, sizeof(args), "\"%s\"", path);
         rc = envSetNextLoad(path, args);
-    } else if (route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM) {
+    } else if (route == EXODUS_ROUTE_WINDOWS || route == EXODUS_ROUTE_STEAM ||
+               route == EXODUS_ROUTE_RUNTIME_LIBRARY) {
         char args[EXODUS_RUNTIME_ARGS_CAP];
         struct stat st;
         if (appletGetAppletType() != AppletType_Application || !envHasNextLoad()) {
@@ -84,9 +85,13 @@ static inline int exodus_launch(enum exodus_route route, const char *id, char me
             }
             FILE *exe = fopen(id, "rb");
             if (!exe) { snprintf(message, 256, "Cannot open executable."); return 0; }
-            bool valid = exodus_windows_pe_valid(exe);
+            enum exodus_windows_pe_status status = exodus_windows_pe_probe(exe);
             fclose(exe);
-            if (!valid) {
+            if (status == EXODUS_WINDOWS_PE_UNSUPPORTED_MACHINE) {
+                snprintf(message, 256, "Unsupported Windows PE architecture or format.");
+                return 0;
+            }
+            if (status != EXODUS_WINDOWS_PE_READY) {
                 snprintf(message, 256, "Invalid or unreadable Windows PE executable.");
                 return 0;
             }

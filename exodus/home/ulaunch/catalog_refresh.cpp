@@ -147,7 +147,7 @@ namespace exodus::home {
     bool IsSteamCatalog(const Catalog &catalog) {
         return catalog.status == CatalogStatus::Ready &&
                std::all_of(catalog.entries.begin(), catalog.entries.end(),
-                           [](const Entry &entry) { return entry.provider == Provider::Steam; });
+                           [](const Entry &entry) { return SteamApplicationId(entry).has_value(); });
     }
 
     std::optional<std::uint64_t> PublishSteamSnapshot(const char *directory, std::string_view steam) {

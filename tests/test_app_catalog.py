@@ -199,6 +199,44 @@ class AppCatalogTests(unittest.TestCase):
             ["Original/Helper.nro"],
         )
 
+    @unittest.skipUnless(os.name == "nt", "requires a Windows directory junction")
+    def test_switch_root_junction_does_not_import_external_homebrew(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "External.nro").write_bytes(nro_image("External"))
+        self.switch.rmdir()
+        environment = {**os.environ, "EXODUS_TEST_JUNCTION_PATH": str(self.switch),
+                       "EXODUS_TEST_JUNCTION_TARGET": str(outside)}
+        created = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+             "$ErrorActionPreference = 'Stop'; New-Item -ItemType Junction "
+             "-Path $env:EXODUS_TEST_JUNCTION_PATH -Target $env:EXODUS_TEST_JUNCTION_TARGET | Out-Null"],
+            env=environment, capture_output=True,
+        )
+        if created.returncode:
+            self.skipTest("Windows directory junction unavailable")
+        self.addCleanup(self.switch.rmdir)
+        self.add_steam_manifest()
+        result = self.run_catalog("--switch-sd", self.sd, "--steam-library", self.steam)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual([entry["provider_id"] for entry in json.loads(result.stdout)["entries"]], ["42"])
+        self.assertIn("switch", result.stderr)
+
+    def test_switch_root_symlink_does_not_import_external_homebrew(self):
+        outside = self.root / "outside"
+        outside.mkdir()
+        (outside / "External.nro").write_bytes(nro_image("External"))
+        self.switch.rmdir()
+        try:
+            self.switch.symlink_to(outside, target_is_directory=True)
+        except OSError as exc:
+            self.skipTest(f"directory symlinks unavailable: {exc}")
+        self.addCleanup(self.switch.unlink)
+        result = self.run_catalog("--switch-sd", self.sd)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(json.loads(result.stdout)["entries"], [])
+        self.assertIn("switch", result.stderr)
+
     def test_homebrew_filename_fallback_when_no_embedded_title_is_available(self):
         self.add_nro("Blank title.nro", nro_image(""))
         self.add_nro("No assets.nro", nro_image())

@@ -58,6 +58,14 @@ class ObservationError(ProbeError):
         self.observation = observation
 
 
+class ReconnectError(ProbeError):
+    """Enumeration failed after a reconnect baseline was recorded."""
+
+    def __init__(self, message, reconnect):
+        super().__init__(message)
+        self.reconnect = reconnect
+
+
 @dataclass(frozen=True)
 class Snapshot:
     state: str
@@ -188,14 +196,21 @@ def check_reconnect(usb_id, initial, seconds, sample):
         if remaining <= 0:
             break
         try:
-            last = sample(usb_id, timeout=min(remaining, QUERY_TIMEOUT))
-        except ProbeTimeout:
-            if remaining > QUERY_TIMEOUT:
-                raise
+            current = sample(usb_id, timeout=min(remaining, QUERY_TIMEOUT))
+        except ProbeError as exc:
+            timed_out = isinstance(exc, ProbeTimeout)
+            if timed_out and remaining <= QUERY_TIMEOUT:
+                break
+            partial = {"state": "query_timeout" if timed_out else "query_failed",
+                       "disconnect_seen": disconnected, "last": last.report()}
+            raise ReconnectError(str(exc), partial) from exc
+        if time.monotonic() >= deadline:
             break
+        last = current
         if last.state == "ambiguous" or (last.parent_id is not None and last.parent_id != initial.parent_id):
             return "target_changed", last, disconnected
-        if last.state == "not_present":
+        # Windows can still list WPD interfaces after losing the USB parent.
+        if last.parent_id is None:
             disconnected = True
         if disconnected and last.state == "wpd_ready" and (last.mtp_advertised or not initial.mtp_advertised):
             return "reconnected", last, True
@@ -227,12 +242,16 @@ def observe(usb_id, initial, seconds, sample):
             if timed_out and remaining <= QUERY_TIMEOUT:
                 return partial
             raise ObservationError(str(exc), partial) from exc
+        # Process startup and result parsing are outside the subprocess timeout.
+        sampled_at = time.monotonic()
+        if sampled_at >= deadline:
+            return {"events": events, "complete": False, "reason": "query_timeout"}
         changed = (current.parent_id is not None and last_parent is not None
                    and current.parent_id != last_parent)
         if current.parent_id is not None:
             last_parent = current.parent_id
         if current.report() != previous.report() or changed:
-            events.append({"elapsed_ms": int((time.monotonic() - start) * 1000),
+            events.append({"elapsed_ms": int((sampled_at - start) * 1000),
                            **current.report(), "parent_changed": changed})
         previous = current
     return {"events": events, "complete": True, "reason": "window_finished"}
@@ -269,9 +288,12 @@ def main(argv=None, sample=read_windows):
         exit_code = 0 if success else 1
     except ProbeError as exc:
         print(f"MTP probe: {exc}", file=sys.stderr)
-        if not isinstance(exc, ObservationError):
+        if isinstance(exc, ObservationError):
+            observation = exc.observation
+        elif isinstance(exc, ReconnectError):
+            reconnect = exc.reconnect
+        else:
             return 2
-        observation = exc.observation
         exit_code = 2
 
     report = {"schema_version": 1, "usb_id": usb_id, "initial": initial.report(), "reconnect": reconnect}

@@ -132,6 +132,31 @@ int main() {
         fixture.Check(SteamInstallEvidence::InvalidManifest, "Unsafe FAT directory component");
     }
 
+    for (const auto *directory : {"CONIN$", "conout$", "ConIn$.dat", "CONOUT$  .log",
+                                  "COM\xc2\xb9", "com\xc2\xb2.bin", "CoM\xc2\xb3 .data",
+                                  "lpt\xc2\xb9", "LpT\xc2\xb2.ext", "LPT\xc2\xb3"}) {
+        fs::create_directory(fixture.Common() / directory);
+        fixture.Write(fixture.Manifest(), ManifestWith(directory));
+        fixture.Check(SteamInstallEvidence::InvalidManifest, "Reserved device alias with an existing directory");
+        fs::remove(fixture.Common() / directory);
+    }
+
+    for (unsigned control = 0x80; control <= 0x9f; ++control) {
+        const auto directory = "Game" + std::string{static_cast<char>(0xc2), static_cast<char>(control)} + "Files";
+        fs::create_directory(fixture.Common() / directory);
+        fixture.Write(fixture.Manifest(), ManifestWith(directory));
+        fixture.Check(SteamInstallEvidence::InvalidManifest, "C1 control in an existing game directory");
+        fs::remove(fixture.Common() / directory);
+    }
+
+    for (const auto *directory : {"CONIN", "CONOUT", "CONSOLE", "COM0", "COM10", "LPT0", "LPT10",
+                                  "COM\xc2\xb9" "Extra", "LPT\xc2\xb2" "0", "Game\xc2\xa0" "Files", "日本語"}) {
+        fs::create_directory(fixture.Common() / directory);
+        fixture.Write(fixture.Manifest(), ManifestWith(directory));
+        fixture.Check(SteamInstallEvidence::ManifestAndDirectoryFound, "Valid Unicode or non-device near match");
+        fs::remove(fixture.Common() / directory);
+    }
+
     fixture.Write(fixture.Manifest(), ManifestWith(std::string(256, 'x')));
     fixture.Check(SteamInstallEvidence::InvalidManifest, "An overlong directory component");
     auto nul = ManifestWith("Valve Sample Ö");

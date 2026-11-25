@@ -23,6 +23,10 @@ The exporter rejects sibling names that differ only by per-character case foldin
 
 The result covers the listed files and the supplied reference. Steam entitlement and the approved local runtime remain separate requirements for launch.
 
+Keep game updates and transfers stopped while checking. The verifier compares each opened file's identity, length and modification metadata after hashing, then reopens the current game paths and checks the same metadata before reporting a match. An observed change, replacement or removal reports the affected path when available and asks you to retry. The final metadata pass is cancellable and does not hash payloads a second time. File counts and compared bytes describe completed hash work even if a later metadata check finds a change.
+
+This is a check of files read over time, not an atomic filesystem snapshot. It can detect only changes visible through file identity and timestamps; FAT/exFAT and other coarse-timestamp filesystems can hide same-size rewrites within their timestamp resolution. The check does not lock files or guarantee that they remain unchanged afterward.
+
 ## Build and test
 
 Use devkitPro with devkitA64, libnx and Switch tools for the NRO. The Linux host verifier uses OpenSSL's `libcrypto`.

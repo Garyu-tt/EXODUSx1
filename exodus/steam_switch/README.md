@@ -17,9 +17,11 @@ The first command builds `exodus-steam-sync.nro`. The second runs host checks fo
 
 Place the NRO in `/switch/exodus-steam-sync/` on the SD card and put the gateway origin on one line in `/switch/exodus-steam-sync/gateway.txt`, such as `https://gateway.example.net`. Use an origin whose certificate the Switch trusts.
 
+Save `gateway.txt` as UTF-8 with or without a BOM, or as UTF-16LE with a BOM. These formats include the output of Windows PowerShell 5.1 `Set-Content -Encoding UTF8` and `Out-File`. The file is limited to 512 characters, including surrounding whitespace. The origin itself uses ASCII. [Windows PowerShell file encodings](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_character_encoding?view=powershell-5.1)
+
 Open **EXODUS Steam Sync** from a homebrew launch context with WebApplet access and press **A**. Complete Steam sign-in in the applet. If the applet stays open on the completion page, close it to return to the client. An incomplete, expired or failed session produces an error.
 
-If the applet cannot open or closes before sign-in completes, the client attempts to cancel its gateway session using the same proof required to retrieve the catalog. This frees the session slot for another attempt. If cleanup fails or the gateway does not support cancellation, the original error remains and the session expires normally. A cancelled attempt does not replace saved catalogs.
+If the applet cannot open, closes before sign-in completes, or catalog retrieval fails with a transport error or unexpected HTTP status, the client attempts to cancel its gateway session using the same proof required to retrieve the catalog. This frees the session slot for another attempt even if the failed catalog request did not reach the gateway. If cleanup fails or the gateway does not support cancellation, the original error remains and the session expires normally. Successful redemption and an already expired session need no cancellation. A cancelled attempt does not replace saved catalogs.
 
 Install the matching patched uMenu to enable automatic refresh. A successful sync publishes a numbered Steam-only file in `/switch/exodus-steam-sync/snapshots/`. Reopen **EXODUS library** from the HOME Quick Menu to load the newest usable snapshot alongside the current Switch and homebrew entries. The viewer reads `/ulaunch/exodus-catalog.json` as the inventory source. [uMenu installation, fallback and recovery](../home/ulaunch/README.md)
 
