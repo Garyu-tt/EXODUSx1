@@ -17,6 +17,53 @@ static uint32_t next_random(void)
     return seed;
 }
 
+/* Independent logical-page oracle, mixed packed/raw and wrapping bases. */
+static void check_bdi_direct_fingerprint(void)
+{
+    uint8_t storage[EXODUS_PAGE_BYTES+2], page[EXODUS_PAGE_BYTES], decoded[EXODUS_PAGE_BYTES];
+    uint8_t *p=storage+1;
+    for(unsigned trial=0;trial<512;trial++){
+        p[0]=EXODUS_PAGE_BDI_VERSION;
+        for(size_t i=0;i<8;i++)p[1+i]=(uint8_t)next_random();
+        if(trial==0)memset(p+1,0xff,8);
+        if(trial==1){memset(p+1,0,8);p[8]=0x80;}
+        p[8]|=0x80; /* At least one packed block keeps record below RAW size. */
+        size_t pos=9;
+        for(size_t block=0;block<64;block++){
+            bool packed=(p[1+block/8]&(1u<<(block%8)))!=0;
+            uint32_t base=trial%3==0?UINT32_MAX-31u:next_random();
+            uint8_t *logical=page+64*block;
+            if(packed)for(unsigned k=0;k<4;k++)p[pos+k]=(uint8_t)(base>>(8*k));
+            for(size_t w=0;w<16;w++){
+                uint8_t delta=(uint8_t)next_random();
+                uint32_t value=packed?base+(uint32_t)delta:next_random();
+                if(packed)p[pos+4+w]=delta;
+                for(unsigned k=0;k<4;k++)logical[4*w+k]=(uint8_t)(value>>(8*k));
+            }
+            if(!packed)memcpy(p+pos,logical,64);
+            pos+=packed?20:64;
+        }
+        CHECK(exodus_page_decode(p,pos,decoded));
+        CHECK(!memcmp(page,decoded,sizeof page));
+        uint64_t expected=exodus_page_fingerprint(page), got=0;
+        CHECK(exodus_page_bdi_fingerprint(p,pos,&got)&&got==expected);
+        size_t w=next_random()%1024;
+        uint8_t before[4], after[4];
+        memcpy(before,page+4*w,4);
+        for(unsigned k=0;k<4;k++)after[k]=(uint8_t)next_random();
+        CHECK(exodus_page_fingerprint_update(got,w,before,after,&got));
+        memcpy(page+4*w,after,4);
+        CHECK(got==exodus_page_fingerprint(page));
+        /* Full validation must precede any fingerprint output. */
+        got=expected;
+        CHECK(!exodus_page_bdi_fingerprint(p,pos-1,&got)&&got==expected);
+        p[8]^=0x80;
+        CHECK(!exodus_page_bdi_fingerprint(p,pos,&got)&&got==expected);
+        p[8]^=0x80;
+        CHECK(!exodus_page_bdi_fingerprint(p,SIZE_MAX,&got)&&got==expected);
+    }
+}
+
 static size_t check_adaptive_round_trip(const uint8_t *page, uint8_t *encoded)
 {
     uint8_t decoded[EXODUS_PAGE_BYTES + 2];
@@ -245,6 +292,7 @@ static void check_page_store_index_capacity(void)
 
 int main(void)
 {
+    check_bdi_direct_fingerprint();
     check_adaptive();
     check_repeated_tiles();
     check_word_run_lengths();
