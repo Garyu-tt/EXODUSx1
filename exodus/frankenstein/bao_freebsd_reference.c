@@ -6,7 +6,11 @@ VM_IMAGE(guest_a, XSTR(TUMOR_IMAGES/guest-A.bin))
 VM_IMAGE(guest_b, XSTR(TUMOR_IMAGES/guest-B.bin))
 #define BASE 0x60000000
 #define SHARED 0xf0000000
+#ifdef TUMOR_DUAL_FREEBSD
+#define GUEST_MEM { .base = BASE, .size = 0x10000000 }
+#else
 #define GUEST_MEM { .base = BASE, .size = 0x4000000 }
+#endif
 #define GUEST_IPC { .base = SHARED, .size = 0x10000, .shmem_id = 0 }
 #define GUEST_GIC { .gic = { .gicd_addr = 0x08000000, .gicr_addr = 0x080a0000 } }
 struct config config = {
@@ -23,7 +27,7 @@ struct config config = {
                 .cpu_num = 3,
                 .region_num = 1,
 #ifdef TUMOR_DUAL_FREEBSD
-                .regions = (struct vm_mem_region[]) { { .base = BASE, .size = 0x10000000 } },
+                .regions = (struct vm_mem_region[]) { GUEST_MEM },
                 .dev_num = 1,
                 .devs = (struct vm_dev_region[]) {
                     { .interrupt_num = 1, .interrupts = (irqid_t[]) {27} },
