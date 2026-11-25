@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import stat
 import struct
 import subprocess
 import sys
@@ -152,6 +153,51 @@ class AppCatalogTests(unittest.TestCase):
         self.assertIn("Could not write the catalog. The previous output was preserved.", result.stderr)
         self.assertTrue(output.is_dir())
         self.assertEqual(list(self.root.glob(".exodus-catalog-*")), [])
+
+    @unittest.skipUnless(os.name == "nt", "requires a Windows directory junction")
+    def test_windows_junction_does_not_duplicate_homebrew(self):
+        self.add_nro("Original/Helper.nro", nro_image("Local helper"))
+        switch_root = self.switch.resolve(strict=True)
+        original = switch_root / "Original"
+        mirror = switch_root / "Mirror"
+
+        def remove_junction():
+            try:
+                info = mirror.lstat()
+            except FileNotFoundError:
+                return
+            self.assertEqual(info.st_reparse_tag, stat.IO_REPARSE_TAG_MOUNT_POINT)
+            self.assertEqual(mirror.parent.resolve(strict=True), switch_root)
+            self.assertEqual(mirror.resolve(strict=True), original)
+            mirror.rmdir()
+
+        self.addCleanup(remove_junction)
+        environment = {
+            **os.environ,
+            "EXODUS_TEST_JUNCTION_PATH": str(mirror),
+            "EXODUS_TEST_JUNCTION_TARGET": str(original),
+        }
+        try:
+            created = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                 "$ErrorActionPreference = 'Stop'; "
+                 "New-Item -ItemType Junction -Path $env:EXODUS_TEST_JUNCTION_PATH "
+                 "-Target $env:EXODUS_TEST_JUNCTION_TARGET | Out-Null"],
+                env=environment, capture_output=True,
+            )
+        except FileNotFoundError:
+            self.skipTest("Windows PowerShell is unavailable")
+        if created.returncode:
+            self.skipTest("Windows directory junction unavailable: " + created.stderr.decode(errors="replace"))
+        self.assertEqual(mirror.lstat().st_reparse_tag, stat.IO_REPARSE_TAG_MOUNT_POINT)
+        self.assertTrue((mirror / "Helper.nro").samefile(original / "Helper.nro"))
+
+        result = self.run_catalog("--switch-sd", self.sd)
+        self.assertEqual((result.returncode, result.stderr), (0, ""))
+        self.assertEqual(
+            [item["provider_id"] for item in json.loads(result.stdout)["entries"]],
+            ["Original/Helper.nro"],
+        )
 
     def test_homebrew_filename_fallback_when_no_embedded_title_is_available(self):
         self.add_nro("Blank title.nro", nro_image(""))

@@ -3,6 +3,7 @@
 import argparse
 import os
 from pathlib import Path
+import stat
 import struct
 import sys
 import zlib
@@ -96,6 +97,13 @@ def homebrew_name(path):
     return path.stem
 
 
+def _is_windows_junction(path):
+    try:
+        return path.lstat().st_reparse_tag == stat.IO_REPARSE_TAG_MOUNT_POINT
+    except OSError:
+        return False
+
+
 def scan_homebrew(sd_root):
     switch_dir = sd_root / "switch"
     entries = []
@@ -107,9 +115,13 @@ def scan_homebrew(sd_root):
         errors = True
 
     for directory, subdirs, files in os.walk(switch_dir, onerror=report_error):
+        folder = Path(directory)
+        if os.name == "nt":
+            # The Windows walk can enter junctions with followlinks disabled.
+            subdirs[:] = [name for name in subdirs if not _is_windows_junction(folder / name)]
         subdirs.sort()
         for filename in sorted(files):
-            path = Path(directory) / filename
+            path = folder / filename
             if path.suffix.lower() != ".nro":
                 continue
             try:
