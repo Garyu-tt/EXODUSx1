@@ -333,8 +333,37 @@ static void check_corrupt_physical_index_rejects_append(void)
     }
 }
 
+/* Equal hashes and a 4095-byte common prefix must still distinguish raw
+ * pages, including when replacement subsequently shares an equal page. */
+static void check_raw_tail_collision_and_replace(void)
+{
+    struct fixture f;
+    init_fixture(&f);
+    uint8_t a[EXODUS_PAGE_BYTES], b[EXODUS_PAGE_BYTES], restored[EXODUS_PAGE_BYTES];
+    memset(a, 0x31, sizeof a);
+    memcpy(b, a, sizeof b);
+    b[EXODUS_PAGE_BYTES - 1] = 0x72;
+    CHECK(exodus_page_dedup_store_append(&f.store, a));
+    CHECK(f.ends[0] == EXODUS_PAGE_BYTES);
+    f.hashes[0] = exodus_page_fingerprint(b); /* test-only collision */
+    CHECK(exodus_page_dedup_store_append(&f.store, b));
+    CHECK(f.store.unique.page_count == 2 && f.ends[1] == 2 * EXODUS_PAGE_BYTES);
+    CHECK(exodus_page_dedup_store_append_adaptive(&f.store, b));
+    CHECK(f.store.unique.page_count == 2 && f.refs[2] == 1);
+    CHECK(exodus_page_dedup_store_restore(&f.store, 0, restored));
+    CHECK(memcmp(restored, a, sizeof a) == 0);
+    CHECK(exodus_page_dedup_store_replace_adaptive(&f.store, 0, b));
+    CHECK(f.store.unique.page_count == 1 && f.store.page_count == 3);
+    for(size_t i=0;i<3;i++){
+        CHECK(f.refs[i] == 0);
+        CHECK(exodus_page_dedup_store_restore(&f.store, i, restored));
+        CHECK(memcmp(restored, b, sizeof b) == 0);
+    }
+}
+
 int main(void)
 {
+    check_raw_tail_collision_and_replace();
     check_corrupt_physical_index_rejects_append();
     check_adaptive_sharing();
     check_raw_sharing_and_memory_budget();
