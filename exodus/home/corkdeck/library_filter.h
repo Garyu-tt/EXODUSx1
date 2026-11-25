@@ -55,7 +55,7 @@ static inline enum exodus_filter exodus_section_next_filter(enum exodus_section 
 struct exodus_card_index { size_t index; uint64_t last_played; };
 static inline int exodus_recent_compare(const void *a, const void *b)
 {
-    const struct exodus_card_index *x = a, *y = b;
+    const struct exodus_card_index *x = (const struct exodus_card_index *)a, *y = (const struct exodus_card_index *)b;
     if (x->last_played != y->last_played) return x->last_played > y->last_played ? -1 : 1;
     return (x->index > y->index) - (x->index < y->index);
 }
