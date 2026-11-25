@@ -12,7 +12,7 @@ from pathlib import Path
 
 PROGRAMS = (
     "usr/sbin/sshd", "usr/sbin/pwd_mkdb",
-    "usr/bin/ssh-keygen", "usr/bin/ssh-keyscan",
+    "usr/bin/ssh-keygen", "usr/bin/ssh-keyscan", "usr/bin/ssh",
     "usr/libexec/sshd-session", "usr/libexec/sshd-auth",
     "libexec/ld-elf.so.1",
 )

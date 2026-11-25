@@ -10,6 +10,7 @@ on:
       - 'exodus/frankenstein/el_probe.S'
       - 'exodus/frankenstein/el_probe.ld'
       - 'exodus/frankenstein/bao_guest.S'
+      - 'exodus/frankenstein/verify_bao_peer.py'
       - 'exodus/frankenstein/bao_guest.ld'
       - 'exodus/frankenstein/bao_reference.c'
       - 'exodus/frankenstein/bao_freebsd_boot.S'
@@ -47,6 +48,7 @@ jobs:
           python3 exodus/frankenstein/partition_contract.py
           python3 exodus/frankenstein/pack_bao_freebsd_root.py --selftest
           python3 exodus/frankenstein/test_prepare_bao_ssh_root.py
+          python3 exodus/frankenstein/verify_bao_peer.py --selftest
           python3 exodus/frankenstein/ipc_contract.py
           python3 -W error::ResourceWarning exodus/frankenstein/test_ipc_process.py
           cc -std=c11 -Wall -Wextra -Werror -pedantic -DTMR_SELFTEST -fsanitize=address,undefined -fno-sanitize-recover=all exodus/frankenstein/ipc_native.c -o /tmp/tumor-ipc-native
@@ -80,7 +82,7 @@ jobs:
           test -z "$(nm -u /tmp/el-probe.elf)"
           for mode in on off; do
             rc=0
-            timeout 12s qemu-system-aarch64 -machine "virt,virtualization=$mode,gic-version=2,secure=off" -cpu cortex-a57 -smp 1 -m 128 -display none -monitor none -serial stdio -no-reboot -kernel /tmp/el-probe.elf > "/tmp/el-$mode.log" 2>&1 || rc=$?
+            timeout 12s qemu-system-aarch64 -machine "virt,virtualization=$mode,gic-version=2,secure=off" -cpu cortex-a57 -smp 1 -m 128 -nic none -display none -monitor none -serial stdio -no-reboot -kernel /tmp/el-probe.elf > "/tmp/el-$mode.log" 2>&1 || rc=$?
             cat "/tmp/el-$mode.log"
             test "$rc" -eq 124
             expected=EL2
@@ -181,13 +183,17 @@ jobs:
 
           # R27: actual kernel + isolated UFS RAM disk + synthetic PID1.
           # The previous rootless gate remains mandatory and independent.
+          # UFS1 control: NetBSD-derived makefs has incompatible UFS2
+          # superblock location metadata (NetBSD PR bin/60947).
+          # This run does not establish UFS2 compatibility.
+          echo 'TUMOR_ROOT_FORMAT=UFS1_CONTROL'
           mkdir -p "$out/root/sbin" "$out/root/dev" "$out/root/etc" "$out/root-images"
           clang --target=aarch64-unknown-freebsd -c "$src/bao_freebsd_init_probe.S" -o "$out/init.o"
           ld.lld -static --no-undefined -e _start "$out/init.o" -o "$out/root/sbin/init"
           chmod 0755 "$out/root/sbin/init"
           readelf -h "$out/root/sbin/init" | grep FreeBSD
           test -z "$(nm -u "$out/root/sbin/init")"
-          makefs -t ffs -o version=2 -B little -s 8m "$out/root.ufs" "$out/root"
+          makefs -t ffs -o version=1 -B little -s 8m "$out/root.ufs" "$out/root"
           clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DTUMOR_FREEBSD_NATIVE_METADATA -c "$src/bao_freebsd_boot.S" -o "$out/root-boot.o"
           ld.lld --no-undefined -T "$src/bao_guest.ld" "$out/root-boot.o" -o "$out/root-boot.elf"
           ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/root-boot.o" -o "$out/root-boot.bin"
@@ -206,7 +212,7 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-root.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_SYNTHETIC_PID1$' "$out/bao-root.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-root.normalized"; then exit 1; fi
-          echo 'R27 synthetic PID1 admission only; full FreeBSD userspace and physical coexistence remain unverified'
+          echo 'R27 UFS1 control: synthetic PID1 admission only; full FreeBSD userspace and physical coexistence remain unverified'
 
           # R28: original FreeBSD rescue init and shell, isolated custom rc.
           # The publisher manifest must match the already pinned kernel archive.
@@ -223,7 +229,7 @@ jobs:
           tar -tJf "$out/base.txz" | awk '/^(\.\/)?rescue\// { print }' > "$out/rescue-members"
           test -s "$out/rescue-members"
           tar -xJf "$out/base.txz" -C "$out/base" --no-same-owner --no-recursion -T "$out/rescue-members"
-          for tool in init sh sysctl ps; do
+          for tool in init sh sysctl ps mount; do
             test -f "$out/base/rescue/$tool"
             test ! -L "$out/base/rescue/$tool"
             test -x "$out/base/rescue/$tool"
@@ -237,7 +243,7 @@ jobs:
           install -m 0755 "$src/bao-freebsd-rescue-rc.sh" "$out/stock-root/etc/rc"
           : > "$out/stock-root/etc/ttys"
           chmod 1777 "$out/stock-root/tmp"
-          makefs -t ffs -o version=2 -B little -s 64m "$out/stock.ufs" "$out/stock-root"
+          makefs -t ffs -o version=1 -B little -s 64m "$out/stock.ufs" "$out/stock-root"
           cp "$out/guest-A.bin" "$out/stock-images/guest-A.bin"
           python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/stock.ufs" "$out/stock-images/guest-B.bin"
           cp "$src/bao_freebsd_reference.c" "$out/config/tumor_stock.c"
@@ -253,29 +259,40 @@ jobs:
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-stock.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_STOCK_INIT_RC$' "$out/bao-stock.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-stock.normalized"; then exit 1; fi
-          echo 'R28 original rescue init and custom rc only; stock rc.d, SSH, resident peer and physical coexistence remain unverified'
+          echo 'R28 UFS1 control: original rescue init and custom rc only; stock rc.d, SSH, resident peer and physical coexistence remain unverified'
 
           # R29: actual release OpenSSH binaries on a separate RAM root.
           # All networking remains inside the guest, with no QEMU NIC.
           mkdir "$out/ssh-root" "$out/ssh-base" "$out/ssh-images"
           tar -xJf "$out/base.txz" -C "$out/ssh-base" --no-same-owner
           cp -a "$out/stock-root/." "$out/ssh-root/"
+          ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/mount"
           ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/ifconfig"
           ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/sleep"
+          for tool in cat id chmod; do ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/$tool"; done
           python3 "$src/prepare_bao_ssh_root.py" "$out/ssh-base" "$out/ssh-root"
-          mkdir -p "$out/ssh-root/etc/ssh" "$out/ssh-root/var/empty"
+          mkdir -p "$out/ssh-root/etc/ssh" "$out/ssh-root/var/empty" "$out/ssh-root/root" "$out/ssh-root/home/tumor-probe"
           install -m 0755 "$src/bao-freebsd-ssh-rc.sh" "$out/ssh-root/etc/rc"
           sh -n "$out/ssh-root/etc/rc"
           sed -i 's/^root::/root:*:/' "$out/ssh-root/etc/master.passwd"
+          # Unique nonprivileged account; no usable password, no password auth.
+          ! grep -Eq '^([^:]+:){2}60001:|^tumor-probe:' "$out/ssh-root/etc/master.passwd"
+          ! grep -Eq '^([^:]+:){2}60001:|^tumor-probe:' "$out/ssh-root/etc/group"
+          printf '%s\n' 'tumor-probe:x:60001:60001::0:0:Tumor probe:/home/tumor-probe:/bin/sh' >> "$out/ssh-root/etc/master.passwd"
+          printf '%s\n' 'tumor-probe:*:60001:' >> "$out/ssh-root/etc/group"
           chmod 0600 "$out/ssh-root/etc/master.passwd"
-          printf '%s\n' 'Port 2222' 'ListenAddress 127.0.0.1' 'AddressFamily inet' 'HostKey /etc/ssh/ssh_host_ed25519_key' 'PidFile /var/run/tumor-sshd.pid' 'PermitRootLogin no' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PubkeyAuthentication no' 'UsePAM no' 'PermitEmptyPasswords no' 'AllowTcpForwarding no' 'AllowAgentForwarding no' 'X11Forwarding no' 'PermitTunnel no' 'AllowUsers tumor-no-login' > "$out/ssh-root/etc/ssh/tumor-test.conf"
+          printf '%s\n' 'Port 2222' 'ListenAddress 127.0.0.1' 'AddressFamily inet' 'HostKey /etc/ssh/ssh_host_ed25519_key' 'PidFile /var/run/tumor-sshd.pid' 'PermitRootLogin no' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PubkeyAuthentication yes' 'AuthorizedKeysFile /etc/ssh/tumor-authorized-keys' 'UsePAM no' 'PermitEmptyPasswords no' 'AllowTcpForwarding no' 'AllowAgentForwarding no' 'X11Forwarding no' 'PermitTunnel no' 'AllowUsers tumor-probe' 'PermitTTY no' 'PermitUserRC no' > "$out/ssh-root/etc/ssh/tumor-test.conf"
           chmod 0755 "$out/ssh-root/var/empty"
           # Only the disposable generated root is affected. sshd verifies
           # root ownership of its privilege-separation directory.
           sudo chown -R 0:0 "$out/ssh-root"
-          sudo makefs -t ffs -o version=2 -B little -s 64m "$out/ssh.ufs" "$out/ssh-root"
+          sudo chown 60001:60001 "$out/ssh-root/home/tumor-probe"
+          sudo chmod 0755 "$out/ssh-root/home/tumor-probe"
+          sudo makefs -t ffs -o version=1 -B little -s 64m "$out/ssh.ufs" "$out/ssh-root"
           sudo chown "$(id -u):$(id -g)" "$out/ssh.ufs"
-          cp "$out/guest-A.bin" "$out/ssh-images/guest-A.bin"
+          # Only the SSH control uses a resident synthetic peer; earlier controls unchanged.
+          clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DGUEST_A -DTUMOR_RESIDENT_PEER -c "$src/bao_guest.S" -o "$out/peer.o"
+          ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/peer.o" -o "$out/ssh-images/guest-A.bin"
           python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/ssh.ufs" "$out/ssh-images/guest-B.bin"
           cp "$src/bao_freebsd_reference.c" "$out/config/tumor_ssh.c"
           make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_ssh CPPFLAGS="-DTUMOR_IMAGES=$out/ssh-images"
@@ -283,11 +300,20 @@ jobs:
           test -s "$bao_ssh"
           sha256sum "$out/ssh.ufs" "$out/ssh-images/guest-B.bin" "$bao_ssh"
           rc=0
-          timeout 180s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_ssh,addr=0x50000000,force-raw=on" > "$out/bao-ssh.log" 2>&1 || rc=$?
+          timeout 300s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -qmp "unix:$out/peer-qmp.sock,server=on,wait=off" -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_ssh,addr=0x50000000,force-raw=on" > "$out/bao-ssh.log" 2>&1 &
+          qemu_pid=$!
+          peer_rc=0
+          python3 "$src/verify_bao_peer.py" "$out/peer-qmp.sock" "$out/bao-ssh.log" || peer_rc=$?
+          wait "$qemu_pid" || rc=$?
+          test "$peer_rc" -eq 0
           cat "$out/bao-ssh.log"
           test "$rc" -eq 124
           tr -d '\r' < "$out/bao-ssh.log" > "$out/bao-ssh.normalized"
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_RAMROOT_WRITABLE$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LISTENER_READY$' "$out/bao-ssh.normalized")" -eq 1
           test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LOOPBACK_KEX$' "$out/bao-ssh.normalized")" -eq 1
           if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
-          echo 'R29 loopback key exchange only; no authenticated shell, external network, stock rc.d or physical coexistence claim'
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_AUTH_COMMAND$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_REMOTE_EXIT_23$' "$out/bao-ssh.normalized")" -eq 1
+          echo 'R31 control: synthetic EL1 peer counter progresses across authenticated FreeBSD commands; not two real OS kernels or physical coexistence'
