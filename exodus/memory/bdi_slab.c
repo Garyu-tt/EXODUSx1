@@ -17,9 +17,19 @@ static bool live(const struct exodus_bdi_slab *s,uint16_t id){return (size_t)(id
 static bool page_ok(const struct exodus_bdi_slab *s,const struct exodus_bdi_slab_page *p)
 {
     if(!valid(s)||!p||!p->active)return false;
+    /* Separate RAW and BDI classes. An unset bit proves no previous ID
+     * matches; a set bit is only a filter and requires exact comparison.
+     * No additional persistent metadata, and worst-case scan is unchanged. */
+    uint64_t seen[2]={0};
     for(size_t i=0;i<64;i++){
-        if(!live(s,p->ids[i]))return false;
-        for(size_t j=0;j<i;j++)if(p->ids[j]==p->ids[i])return false;
+        uint16_t id=p->ids[i];
+        if(!live(s,id))return false;
+        unsigned cls=(id&RAW_BIT)!=0;
+        uint64_t mask=UINT64_C(1)<<(id&63u);
+        if(seen[cls]&mask){
+            for(size_t j=0;j<i;j++)if(p->ids[j]==id)return false;
+        }
+        seen[cls]|=mask;
     }
     return true;
 }
@@ -128,7 +138,7 @@ bool exodus_bdi_slab_import(struct exodus_bdi_slab *s,struct exodus_bdi_slab_pag
     if(!valid(s)||!p||p->active||!page)return false;
     uint16_t ids[64];size_t cursors[2]={0};uint8_t encoded[64];
     for(size_t i=0;i<64;i++){
-        bool raw=exodus_bdi_block_encode(page+i*64,encoded)==RAW;
+        bool raw=exodus_bdi_block_encode(page+i*64,NULL)==RAW;
         if(!reserve(s,raw,&cursors[raw],&ids[i]))return false;
     }
     for(size_t i=0;i<64;i++){
