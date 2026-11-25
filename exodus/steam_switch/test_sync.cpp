@@ -67,9 +67,10 @@ namespace {
         const std::string snapshot = Catalog({Entry("steam", "123", "Example Steam Game")});
         assert(exodus::home::ParseCatalog(snapshot).status == exodus::home::CatalogStatus::Ready);
         const std::string issued = JSON{{"session", Session}}.dump();
-        const auto redeem = [&](int status, std::string body, bool opened = true) {
+        const auto redeem = [&](int status, std::string body, bool opened = true, int cancel_status = 200) {
             int requests = 0;
             bool browser = false;
+            bool cancelled = false;
             auto result = FetchSteamSnapshot(
                 *origin, Challenge, Verifier,
                 [&](std::string_view path, std::string_view request, std::size_t limit) {
@@ -79,8 +80,15 @@ namespace {
                         assert(payload["challenge"] == Challenge && limit == 512);
                         return HttpReply{201, issued};
                     }
-                    assert(browser && opened && requests == 2 && path == "/v1/steam/catalog");
+                    assert(browser);
                     assert(payload.size() == 2 && payload["verifier"] == Verifier && payload["session"] == Session);
+                    if (path == "/v1/steam/cancel") {
+                        assert(!cancelled && (!opened || status == 409));
+                        assert(requests == (opened ? 3 : 2) && limit == 512);
+                        cancelled = true;
+                        return HttpReply{cancel_status, {}};
+                    }
+                    assert(opened && requests == 2 && path == "/v1/steam/catalog");
                     assert(limit == exodus::home::CatalogByteLimit);
                     return HttpReply{status, body};
                 },
@@ -91,15 +99,21 @@ namespace {
                     browser = true;
                     return opened;
                 });
-            assert(requests == (opened ? 2 : 1) && browser);
+            const bool abandoned = !opened || status == 409;
+            assert(requests == (opened ? 2 : 1) + (abandoned ? 1 : 0) && browser);
+            assert(cancelled == abandoned);
+            if (abandoned)
+                assert(result.catalog.empty());
             return result;
         };
         const auto success = redeem(200, snapshot);
         assert(success.status == SyncStatus::Ready && success.catalog == snapshot);
         assert(redeem(200, Catalog({})).status == SyncStatus::Ready);
-        assert(redeem(0, {}, false).status == SyncStatus::BrowserUnavailable);
         assert(redeem(404, {}).status == SyncStatus::SessionExpired);
-        assert(redeem(409, {}).status == SyncStatus::SignInIncomplete);
+        for (const int cleanup : {200, 404, 503, 0}) {
+            assert(redeem(0, {}, false, cleanup).status == SyncStatus::BrowserUnavailable);
+            assert(redeem(409, {}, true, cleanup).status == SyncStatus::SignInIncomplete);
+        }
         assert(redeem(302, {}).status == SyncStatus::GatewayUnavailable);
         assert(redeem(200, "{invalid").status == SyncStatus::InvalidCatalog);
         assert(redeem(200, Catalog({Entry("switch", "9", "Not from Steam")})).status == SyncStatus::InvalidCatalog);
