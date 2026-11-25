@@ -50,7 +50,7 @@ bool exodus_page_bdi_prepare_patch(const uint8_t *encoded,size_t size,size_t wor
 size_t exodus_page_bdi_patch_word(const uint8_t *encoded,size_t size,size_t word,
                                   const uint8_t value[4],uint8_t *out);
 /* Logical position-dependent fingerprint v2, identical to the raw page hash.
- * Uses one 64-byte scratch block, not a fully decoded page. */
+ * Hashes logical words directly from the validated encoding. */
 bool exodus_page_bdi_fingerprint(const uint8_t *encoded,size_t size,uint64_t *out);
 bool exodus_page_bdi_equal_page(const uint8_t *encoded,size_t size,const uint8_t *page);
 
