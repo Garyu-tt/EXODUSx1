@@ -91,8 +91,9 @@ jobs:
       - name: Install isolated cross toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross clang lld libssl-dev qemu-system-arm device-tree-compiler curl xz-utils
       - name: Build synthetic guests and pinned Bao reference
+        shell: bash
         run: |
-          set -eu
+          set -euo pipefail
           src="$GITHUB_WORKSPACE/exodus/frankenstein"
           out="$(mktemp -d /tmp/tumor-bao.XXXXXX)"
           mkdir "$out/config"
@@ -141,7 +142,7 @@ jobs:
           printf '%s  %s\n' 05f770c6af035fab312cd65592f1dbd1bff020c7daa75d8d4ecc96cae8f042c0 "$out/kernel.txz" | sha256sum -c -
           mkdir "$out/freebsd"
           member="$(tar -tJf "$out/kernel.txz" | awk '$0 == "boot/kernel/kernel" || $0 == "./boot/kernel/kernel" { print }')"
-          test "$(printf '%s\\n' "$member" | wc -l)" -eq 1
+          test "$(printf '%s\n' "$member" | wc -l)" -eq 1
           test -n "$member"
           tar -xJf "$out/kernel.txz" -C "$out/freebsd" "$member"
           kernel="$out/freebsd/boot/kernel/kernel"
