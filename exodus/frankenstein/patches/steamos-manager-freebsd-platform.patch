@@ -1,0 +1,522 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index e077c31929cb202ea244c3ba63c8a26482e69d94..396163e672c25c82370359b1e010f5bd0f97b605 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -602,9 +602,9 @@ dependencies = [
+ 
+ [[package]]
+ name = "inotify"
+-version = "0.11.2"
++version = "0.11.4"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "533e68a5842e734946fe159fb03fc9bbbb254f590dd0d8ad321ae5ff7beca2c1"
++checksum = "153be1941a183ec9ccd095ddbe17a8b8d435ef6c76e9e02451b933c3999af2c8"
+ dependencies = [
+  "bitflags",
+  "futures-util",
+@@ -615,9 +615,9 @@ dependencies = [
+ 
+ [[package]]
+ name = "inotify-sys"
+-version = "0.1.5"
++version = "0.1.8"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
++checksum = "c033f80b2c113cdf91ab7a33faa9cbc014726dcad99880c8609af2a370edf37d"
+ dependencies = [
+  "libc",
+ ]
+diff --git a/steamos-manager/Cargo.toml b/steamos-manager/Cargo.toml
+index a24a47da28eef23ec3ff8c617193bba6e57eafa2..64a7ed847850af18e73890e791fedab395558aad 100644
+--- a/steamos-manager/Cargo.toml
++++ b/steamos-manager/Cargo.toml
+@@ -14,7 +14,6 @@ gio = "0.21"
+ inotify = { version = "0.11", default-features = false, features = ["stream"] }
+ input-linux = "0.7"
+ itertools = "0.14"
+-linux-cec = { version = "0.2", default-features = false, features = ["serde"] }
+ libc = "0.2"
+ nix = { version = "0.31", default-features = false, features = ["fs", "poll", "signal", "time", "user"] }
+ num_enum = "0.7"
+@@ -37,3 +36,6 @@ udev = { version = "^0.9.3", features = ["send", "sync"] }
+ xdg = "3.0"
+ zbus = { version = "5", default-features = false, features = ["tokio"] }
+ zbus_xml = "5"
++
++[target.'cfg(not(target_os = "freebsd"))'.dependencies]
++linux-cec = { version = "0.2", default-features = false, features = ["serde"] }
+diff --git a/steamos-manager/examples/freebsd_inotify_probe.rs b/steamos-manager/examples/freebsd_inotify_probe.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..a68226e3d8ef98966d31add356c86ae2426ad994
+--- /dev/null
++++ b/steamos-manager/examples/freebsd_inotify_probe.rs
+@@ -0,0 +1,46 @@
++/*
++ * Copyright © 2026 EXODUS contributors
++ *
++ * SPDX-License-Identifier: MIT
++ */
++
++use inotify::{EventMask, Inotify, WatchMask};
++use std::ffi::OsStr;
++use std::io;
++use std::os::fd::{AsRawFd, FromRawFd};
++use tokio_stream::StreamExt;
++
++#[tokio::main]
++async fn main() -> Result<(), Box<dyn std::error::Error>> {
++    let directory = tempfile::tempdir()?;
++    let original = Inotify::init()?;
++    let duplicate_fd = unsafe { libc::dup(original.as_raw_fd()) };
++    if duplicate_fd < 0 {
++        return Err(io::Error::last_os_error().into());
++    }
++    let duplicate = unsafe { Inotify::from_raw_fd(duplicate_fd) };
++
++    let original_watch = original
++        .watches()
++        .add(directory.path(), WatchMask::CREATE)?;
++    let duplicate_watch = duplicate
++        .watches()
++        .add(directory.path(), WatchMask::CREATE)?;
++    assert_eq!(
++        original_watch, duplicate_watch,
++        "duplicated descriptors must identify the same inotify watch"
++    );
++
++    let mut events = original.into_event_stream([0u8; 4096])?;
++    std::fs::write(directory.path().join("probe-event"), b"event")?;
++    let event = events
++        .next()
++        .await
++        .ok_or_else(|| io::Error::new(io::ErrorKind::UnexpectedEof, "inotify stream ended"))??;
++    assert_eq!(event.wd, original_watch);
++    assert!(event.mask.contains(EventMask::CREATE));
++    assert_eq!(event.name.as_deref(), Some(OsStr::new("probe-event")));
++
++    println!("EXODUS_MANAGER_INOTIFY_RUST_PASS");
++    Ok(())
++}
+diff --git a/steamos-manager/src/bin/steamosctl.rs b/steamos-manager/src/bin/steamosctl.rs
+index 396cf333652988425297e12ed1beae1e6a976efb..c8785688ee5f29a51db457971135838651e977ff 100644
+--- a/steamos-manager/src/bin/steamosctl.rs
++++ b/steamos-manager/src/bin/steamosctl.rs
+@@ -8,6 +8,7 @@
+ use anyhow::{Result, bail};
+ use clap::{ArgAction, Parser, Subcommand};
+ use itertools::Itertools;
++#[cfg(not(target_os = "freebsd"))]
+ use nix::time::{ClockId, clock_gettime};
+ use std::collections::{BTreeMap, HashMap};
+ use std::io::{Cursor, stderr};
+@@ -875,12 +876,20 @@ async fn main() -> Result<()> {
+             proxy.set_mode(mode.to_string().as_str()).await?;
+         }
+         Commands::TriggerScreenReaderAction { action } => {
+-            let proxy = ScreenReader1Proxy::new(&conn).await?;
+-            let timestamp = clock_gettime(ClockId::CLOCK_MONOTONIC_RAW)?;
+-            let now = timestamp.tv_sec() * 1_000_000_000 + timestamp.tv_nsec();
+-            proxy
+-                .trigger_action(action.to_string().as_str(), now.try_into()?)
+-                .await?;
++            #[cfg(target_os = "freebsd")]
++            {
++                let _ = action;
++                bail!("screen-reader action timestamps are not supported on FreeBSD");
++            }
++            #[cfg(not(target_os = "freebsd"))]
++            {
++                let proxy = ScreenReader1Proxy::new(&conn).await?;
++                let timestamp = clock_gettime(ClockId::CLOCK_MONOTONIC_RAW)?;
++                let now = timestamp.tv_sec() * 1_000_000_000 + timestamp.tv_nsec();
++                proxy
++                    .trigger_action(action.to_string().as_str(), now.try_into()?)
++                    .await?;
++            }
+         }
+         Commands::GetScreenReaderLocales => {
+             let proxy = ScreenReader1Proxy::new(&conn).await?;
+diff --git a/steamos-manager/src/cec.rs b/steamos-manager/src/cec.rs
+index ab6271c03f08463bcea6b6d684c02d2f3a7e5272..8cd023afbaedbeab76622ece1642e813ae36ac49 100644
+--- a/steamos-manager/src/cec.rs
++++ b/steamos-manager/src/cec.rs
+@@ -6,10 +6,10 @@
+  * SPDX-License-Identifier: MIT
+  */
+ 
++use crate::cec_types::{PhysicalAddress, VendorId};
+ use anyhow::{Error, Result, bail};
+ use async_trait::async_trait;
+ use cecd_proxy::{CecDevice1Proxy, Config1Proxy, Daemon1Proxy};
+-use linux_cec::{PhysicalAddress, VendorId};
+ use num_enum::TryFromPrimitive;
+ use serde::{Deserialize, Serialize};
+ use std::fmt;
+diff --git a/steamos-manager/src/cec_types.rs b/steamos-manager/src/cec_types.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..3d7af920df0a281d194d61d244e69d976b9b3bb5
+--- /dev/null
++++ b/steamos-manager/src/cec_types.rs
+@@ -0,0 +1,294 @@
++/*
++ * Copyright © 2026 EXODUS contributors
++ *
++ * SPDX-License-Identifier: MIT
++ */
++
++//! Target-specific CEC value types used by SteamOS Manager.
++//!
++//! Linux re-exports the original `linux-cec` types without wrapping them. The
++//! independently implemented FreeBSD values preserve only the address/OUI
++//! parse and serde contract that this crate consumes; no CEC device or ioctl
++//! API is exposed on FreeBSD.
++
++#[cfg(not(target_os = "freebsd"))]
++pub use linux_cec::{PhysicalAddress, VendorId};
++
++#[cfg(any(target_os = "freebsd", test))]
++mod portable {
++    use serde::de::{self, Unexpected, Visitor};
++    use serde::{Deserialize, Deserializer, Serialize, Serializer};
++    use std::fmt::{self, Display, Formatter};
++    use std::str::FromStr;
++
++    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
++    #[repr(transparent)]
++    pub struct PhysicalAddress(u16);
++
++    impl PhysicalAddress {
++        pub const ROOT: Self = Self(0x0000);
++        pub const INVALID: Self = Self(0xffff);
++
++        #[must_use]
++        pub fn is_valid(&self) -> bool {
++            *self != Self::INVALID
++        }
++
++        #[must_use]
++        pub fn is_root(&self) -> bool {
++            *self == Self::ROOT
++        }
++    }
++
++    impl Default for PhysicalAddress {
++        fn default() -> Self {
++            Self::INVALID
++        }
++    }
++
++    impl From<u16> for PhysicalAddress {
++        fn from(value: u16) -> Self {
++            Self(value)
++        }
++    }
++
++    impl From<PhysicalAddress> for u16 {
++        fn from(value: PhysicalAddress) -> Self {
++            value.0
++        }
++    }
++
++    impl Display for PhysicalAddress {
++        fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
++            write!(
++                formatter,
++                "{:x}.{:x}.{:x}.{:x}",
++                self.0 >> 12,
++                (self.0 >> 8) & 0xf,
++                (self.0 >> 4) & 0xf,
++                self.0 & 0xf
++            )
++        }
++    }
++
++    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
++    pub struct ParseCecTypeError;
++
++    impl Display for ParseCecTypeError {
++        fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
++            formatter.write_str("invalid CEC identifier")
++        }
++    }
++
++    impl std::error::Error for ParseCecTypeError {}
++
++    impl FromStr for PhysicalAddress {
++        type Err = ParseCecTypeError;
++
++        fn from_str(value: &str) -> Result<Self, Self::Err> {
++            let compact = value.strip_prefix("0x").unwrap_or(value);
++            if compact.len() == 4
++                && let Ok(address) = u16::from_str_radix(compact, 16)
++            {
++                return Ok(Self(address));
++            }
++            let mut address = 0u16;
++            let mut count = 0usize;
++            for digit in value.split('.') {
++                if digit.len() != 1 || count == 4 {
++                    return Err(ParseCecTypeError);
++                }
++                let digit = u16::from_str_radix(digit, 16).map_err(|_| ParseCecTypeError)?;
++                address = (address << 4) | digit;
++                count += 1;
++            }
++            if count == 4 {
++                Ok(Self(address))
++            } else {
++                Err(ParseCecTypeError)
++            }
++        }
++    }
++
++    impl Serialize for PhysicalAddress {
++        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
++        where
++            S: Serializer,
++        {
++            serializer.serialize_str(&self.to_string())
++        }
++    }
++
++    struct PhysicalAddressVisitor;
++
++    impl<'de> Visitor<'de> for PhysicalAddressVisitor {
++        type Value = PhysicalAddress;
++
++        fn expecting(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
++            formatter.write_str("a CEC physical address")
++        }
++
++        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
++        where
++            E: de::Error,
++        {
++            u16::try_from(value).map(PhysicalAddress).map_err(|_| {
++                de::Error::invalid_value(Unexpected::Unsigned(value), &"a 16-bit physical address")
++            })
++        }
++
++        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
++        where
++            E: de::Error,
++        {
++            value.parse().map_err(|_| {
++                de::Error::invalid_value(Unexpected::Str(value), &"a CEC physical address")
++            })
++        }
++    }
++
++    impl<'de> Deserialize<'de> for PhysicalAddress {
++        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
++        where
++            D: Deserializer<'de>,
++        {
++            deserializer.deserialize_any(PhysicalAddressVisitor)
++        }
++    }
++
++    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
++    pub struct VendorId(pub [u8; 3]);
++
++    impl From<VendorId> for u32 {
++        fn from(value: VendorId) -> Self {
++            (u32::from(value.0[0]) << 16) | (u32::from(value.0[1]) << 8) | u32::from(value.0[2])
++        }
++    }
++
++    impl FromStr for VendorId {
++        type Err = ParseCecTypeError;
++
++        fn from_str(value: &str) -> Result<Self, Self::Err> {
++            let mut bytes = [0u8; 3];
++            let mut count = 0usize;
++            for part in value.split('-') {
++                if part.len() != 2 || count == bytes.len() {
++                    return Err(ParseCecTypeError);
++                }
++                bytes[count] = u8::from_str_radix(part, 16).map_err(|_| ParseCecTypeError)?;
++                count += 1;
++            }
++            if count == bytes.len() {
++                Ok(Self(bytes))
++            } else {
++                Err(ParseCecTypeError)
++            }
++        }
++    }
++
++    impl Display for VendorId {
++        fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
++            write!(
++                formatter,
++                "{:02x}-{:02x}-{:02x}",
++                self.0[0], self.0[1], self.0[2]
++            )
++        }
++    }
++
++    impl Serialize for VendorId {
++        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
++        where
++            S: Serializer,
++        {
++            serializer.serialize_str(&self.to_string())
++        }
++    }
++
++    impl<'de> Deserialize<'de> for VendorId {
++        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
++        where
++            D: Deserializer<'de>,
++        {
++            let value = String::deserialize(deserializer)?;
++            value.parse().map_err(|_| {
++                de::Error::invalid_value(Unexpected::Str(&value), &"three hyphen-separated octets")
++            })
++        }
++    }
++}
++
++#[cfg(target_os = "freebsd")]
++pub(crate) use portable::{PhysicalAddress, VendorId};
++
++#[cfg(test)]
++mod tests {
++    use super::portable;
++    use std::str::FromStr;
++
++    #[test]
++    fn portable_physical_address_contract() {
++        for text in ["0x12ab", "12AB", "1.2.a.B", "0.0.0.0", "f.f.f.f"] {
++            let address = portable::PhysicalAddress::from_str(text).unwrap();
++            let encoded = serde_json::to_string(&address).unwrap();
++            let decoded: portable::PhysicalAddress = serde_json::from_str(&encoded).unwrap();
++            assert_eq!(decoded, address);
++        }
++        let numeric: portable::PhysicalAddress = serde_json::from_str("16").unwrap();
++        assert_eq!(u16::from(numeric), 16);
++        assert!(portable::PhysicalAddress::ROOT.is_root());
++        assert!(!portable::PhysicalAddress::INVALID.is_valid());
++        for invalid in ["0x123", "12345", "1.2.3", "1.2.3.4.5", "g.0.0.0"] {
++            assert!(portable::PhysicalAddress::from_str(invalid).is_err());
++        }
++        assert!(serde_json::from_str::<portable::PhysicalAddress>("65536").is_err());
++        assert!(serde_json::from_str::<portable::PhysicalAddress>("false").is_err());
++    }
++
++    #[test]
++    fn portable_vendor_id_contract() {
++        for text in ["e0-31-9e", "E0-31-9E", "00-00-00", "ff-ff-ff"] {
++            let vendor = portable::VendorId::from_str(text).unwrap();
++            let encoded = serde_json::to_string(&vendor).unwrap();
++            let decoded: portable::VendorId = serde_json::from_str(&encoded).unwrap();
++            assert_eq!(decoded, vendor);
++        }
++        for invalid in ["e0-31", "e0-31-9e-00", "e-31-9e", "gg-31-9e"] {
++            assert!(portable::VendorId::from_str(invalid).is_err());
++        }
++        assert!(serde_json::from_str::<portable::VendorId>("123").is_err());
++    }
++
++    #[cfg(not(target_os = "freebsd"))]
++    #[test]
++    fn portable_physical_address_matches_linux_type_contract() {
++        for text in ["0x12ab", "12AB", "1.2.a.B", "0.0.0.0", "f.f.f.f"] {
++            let portable = portable::PhysicalAddress::from_str(text).unwrap();
++            let linux = linux_cec::PhysicalAddress::from_str(text).unwrap();
++            assert_eq!(portable.to_string(), linux.to_string());
++            assert_eq!(u16::from(portable), u16::from(linux));
++            assert_eq!(
++                serde_json::to_string(&portable).unwrap(),
++                serde_json::to_string(&linux).unwrap()
++            );
++        }
++        let portable: portable::PhysicalAddress = serde_json::from_str("16").unwrap();
++        let linux: linux_cec::PhysicalAddress = serde_json::from_str("16").unwrap();
++        assert_eq!(u16::from(portable), u16::from(linux));
++    }
++
++    #[cfg(not(target_os = "freebsd"))]
++    #[test]
++    fn portable_vendor_id_matches_linux_type_contract() {
++        for text in ["e0-31-9e", "E0-31-9E", "00-00-00", "ff-ff-ff"] {
++            let portable = portable::VendorId::from_str(text).unwrap();
++            let linux = linux_cec::VendorId::from_str(text).unwrap();
++            assert_eq!(portable.to_string(), linux.to_string());
++            assert_eq!(u32::from(portable), u32::from(linux));
++            assert_eq!(
++                serde_json::to_string(&portable).unwrap(),
++                serde_json::to_string(&linux).unwrap()
++            );
++        }
++    }
++}
+diff --git a/steamos-manager/src/hardware.rs b/steamos-manager/src/hardware.rs
+index efd99dfbd862f1939a28d6c058a547b123e1f9ed..d55732bb84cee3c3ad43b2b76bdb87f260e22d3a 100644
+--- a/steamos-manager/src/hardware.rs
++++ b/steamos-manager/src/hardware.rs
+@@ -5,8 +5,8 @@
+  * SPDX-License-Identifier: MIT
+  */
+ 
++use crate::cec_types::VendorId;
+ use anyhow::{Result, anyhow, bail, ensure};
+-use linux_cec::VendorId;
+ use num_enum::TryFromPrimitive;
+ use serde::Deserialize;
+ use std::io::ErrorKind;
+diff --git a/steamos-manager/src/lib.rs b/steamos-manager/src/lib.rs
+index 17e607bff42d47c6cf9986130eb4ad3cbf927c6f..31e9586bde2c9b818872a8f841e31a19e291e29b 100644
+--- a/steamos-manager/src/lib.rs
++++ b/steamos-manager/src/lib.rs
+@@ -39,6 +39,7 @@ mod udev;
+ mod uinput;
+ 
+ pub mod cec;
++pub(crate) mod cec_types;
+ pub mod daemon;
+ pub mod gpu;
+ pub mod hardware;
+diff --git a/steamos-manager/src/manager/user.rs b/steamos-manager/src/manager/user.rs
+index 879e0834f5394fa8baeea1818e3043803213a011..16c672adfd8c911fe4ce8a6b9e0a59b7b7d85e0d 100644
+--- a/steamos-manager/src/manager/user.rs
++++ b/steamos-manager/src/manager/user.rs
+@@ -2082,8 +2082,8 @@ mod test {
+     use crate::systemd::test::{MockManager, MockUnit};
+     use crate::{path, testing};
+ 
++    use crate::cec_types::VendorId;
+     use anyhow::{anyhow, bail, ensure};
+-    use linux_cec::VendorId;
+     use std::num::{NonZero, NonZeroU32};
+     use std::os::unix::fs::PermissionsExt;
+     use std::path::PathBuf;
+diff --git a/steamos-manager/src/power.rs b/steamos-manager/src/power.rs
+index 52554283ee480c467a783e1b9ee1d29535313da4..1b1ec9cc968c25ff20d279885e6e94365fe50016 100644
+--- a/steamos-manager/src/power.rs
++++ b/steamos-manager/src/power.rs
+@@ -7,6 +7,7 @@
+ 
+ use anyhow::{Result, anyhow, bail, ensure};
+ use async_trait::async_trait;
++#[cfg(not(target_os = "freebsd"))]
+ use nix::errno::Errno;
+ use num_enum::TryFromPrimitive;
+ use serde::Deserialize;
+@@ -710,6 +711,7 @@ fn parse_max_charge_level(result: std::io::Result<String>) -> Result<i32> {
+             .parse()
+             .map_err(|e| anyhow!("Error parsing value: {e}")),
+         // asus-wmi may return ENODATA until userspace writes a value
++        #[cfg(not(target_os = "freebsd"))]
+         Err(e) if e.raw_os_error().map(Errno::from_raw) == Some(Errno::ENODATA) => Ok(-1),
+         Err(e) => Err(anyhow!("Error reading sysfs: {e}")),
+     }
+@@ -1485,6 +1487,7 @@ pub(crate) mod test {
+         assert_eq!(get_max_charge_level().await.unwrap(), 80);
+     }
+ 
++    #[cfg(not(target_os = "freebsd"))]
+     #[test]
+     fn parse_max_charge_level_enodata_is_unknown() {
+         let err = std::io::Error::from_raw_os_error(Errno::ENODATA as i32);
