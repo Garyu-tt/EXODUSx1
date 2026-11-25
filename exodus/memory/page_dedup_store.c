@@ -304,10 +304,18 @@ static bool write_hot(struct exodus_page_dedup_store *s,size_t index,size_t word
     if(!exodus_page_fingerprint_update(s->fingerprints[old],word,before,value,&hash))return false;
     for(size_t i=0;i<s->unique.page_count;i++){
         if(i==old||s->fingerprints[i]!=hash)continue;
-        uint8_t a[EXODUS_PAGE_BYTES],b[EXODUS_PAGE_BYTES];
-        if(!restore_physical(s,old,a)||!restore_physical(s,i,b))return false;
-        memcpy(a+4*word,value,4);
-        if(!memcmp(a,b,sizeof a))return commit_replacement(s,index,old,owners,i,hash,NULL,0);
+        const struct exodus_hot_entry *candidate=exodus_hot_find(s,i);
+        bool equal;
+        if(candidate){
+            if(!exodus_bdi_slab_compare_patched(s->slab,&h->page,word,value,
+                                              &candidate->page,&equal))return false;
+        }else{
+            uint8_t a[EXODUS_PAGE_BYTES];
+            if(!restore_physical(s,old,a))return false;
+            memcpy(a+4*word,value,4);
+            if(!compare_physical(s,i,a,&equal))return false;
+        }
+        if(equal)return commit_replacement(s,index,old,owners,i,hash,NULL,0);
     }
     if(owners==1){
         if(!exodus_bdi_slab_write(s->slab,&h->page,word,value)){*handled=false;return false;}
