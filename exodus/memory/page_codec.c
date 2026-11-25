@@ -102,6 +102,25 @@ size_t exodus_page_encode_adaptive(const uint8_t *page, uint8_t *encoded)
     return encode_page(page, encoded, true);
 }
 
+static void restore_repeated_words(uint8_t *destination, const uint8_t *source, size_t count)
+{
+    uint32_t word;
+    /* Keep the stored byte order and allow unaligned source and destination. */
+    memcpy(&word, source, sizeof(word));
+    const uint32_t block[] = {word, word, word, word};
+    const size_t block_words = sizeof(block) / sizeof(word);
+    while (count >= block_words) {
+        memcpy(destination, block, sizeof(block));
+        destination += sizeof(block);
+        count -= block_words;
+    }
+    while (count > 0) {
+        memcpy(destination, &word, sizeof(word));
+        destination += sizeof(word);
+        --count;
+    }
+}
+
 static bool read_word_runs(const uint8_t *encoded, size_t encoded_size, uint8_t *page)
 {
     if (encoded[0] != WORD_RUN_VERSION)
@@ -121,12 +140,10 @@ static bool read_word_runs(const uint8_t *encoded, size_t encoded_size, uint8_t 
 
         if (page) {
             uint8_t *destination = page + word * WORD_BYTES;
-            if (repeated) {
-                for (size_t i = 0; i < count; ++i)
-                    memcpy(destination + i * WORD_BYTES, encoded + offset, WORD_BYTES);
-            } else {
+            if (repeated)
+                restore_repeated_words(destination, encoded + offset, count);
+            else
                 memcpy(destination, encoded + offset, payload_size);
-            }
         }
         offset += payload_size;
         word += count;
