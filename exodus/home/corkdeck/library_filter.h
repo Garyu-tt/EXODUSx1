@@ -8,12 +8,12 @@
 #include <stdlib.h>
 
 enum exodus_filter { FILTER_ALL, FILTER_SWITCH, FILTER_HOMEBREW, FILTER_STEAM,
-                     FILTER_WINDOWS, FILTER_OTHER, FILTER_FAVORITES, FILTER_RECENT, FILTER_COUNT };
+                     FILTER_WINDOWS, FILTER_OTHER, FILTER_FAVORITES, FILTER_RECENT, FILTER_FILES, FILTER_COUNT };
 
 static inline const char *exodus_filter_name(enum exodus_filter filter)
 {
     static const char *const names[] = {"All", "Switch", "Homebrew", "Steam",
-        "CorkDeck", "Other", "Favorites", "Recently played"};
+        "CorkDeck", "Other", "Favorites", "Recently played", "Game files"};
     return filter >= 0 && filter < FILTER_COUNT ? names[filter] : "All";
 }
 

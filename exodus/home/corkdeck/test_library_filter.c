@@ -24,6 +24,10 @@ int main(void)
     assert(!exodus_section_filter_allowed(SECTION_LIBRARY,FILTER_HOMEBREW));
     assert(!exodus_section_filter_allowed(SECTION_APPLICATIONS,FILTER_SWITCH));
     assert(!exodus_section_filter_allowed(SECTION_APPLICATIONS,FILTER_COUNT));
+    assert(!exodus_section_filter_allowed(SECTION_APPLICATIONS,FILTER_FILES));
+    assert(exodus_section_filter_allowed(SECTION_LIBRARY,FILTER_FILES));
+    assert(exodus_section_next_filter(SECTION_LIBRARY,FILTER_RECENT)==FILTER_FILES);
+    assert(!strcmp(exodus_filter_name(FILTER_FILES),"Game files"));
     struct exodus_card_index items[] = {{0, 10}, {1, 100}, {2, 100}};
     qsort(items, 3, sizeof(items[0]), exodus_recent_compare);
     assert(items[0].index == 1 && items[1].index == 2 && items[2].index == 0);

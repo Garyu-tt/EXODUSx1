@@ -10,6 +10,12 @@ extern "C" {
 #endif
 struct exodus_library;
 struct exodus_library *exodus_library_open(const char *path);
+/* Read-only inventory; discovered paths have no execution backend. */
+struct exodus_library *exodus_library_open_with_games(const char *path,const char *root);
+const char *exodus_library_discovery_status(const struct exodus_library *library);
+int exodus_library_is_discovered(const struct exodus_library *library,size_t index);
+/* Selected discovered file diagnostics only; never returns launch permission. */
+int exodus_library_archive_detail(const struct exodus_library *library,size_t index,char *out,size_t cap);
 void exodus_library_close(struct exodus_library *library);
 const char *exodus_library_status(const struct exodus_library *library);
 size_t exodus_library_count(const struct exodus_library *library);

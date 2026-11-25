@@ -47,6 +47,10 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
             "$dir/test_windows_pe.c" "$dir/windows_pe.c" -o "$RUNNER_TEMP/test-windows-pe"
           "$RUNNER_TEMP/test-windows-pe"
+          for test in evcs_discovery evcs_split; do
+            cc -std=c11 -Wall -Wextra -Werror -D_FILE_OFFSET_BITS=64 -fsanitize=address,undefined -fno-omit-frame-pointer "exodus/tests/${test}_test.c" -o "$RUNNER_TEMP/test-$test"
+            "$RUNNER_TEMP/test-$test"
+          done
           for test in horizon_observer horizon_session; do
             cc -std=c11 -Wall -Wextra -Werror -pedantic -D__SWITCH__ -I"$dir/test_horizon_mock" "$dir/test_${test}_mock.c" -o "$RUNNER_TEMP/test-${test}-mock"
             "$RUNNER_TEMP/test-${test}-mock"

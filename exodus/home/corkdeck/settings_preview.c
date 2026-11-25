@@ -120,7 +120,8 @@ static size_t filter_cards(const struct exodus_library *library, enum exodus_fil
         const char *provider=exodus_library_provider(library,n);
         if (!exodus_section_matches(section,provider)) continue;
         uint64_t recent = exodus_library_last_played(library, n);
-        if (exodus_filter_matches(filter, provider, favorites[n], recent))
+        if (filter==FILTER_FILES ? exodus_library_is_discovered(library,n) :
+            exodus_filter_matches(filter, provider, favorites[n], recent))
             cards[count++] = (struct exodus_card_index){n, recent};
     }
     if (filter == FILTER_RECENT) qsort(cards, count, sizeof(*cards), exodus_recent_compare);
@@ -236,7 +237,8 @@ static int show_library(struct ui *ui, const char *path, enum exodus_section sec
                     break;
                 }
 #endif
-                snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
+                if (!exodus_library_archive_detail(library,index,detail,sizeof(detail)))
+                    snprintf(detail, sizeof(detail), "%s\nNo active launch backend.", exodus_route_name(route));
                 ui_message(ui, exodus_library_title(library, index), detail);
                 break;
             }
