@@ -444,7 +444,9 @@ int main(int argc, char **argv)
     int smoke = argc == 3 && strcmp(argv[2], "--smoke") == 0;
     int library_mode = argc == 4 && strcmp(argv[2], "--library") == 0;
     int shell_mode = argc == 4 && strcmp(argv[2], "--shell") == 0;
-    int native_mode = argc == 4 && strcmp(argv[1], "--native-target") == 0;
+    int native_mode = argc >= 2 && strcmp(argv[1], "--native-target") == 0;
+    if (native_mode && argc != 4) { fputs("usage: --native-target switch|homebrew ID\n",stderr); return 2; }
+    int exit_status = 0;
     char native_id[512];
     enum exodus_route native_route = EXODUS_ROUTE_INVALID;
     if (native_mode) {
@@ -475,9 +477,11 @@ int main(int argc, char **argv)
     if (native_mode) {
         char detail[640], result[256];
         snprintf(detail,sizeof(detail),"Target: %s\n%s",exodus_route_name(native_route),native_id);
-        if (ui_confirm(&ui,"Native target",detail,"Launch") &&
-            !exodus_launch(native_route,native_id,result))
+        if (!ui_confirm(&ui,"Native target",detail,"Launch")) exit_status=3;
+        else if (!exodus_launch(native_route,native_id,result)) {
+            exit_status=1;
             ui_message(&ui,"Launch unavailable",result);
+        }
     } else if (smoke) {
         if (!ui_begin_frame(&ui)) {
             ui_quit(&ui);
@@ -495,5 +499,5 @@ int main(int argc, char **argv)
     }
     ui_quit(&ui);
     free(font);
-    return 0;
+    return exit_status;
 }
