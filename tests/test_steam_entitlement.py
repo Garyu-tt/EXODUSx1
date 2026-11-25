@@ -64,7 +64,7 @@ class FakeSteam:
 
 
 class SteamEntitlementTests(unittest.TestCase):
-    def check(self, provider, browser=None):
+    def check(self, provider, browser=None, *, expected_steam_id=None):
         if browser is None:
             browser = LocalBrowser()
         self.addCleanup(browser.join)
@@ -72,6 +72,7 @@ class SteamEntitlementTests(unittest.TestCase):
             APP_ID,
             publisher_app_id=APP_ID,
             publisher_key=PUBLISHER_KEY,
+            expected_steam_id=expected_steam_id,
             timeout=3,
             opener=provider,
             open_browser=browser.open,
@@ -345,9 +346,64 @@ class SteamEntitlementTests(unittest.TestCase):
                     ["--app-id", str(APP_ID), "--timeout", "901"],
                     ["--app-id", str(APP_ID), "--steam-id", ACCOUNT]]:
                 with self.subTest(args=args):
-                    exit_code, stdout, _ = self.invoke_cli(args)
+                    exit_code, stdout, stderr = self.invoke_cli(args)
                     self.assertEqual(exit_code, 2)
                     self.assertEqual(stdout, "")
+                    self.assertNotIn(ACCOUNT, stderr)
+            checked.assert_not_called()
+
+    def test_matching_expected_account_checks_active_and_inactive_licenses(self):
+        for owns_app, status in ((True, Status.ACTIVE_LICENSE), (False, Status.NO_ACTIVE_LICENSE)):
+            with self.subTest(owns_app=owns_app):
+                provider = FakeSteam({"ownsapp": owns_app})
+                self.assertEqual(self.check(provider, expected_steam_id=ACCOUNT), status)
+                verify, lookup = provider.requests
+                self.assertEqual(verify.full_url, sync.OPENID_PROVIDER)
+                self.assertEqual(parse_qs(urlsplit(lookup.full_url).query)["steamid"], [ACCOUNT])
+
+    def test_cli_reports_account_mismatch_after_verification_without_requesting_ownership(self):
+        def different_account(return_to):
+            identity = f"https://steamcommunity.com/openid/id/{OTHER_ACCOUNT}"
+            return {**assertion(return_to), "openid.claimed_id": identity, "openid.identity": identity}
+
+        provider = FakeSteam()
+        browser = LocalBrowser(different_account)
+        self.addCleanup(browser.join)
+        env = {SCOPE_ENV: str(APP_ID), KEY_ENV: PUBLISHER_KEY}
+        with patch.dict(os.environ, env, clear=True), patch.object(entitlement, "build_opener", return_value=provider), \
+                patch.object(entitlement.webbrowser, "open", side_effect=browser.open):
+            exit_code, stdout, stderr = self.invoke_cli([
+                "--app-id", str(APP_ID), "--expect-steam-id", ACCOUNT, "--timeout", "3",
+            ])
+            browser.join()
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(json.loads(stdout), {"appid": APP_ID, "status": "account_mismatch"})
+        self.assertEqual(stderr, "")
+        self.assertNotIn(ACCOUNT, stdout + stderr)
+        self.assertNotIn(OTHER_ACCOUNT, stdout + stderr)
+        self.assertEqual([reply[0] for reply in browser.replies], [200])
+        self.assertEqual([request.full_url for request in provider.requests], [sync.OPENID_PROVIDER])
+
+    def test_invalid_expected_accounts_are_rejected_before_browser_or_network(self):
+        for expected in (False, 0, -1, 1 << 64, "", "0" + ACCOUNT, "+" + ACCOUNT, "٧٣٠"):
+            with self.subTest(expected=expected):
+                provider = FakeSteam()
+                browser = LocalBrowser()
+                self.assertEqual(self.check(provider, browser, expected_steam_id=expected), Status.SIGN_IN_UNAVAILABLE)
+                self.assertIsNone(browser.start_url)
+                self.assertEqual(provider.requests, [])
+
+        with patch.object(entitlement, "check_entitlement") as checked:
+            for expected in ("0", "0" + ACCOUNT, "+" + ACCOUNT, str(1 << 64), "٧٣٠"):
+                with self.subTest(expected=expected):
+                    exit_code, stdout, stderr = self.invoke_cli([
+                        "--app-id", str(APP_ID), "--expect-steam-id", expected,
+                    ])
+                    self.assertEqual(exit_code, 2)
+                    self.assertEqual(stdout, "")
+                    self.assertIn("--expect-steam-id must be a canonical positive uint64", stderr)
+                    self.assertNotIn(ACCOUNT, stderr)
             checked.assert_not_called()
 
 
