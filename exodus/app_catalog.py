@@ -8,7 +8,7 @@ import struct
 import sys
 import zlib
 
-from .corkdeck_catalog import read_catalog as read_corkdeck_catalog
+from .corkdeck_catalog import program_path_key, read_catalog as read_corkdeck_catalog
 from .steam_catalog import (
     CatalogLimitError,
     CatalogOutputError,
@@ -153,7 +153,7 @@ def scan_homebrew(sd_root):
 
 
 def scan_corkdeck_catalogs(catalogs):
-    """Keep the first metadata record for each case-insensitive program path."""
+    """Keep the first metadata record for each CorkDeck program identity."""
     entries = {}
     errors = False
     for path in catalogs:
@@ -164,7 +164,7 @@ def scan_corkdeck_catalogs(catalogs):
             errors = True
             continue
         for entry in source:
-            entries.setdefault(entry["provider_id"].casefold(), entry)
+            entries.setdefault(program_path_key(entry["provider_id"]), entry)
     return list(entries.values()), errors
 
 

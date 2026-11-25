@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from urllib.parse import quote
 
 from tests.test_app_catalog import nro_image
 from tests.test_catalog_output_limits import byte_boundary_entries
@@ -95,7 +96,7 @@ class CombinedCorkDeckTests(unittest.TestCase):
             {"path": "sdmc:/Games/Second.exe", "title": "Second game"},
         ])
         second = self.source("second.ini", [
-            {"path": "SDMC:/GAMES/ИГРЫ.EXE", "title": "Stale title", "square-art": "sdmc:/stale.png"},
+            {"path": "SDMC:/GAMES/Игры.EXE", "title": "Stale title", "square-art": "sdmc:/stale.png"},
             {"path": "sdmc:/Games/Third.exe", "title": "Third game"},
         ])
         result = self.command("--corkdeck-catalog", first, "--corkdeck-catalog", second,
@@ -109,6 +110,73 @@ class CombinedCorkDeckTests(unittest.TestCase):
         self.assertEqual((reversed_result.returncode, reversed_result.stderr), (0, b""))
         self.assertEqual([entry["name"] for entry in json.loads(reversed_result.stdout)["entries"]],
                          ["Stale title", "Third game", "Second game"])
+
+    def test_distinct_unicode_programs_survive_cross_source_deduplication(self):
+        self.add_steam()
+        self.add_homebrew()
+        pairs = (("Straße", "STRASSE"), ("ẞ", "ß"), ("Σ", "σ"), ("σ", "ς"),
+                 ("K", "k"), ("ﬀ", "ff"), ("İ", "i\u0307"), ("Ä", "ä"), ("А", "а"))
+        for version in (2, 3):
+            for first_name, second_name in pairs:
+                with self.subTest(version=version, paths=(first_name, second_name)):
+                    paths = [f"sdmc:/Games/{name}.exe" for name in (first_name, second_name)]
+                    first = self.source("unicode-first.ini", [{
+                        "path": quote(paths[0], safe="/:"), "title": "First program",
+                        "portrait-art": "sdmc:/art/first%20cover.png",
+                    }], version)
+                    second = self.source("unicode-second.ini", [{
+                        "path": quote(paths[1], safe="/:"), "title": "Second program",
+                        "square-art": "sdmc:/art/second.png",
+                    }], version)
+                    # Uppercase encoded ASCII text without changing UTF-8 bytes.
+                    alias = self.source("ascii-alias.ini", [{
+                        "path": quote(paths[0], safe="/:").upper(),
+                        "title": "Stale duplicate", "portrait-art": "sdmc:/stale.png",
+                    }], version)
+                    original = {path: path.read_bytes() for path in (first, second, alias)}
+                    result = self.command(
+                        "--steam-library", self.steamapps, "--switch-sd", self.sd,
+                        "--corkdeck-catalog", first, "--corkdeck-catalog", second,
+                        "--corkdeck-catalog", alias, "--corkdeck-catalog", first,
+                    )
+                    self.assertEqual((result.returncode, result.stderr), (0, b""))
+                    entries = json.loads(result.stdout)["entries"]
+                    self.assertEqual([entry["provider"] for entry in entries],
+                                     ["steam", "switch_homebrew", "corkdeck", "corkdeck"])
+                    self.assertEqual([entry["provider_id"] for entry in entries[2:]], paths)
+                    self.assertEqual([entry["name"] for entry in entries[2:]],
+                                     ["First program", "Second program"])
+                    self.assertEqual([entry["artwork"] for entry in entries[2:]],
+                                     ["sdmc:/art/first cover.png", "sdmc:/art/second.png"])
+                    self.assertEqual({path: path.read_bytes() for path in original}, original)
+
+    def test_unicode_identities_survive_atomic_and_partial_file_output(self):
+        first = self.source("encoded-v2.ini", [{
+            "path": "sdmc:/Games/Stra%C3%9Fe.exe", "title": "First program",
+        }], version=2)
+        second = self.source("literal-v3.ini", [
+            {"path": "sdmc:/Games/STRASSE.exe", "title": "Second program"},
+            {"path": "SDMC:/GAMES/STRA%C3%9FE.EXE", "title": "Stale duplicate"},
+        ], version=3)
+        original = {path: path.read_bytes() for path in (first, second)}
+        output = self.root / "unicode-output.json"
+        for partial in (False, True):
+            with self.subTest(partial=partial):
+                extra = ("--corkdeck-catalog", self.root / "missing.ini") if partial else ()
+                args = ("--corkdeck-catalog", first, "--corkdeck-catalog", second, *extra)
+                streamed = self.command(*args)
+                self.assertEqual(streamed.returncode, int(partial), streamed.stderr)
+                output.write_bytes(b"previous snapshot")
+                saved = self.command(*args, "--output", output)
+                self.assertEqual((saved.returncode, saved.stdout), (int(partial), b""))
+                self.assertEqual(output.read_bytes(), streamed.stdout)
+                entries = json.loads(output.read_bytes())["entries"]
+                self.assertEqual([entry["provider_id"] for entry in entries],
+                                 ["sdmc:/Games/Straße.exe", "sdmc:/Games/STRASSE.exe"])
+                self.assertEqual([entry["name"] for entry in entries],
+                                 ["First program", "Second program"])
+                self.assertEqual({path: path.read_bytes() for path in original}, original)
+                self.assertEqual(list(self.root.glob(".exodus-catalog-*")), [])
 
     def test_identity_deduplication_stays_within_the_corkdeck_provider(self):
         self.add_steam()
