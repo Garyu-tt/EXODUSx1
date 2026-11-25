@@ -245,7 +245,8 @@
         "cpu-memory-isolation",
         "irq-dma-arbitration",
         "device-arbitration",
-        "dual-kernel-reference"
+        "dual-kernel-reference",
+        "armv7-kernel-reference"
       ],
       "gate": "Real FreeBSD/armv7 kernel on candidate Cortex-A9 ADSP and native Horizon on all A57 cores concurrently on physical Switch; ARM64 Bao evidence reference-only."
     },
@@ -361,7 +362,8 @@
       "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
       "state": "needs-hardware-proof",
       "depends": [
-        "dual-kernel"
+        "dual-kernel",
+        "armv7-mixed-ipc-reference"
       ],
       "gate": "Versioned bounded mixed ARMv7/AArch64 bridge; prove atomic width, cache ordering, notification, timeout and restart on target. R32/R35 only provide ARM64 reference evidence."
     },
@@ -439,6 +441,28 @@
         "run": 45690774623,
         "job": 139475322473,
         "scope": "R32 QEMU virt Cortex-A53/GICv3: two stock FreeBSD 15.1 kernels, disjoint configured guest RAM, independent PID1 getpid progress (13008882 to 16690836) during authenticated loopback SSH in other guest. No runtime IPC after boot, independent DMA isolation or physical Horizon/Tegra evidence."
+      }
+    },
+    {
+      "id": "armv7-kernel-reference",
+      "origin": ".github/workflows/frankenstein-service.yml",
+      "state": "qemu-armv7-boot-verified",
+      "depends": [],
+      "evidence": {
+        "run": 45716108190,
+        "job": 139562450951,
+        "scope": "FreeBSD 15.1-RELEASE GENERICSD on QEMU virt Cortex-A15, SHA256/SHA512 verified, console uname confirms FreeBSD armv7. Not ADSP boot or native IPC acceptance."
+      }
+    },
+    {
+      "id": "armv7-mixed-ipc-reference",
+      "origin": "exodus/frankenstein/ipc_mailbox.c",
+      "state": "qemu-mixed-width-tested",
+      "depends": [],
+      "evidence": {
+        "run": 45716108190,
+        "job": 139562451291,
+        "scope": "QEMU Linux user mode Cortex-A9 and Cortex-A57, 128 frames each direction with both role assignments, all four exit codes zero; not FreeBSD IPC or physical cache coherence. Earlier independent job 139560877553 also passed."
       }
     }
   ],
