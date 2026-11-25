@@ -7,3 +7,7 @@ Backend observations are complete snapshots, scoped by backend, connection epoch
 GPU/display/HID are one exclusive foreground bundle in this conservative first reference. The mediator must positively acknowledge release of the old bundle before an acquire request can be issued. Timeout, disconnect, replacement or mismatched observation leaves ownership unknown. No implicit grant. Recovery requires fresh mediator reconciliation. A suspended session is not an eligible target until its backend confirms running. Actual suspend, resume and graceful termination remain backend capability gates.
 
 Three-second snapshot expiry and two-second handoff deadline are provisional reference constants, not measured hardware limits. No OS calls, telemetry, transport, overlay or physical multitasking are implemented by this model. Authenticated adapters and serialized execution are prerequisites.
+
+## Lifecycle requests (R02)
+
+Suspend, resume and graceful termination are admitted only for fresh, non-foreground sessions with explicit backend capabilities. Foreground ownership must already be known. A typed request has a single token and provisional five-second deadline. Backend acceptance does not change observed state; a subsequent newer snapshot with the same full session identity is required. Disappearance is unknown, not proof of exit. No automatic retry or forced kill. The controller serializes lifecycle and handoff requests. A real authenticated adapter, process-control implementation, and hardware evidence are still required.
