@@ -80,14 +80,25 @@ enum exodus_windows_pe_status exodus_windows_pe_probe(FILE *image)
     if (headers_size < table_end || headers_size > file_size ||
         fseek(image, (long)table_offset, SEEK_SET) != 0)
         return EXODUS_WINDOWS_PE_INVALID;
+    uint64_t raw_starts[MAX_SECTIONS] = {0}, raw_ends[MAX_SECTIONS] = {0};
+    size_t raw_count = 0;
     for (unsigned int index = 0; index < sections; ++index) {
         unsigned char section[SECTION_HEADER_SIZE];
         if (fread(section, 1, sizeof(section), image) != sizeof(section))
             return EXODUS_WINDOWS_PE_INVALID;
         uint64_t raw_size = read_le32(section + 16);
         uint64_t raw_offset = read_le32(section + 20);
-        if (raw_size && (raw_offset < headers_size || raw_offset + raw_size > file_size))
-            return EXODUS_WINDOWS_PE_INVALID;
+        if (raw_size) {
+            uint64_t raw_end = raw_offset + raw_size;
+            if (raw_offset < headers_size || raw_end > file_size)
+                return EXODUS_WINDOWS_PE_INVALID;
+            for (size_t previous = 0; previous < raw_count; ++previous) {
+                if (raw_offset < raw_ends[previous] && raw_starts[previous] < raw_end)
+                    return EXODUS_WINDOWS_PE_INVALID;
+            }
+            raw_starts[raw_count] = raw_offset;
+            raw_ends[raw_count++] = raw_end;
+        }
     }
 
     /* Match the pinned donor's runtime_target_machine across its optional build features. */
