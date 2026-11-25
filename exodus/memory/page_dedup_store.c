@@ -27,8 +27,8 @@ static uint64_t page_fingerprint(const uint8_t *page)
     return hash;
 }
 
-bool exodus_page_dedup_store_append(struct exodus_page_dedup_store *store,
-                                   const uint8_t *page)
+static bool append_page(struct exodus_page_dedup_store *store,
+                        const uint8_t *page, bool adaptive)
 {
     if (!page || !valid_store(store) || store->page_count == store->page_capacity)
         return false;
@@ -48,13 +48,26 @@ bool exodus_page_dedup_store_append(struct exodus_page_dedup_store *store,
     }
 
     if (physical == store->unique.page_count) {
-        if (!exodus_page_store_append(&store->unique, page))
+        if (!(adaptive ? exodus_page_store_append_adaptive(&store->unique, page)
+                       : exodus_page_store_append(&store->unique, page)))
             return false;
         store->fingerprints[physical] = hash;
     }
     store->page_refs[store->page_count] = physical;
     ++store->page_count;
     return true;
+}
+
+bool exodus_page_dedup_store_append(struct exodus_page_dedup_store *store,
+                                   const uint8_t *page)
+{
+    return append_page(store, page, false);
+}
+
+bool exodus_page_dedup_store_append_adaptive(struct exodus_page_dedup_store *store,
+                                            const uint8_t *page)
+{
+    return append_page(store, page, true);
 }
 
 bool exodus_page_dedup_store_restore(const struct exodus_page_dedup_store *store,
