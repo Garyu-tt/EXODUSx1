@@ -180,13 +180,18 @@ namespace {
         std::uint64_t bytes;
         std::function<void()> action;
         bool performed = false;
+        std::size_t ready_callbacks_to_skip = 0;
     };
 
     bool MutateDuringCheck(std::size_t checked, std::size_t total, std::uint64_t bytes, void *context) {
         auto &mutation = *static_cast<Mutation *>(context);
         if (!mutation.performed && total != 0 && checked >= mutation.checked && bytes >= mutation.bytes) {
-            mutation.action();
-            mutation.performed = true;
+            if (mutation.ready_callbacks_to_skip != 0) {
+                --mutation.ready_callbacks_to_skip;
+            } else {
+                mutation.action();
+                mutation.performed = true;
+            }
         }
         return true;
     }
@@ -276,6 +281,43 @@ int main() {
             fs::copy(original, changed.Game(), fs::copy_options::recursive);
         }};
         CheckMutation(changed, directory, "Bin/engine.bin", "Reopen the game directory before checking current paths");
+    }
+    for (const std::size_t skip : {1u, 2u}) {
+        Fixture changed;
+        Mutation directory{3, LargeSize + 3, [&] {
+            const auto original = changed.mount / "detached-original";
+            fs::rename(changed.Game(), original);
+            fs::copy(original, changed.Game(), fs::copy_options::recursive);
+            Write(changed.Game() / "Тест/large.bin", std::string(LargeSize, 'y'));
+        }};
+        // Skip the final hash notification, and optionally the first metadata callback.
+        directory.ready_callbacks_to_skip = skip;
+        CheckMutation(changed, directory, skip == 1 ? "Bin/engine.bin" : "Docs/empty.dat",
+            "Resolve the game directory after each final metadata callback");
+    }
+    {
+        Fixture changed;
+        Fixture detached;
+        fs::remove_all(detached.mount);
+        Mutation root{3, LargeSize + 3, [&] {
+            fs::rename(changed.mount, detached.mount);
+            fs::copy(detached.mount, changed.mount, fs::copy_options::recursive);
+            Write(changed.Game() / "Тест/large.bin", std::string(LargeSize, 'y'));
+        }};
+        root.ready_callbacks_to_skip = 1;
+        CheckMutation(changed, root, "Bin/engine.bin",
+            "Resolve the SD root after a final metadata callback replaces it");
+    }
+    for (const std::size_t skip : {1u, 3u}) {
+        Fixture changed;
+        Mutation manifest{3, LargeSize + 3, [&] {
+            const auto other = changed.Game().parent_path() / "Other Game";
+            fs::copy(changed.Game(), other, fs::copy_options::recursive);
+            Write(other / "Тест/large.bin", std::string(LargeSize, 'y'));
+            Write(changed.Acf(), "AppState { appid 730 installdir \"Other Game\" StateFlags 4 }");
+        }};
+        manifest.ready_callbacks_to_skip = skip;
+        CheckMutation(changed, manifest, {}, "The final callback must not change the selected Steam installation");
     }
     std::size_t final_polls = 0;
     const auto stopped_during_recheck = VerifySteamInstallation(fixture.mount.string(), AppId, ReferencePin,

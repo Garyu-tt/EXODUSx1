@@ -656,19 +656,18 @@ namespace exodus::steam_integrity {
         // Resolve paths again: an updater can replace a previously checked file
         // or directory while a later file is being hashed. Do not retain only
         // the original directory descriptor, which can still refer to removed data.
-        result.path.clear();
-        if (home::FindLocalSteamGameDirectory(sd_mount, app_id) != game_name)
-            return finish(Status::ChangedDuringCheck);
-        const auto current_sd = OpenRoot(sd_mount);
-        if (!current_sd.IsOpen())
-            return finish(Status::ChangedDuringCheck);
-        const auto current_game = OpenDirectory(current_sd, game_path);
-        if (!current_game.IsOpen())
-            return finish(Status::ChangedDuringCheck);
         for (const auto &record : records) {
             result.path = record.path;
             if (!keep_going())
                 return finish(Status::Cancelled);
+            // Progress callbacks can change paths too; do not keep a directory
+            // handle across them, even during this final metadata-only pass.
+            const auto current_sd = OpenRoot(sd_mount);
+            if (!current_sd.IsOpen())
+                return finish(Status::ChangedDuringCheck);
+            const auto current_game = OpenDirectory(current_sd, game_path);
+            if (!current_game.IsOpen())
+                return finish(Status::ChangedDuringCheck);
             Descriptor current;
             std::uint64_t size = 0;
             struct stat metadata{};
@@ -680,6 +679,9 @@ namespace exodus::steam_integrity {
         }
 
         result.path.clear();
+        // Check the manifest binding after the last callback as well.
+        if (home::FindLocalSteamGameDirectory(sd_mount, app_id) != game_name)
+            return finish(Status::ChangedDuringCheck);
         return finish(Status::Match);
     }
 
