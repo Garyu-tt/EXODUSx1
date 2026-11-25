@@ -37,6 +37,28 @@ namespace exodus::home {
             return lstat(path, &metadata) != 0 && errno == ENOENT;
         }
 
+        Catalog ReadBaseCatalog(const char *path) {
+            struct stat metadata{};
+            if (stat(path, &metadata) != 0 || !S_ISREG(metadata.st_mode))
+                return {CatalogStatus::Unavailable, {}};
+            return ReadCatalog(path);
+        }
+
+        std::optional<std::size_t> SteamSlots(const Catalog &base, const char *path) {
+            if (base.status != CatalogStatus::Ready) {
+                if (base.status == CatalogStatus::Unavailable && PathMissing(path))
+                    return CatalogEntryLimit;
+                return std::nullopt;
+            }
+            const auto non_steam = std::count_if(base.entries.begin(), base.entries.end(),
+                [](const Entry &entry) { return entry.provider != Provider::Steam; });
+            return CatalogEntryLimit - static_cast<std::size_t>(non_steam);
+        }
+
+        bool FitsSteamSlots(const Catalog &steam, std::size_t slots) {
+            return IsSteamCatalog(steam) && steam.entries.size() <= slots;
+        }
+
         bool DirectoryReadFailed(int error) {
 #ifdef __SWITCH__
             // The Switch devoptab reports normal end of directory as ENOENT.
@@ -150,8 +172,10 @@ namespace exodus::home {
                            [](const Entry &entry) { return entry.provider == Provider::Steam; });
     }
 
-    std::optional<std::uint64_t> PublishSteamSnapshot(const char *directory, std::string_view steam) {
-        if (!IsSteamCatalog(ParseCatalog(steam)))
+    std::optional<std::uint64_t> PublishSteamSnapshot(const char *directory, std::string_view steam,
+                                                      const char *base_path) {
+        const auto slots = SteamSlots(ReadBaseCatalog(base_path), base_path);
+        if (!slots || !FitsSteamSlots(ParseCatalog(steam), *slots))
             return std::nullopt;
         if (mkdir(directory, 0755) != 0 && (errno != EEXIST || !IsDirectory(directory)))
             return std::nullopt;
@@ -181,22 +205,19 @@ namespace exodus::home {
     }
 
     Catalog ReadRefreshedCatalog(const char *base_path, const char *snapshot_directory) {
-        auto current = ReadCatalog(base_path);
-        if (current.status != CatalogStatus::Ready &&
-            (current.status != CatalogStatus::Unavailable || !PathMissing(base_path)))
+        auto current = ReadBaseCatalog(base_path);
+        const auto slots = SteamSlots(current, base_path);
+        if (!slots)
             return current;
         const auto generations = ListSnapshots(snapshot_directory);
         if (!generations)
             return current;
 
-        const auto non_steam = static_cast<std::size_t>(std::count_if(
-            current.entries.begin(), current.entries.end(),
-            [](const Entry &entry) { return entry.provider != Provider::Steam; }));
         for (const auto generation : *generations) {
             auto steam = ReadSteamSnapshot(SnapshotPath(snapshot_directory, generation));
-            if (!IsSteamCatalog(steam) || steam.entries.size() > CatalogEntryLimit - non_steam)
+            if (!FitsSteamSlots(steam, *slots))
                 continue;
-            steam.entries.reserve(steam.entries.size() + non_steam);
+            steam.entries.reserve(steam.entries.size() + CatalogEntryLimit - *slots);
             for (auto &entry : current.entries) {
                 if (entry.provider != Provider::Steam)
                     steam.entries.push_back(std::move(entry));

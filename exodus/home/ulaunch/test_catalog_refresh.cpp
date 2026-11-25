@@ -46,6 +46,10 @@ namespace {
         Catalog Read() const {
             return ReadRefreshedCatalog(base.c_str(), store.c_str());
         }
+
+        std::optional<std::uint64_t> Publish(std::string_view snapshot) const {
+            return PublishSteamSnapshot(store.c_str(), snapshot, base.c_str());
+        }
     };
 
     void Write(const std::string &path, std::string_view bytes) {
@@ -92,7 +96,7 @@ namespace {
         assert(!before.steam_snapshot_applied);
         assert(before.entries[0].title == "Manual Steam");
 
-        const auto first = PublishSteamSnapshot(files.store.c_str(), SnapshotJson());
+        const auto first = files.Publish(SnapshotJson());
         assert(first && *first == 1);
         const auto refreshed = files.Read();
         assert(refreshed.steam_snapshot_applied);
@@ -109,7 +113,7 @@ namespace {
         auto fallback = files.Read();
         assert(fallback.steam_snapshot_applied);
         assert(fallback.entries.size() == 3 && fallback.entries[0].title == "Signed-in Steam title");
-        const auto empty = PublishSteamSnapshot(files.store.c_str(), R"({"schema_version":1,"entries":[]})");
+        const auto empty = files.Publish(R"({"schema_version":1,"entries":[]})");
         assert(empty && *empty == 3);
         const auto without_steam = files.Read();
         assert(without_steam.steam_snapshot_applied);
@@ -124,13 +128,13 @@ namespace {
         Fixture files;
         const auto absent = files.Read();
         assert(absent.status == CatalogStatus::Unavailable && !absent.steam_snapshot_applied);
-        assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson()) == 1);
+        assert(files.Publish(SnapshotJson()) == 1);
         const auto snapshot_only = files.Read();
         assert(snapshot_only.steam_snapshot_applied && snapshot_only.entries.size() == 1);
 
         auto non_steam = JSON{{"schema_version", 1}, {"entries", JSON::array({
             EntryJson("switch", "1", "Unexpected row")})}}.dump();
-        assert(!PublishSteamSnapshot(files.store.c_str(), non_steam));
+        assert(!files.Publish(non_steam));
         Write(files.Snapshot(2), non_steam);
         Write(files.Snapshot(3), std::string(CatalogByteLimit + 1, ' '));
         assert(files.Read().entries[0].title == "Signed-in Steam title");
@@ -138,8 +142,12 @@ namespace {
         Write(files.base, "corrupt base");
         const auto invalid_base = files.Read();
         assert(invalid_base.status == CatalogStatus::Invalid && !invalid_base.steam_snapshot_applied);
+        assert(!files.Publish(SnapshotJson("Ignored while the base is invalid")));
+        assert(fs::exists(files.Snapshot(1)) && !fs::exists(files.Snapshot(4)));
+
+        Write(files.base, SnapshotJson("Valid base"));
         Write(files.Snapshot(UINT64_MAX), "occupied maximum generation");
-        assert(!PublishSteamSnapshot(files.store.c_str(), SnapshotJson("New entry")));
+        assert(!files.Publish(SnapshotJson("New entry")));
         assert(Read(files.Snapshot(UINT64_MAX)) == "occupied maximum generation");
     }
 
@@ -148,7 +156,7 @@ namespace {
         const auto manual = SnapshotJson("Manual catalog");
         Write(files.base, manual);
         Write(files.store, "occupied store path");
-        assert(!PublishSteamSnapshot(files.store.c_str(), SnapshotJson()));
+        assert(!files.Publish(SnapshotJson()));
         const auto fallback = files.Read();
         assert(!fallback.steam_snapshot_applied && fallback.entries[0].title == "Manual catalog");
         assert(Read(files.base) == manual && Read(files.store) == "occupied store path");
@@ -156,14 +164,13 @@ namespace {
 
     void TestRetainsValidFallbacks() {
         Fixture files;
-        assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson("Original")) == 1);
+        assert(files.Publish(SnapshotJson("Original")) == 1);
         Write(files.store + "/instructions.txt", "user notes");
         Write(files.store + "/.steam-catalog-unfinished", "{partial");
         Write(files.Snapshot(9), "{broken generation");
         assert(files.Read().entries[0].title == "Original");
         for (std::uint64_t generation = 10; generation < 20; ++generation) {
-            assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson(std::to_string(generation))) ==
-                   generation);
+            assert(files.Publish(SnapshotJson(std::to_string(generation))) == generation);
         }
         assert(!fs::exists(files.Snapshot(1)) && !fs::exists(files.Snapshot(11)));
         assert(fs::exists(files.Snapshot(12)) && fs::exists(files.Snapshot(19)));
@@ -180,16 +187,43 @@ namespace {
         for (std::size_t i = 0; i < CatalogEntryLimit; ++i)
             entries.push_back(EntryJson("switch", std::to_string(i), "Local title"));
         Write(files.base, JSON{{"schema_version", 1}, {"entries", entries}}.dump());
-        assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson()) == 1);
+        assert(!files.Publish(SnapshotJson()));
+        assert(!fs::exists(files.store));
         const auto base_only = files.Read();
         assert(!base_only.steam_snapshot_applied && base_only.entries.size() == CatalogEntryLimit);
 
-        assert(PublishSteamSnapshot(files.store.c_str(), R"({"schema_version":1,"entries":[]})") == 2);
-        assert(PublishSteamSnapshot(files.store.c_str(), SnapshotJson()) == 3);
+        assert(files.Publish(R"({"schema_version":1,"entries":[]})") == 1);
+        // Older clients could save generations that exceed the combined limit.
+        Write(files.Snapshot(2), SnapshotJson());
         const auto fallback = files.Read();
         assert(fallback.status == CatalogStatus::Ready && fallback.entries.size() == CatalogEntryLimit);
         assert(fallback.steam_snapshot_applied);
         assert(fallback.entries[0].provider == Provider::Switch);
+    }
+
+    void TestOversizedRefreshPreservesEarlierSnapshot() {
+        Fixture files;
+        auto entries = JSON::array();
+        for (std::size_t i = 0; i < CatalogEntryLimit - 1; ++i)
+            entries.push_back(EntryJson("switch", std::to_string(i), "Local title"));
+        entries.push_back(EntryJson("steam", "1", "Manual Steam"));
+        Write(files.base, JSON{{"schema_version", 1}, {"entries", entries}}.dump());
+
+        const auto working = SnapshotJson("Fitting Steam title");
+        assert(files.Publish(working) == 1);
+        const auto over_budget = JSON{{"schema_version", 1}, {"entries", JSON::array({
+            EntryJson("steam", "8", "One Steam game"),
+            EntryJson("steam", "9", "Other Steam game")
+        })}}.dump();
+        for (unsigned attempt = 0; attempt < 8; ++attempt)
+            assert(!files.Publish(over_budget));
+
+        assert(Read(files.Snapshot(1)) == working);
+        assert(!fs::exists(files.Snapshot(2)));
+        const auto visible = files.Read();
+        assert(visible.steam_snapshot_applied && visible.entries.size() == CatalogEntryLimit);
+        assert(visible.entries.front().title == "Fitting Steam title");
+        assert(files.Publish(SnapshotJson("Next fitting Steam title")) == 2);
     }
 
     void TestConcurrentPublish() {
@@ -201,7 +235,7 @@ namespace {
             arrived.fetch_add(1);
             while (arrived.load() != written.size())
                 std::this_thread::yield();
-            written[writer] = PublishSteamSnapshot(files.store.c_str(), data);
+            written[writer] = files.Publish(data);
         };
         std::thread first(publish, 0);
         std::thread second(publish, 1);
@@ -225,6 +259,7 @@ int main() {
     TestStoreUnavailable();
     TestRetainsValidFallbacks();
     TestMergedEntryLimit();
+    TestOversizedRefreshPreservesEarlierSnapshot();
     TestConcurrentPublish();
     std::cout << "HOME Steam refresh, fallback and generation checks passed\n";
 }

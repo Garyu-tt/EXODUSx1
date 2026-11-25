@@ -71,7 +71,7 @@ namespace {
         }
 
         if (!home::PublishSteamSnapshot(home::SteamSnapshotsPath, snapshot.catalog)) {
-            std::puts("Could not publish the Steam snapshot.");
+            std::puts("Could not publish the Steam snapshot for the current HOME catalog.");
             return;
         }
         std::puts("Steam library saved. Reopen EXODUS library in HOME.");
