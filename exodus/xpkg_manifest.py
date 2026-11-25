@@ -178,10 +178,11 @@ def _source_url(value: object) -> str:
     except (UnicodeEncodeError, ValueError) as exc:
         raise ManifestError("source.url must be a valid ASCII HTTPS URL") from exc
     if (parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
-            or parsed.password is not None or parsed.fragment or "\\" in text
+            or parsed.password is not None or "#" in text or "\\" in text
+            or "%" in parsed.netloc or parsed.netloc.endswith(":")
             or _BAD_PERCENT_ESCAPE_RE.search(text) is not None
             or port is not None and not 1 <= port <= 65535
-            or any(ch.isspace() or ord(ch) < 0x20 for ch in text)):
+            or any(ch.isspace() or ord(ch) < 0x20 or ord(ch) == 0x7f for ch in text)):
         raise ManifestError("source.url must be an unambiguous credential-free HTTPS URL")
     return text
 
