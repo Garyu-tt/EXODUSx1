@@ -149,7 +149,14 @@ static bool commit_replacement(struct exodus_page_dedup_store *s,size_t index,
         if(owners==1){
             size_t other=u->payload_used-bytes;
             if(size>u->payload_capacity-other)return false;
-            if(size!=bytes)memmove(u->payload+start+size,u->payload+end,u->payload_used-end);
+            /* Equal-sized exclusive replacement cannot shift any extent.
+             * The caller already validated every offset and logical ref. */
+            if(size==bytes){
+                memcpy(u->payload+start,encoded,size);
+                s->fingerprints[old]=hash;
+                return true;
+            }
+            memmove(u->payload+start+size,u->payload+end,u->payload_used-end);
             memcpy(u->payload+start,encoded,size);
             for(size_t i=old;i<u->page_count;i++){
                 if(size>=bytes)u->page_ends[i]+=size-bytes;
