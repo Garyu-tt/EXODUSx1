@@ -26,7 +26,7 @@ To check for the same Windows USB instance after reconnecting, start with the de
 python exodus/mtp_probe.py --usb-id 1234:abcd --reconnect 45
 ```
 
-The report includes the initial and last states and whether a disconnect was observed. The exit code is `0` for WPD readiness or a confirmed reconnect, `1` when the requested result was unobserved, and `2` for an argument or probe error. JSON goes to stdout. Prompts and probe errors go to stderr.
+The report includes the initial and last states. `disconnect_seen` records a Windows sample where the original USB parent was absent, including a sample that still lists matching WPD interfaces. A confirmed reconnect requires the same parent and its expected WPD readiness to return. The exit code is `0` for WPD readiness or a confirmed reconnect, `1` when the requested result was unobserved, and `2` for an argument or probe error. JSON goes to stdout. Prompts and probe errors go to stderr.
 
 Use `--observe 120` to record changes over two minutes, including when the device starts disconnected. A completed observation exits with `0`. If Windows enumeration fails after the first sample, stdout still contains the initial state and all recorded transitions. The observation has `complete: false` and a `reason` of `query_timeout` or `query_failed`. A query that exhausts the remaining window exits with `1`. A probe error exits with `2` and writes its diagnostic to stderr. If the first sample fails, there is no JSON report.
 
