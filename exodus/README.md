@@ -41,6 +41,20 @@ Supply either source on its own or repeat `--steam-library` for additional Steam
 
 The homebrew scan reads `.nro` metadata under `switch` and uses the first nonempty UTF-8 title from the embedded NACP data. It supports both plain and DEFLATE-compressed NACP title tables. Files without a title use their filename stem. A readable NRO is marked `reported_installed` based on its presence on the SD card, with compatibility unknown and launch mode unset. The scan emits readable entries and returns 1 if it encounters unreadable inputs or malformed metadata.
 
+## Include CorkDeck Windows Runtime libraries
+
+Pass a selected CorkDeck v2/v3 `launcher-library-v2.ini` with `--corkdeck-catalog` to include its programs in the same offline snapshot:
+
+```shell
+python -m exodus.app_catalog --switch-sd F:/ --steam-library "D:/SteamLibrary" --corkdeck-catalog launcher-library-v2.ini --output catalog.json
+```
+
+The INI can be read from the mounted storage or from a local copy. The option also works on its own, and can be repeated for additional runtime catalogs. It uses the existing CorkDeck importer, which accepts at most 256 games and 2 MiB per INI. CorkDeck rows follow the Steam and homebrew rows, retaining their source order. They preserve the decoded program path as `provider_id`, the title or filename fallback, and the first available artwork path. Installation and compatibility remain `unknown`, and `last_played` and `launch_mode` remain `null`.
+
+Repeated CorkDeck program paths are compared case-insensitively, including across different input files. The first occurrence keeps its original path spelling and metadata. This deduplication applies within the CorkDeck provider; an equal ID in another provider remains a separate entry. Repeating an input file therefore does not create duplicate rows or consume additional catalog slots.
+
+An unreadable or malformed runtime catalog contributes no rows, produces a diagnostic on stderr, and makes the command exit 1. Readable Steam, homebrew and other CorkDeck sources still appear in the partial snapshot. A valid empty runtime catalog is a successful input. The same combined output limits and atomic `--output` behavior below apply to all three providers.
+
 ## Catalog output limits
 
 Both offline commands check the complete combined catalog against HOME's limits of 4,096 entries and 2 MiB before writing any output. The byte budget includes JSON formatting, Unicode escapes and the final newline. The commands emit ASCII JSON with LF line endings on both Windows and Linux, so Windows text-mode newline expansion cannot push an otherwise valid document over the limit.
