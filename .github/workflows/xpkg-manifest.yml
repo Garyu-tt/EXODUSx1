@@ -1,0 +1,47 @@
+name: EXODUS xpkg Horizon manifest R01
+
+on:
+  pull_request:
+    paths:
+      - 'exodus/xpkg_manifest.py'
+      - 'tests/test_xpkg_manifest.py'
+      - 'docs/EXODUS_XPKG_MANIFEST_R01.md'
+      - 'exodus/security/capability_policy.h'
+      - '.github/workflows/xpkg-manifest.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'exodus/xpkg_manifest.py'
+      - 'tests/test_xpkg_manifest.py'
+      - 'docs/EXODUS_XPKG_MANIFEST_R01.md'
+      - 'exodus/security/capability_policy.h'
+      - '.github/workflows/xpkg-manifest.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  manifest-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile the bounded manifest contract
+        run: python -m py_compile exodus/xpkg_manifest.py tests/test_xpkg_manifest.py
+      - name: Run offline manifest admission tests
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m unittest tests.test_xpkg_manifest -v
