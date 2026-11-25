@@ -40,12 +40,41 @@ class ProbeTests(unittest.TestCase):
                 })
                 self.assertEqual(path.read_bytes(), sample)
 
+    def test_unicode_sample_path(self):
+        sample = bytes(PAGE) + b"end"
+        with tempfile.TemporaryDirectory() as tmp:
+            plain_path = Path(tmp) / "sample.bin"
+            plain_path.write_bytes(sample)
+            baseline = subprocess.run([PROBE, plain_path], capture_output=True, check=True)
+
+            unicode_path = Path(tmp) / "測試" / "sample 🧪.bin"
+            unicode_path.parent.mkdir()
+            plain_path.rename(unicode_path)
+            result = subprocess.run([PROBE, unicode_path], capture_output=True)
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout), json.loads(baseline.stdout))
+            self.assertEqual(unicode_path.read_bytes(), sample)
+
     def test_bad_invocations(self):
         with tempfile.TemporaryDirectory() as tmp:
             for args in [[], [Path(tmp) / "missing"]]:
                 result = subprocess.run([PROBE, *args], capture_output=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
+
+    @unittest.skipUnless(sys.platform.startswith("linux") and Path("/dev/full").exists(),
+                         "Requires Linux /dev/full")
+    def test_output_flush_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sample.bin"
+            sample = bytes(PAGE) + b"tail"
+            path.write_bytes(sample)
+            with open("/dev/full", "wb") as output:
+                result = subprocess.run([PROBE, path], stdout=output, stderr=subprocess.PIPE)
+            self.assertEqual(path.read_bytes(), sample)
+            self.assertGreater(result.returncode, 0)
+            self.assertIn(b"Could not write probe results", result.stderr)
 
 
 if __name__ == "__main__":

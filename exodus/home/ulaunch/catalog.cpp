@@ -79,6 +79,8 @@ namespace exodus::home {
                 return Provider::Switch;
             if (id == "switch_homebrew")
                 return Provider::Homebrew;
+            if (id == "corkdeck")
+                return Provider::CorkDeck;
             return Provider::Other;
         }
 
@@ -151,7 +153,13 @@ namespace exodus::home {
             const auto &name = entry["name"].get_ref<const std::string &>();
             if (id.find('\0') != std::string::npos)
                 return {CatalogStatus::Invalid, {}};
-            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name), id});
+            const auto &art = entry["artwork"];
+            const auto &last = entry["last_played"];
+            std::string artwork = art.is_string() ? art.get<std::string>() : "";
+            if (artwork.find('\0') != std::string::npos)
+                artwork.clear();
+            catalog.entries.push_back({ProviderFromId(provider), DisplayTitle(name), id,
+                std::move(artwork), last.is_null() ? 0 : last.get<std::uint64_t>()});
         }
         if (normalized_utf8 != nullptr)
             *normalized_utf8 = document.dump();
@@ -198,6 +206,18 @@ namespace exodus::home {
         if (!input.read(text.data(), text.size()) || input.peek() != std::istream::traits_type::eof() || input.bad())
             return {CatalogStatus::Unavailable, {}};
         return ParseCatalog(text);
+    }
+
+    std::optional<std::uint32_t> SteamApplicationId(const Entry &entry) {
+        if (entry.provider != Provider::Steam || entry.id.empty() || entry.id.front() == '0')
+            return std::nullopt;
+
+        std::uint32_t id = 0;
+        const auto end = entry.id.data() + entry.id.size();
+        const auto parsed = std::from_chars(entry.id.data(), end, id);
+        if (parsed.ec != std::errc{} || parsed.ptr != end)
+            return std::nullopt;
+        return id;
     }
 
     std::optional<std::uint64_t> SwitchApplicationId(const Entry &entry) {

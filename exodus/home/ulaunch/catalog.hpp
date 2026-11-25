@@ -25,6 +25,7 @@ namespace exodus::home {
         Steam,
         Switch,
         Homebrew,
+        CorkDeck,
         Other,
     };
 
@@ -32,15 +33,19 @@ namespace exodus::home {
         Provider provider;
         std::string title;
         std::string id;
+        std::string artwork{};
+        std::uint64_t last_played = 0;
     };
 
     struct Catalog {
         CatalogStatus status;
         std::vector<Entry> entries;
+        bool steam_snapshot_applied = false;
     };
 
     Catalog ParseCatalog(std::string_view text, std::string *normalized_utf8 = nullptr);
     Catalog ReadCatalog(const char *path);
+    std::optional<std::uint32_t> SteamApplicationId(const Entry &entry);
     std::optional<std::uint64_t> SwitchApplicationId(const Entry &entry);
     std::string CatalogLabel();
     void ShowCatalog();

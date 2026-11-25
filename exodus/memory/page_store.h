@@ -15,9 +15,14 @@ struct exodus_page_store {
     size_t page_count;
 };
 
-/* Append one readable EXODUS_PAGE_BYTES page. A capacity failure leaves
- * the store unchanged. */
+/* Append one readable EXODUS_PAGE_BYTES page using the legacy sparse/raw
+ * encoder. A capacity failure leaves the store unchanged. */
 bool exodus_page_store_append(struct exodus_page_store *store, const uint8_t *page);
+
+/* Append with word runs when smaller than sparse/raw encoding. Capacity is
+ * checked against the selected encoded length. May share a store with legacy
+ * appends; a capacity failure leaves the store unchanged. */
+bool exodus_page_store_append_adaptive(struct exodus_page_store *store, const uint8_t *page);
 
 /* Replace an existing page without changing its index or the page count.
  * Shifts the following payloads and adjusts their offsets when the encoded
@@ -26,7 +31,7 @@ bool exodus_page_store_append(struct exodus_page_store *store, const uint8_t *pa
 bool exodus_page_store_replace(struct exodus_page_store *store, size_t index, const uint8_t *page);
 
 /* Restore into a separate EXODUS_PAGE_BYTES buffer. Invalid indices or
- * malformed sparse encodings leave the destination unchanged. */
+ * malformed compressed encodings leave the destination unchanged. */
 bool exodus_page_store_restore(const struct exodus_page_store *store, size_t index, uint8_t *page);
 
 #endif
