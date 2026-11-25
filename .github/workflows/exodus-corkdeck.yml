@@ -36,7 +36,7 @@ jobs:
         run: |
           set -eu
           dir=exodus/home/corkdeck
-          for test in horizon_settings launch_route runtime_handoff library_filter shell_menu control_metrics native_target; do
+          for test in horizon_settings launch_route runtime_handoff library_filter shell_menu control_metrics native_target horizon_observer horizon_session; do
             cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
               "$dir/test_$test.c" -o "$RUNNER_TEMP/test-$test"
             "$RUNNER_TEMP/test-$test"
@@ -44,6 +44,10 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer \
             "$dir/test_windows_pe.c" "$dir/windows_pe.c" -o "$RUNNER_TEMP/test-windows-pe"
           "$RUNNER_TEMP/test-windows-pe"
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -D__SWITCH__ -I"$dir/test_horizon_mock" "$dir/test_horizon_observer_mock.c" -o "$RUNNER_TEMP/test-horizon-observer-mock"
+          "$RUNNER_TEMP/test-horizon-observer-mock"
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -D__SWITCH__ -I"$dir/test_horizon_mock" "$dir/test_horizon_session_mock.c" -o "$RUNNER_TEMP/test-horizon-session-mock"
+          "$RUNNER_TEMP/test-horizon-session-mock"
           cc -std=c11 -Wall -Wextra -Werror exodus/tests/evcs_discovery_test.c -o "$RUNNER_TEMP/test-evcs"
           "$RUNNER_TEMP/test-evcs"
           cc -std=c11 -Wall -Wextra -Werror -D_FILE_OFFSET_BITS=64 exodus/tests/evcs_split_test.c -o "$RUNNER_TEMP/test-evcs-split"
