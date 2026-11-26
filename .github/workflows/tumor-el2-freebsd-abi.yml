@@ -1,0 +1,40 @@
+name: Tumor FreeBSD AArch64 syscall ABI subset
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/el2_freebsd_abi_reference.S'
+      - 'exodus/frankenstein/el2_freebsd_abi_bridge.c'
+      - 'exodus/frankenstein/amp_smp_authority.c'
+      - 'exodus/frankenstein/amp_execution_contract.c'
+      - 'exodus/frankenstein/elf64_loader*'
+      - 'exodus/frankenstein/elf_exec_*'
+      - 'exodus/frankenstein/freebsd_abi_fixture.S'
+      - 'exodus/frankenstein/test_el2_freebsd_abi.py'
+      - 'exodus/frankenstein/el2_freebsd_abi_reference.ld'
+      - 'exodus/frankenstein/EL2_FREEBSD_ABI.md'
+      - '.github/workflows/tumor-el2-freebsd-abi.yml'
+permissions:
+  contents: read
+jobs:
+  freebsd-abi-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf libc6-dev-arm64-cross libc6-dev-armhf-cross qemu-system-arm qemu-user
+      - run: |
+          set -eu
+          src=exodus/frankenstein
+          aarch64-linux-gnu-as -march=armv8-a "$src/freebsd_abi_fixture.S" -o "$RUNNER_TEMP/fixture.o"
+          aarch64-linux-gnu-ld -z max-page-size=4096 --build-id=none -T "$src/elf_exec_fixture.ld" "$RUNNER_TEMP/fixture.o" -o "$RUNNER_TEMP/elf_input.elf"
+          aarch64-linux-gnu-readelf -lW "$RUNNER_TEMP/elf_input.elf"
+          (cd "$RUNNER_TEMP" && aarch64-linux-gnu-objcopy -I binary -O elf64-littleaarch64 -B aarch64 --rename-section .data=.rodata.elf,alloc,load,readonly,data,contents elf_input.elf elf_input.o)
+          aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none,--fatal-warnings -T "$src/el2_freebsd_abi_reference.ld" "$src/el2_freebsd_abi_reference.S" "$src/el2_freebsd_abi_bridge.c" "$src/elf64_loader.c" "$src/elf_exec_boot.c" "$RUNNER_TEMP/elf_input.o" -o "$RUNNER_TEMP/amp.elf"
+          aarch64-linux-gnu-readelf -lW "$RUNNER_TEMP/amp.elf" | tee "$RUNNER_TEMP/monitor-phdrs"
+          if grep -E '^[[:space:]]*LOAD.*RWE' "$RUNNER_TEMP/monitor-phdrs"; then exit 1; fi
+          arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 "$src/amp_smp_authority.c" -o "$RUNNER_TEMP/authority"
+          python3 "$src/test_el2_freebsd_abi.py" "$RUNNER_TEMP/amp.elf" "$RUNNER_TEMP/authority"
