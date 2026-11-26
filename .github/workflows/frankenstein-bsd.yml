@@ -13,6 +13,8 @@ on:
       - 'exodus/frankenstein/sessiond.c'
       - 'exodus/frankenstein/sessiond-dbus.inc'
       - 'exodus/frankenstein/test_sessiond.py'
+      - 'exodus/task_center*.py'
+      - 'tests/test_task_center*.py'
       - 'exodus/frankenstein/test_sessiond_dbus.sh'
       - 'exodus/frankenstein/test_manager_input_patch.py'
       - '.github/workflows/frankenstein-bsd.yml'

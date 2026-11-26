@@ -76,6 +76,10 @@ if [ "$mode" = native ]; then
     for f in sessiond.c sessiond-dbus.inc test_sessiond.py test_sessiond_dbus.sh; do
         mcopy -i seed.img "$here/$f" ::
     done
+    # Carry exactly the accepted Task Center modules and tests, not an installed package.
+    for f in exodus/task_center.py exodus/task_center_child.py tests/test_task_center.py tests/test_task_center_child.py; do
+        mcopy -i seed.img "$here/../../$f" ::
+    done
 fi
 # Emulate the Tegra CPU ISA baseline; no KVM/host CPU assumption.
 efi=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd
@@ -116,6 +120,9 @@ if [ "$rc" -ne 0 ]; then
 fi
 grep -F "$gate" "$out/serial.log"
 grep -F 'EXODUS_GUEST_RESULT=0' "$out/serial.log"
+if [ "$mode" = native ]; then
+    tr -d '\r' < "$out/serial.log" | grep -Fx EXODUS_TASK_CENTER_FREEBSD_PASS
+fi
 
 # The upstream manager workload deliberately preserves compiler diagnostics
 # and exits cleanly even when the full daemon does not compile. A completed
@@ -139,6 +146,8 @@ if [ "$mode" = manager ]; then
         printf 'Upstream manager daemon compile gate not passed (expected exactly one result=0)\n' >&2
         exit 1
     fi
+    grep -Fx EXODUS_MANAGER_EXECUTABLE_SMOKE_PASS "$out/manager-evidence.txt"
+    grep -Fx EXODUS_MANAGER_ARTIFACT_GUEST_PASS "$out/manager-evidence.txt"
     echo EXODUS_MANAGER_DAEMON_COMPILE_PASS
 fi
 
@@ -174,20 +183,37 @@ fi
 # Extract only known filenames after successful guest shutdown and validation.
 case "$mode" in
     graphics) files="wayland.pkg gamescope.pkg dependencies.txt" ;;
+    manager) files="steamos-manager steamosctl steamos-manager.ldd.txt steamosctl.ldd.txt steamos-manager.help.txt steamosctl.help.txt steamosctl.version.txt dependencies.txt freebsd-version.txt source-revision.txt cargo-tree.txt" ;;
     native) files="exodus-native.tar.gz dependencies.txt" ;;
     rcresident) files="tumor-resident-reference.tar.gz dependencies.txt" ;;
     *) exit 0 ;;
 esac
 mkdir extracted
 mcopy -i export.img ::/SHA256SUMS extracted/guest-SHA256SUMS
-: > extracted/SHA256SUMS
+# Admit the complete manifest before copying any payload. A malformed,
+# duplicate or unexpected record must not be silently filtered out.
+awk -v files="$files" '
+    BEGIN {
+        n = split(files, names, " ")
+        for (i = 1; i <= n; i++) expected[names[i]] = 1
+    }
+    {
+        if (NF != 2 || length($1) != 64 || $1 ~ /[^0-9a-fA-F]/ ||
+            !($2 in expected) || seen[$2]++) {
+            bad = 1
+            next
+        }
+        digest[$2] = tolower($1)
+        count++
+    }
+    END {
+        if (bad || count != n) exit 1
+        for (i = 1; i <= n; i++) printf "%s  %s\n", digest[names[i]], names[i]
+    }
+' extracted/guest-SHA256SUMS > extracted/SHA256SUMS
 for f in $files; do
     mcopy -i export.img "::/$f" "extracted/$f"
     test -s "extracted/$f"
-    sum=$(awk -v name="$f" '$2==name && NF==2 {print $1}' extracted/guest-SHA256SUMS)
-    test "${#sum}" -eq 64
-    printf '%s\n' "$sum" | grep -Eq '^[0-9a-fA-F]{64}$'
-    printf '%s  %s\n' "$sum" "$f" >> extracted/SHA256SUMS
 done
 (cd extracted && sha256sum -c --strict SHA256SUMS)
 if [ "$mode" = rcresident ]; then
@@ -245,6 +271,27 @@ elf = payload["bin/exodus-sessiond-dbus"]
 if len(elf) < 64 or elf[:6] != b"\x7fELF\x02\x01" or struct.unpack_from("<H", elf, 18)[0] != 183:
     raise SystemExit("session daemon is not little-endian ELF64 AArch64")
 print("EXODUS_RC_ARCHIVE_CONTENT_PASS")
+PY
+fi
+if [ "$mode" = manager ]; then
+    python3 - extracted <<'PY'
+import pathlib
+import struct
+import sys
+root = pathlib.Path(sys.argv[1])
+for name in ("steamos-manager", "steamosctl"):
+    path = root / name
+    if not 64 <= path.stat().st_size <= 48 * 1024 * 1024:
+        raise SystemExit(f"invalid executable size: {name}")
+    with path.open("rb") as stream:
+        elf = stream.read(64)
+    if (elf[:6] != b"\x7fELF\x02\x01"
+            or struct.unpack_from("<H", elf, 18)[0] != 183
+            or struct.unpack_from("<H", elf, 16)[0] not in (2, 3)):
+        raise SystemExit(f"not an executable ELF64 AArch64: {name}")
+if (root / "source-revision.txt").read_text().strip() != "a0d399defebd60db30ba38325d9cf47dbda49bee":
+    raise SystemExit("unexpected manager source revision")
+print("EXODUS_MANAGER_ARTIFACT_HOST_PASS")
 PY
 fi
 mkdir -p "$out/packages"
