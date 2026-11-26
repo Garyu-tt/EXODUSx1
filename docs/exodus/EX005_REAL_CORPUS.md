@@ -1,0 +1,5 @@
+# EX-005 real corpus admission
+
+Before adding production consumers, replay repository artwork in encoded PNG and decoded RGBA form, existing dependency JSON, and a compiled ELF. Each bounded 32-page group retains a single encoded representation of identical pages and validates restore, every direct word, and exact alias equivalence. Report live payload plus used index entries and group descriptor, and worst-case reserved backing separately. The input/oracle and temporary workspaces are not included in active storage; this is not process RSS or a GPU-residency measurement. Do not retain both encoded and raw copies in a future consumer. Reject a consumer if savings do not exceed metadata and allocation overhead or if restore costs outweigh gains.
+
+Catalog parsing and streaming file hashing are not selected as production consumers: they already consume contiguous or streaming input. No game or Horizon memory hooks are introduced by this QA branch. Physical integrated store testing was completed separately; independent review remains required.

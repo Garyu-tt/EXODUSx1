@@ -1,0 +1,50 @@
+name: EX-005 real asset corpus
+on:
+  pull_request:
+    paths:
+      - 'exodus/memory/bench_real_corpus.c'
+      - '.github/workflows/ex005-real-corpus.yml'
+permissions:
+  contents: read
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Provision image decoder
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version
+      - name: Replay real repository data
+        run: |
+          set -euo pipefail
+          src=exodus/memory
+          cc -O2 -std=c99 -Wall -Wextra -Wpedantic -Werror -I"$src" "$src"/{bench_real_corpus,page_codec,page_store,page_dedup_store,page_read,bdi_slab}.c -o "$RUNNER_TEMP/corpus"
+          clang -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -std=c99 -Wall -Wextra -Wpedantic -Werror -I"$src" "$src"/{bench_real_corpus,page_codec,page_store,page_dedup_store,page_read,bdi_slab}.c -o "$RUNNER_TEMP/corpus-san"
+          ffmpeg -nostdin -v error -i 4mosphere.png -frames:v 1 -pix_fmt rgba -f rawvideo "$RUNNER_TEMP/artwork.rgba"
+          for file in 4mosphere.png "$RUNNER_TEMP/artwork.rgba" exodus/home/corkdeck/release/dependency-sources.json "$RUNNER_TEMP/corpus"; do
+            echo "=== $file ==="
+            sha256sum "$file"
+            "$RUNNER_TEMP/corpus" "$file" | tee "$RUNNER_TEMP/result.json"
+            "$RUNNER_TEMP/corpus-san" "$file" > "$RUNNER_TEMP/sanitized.json"
+            cmp "$RUNNER_TEMP/result.json" "$RUNNER_TEMP/sanitized.json"
+            python3 - "$file" "$RUNNER_TEMP/result.json" <<'PY'
+          import json, pathlib, sys
+          f, report = map(pathlib.Path, sys.argv[1:])
+          r = json.loads(report.read_text())
+          assert r["input_bytes"] == f.stat().st_size
+          assert r["pages"] * 4096 + r["tail_bytes"] == r["input_bytes"]
+          assert r["unique"] <= r["pages"]
+          assert r["payload_bytes"] <= r["unique"] * 4096
+          assert r["active_total_bytes"] == r["payload_bytes"] + r["active_metadata_bytes"] + r["tail_bytes"]
+          if r["input_bytes"]:
+              print("active storage vs raw:", round(100*r["active_total_bytes"]/r["input_bytes"], 2), "%")
+          PY
+          done
