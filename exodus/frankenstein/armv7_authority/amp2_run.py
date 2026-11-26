@@ -96,7 +96,7 @@ with open(log,"w",encoding="utf-8") as f:
     finally:
         child.close(force=True)
 data=pathlib.Path(log).read_text(errors="replace").replace("\r","")
-for marker in ("EXODUS_ARMV7_KERNEL_AMP_LOADED","EXODUS_ARMV7_KERNEL_AMP_PASS lanes=8 transactions=16 replay=reject","EXODUS_ARMV7_KERNEL_UNLOAD_PASS","EXODUS_ARMV7_KERNEL_GATE_RESULT=0"):
+for marker in ("EXODUS_ARMV7_KERNEL_AMP_LOADED","EXODUS_ARMV7_KERNEL_AMP2_LOADED","EXODUS_ARMV7_KERNEL_AMP_PASS lanes=8 transactions=16 replay=reject","EXODUS_ARMV7_KERNEL_UNLOAD_PASS","EXODUS_ARMV7_KERNEL_GATE_RESULT=0"):
     if len(re.findall(r"^"+re.escape(marker)+r"$",data,re.M))!=1:raise SystemExit("missing/duplicate "+marker)
 if not re.search(r"^EXODUS_ARMV7_NATIVE_CALLER_PID_PASS pid=[1-9][0-9]*$",data,re.M):raise SystemExit("native PID evidence missing")
 print("PASS: 8 kernel-assigned virtual PIDs, 8 exit records, 16 native AMP2 replies, 512 IRQs")

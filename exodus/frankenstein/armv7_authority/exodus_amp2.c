@@ -57,7 +57,7 @@ amp_exchange(SYSCTL_HANDLER_ARGS)
 }
 SYSCTL_PROC(_kern, OID_AUTO, exodus_amp2,
     CTLTYPE_OPAQUE | CTLFLAG_RW | CTLFLAG_MPSAFE,
-    NULL, 0, amp_exchange, "S,amp1", "EXODUS disposable AMP2 fixture");
+    NULL, 0, amp_exchange, "S,amp2", "EXODUS disposable AMP2 fixture");
 
 static int
 amp_caller_pid(SYSCTL_HANDLER_ARGS)
@@ -103,7 +103,7 @@ amp_event(module_t mod,int event,void *arg)
     switch(event) {
     case MOD_LOAD:
         if(sizeof(void *)!=4)return (ENXIO);
-        mtx_init(&gate,"exodus amp1",NULL,MTX_DEF);
+        mtx_init(&gate,"exodus amp2",NULL,MTX_DEF);
         transactions=exited=0;next_pid=21001;
         memset(vpid,0,sizeof(vpid));memset(exit_status,0,sizeof(exit_status));
         for(unsigned i=0;i<LANES;i++){
@@ -112,7 +112,7 @@ amp_event(module_t mod,int event,void *arg)
             }
             lanes[i].last=UINT64_C(0xffffffff);
         }
-        printf("EXODUS_ARMV7_KERNEL_AMP_LOADED\n");
+        printf("EXODUS_ARMV7_KERNEL_AMP2_LOADED\n");
         return (0);
     case MOD_UNLOAD:
         mtx_destroy(&gate);

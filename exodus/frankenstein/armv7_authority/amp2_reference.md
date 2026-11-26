@@ -10,3 +10,7 @@ No real FreeBSD struct proc/pid namespace allocation yet, no wait4/fork,
 no signals, no dynamic process creation, no physical ADSP. This is kernel
 owned remote metadata, not actual POSIX process integration. Fresh CI
 required. No new authority fallback. Refs #103 #105 #370 #371.
+
+QA: distinct load markers for AMP1 prerequisite and AMP2 module. Require
+exactly one of each; identical markers would incorrectly fail the final
+serial audit even when both modules executed. No protocol behavior change.
