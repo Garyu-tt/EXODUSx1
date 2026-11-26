@@ -4,6 +4,8 @@ on:
     paths:
       - 'exodus/frankenstein/amp_execution_contract.c'
       - 'exodus/frankenstein/amp_execution_peer.c'
+      - 'exodus/frankenstein/amp_execution_shared.c'
+      - 'exodus/frankenstein/test_amp_execution_shared.py'
       - 'exodus/frankenstein/test_amp_execution_peers.py'
       - '.github/workflows/tumor-amp-execution.yml'
 permissions:
@@ -37,3 +39,10 @@ jobs:
           arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 -std=c11 -Wall -Wextra -Werror -pedantic "$src" -o "$RUNNER_TEMP/peer32"
           aarch64-linux-gnu-gcc -static -march=armv8-a -O2 -std=c11 -Wall -Wextra -Werror -pedantic "$src" -o "$RUNNER_TEMP/peer64"
           python3 exodus/frankenstein/test_amp_execution_peers.py "$RUNNER_TEMP/peer32" "$RUNNER_TEMP/peer64"
+      - name: Shared memory cross-ISA reference
+        run: |
+          set -eu
+          src=exodus/frankenstein/amp_execution_shared.c
+          arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 -std=c11 -Wall -Wextra -Werror -pedantic "$src" -o "$RUNNER_TEMP/shared32"
+          aarch64-linux-gnu-gcc -static -march=armv8-a -O2 -std=c11 -Wall -Wextra -Werror -pedantic "$src" -o "$RUNNER_TEMP/shared64"
+          python3 exodus/frankenstein/test_amp_execution_shared.py "$RUNNER_TEMP/shared32" "$RUNNER_TEMP/shared64"
