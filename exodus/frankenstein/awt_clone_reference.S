@@ -267,7 +267,8 @@ parent_wait:
     cmp x0,x1
     b.ne fail
     ldr x1,[sp,#8]
-    cmp x1,#0x2010
+    mov x2,#0x2010
+    cmp x1,x2
     b.ne fail
     ldr x1,[sp,#16]
     cmp x1,#1
