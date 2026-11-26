@@ -47,3 +47,7 @@ assert {"amp-boot-mvp", "steam-hos-compatibility", "inbox-import", "desktop-mode
 assert not any(nodes[k]["state"].startswith("qemu-") for k in required)
 assert graph["physical_target"]["topology"] == "AMP"
 print("PASS: physical AMP admission dependency separation")
+
+assert {"adsp-native-service-contract", "adsp-native-compat-driver",
+        "adsp-native-service-admission"} <= ancestors("amp-boot-mvp")
+print("PASS: original ADSP functions are mandatory physical MVP gates")
