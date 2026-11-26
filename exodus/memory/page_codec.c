@@ -355,26 +355,34 @@ bool exodus_page_fingerprint_update(uint64_t old,size_t word,
     return true;
 }
 
-/* Preserve the original single hash loop for RAW-dominated records.
+/* Use independent hash accumulators for RAW-dominated records.
  * Only one 64-byte block is staged; no complete-page decode. */
 static uint64_t bdi_fingerprint_staged(const uint8_t *p)
 {
-    uint64_t hash=UINT64_C(0x45584f4455530002);
+    uint64_t h0=UINT64_C(0x45584f4455530002),h1=0,h2=0,h3=0;
     size_t pos=BDI_HEADER;
     for(size_t b=0;b<BLOCKS;b++){
         uint8_t block[BLOCK_BYTES];
         bool compressed=(p[1+b/8]&(1u<<(b%8)))!=0;
         bdi_block(p+pos,compressed,block);
-        for(size_t w=0;w<16;w++)hash^=word_token(b*16+w,block+w*4);
+        /* XOR is associative: four independent accumulators expose ILP
+         * without changing a single token or the final hash. */
+        for(size_t w=0;w<16;w+=4){
+            size_t k=b*16+w;
+            h0^=word_token(k,block+w*4);
+            h1^=word_token(k+1,block+(w+1)*4);
+            h2^=word_token(k+2,block+(w+2)*4);
+            h3^=word_token(k+3,block+(w+3)*4);
+        }
         pos+=compressed?BDI_BYTES:BLOCK_BYTES;
     }
-    return hash;
+    return h0^h1^h2^h3;
 }
 bool exodus_page_bdi_fingerprint(const uint8_t *p,size_t size,uint64_t *out)
 {
     if(!out || !bdi_valid(p,size))return false;
     /* Validated size determines packed block count exactly. Select the
-     * original loop for <=16 packed blocks; threshold is provisional. */
+     * four-lane loop for <=16 packed blocks; threshold is provisional. */
     if(size>=BDI_HEADER+BLOCKS*BLOCK_BYTES-16*(BLOCK_BYTES-BDI_BYTES)){
         *out=bdi_fingerprint_staged(p);
         return true;
