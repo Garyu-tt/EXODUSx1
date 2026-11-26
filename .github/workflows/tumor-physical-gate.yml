@@ -1,0 +1,19 @@
+name: Tumor physical evidence gate
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/tegra_physical_gate.py'
+      - 'exodus/frankenstein/test_tegra_physical_gate.py'
+      - 'exodus/frankenstein/TEGRA_PHYSICAL_GATE.md'
+      - '.github/workflows/tumor-physical-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s exodus/frankenstein -p test_tegra_physical_gate.py
