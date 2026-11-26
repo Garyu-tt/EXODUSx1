@@ -59,6 +59,40 @@ jobs:
         with:
           persist-credentials: false
       - run: make -C exodus/memory check
+      - name: Check out pinned EX-005 baseline
+        uses: actions/checkout@v6
+        with:
+          ref: a000dba9cd71da1568134f6308bb67bc439f8506
+          path: .qa-ex005-baseline
+          persist-credentials: false
+      - name: EX-005 host A/B correctness and indicative timing
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate="$GITHUB_WORKSPACE/exodus/memory"
+          baseline="$GITHUB_WORKSPACE/.qa-ex005-baseline/exodus/memory"
+          flags=(-O2 -std=c99 -Wall -Wextra -Wpedantic -Werror)
+          cp "$candidate/bench_ex005.c" "$baseline/bench_ex005.c"
+          cc "${flags[@]}" -I"$baseline" "$baseline/bench_ex005.c" "$baseline/page_codec.c" "$baseline/bdi_slab.c" -o "$RUNNER_TEMP/ex005-baseline"
+          cc "${flags[@]}" -I"$candidate" "$candidate/bench_ex005.c" "$candidate/page_codec.c" "$candidate/bdi_slab.c" -o "$RUNNER_TEMP/ex005-candidate"
+          # Record optimizer and machine-code evidence without gating timings.
+          cc --version
+          uname -m
+          for variant in baseline candidate; do
+            if [ "$variant" = baseline ]; then src="$baseline"; else src="$candidate"; fi
+            cc "${flags[@]}" -fopt-info-vec-all="$RUNNER_TEMP/$variant-vector.txt" -c "$src/page_codec.c" -o "$RUNNER_TEMP/$variant-codec.o"
+            echo "=== $variant fingerprint vectorization diagnostics ==="
+            grep -E 'optimized:|not vectorized:' "$RUNNER_TEMP/$variant-vector.txt" | tail -n 100 || true
+            objdump -d --disassemble=exodus_page_bdi_fingerprint "$RUNNER_TEMP/$variant-codec.o"
+          done
+          "$RUNNER_TEMP/ex005-baseline" > "$RUNNER_TEMP/baseline-first.csv"
+          "$RUNNER_TEMP/ex005-candidate" > "$RUNNER_TEMP/candidate-second.csv"
+          "$RUNNER_TEMP/ex005-candidate" > "$RUNNER_TEMP/candidate-first.csv"
+          "$RUNNER_TEMP/ex005-baseline" > "$RUNNER_TEMP/baseline-second.csv"
+          echo "Host A/B order 1 (not Tegra and not a performance gate)"
+          python3 "$candidate/compare_ex005_bench.py" "$RUNNER_TEMP/baseline-first.csv" "$RUNNER_TEMP/candidate-second.csv"
+          echo "Host A/B order 2 (not Tegra and not a performance gate)"
+          python3 "$candidate/compare_ex005_bench.py" "$RUNNER_TEMP/baseline-second.csv" "$RUNNER_TEMP/candidate-first.csv"
 
   catalog:
     name: Catalog C++ host checks
