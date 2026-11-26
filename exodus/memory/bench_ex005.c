@@ -93,7 +93,10 @@ bool exodus_bench_ex005(FILE *out){
         digest=exodus_page_fingerprint(check);
         if(!exodus_bdi_slab_release(&slab,&hot)||!report(out,"hot_write",start,end,digest))return false;
     }
-    fprintf(out,"fixture_bytes,%zu,slab_payload_bytes,%zu,slab_ref_bytes,%zu\n",n,sizeof small,sizeof refs);
+    /* Keep a rectangular CSV; metadata rows have operations=0 and no latency. */
+    fprintf(out,"fixture_bytes,%zu,0,0,0,0\n",n);
+    fprintf(out,"slab_payload_bytes,%zu,0,0,0,0\n",sizeof small);
+    fprintf(out,"slab_ref_bytes,%zu,0,0,0,0\n",sizeof refs);
     return true;
 }
 #ifndef __SWITCH__
