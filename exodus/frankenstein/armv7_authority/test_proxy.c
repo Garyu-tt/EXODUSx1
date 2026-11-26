@@ -46,7 +46,7 @@ int main(void){
         close(go[i][1]);
         int st;assert(waitpid(p[i],&st,0)==p[i]);
         if(i==SLOTS-1)assert(WIFSIGNALED(st)&&WTERMSIG(st)==SIGTERM);
-        else assert(WIFEXITED(st)&&WEXITSTATUS(st)==23+i);
+        else assert(WIFEXITED(st)&&WEXITSTATUS(st)==23+(int)i);
     }
     snap(v);
     for(unsigned i=0;i<SLOTS;i++){
