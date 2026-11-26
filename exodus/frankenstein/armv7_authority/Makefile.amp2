@@ -1,0 +1,3 @@
+KMOD=exodus_amp2
+SRCS=exodus_amp2.c
+.include <bsd.kmod.mk>
