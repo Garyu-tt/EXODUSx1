@@ -260,26 +260,13 @@ bool exodus_page_bdi_prepare_patch(const uint8_t *p,size_t size,size_t word,
     patch.offset=BDI_HEADER+b*BLOCK_BYTES-bdi_count(p+1,b)*(BLOCK_BYTES-BDI_BYTES);
     patch.old_len=was?BDI_BYTES:BLOCK_BYTES;
     const uint8_t *src=p+patch.offset;
-    if(was){
-        uint32_t base=bdi_load(src), next=bdi_load(value);
-        if(next>=base && next-base<=255u){
-            uint8_t delta=(uint8_t)(next-base);
-            bool minimum=delta==0, canonical=true;
-            /* Keep exactly the base the canonical encoder would select.
-             * Remaining wrapping words require the original fallback. */
-            for(size_t i=0;i<16;i++){
-                if(i==w)continue;
-                if((uint32_t)src[4+i]>UINT32_MAX-base){canonical=false;break;}
-                if(src[4+i]==0)minimum=true;
-            }
-            if(canonical&&minimum){
-                memcpy(patch.bytes,src,BDI_BYTES);
-                patch.bytes[4+w]=delta;
-                patch.new_len=BDI_BYTES;
-                *out=patch;
-                return true;
-            }
-        }
+    uint8_t delta;
+    if(was&&exodus_bdi_direct_delta(src,w,value,&delta)){
+        memcpy(patch.bytes,src,BDI_BYTES);
+        patch.bytes[4+w]=delta;
+        patch.new_len=BDI_BYTES;
+        *out=patch;
+        return true;
     }
     uint8_t block[BLOCK_BYTES];
     bdi_block(src,was,block);
