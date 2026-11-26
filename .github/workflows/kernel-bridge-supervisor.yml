@@ -1,0 +1,23 @@
+name: Kernel Bridge supervisor host tests
+on:
+  pull_request:
+    paths:
+      - 'tools/kernel_bridge/**'
+      - '.github/workflows/kernel-bridge-supervisor.yml'
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          "$CC" -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -fno-sanitize-recover=all tools/kernel_bridge/supervisor_test.c -o "$RUNNER_TEMP/exodus-supervisor"
+          "$RUNNER_TEMP/exodus-supervisor"
