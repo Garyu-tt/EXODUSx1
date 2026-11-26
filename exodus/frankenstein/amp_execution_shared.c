@@ -11,11 +11,17 @@
 #include <sys/stat.h>
 enum { COUNT=128, LIMIT=5000 };
 struct slot {
-    _Alignas(64) _Atomic uint32_t published, consumed, claimed;
+    _Alignas(64) _Atomic uint32_t published;
+    _Atomic uint32_t consumed;
+    _Atomic uint32_t claimed;
     _Alignas(64) uint8_t bytes[AMP_SIZE];
 };
 struct mailbox { struct slot request, reply; };
 _Static_assert(sizeof(_Atomic uint32_t)==4,"atomic width");
+_Static_assert(_Alignof(struct slot)==64,"slot alignment");
+_Static_assert(offsetof(struct slot,published)==0,"publication offset");
+_Static_assert(offsetof(struct slot,consumed)==4,"ack offset");
+_Static_assert(offsetof(struct slot,claimed)==8,"claim offset");
 _Static_assert(offsetof(struct slot,bytes)==64,"frame offset");
 _Static_assert(sizeof(struct slot)==128,"slot stride");
 _Static_assert(sizeof(struct mailbox)==256,"mapping layout");
