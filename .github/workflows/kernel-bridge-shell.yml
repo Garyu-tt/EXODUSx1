@@ -1,0 +1,30 @@
+name: Kernel Bridge shell host tests
+on:
+  pull_request:
+    paths:
+      - 'tools/kernel_bridge/**'
+      - '.github/workflows/kernel-bridge-shell.yml'
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          set -eu
+          for target in shell_test shell_host; do
+            "$CC" -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -fno-sanitize-recover=all "tools/kernel_bridge/$target.c" -o "$RUNNER_TEMP/$target"
+          done
+          "$RUNNER_TEMP/shell_test"
+          printf 'help\nps\nsvc\nexec true\nexec false\n' | timeout 20s "$RUNNER_TEMP/shell_host" > "$RUNNER_TEMP/shell.log"
+          grep -q 'host-bootstrap-test state=done' "$RUNNER_TEMP/shell.log"
+          grep -q 'code=0 signaled=0' "$RUNNER_TEMP/shell.log"
+          grep -q 'code=1 signaled=0' "$RUNNER_TEMP/shell.log"
