@@ -1,0 +1,3 @@
+KMOD=exodus_awt_pid
+SRCS=exodus_awt_pid.c
+.include <bsd.kmod.mk>
