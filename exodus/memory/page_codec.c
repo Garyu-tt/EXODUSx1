@@ -133,14 +133,21 @@ size_t exodus_page_encode(const uint8_t *page, uint8_t *encoded)
 enum { BDI_HEADER = 9, BDI_BYTES = 20 };
 static uint32_t bdi_load(const uint8_t *p)
 {
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    /* Express an alignment-safe native word load directly, including
+     * when the compiler vectorizes consecutive RAW token loads. */
+    uint32_t v;
+    memcpy(&v,p,sizeof v);
+    return v;
+#else
     return (uint32_t)p[0] | (uint32_t)p[1]<<8 |
            (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24;
+#endif
 }
 static void bdi_put(uint8_t *p, uint32_t v)
 {
     for (unsigned i=0;i<4;i++) p[i]=(uint8_t)(v>>(8*i));
 }
-/* Fixed-cost byte population count; no table, alignment or ISA dependency. */
 /* Read the full mask without alignment assumptions. The wire is little
  * endian; use a byte assembly fallback on unknown or big-endian targets. */
 static uint64_t bdi_mask_load(const uint8_t *p)
@@ -369,12 +376,7 @@ bool exodus_page_bdi_fingerprint(const uint8_t *p,size_t size,uint64_t *out)
                 hash^=word_token_value(b*16+w,base+(uint32_t)p[pos+4+w]);
             pos+=BDI_BYTES;
         }else{
-            /* Retain the original fixed-size RAW staging path: on host
-             * compilers this enables vectorized token loads. Packed blocks
-             * still hash without materialization. */
-            uint8_t raw[BLOCK_BYTES];
-            memcpy(raw,p+pos,sizeof raw);
-            for(size_t w=0;w<16;w++)hash^=word_token(b*16+w,raw+4*w);
+            for(size_t w=0;w<16;w++)hash^=word_token(b*16+w,p+pos+4*w);
             pos+=BLOCK_BYTES;
         }
     }

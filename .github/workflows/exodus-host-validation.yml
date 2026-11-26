@@ -75,6 +75,16 @@ jobs:
           cp "$candidate/bench_ex005.c" "$baseline/bench_ex005.c"
           cc "${flags[@]}" -I"$baseline" "$baseline/bench_ex005.c" "$baseline/page_codec.c" "$baseline/bdi_slab.c" -o "$RUNNER_TEMP/ex005-baseline"
           cc "${flags[@]}" -I"$candidate" "$candidate/bench_ex005.c" "$candidate/page_codec.c" "$candidate/bdi_slab.c" -o "$RUNNER_TEMP/ex005-candidate"
+          # Record optimizer and machine-code evidence without gating timings.
+          cc --version
+          uname -m
+          for variant in baseline candidate; do
+            if [ "$variant" = baseline ]; then src="$baseline"; else src="$candidate"; fi
+            cc "${flags[@]}" -fopt-info-vec-all="$RUNNER_TEMP/$variant-vector.txt" -c "$src/page_codec.c" -o "$RUNNER_TEMP/$variant-codec.o"
+            echo "=== $variant fingerprint vectorization diagnostics ==="
+            grep -E 'optimized:|not vectorized:' "$RUNNER_TEMP/$variant-vector.txt" | tail -n 100 || true
+            objdump -d --disassemble=exodus_page_bdi_fingerprint "$RUNNER_TEMP/$variant-codec.o"
+          done
           "$RUNNER_TEMP/ex005-baseline" > "$RUNNER_TEMP/baseline-first.csv"
           "$RUNNER_TEMP/ex005-candidate" > "$RUNNER_TEMP/candidate-second.csv"
           "$RUNNER_TEMP/ex005-candidate" > "$RUNNER_TEMP/candidate-first.csv"
