@@ -515,8 +515,47 @@ static void check_sparse_groups(void)
     }
 }
 
+/* Minimum-size BDI pages have a unique mask; every bit must be checked
+ * before writing output, even when the requested word is in another block. */
+static void check_fully_packed_read(void)
+{
+    uint8_t storage[1290], out[6], page[EXODUS_PAGE_BYTES];
+    uint8_t *p=storage+1;
+    p[0]=EXODUS_PAGE_BDI_VERSION;
+    memset(p+1,0xff,8);
+    for(size_t b=0;b<64;b++){
+        uint8_t *src=p+9+20*b;
+        memset(src,0xff,4);
+        for(size_t w=0;w<16;w++){
+            src[4+w]=(uint8_t)(b+w);
+            uint32_t v=UINT32_MAX+(uint32_t)(b+w);
+            for(unsigned k=0;k<4;k++)page[b*64+w*4+k]=(uint8_t)(v>>(8*k));
+        }
+    }
+    memset(out,0xa5,sizeof out);
+    for(size_t w=0;w<1024;w++){
+        CHECK(exodus_page_bdi_read_word(p,1289,w,out+1));
+        CHECK(!memcmp(out+1,page+4*w,4)&&out[0]==0xa5&&out[5]==0xa5);
+    }
+    for(size_t b=0;b<64;b++){
+        p[1+b/8]^=(uint8_t)(1u<<(b%8));
+        memset(out,0xa5,sizeof out);
+        CHECK(!exodus_page_bdi_read_word(p,1289,0,out+1));
+        CHECK(!exodus_page_bdi_read_word(p,1289,1023,out+1));
+        CHECK(!memcmp(out,"\xa5\xa5\xa5\xa5\xa5\xa5",6));
+        p[1+b/8]^=(uint8_t)(1u<<(b%8));
+    }
+    CHECK(!exodus_page_bdi_read_word(p,1288,0,out+1));
+    CHECK(!exodus_page_bdi_read_word(p,1290,0,out+1));
+    CHECK(!exodus_page_bdi_read_word(p,1289,1024,out+1));
+    p[0]=0;
+    CHECK(!exodus_page_bdi_read_word(p,1289,0,out+1));
+    CHECK(!memcmp(out,"\xa5\xa5\xa5\xa5\xa5\xa5",6));
+}
+
 int main(void)
 {
+    check_fully_packed_read();
     check_bdi_wrap_compare();
     check_bdi_direct_compare();
     check_compare_differential();
