@@ -25,5 +25,35 @@ class Gate(unittest.TestCase):
             f.write_text("changed")
             self.assertEqual(evaluate(data,root)["decision"],"BLOCKED")
             self.assertFalse(evaluate(data,root)["deployment_authorized"])
+    def test_dual_kernel_admission(self):
+        extra = ["a57_el2_entry","a57_stage2_isolation","cross_kernel_irq_ownership","cross_kernel_memory_ownership","dual_kernel_liveness","native_game_bsd_ssh","display_hid_handoff"]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            target = {"soc": "erista", "board": "synthetic-fixture"}
+            artifact = root / "fixture.log"
+            artifact.write_text("synthetic evidence only")
+            item = {"kind": "physical", "target": target, "outcome": "pass",
+                    "artifact": artifact.name,
+                    "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest()}
+            data = {"schema": 1, "target": target,
+                    "gates": {g: dict(item) for g in GATES if g not in extra}}
+            result = evaluate(data, root)
+            self.assertEqual(result["decision"], "BLOCKED")
+            for gate in extra:
+                self.assertEqual(result["gates"][gate],
+                                 "BLOCKED: missing physical evidence")
+                data["gates"][gate] = dict(item)
+            self.assertEqual(evaluate(data, root)["decision"], "MANUAL_REVIEW_REQUIRED")
+            for gate in extra:
+                with self.subTest(gate=gate):
+                    for field, value in (("kind", "qemu"),
+                                         ("target", {"soc": "mariko", "board": "other"}),
+                                         ("outcome", "fail")):
+                        data["gates"][gate] = dict(item, **{field: value})
+                        result = evaluate(data, root)
+                        self.assertEqual(result["decision"], "BLOCKED")
+                        self.assertFalse(result["deployment_authorized"])
+                    data["gates"][gate] = dict(item)
+            self.assertFalse(evaluate(data, root)["deployment_authorized"])
 if __name__=="__main__":
     unittest.main()
