@@ -5,8 +5,11 @@ import statistics
 import sys
 from pathlib import Path
 
-CASES = ("bdi_read", "bdi_fingerprint", "cold_patch", "hot_write")
-META = {"fixture_bytes": 1289, "slab_payload_bytes": 1280, "slab_ref_bytes": 128}
+CASES = ("bdi_read", "bdi_fingerprint", "cold_patch", "hot_write",
+         "mixed_read_08", "mixed_hash_08", "mixed_read_32", "mixed_hash_32",
+         "mixed_read_56", "mixed_hash_56")
+META = {"fixture_bytes": 1289, "slab_payload_bytes": 1280, "slab_ref_bytes": 128,
+        "mixed_bytes_08": 3753, "mixed_bytes_32": 2697, "mixed_bytes_56": 1641}
 FIELDS = ["case", "ticks", "operations", "tick_hz", "digest", "ns_per_op"]
 
 
