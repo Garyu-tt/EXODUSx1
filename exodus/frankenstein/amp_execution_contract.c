@@ -2,9 +2,14 @@
  * Byte encoding independent of C ABI. No raw pointers, arbitrary syscall
  * numbers, hardware access, or claims about physical cache coherence.
  * One outstanding request per trusted serialized session. */
+#ifdef _KERNEL
+#include <sys/param.h>
+#include <sys/systm.h>
+#else
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#endif
 enum { AMP_SIZE=64, AMP_REQ=1, AMP_REPLY=2, AMP_GETPID=1, AMP_EXIT_INTENT=2,
        AMP_OK=0, AMP_DENIED=1 };
 struct amp_msg { uint8_t kind,op,status; uint64_t generation,seq,task,arg,result; };
