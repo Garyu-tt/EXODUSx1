@@ -4,18 +4,20 @@ Single serialized owner and sole waitpid reaper are required. The executable
 and argv come from trusted local configuration, never a UI request. This
 reference manages one direct child, not a process tree or hardware resources.
 """
+import math
 import os
 import signal
 import time
 
-from .task_center import Lifecycle, Session, UNKNOWN, LIMIT, positive
+from .task_center import Lifecycle, Session, UNKNOWN, LIMIT, OPERATIONS, positive, valid_key
+
+
+POLL_BUDGET = 64  # nonblocking waitpid calls per serialized observation
 
 
 class ManagedChild:
     def __init__(self, epoch, session_id, instance, argv):
-        if (not positive(epoch) or not positive(instance)
-                or not isinstance(session_id, str) or not 1 <= len(session_id) <= 128
-                or any(ord(ch) < 32 or ord(ch) == 127 for ch in session_id)
+        if (not valid_key(("freebsd", epoch, session_id, instance))
                 or not isinstance(argv, (tuple, list)) or not argv
                 or not all(isinstance(s, str) and "\0" not in s for s in argv)
                 or not os.path.isabs(argv[0])):
@@ -27,15 +29,19 @@ class ManagedChild:
         self.key = ("freebsd", epoch, session_id, instance)
         self.sequence = 0
         self.last_token = 0
-        self.state = "running"
+        self.state = self._observed_state = "running"
         self.pid = os.posix_spawn(argv[0], argv, os.environ.copy(),
                                   setsigmask=(), setsigdef=(signal.SIGTERM, signal.SIGINT))
         self.terminal = False
 
-    def poll(self):
+    def poll(self, deadline=None):
         if self.terminal:
             return self.state
-        while True:
+        for _ in range(POLL_BUDGET):
+            # Bound snapshots as well as dispatch. The deadline is an
+            # additional limit, never a substitute for the event budget.
+            if deadline is not None and time.monotonic() >= deadline:
+                break
             try:
                 pid, status = os.waitpid(self.pid, os.WNOHANG | os.WUNTRACED | os.WCONTINUED)
             except InterruptedError:
@@ -43,16 +49,20 @@ class ManagedChild:
             except ChildProcessError:
                 # A lost reaper contract means we must never signal this PID.
                 self.state, self.terminal = UNKNOWN, True
-                break
+                return self.state
             if pid == 0:
-                break
+                self.state = self._observed_state
+                return self.state
             if os.WIFEXITED(status) or os.WIFSIGNALED(status):
                 self.state, self.terminal = "exited", True
-                break
+                return self.state
             if os.WIFSTOPPED(status):
-                self.state = "suspended"
+                self._observed_state = "suspended"
             elif os.WIFCONTINUED(status):
-                self.state = "running"
+                self._observed_state = "running"
+        # Incomplete observation is not a terminal state. Keep exclusive
+        # reaper ownership, hide capabilities and recover on a later drain.
+        self.state = UNKNOWN
         return self.state
 
     def capabilities(self):
@@ -72,14 +82,23 @@ class ManagedChild:
 
     def dispatch(self, request):
         """Synchronous delivery only. True means signal accepted, not completed."""
-        if (not isinstance(request, Lifecycle) or request.target != self.key
+        if (not isinstance(request, Lifecycle) or not valid_key(request.target)
+                or request.target != self.key
                 or not positive(request.token) or request.token <= self.last_token
-                or request.accepted or request.sequence != self.sequence
+                or request.accepted is not False or not positive(request.sequence)
+                or request.sequence != self.sequence
+                or type(request.operation) is not str or request.operation not in OPERATIONS
+                or type(request.deadline) not in (int, float)
+                or not 0 < request.deadline <= LIMIT
+                or not math.isfinite(request.deadline)
                 or request.deadline <= time.monotonic()):
             return False
         self.last_token = request.token
-        self.poll()
-        if self.terminal or request.operation not in self.capabilities():
+        self.poll(deadline=request.deadline)
+        # poll() can be delayed by waitpid events or interruptions. Recheck
+        # expiry after observation, before issuing any process signal.
+        if (self.terminal or request.operation not in self.capabilities()
+                or request.deadline <= time.monotonic()):
             return False
         sig = {"suspend": signal.SIGSTOP, "resume": signal.SIGCONT,
                "terminate": signal.SIGTERM}[request.operation]
@@ -88,7 +107,7 @@ class ManagedChild:
             # No other thread, handler or library may reap it.
             os.kill(self.pid, sig)
         except ProcessLookupError:
-            self.poll()
+            self.poll(deadline=request.deadline)
             return False
         except PermissionError:
             return False

@@ -46,6 +46,17 @@ class ManagedChildTests(unittest.TestCase):
         self.assertEqual(self.center.lifecycle_result, (p.token, "confirmed"))
         self.assertEqual(self.child.state, expected)
 
+    def test_constructor_rejects_noncanonical_identity_before_spawn(self):
+        class Alias(str):
+            pass
+        with patch("exodus.task_center_child.os.posix_spawn") as spawn:
+            for epoch, name, instance in [(True, "child", 1), (1, Alias("child"), 1),
+                                          (1, "child", True), (1, "bad\nname", 1)]:
+                with self.subTest(identity=(epoch, name, instance)):
+                    with self.assertRaises(ValueError):
+                        ManagedChild(epoch, name, instance, [sys.executable])
+            spawn.assert_not_called()
+
     def test_real_child_stop_continue_term(self):
         self.operate("suspend", "suspended")
         self.operate("resume", "running")
@@ -60,6 +71,78 @@ class ManagedChildTests(unittest.TestCase):
             self.assertFalse(self.child.dispatch(replace(p, sequence=99)))
             self.assertFalse(self.child.dispatch(replace(p, deadline=0)))
             kill.assert_not_called()
+
+    def test_malformed_request_never_signals_or_consumes_token(self):
+        p = self.center.request_lifecycle(self.child.key, "suspend")
+        bad = [
+            replace(p, target=("freebsd", True, "test-child", 1)),
+            replace(p, target=("freebsd", 1, "test-child", True)),
+            replace(p, sequence=True), replace(p, deadline=float("nan")),
+            replace(p, deadline=float("inf")), replace(p, deadline=10**1000),
+            replace(p, deadline="later"), replace(p, accepted=0),
+            replace(p, operation=[]), replace(p, operation="unknown"),
+            replace(p, operation=""),
+        ]
+        with patch("exodus.task_center_child.os.kill") as kill:
+            for request in bad:
+                with self.subTest(request=request):
+                    self.assertFalse(self.child.dispatch(request))
+            kill.assert_not_called()
+        self.assertEqual(self.child.last_token, 0)
+        self.assertTrue(self.child.dispatch(p))
+
+    def test_deadline_expires_during_observation_never_signals(self):
+        p = self.center.request_lifecycle(self.child.key, "suspend")
+        ticks = iter([p.deadline - 1, p.deadline - 1])
+        with patch("exodus.task_center_child.time.monotonic",
+                   side_effect=lambda: next(ticks, p.deadline)), \
+                patch("exodus.task_center_child.os.waitpid", return_value=(0, 0)), \
+                patch("exodus.task_center_child.os.kill") as kill:
+            self.assertFalse(self.child.dispatch(p))
+            kill.assert_not_called()
+        self.assertEqual(self.child.last_token, p.token)
+        self.assertFalse(self.child.dispatch(p))
+
+    def test_interrupted_observation_is_bounded_by_deadline(self):
+        p = self.center.request_lifecycle(self.child.key, "suspend")
+        ticks = iter([p.deadline - 1, p.deadline - 1])
+        with patch("exodus.task_center_child.time.monotonic",
+                   side_effect=lambda: next(ticks, p.deadline)), \
+                patch("exodus.task_center_child.os.waitpid",
+                      side_effect=[InterruptedError, AssertionError("waitpid after deadline")]) as wait, \
+                patch("exodus.task_center_child.os.kill") as kill:
+            self.assertFalse(self.child.dispatch(p))
+            wait.assert_called_once()
+            kill.assert_not_called()
+        self.assertEqual(self.child.last_token, p.token)
+        self.assertFalse(self.child.dispatch(p))
+
+    def test_snapshot_interrupt_budget_and_recovery(self):
+        from exodus.task_center_child import POLL_BUDGET
+        with patch("exodus.task_center_child.os.waitpid",
+                   side_effect=InterruptedError) as wait:
+            _, _, _, rows = self.child.snapshot()
+            self.assertEqual(wait.call_count, POLL_BUDGET)
+        self.assertEqual(rows[0].state, UNKNOWN)
+        self.assertFalse(rows[0].capabilities)
+        self.assertFalse(self.child.terminal)
+        with patch("exodus.task_center_child.os.waitpid", return_value=(0, 0)):
+            self.assertEqual(self.child.poll(), "running")
+
+    def test_dispatch_event_budget_no_signal_and_recovery(self):
+        from exodus.task_center_child import POLL_BUDGET
+        p = self.center.request_lifecycle(self.child.key, "suspend")
+        stopped = (self.child.pid, (signal.SIGSTOP << 8) | 0x7f)
+        with patch("exodus.task_center_child.os.waitpid", return_value=stopped) as wait, \
+                patch("exodus.task_center_child.os.kill") as kill:
+            self.assertFalse(self.child.dispatch(p))
+            self.assertEqual(wait.call_count, POLL_BUDGET)
+            kill.assert_not_called()
+        self.assertEqual(self.child.state, UNKNOWN)
+        self.assertFalse(self.child.terminal)
+        self.assertEqual(self.child.last_token, p.token)
+        with patch("exodus.task_center_child.os.waitpid", return_value=(0, 0)):
+            self.assertEqual(self.child.poll(), "suspended")
 
     def test_lost_reaper_never_signals_pid(self):
         p = self.center.request_lifecycle(self.child.key, "suspend")

@@ -21,6 +21,14 @@ def positive(value):
     return type(value) is int and 0 < value <= LIMIT
 
 
+def valid_key(key):
+    return (type(key) is tuple and len(key) == 4 and type(key[0]) is str
+            and key[0] in BACKENDS and positive(key[1]) and type(key[2]) is str
+            and 1 <= len(key[2]) <= 128
+            and not any(ord(ch) < 32 or ord(ch) == 127 for ch in key[2])
+            and positive(key[3]))
+
+
 @dataclass(frozen=True)
 class Session:
     backend: str
@@ -67,8 +75,7 @@ class TaskCenter:
         self.uncertain_lifecycle = None
 
     def _session(self, key, now):
-        if (not isinstance(key, tuple) or len(key) != 4 or not isinstance(key[0], str)
-                or not positive(key[1]) or not isinstance(key[2], str) or not positive(key[3])):
+        if not valid_key(key):
             return None
         view = self.snapshots.get(key[0])
         if view and now < view[2]:
@@ -116,7 +123,7 @@ class TaskCenter:
     def publish(self, backend, epoch, sequence, sessions):
         now = self.clock()
         self._tick(now)
-        if backend not in BACKENDS or not positive(epoch) or not positive(sequence):
+        if type(backend) is not str or backend not in BACKENDS or not positive(epoch) or not positive(sequence):
             raise ValueError("invalid backend generation")
         old = self.snapshots.get(backend)
         if old and (epoch < old[0] or
@@ -126,11 +133,11 @@ class TaskCenter:
             raise ValueError("invalid snapshot size")
         ids = set()
         for s in sessions:
-            if (not isinstance(s, Session) or s.backend != backend or s.epoch != epoch
+            if (not isinstance(s, Session) or not valid_key(s.key) or s.backend != backend or s.epoch != epoch
                     or type(s.epoch) is not int or not positive(s.instance)
                     or not isinstance(s.id, str) or not 1 <= len(s.id) <= 128
                     or any(ord(ch) < 32 or ord(ch) == 127 for ch in s.id)
-                    or s.state not in STATES or s.id in ids
+                    or type(s.state) is not str or s.state not in STATES or s.id in ids
                     or not isinstance(s.capabilities, frozenset)
                     or not s.capabilities <= OPERATIONS):
                 raise ValueError("invalid or duplicate session")
@@ -139,7 +146,7 @@ class TaskCenter:
         self._tick(now)
 
     def disconnect(self, backend):
-        if backend not in BACKENDS:
+        if type(backend) is not str or backend not in BACKENDS:
             raise ValueError("invalid backend")
         now = self.clock()
         if backend in self.snapshots:
@@ -189,7 +196,7 @@ class TaskCenter:
         s = self._session(target, now)
         if (self.pending or self.lifecycle or self.uncertain_lifecycle
                 or self.owner == UNKNOWN or self.owner == target
-                or s is None or operation not in OPERATIONS or operation not in s.capabilities):
+                or s is None or type(operation) is not str or operation not in OPERATIONS or operation not in s.capabilities):
             raise ValueError("lifecycle unavailable")
         initial = TRANSITIONS[operation][0]
         if s.state != initial and not (operation == "terminate" and s.state == "suspended"):
@@ -210,7 +217,7 @@ class TaskCenter:
         self._tick(self.clock())
         p = self.uncertain_lifecycle
         if (not p or type(token) is not int or token != p.token
-                or target != p.target or quiesced is not True):
+                or not valid_key(target) or target != p.target or quiesced is not True):
             raise ValueError("unresolved lifecycle operation")
         self.uncertain_lifecycle = None
 
@@ -219,7 +226,7 @@ class TaskCenter:
         now = self.clock()
         self._tick(now)
         p = self.lifecycle
-        if (not p or type(token) is not int or token != p.token or target != p.target
+        if (not p or type(token) is not int or token != p.token or not valid_key(target) or target != p.target
                 or type(accepted) is not bool or p.accepted):
             raise ValueError("unexpected lifecycle acknowledgment")
         if not accepted:
@@ -241,7 +248,8 @@ class TaskCenter:
         if not p or type(token) is not int or token != p.token or phase != p.phase:
             raise ValueError("stale or unexpected acknowledgment")
         expected = None if phase == "release" else p.target
-        if observed_owner != expected:
+        if (expected is None and observed_owner is not None) or (expected is not None and
+                (not valid_key(observed_owner) or observed_owner != expected)):
             self._invalidate()
             raise ValueError("ownership observation mismatch")
         if phase == "release":
