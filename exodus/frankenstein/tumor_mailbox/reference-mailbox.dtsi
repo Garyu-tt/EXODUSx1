@@ -1,0 +1,19 @@
+/* Optional R34 reference FDT fragment. Not included in the accepted R32 boot.
+ * Define TMR_ROLE=1 or 2 in a preprocessed, mediator-authorized guest DTS.
+ * Enable only after stage-2 coherent normal-memory attributes are verified.
+ */
+#ifndef TMR_ROLE
+#error TMR_ROLE must be supplied
+#endif
+#if TMR_ROLE != 1 && TMR_ROLE != 2
+#error invalid mailbox role
+#endif
+/ {
+    mailbox@f0000000 {
+        compatible = "exodus,tumor-mailbox-reference-v1";
+        reg = <0 0xf0000000 0 0x10000>;
+        exodus,role = <TMR_ROLE>;
+        exodus,coherent-normal-memory;
+        status = "disabled";
+    };
+};

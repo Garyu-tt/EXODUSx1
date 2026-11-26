@@ -1,0 +1,63 @@
+name: Tumor mailbox native compile
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/tumor_mailbox/**'
+      - '.github/workflows/tumor-mailbox-build.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mapping-fdt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y device-tree-compiler
+      - run: sh exodus/frankenstein/tumor_mailbox/test-mapping-fdt.sh
+  native-module:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
+      - run: |
+          sh -n exodus/frankenstein/tumor_mailbox/guest-build.sh
+          sh -n exodus/frankenstein/tumor_mailbox/run-build.sh
+          sh exodus/frankenstein/tumor_mailbox/run-build.sh "$RUNNER_TEMP/mailbox-build"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mailbox-native-build-evidence
+          path: ${{ runner.temp }}/mailbox-build/
+          if-no-files-found: warn
+  bao-mapping-only:
+    needs: [native-module, mapping-fdt]
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [mapping, roundtrip]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: mailbox-native-build-evidence
+          path: ${{ runner.temp }}/mailbox-module
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross clang lld libssl-dev qemu-system-arm device-tree-compiler curl xz-utils makefs
+      - run: |
+          sh -n exodus/frankenstein/tumor_mailbox/bao-mapping-rc.sh
+          bash -n exodus/frankenstein/tumor_mailbox/run-bao-mapping.sh
+          bash exodus/frankenstein/tumor_mailbox/run-bao-mapping.sh "$RUNNER_TEMP/mailbox-module/module" "$RUNNER_TEMP/bao-mapping" "${{ matrix.mode }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mailbox-bao-${{ matrix.mode }}-evidence
+          path: ${{ runner.temp }}/bao-mapping/
+          if-no-files-found: warn

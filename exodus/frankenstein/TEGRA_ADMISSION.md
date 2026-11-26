@@ -13,11 +13,27 @@ Pinned donors:
 - [Atmosphere](https://github.com/Atmosphere-NX/Atmosphere/tree/3e8915011e1de89f595462d929c1cc3294470896): README describes Thermosphere EL2 EmuNAND concept. No proof of a general-purpose dual-guest hypervisor or deployed EL2 support. GPL-2.0 repository.
 - [Mesa Horizon port](https://github.com/frankyfife/mesa-switch_ff/tree/0ff52079ca9e9e837ed27eb95a8d239f439a1864): upstream-derived Mesa 26.2.4 with libnx-backed Nouveau/NVK/NVC0 and static NRO/NSO build. README explicitly excludes external-memory FD/DMA-BUF support and describes loaderless Vulkan. Not a drop-in FreeBSD Vulkan ICD or Linux DRM render node. Component licensing requires review.
 
-## Admission sequence
+## AMP physical admission (supersedes R11 physical EL2 topology)
+
+The physical candidate is asymmetric multiprocessing: Horizon retains all four Cortex-A57 application cores; a separate Cortex-A9 ADSP is the candidate for FreeBSD/armv7. A53 remains deferred. Bao/EL2 is an ARM64 reference test, not a physical prerequisite or a substitute for board support. Existing ARM64 Tegra drivers are donor source, not ARMv7 ADSP drivers.
+
+Reference evidence:
+- FreeBSD 15.1 ARMv7 boot and native codec/mailbox tests: run 45717815165, job 139568302191, QEMU virt Cortex-A15, native FreeBSD ELF32. This does not certify Cortex-A9 platform support.
+- Mixed-width codec/mailbox: same run, job 139568302123, QEMU Linux userspace Cortex-A9/A57, both role assignments and full-width regression. This does not certify cross-OS shared memory or physical coherency.
+
+Physical admission remains blocked until all of these are supported by board-specific evidence:
+- Exact Mariko/Switch Lite revision and ADSP CPU features, including MMU, exceptions, timer, IRQ, addressable memory and supported startup/reset ownership.
+- Separate memory regions and access permissions; demonstrate cache visibility, interconnect exclusive-monitor behavior and notification ordering. A compiler's lock-free atomics or a QEMU result alone cannot certify this.
+- Preserve Horizon audio initialization, rendering/output, Opus, suspend/resume and stock recovery. ADSP is a used resource, not a spare application core. No watchdog bypass or firmware replacement is implied.
+- Establish where graphics and compute execute; existing ARM64 packages cannot run natively on ARMv7. Retain the single-owner device rule.
+- Only a verified target-specific candidate and recovery route can admit a clean SD install. Internal eMMC is excluded.
+
+## Historical ARM64 reference admission sequence (R11)
+
 
 1. Reference FreeBSD QEMU boot: PASS, run 45495215979, not Tegra hardware.
 2. Physical board support: inventory existing drivers against the exact Switch Lite revision, read-only model and memory evidence; no register writes.
-3. Coexistence feasibility: verify EL2 ownership and supported boot architecture using source and authorized diagnostic evidence. Do not assume a bootloader can simultaneously run both OSes.
+3. Historical ARM64 reference coexistence: verify EL2 ownership for the Bao-style topology. For the physical AMP candidate use the separate admission criteria above. Do not assume a bootloader can simultaneously run both OSes.
 4. Choose hardware ownership before driver integration. Candidate mediated GPU path: Horizon retains GPU ownership, BSD receives a versioned bounded render interface. Alternate direct BSD GPU driver path requires explicit exclusive ownership and proof of recovery. No simultaneous direct MMIO by both kernels.
 5. Prove independent kernel uptime and IPC with bounded shared memory, then authorized native-title launch through existing Horizon provider work (#30–36, #61). SSH reachability must survive UI/session switches. Require physical test and recovery plan before any boot changes.
 

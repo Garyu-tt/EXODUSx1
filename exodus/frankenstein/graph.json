@@ -5,7 +5,8 @@
     "release": "15.1-RELEASE",
     "arch": "aarch64",
     "cpu": "cortex-a57",
-    "ports_commit": "98796bd539ea8f03adb7c9d6f9f3a3d54dcca553"
+    "ports_commit": "98796bd539ea8f03adb7c9d6f9f3a3d54dcca553",
+    "scope": "ARM64 QEMU reference build only; not the physical AMP deployment target"
   },
   "nodes": [
     {
@@ -21,10 +22,16 @@
     {
       "id": "wayland",
       "origin": "graphics/wayland",
-      "state": "source-recipe",
+      "state": "qemu-source-package-verified",
       "depends": [
         "kernel"
-      ]
+      ],
+      "evidence": {
+        "run": 45678629911,
+        "job": 139432868045,
+        "artifact": 15058370774,
+        "scope": "FreeBSD ARM64 source-built wayland-1.26.0_1; package installed, SHA256 verified on host."
+      }
     },
     {
       "id": "drm",
@@ -87,14 +94,20 @@
     {
       "id": "gamescope",
       "origin": "x11-wm/gamescope",
-      "state": "source-recipe",
+      "state": "qemu-source-package-verified",
       "depends": [
         "vulkan",
         "drm",
         "wayland",
         "xwayland",
         "input"
-      ]
+      ],
+      "evidence": {
+        "run": 45678629911,
+        "job": 139432868045,
+        "artifact": 15058370774,
+        "scope": "FreeBSD ARM64 source-built gamescope-3.13.8_11; native ELF, --help executed, exported package SHA256 verified. No rendered compositor, Steam session or physical GPU evidence."
+      }
     },
     {
       "id": "plasma",
@@ -163,8 +176,8 @@
       "origin": null,
       "state": "needs-hardware-proof",
       "depends": [
-        "kernel",
-        "dual-kernel"
+        "dual-kernel",
+        "interkernel-ipc"
       ]
     },
     {
@@ -174,7 +187,10 @@
       "depends": [
         "session",
         "horizon-bridge",
-        "gpu-mediation"
+        "gpu-mediation",
+        "unified-library",
+        "settings-registry",
+        "resident-network"
       ]
     },
     {
@@ -226,8 +242,13 @@
       "origin": "exodus/frankenstein/TEGRA_ADMISSION.md",
       "state": "needs-hardware-proof",
       "depends": [
-        "tegra-board"
-      ]
+        "cpu-memory-isolation",
+        "irq-dma-arbitration",
+        "device-arbitration",
+        "dual-kernel-reference",
+        "armv7-kernel-reference"
+      ],
+      "gate": "Real FreeBSD/armv7 kernel on candidate Cortex-A9 ADSP and native Horizon on all A57 cores concurrently on physical Switch; ARM64 Bao evidence reference-only."
     },
     {
       "id": "gpu-mediation",
@@ -290,8 +311,181 @@
         "artifact": 14973126956,
         "scope": "Native FreeBSD ARM64 rc.d boot order, stop/start, persisted desired mode, independent SSH and revoked-key rejection; guest exit 0, host SHA256 verification, exact archive member and internal checksum validation, executable mode and AArch64 ELF64 checks, artifact upload PASS. Opt-in test-account userspace bundle only; cold boot, graphical execution and physical hardware remain separate unproven gates."
       }
+    },
+    {
+      "id": "boot-context",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "tegra-board"
+      ],
+      "gate": "Exact Erista/Mariko board and authorized ADSP availability, startup and recovery; distinguish USB mass storage from CPU execution."
+    },
+    {
+      "id": "privileged-mediator",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "boot-context"
+      ],
+      "gate": "Authorized AMP startup and protected arbitration; prove ADSP boot support, not assume EL2 or Bao is required on the physical path."
+    },
+    {
+      "id": "cpu-memory-isolation",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "privileged-mediator"
+      ],
+      "gate": "Keep all four Cortex-A57 cores with Horizon; prove ADSP-local execution, MMU, accessible RAM, disjoint reservations, cache attributes and isolation."
+    },
+    {
+      "id": "irq-dma-arbitration",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "cpu-memory-isolation"
+      ],
+      "gate": "Verify ADSP interrupt/timer availability, shared-memory visibility, notification and DMA ownership; no cross-domain writes."
+    },
+    {
+      "id": "device-arbitration",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "irq-dma-arbitration"
+      ],
+      "gate": "Single hardware owner per device; prove audio preservation, mediated access and recoverable handoff."
+    },
+    {
+      "id": "interkernel-ipc",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "dual-kernel",
+        "armv7-mixed-ipc-reference"
+      ],
+      "gate": "Versioned bounded mixed ARMv7/AArch64 bridge; prove atomic width, cache ordering, notification, timeout and restart on target. R32/R35 only provide ARM64 reference evidence."
+    },
+    {
+      "id": "resident-network",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "dual-kernel",
+        "device-arbitration",
+        "resident-rc"
+      ],
+      "gate": "FreeBSD/armv7 network endpoint and native sshd reachable over approved LAN/VPN during Horizon title; prove mediated or exclusive NIC ownership and ARMv7 service build."
+    },
+    {
+      "id": "native-game-resident",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "horizon-bridge",
+        "resident-network",
+        "gpu-mediation"
+      ],
+      "gate": "Native title execution while BSD SSH and heartbeat remain live; measure memory, CPU and frame time."
+    },
+    {
+      "id": "unified-library",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "horizon-bridge"
+      ],
+      "gate": "One catalog, provider-specific runnable state, legitimate native launch and Steam metadata."
+    },
+    {
+      "id": "settings-registry",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "horizon-bridge"
+      ],
+      "gate": "Single capability registry consumed by Steam integration, BSD CLI and KDE, policy #55."
+    },
+    {
+      "id": "desktop-mode",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "plasma",
+        "gpu-mediation",
+        "resident-network",
+        "settings-registry"
+      ],
+      "gate": "Actual KDE desktop and return to Gaming Mode without reboot."
+    },
+    {
+      "id": "physical-release-admission",
+      "origin": "exodus/frankenstein/DUAL_KERNEL_CONTRACT.md",
+      "state": "needs-hardware-proof",
+      "depends": [
+        "gaming-mode",
+        "desktop-mode",
+        "native-game-resident"
+      ],
+      "gate": "Physical end-to-end acceptance including clean SD install and recovery, audio, CPU/RAM/frame budgets, display/HID transitions and save integrity; preserve internal eMMC."
+    },
+    {
+      "id": "dual-kernel-reference",
+      "origin": "exodus/frankenstein/bao_freebsd_reference.c",
+      "state": "qemu-dual-freebsd-tested",
+      "depends": [
+        "kernel"
+      ],
+      "evidence": {
+        "run": 45690774623,
+        "job": 139475322473,
+        "scope": "R32 QEMU virt Cortex-A53/GICv3: two stock FreeBSD 15.1 kernels, disjoint configured guest RAM, independent PID1 getpid progress (13008882 to 16690836) during authenticated loopback SSH in other guest. No runtime IPC after boot, independent DMA isolation or physical Horizon/Tegra evidence."
+      }
+    },
+    {
+      "id": "armv7-kernel-reference",
+      "origin": ".github/workflows/frankenstein-service.yml",
+      "state": "qemu-armv7-boot-verified",
+      "depends": [],
+      "evidence": {
+        "run": 45716108190,
+        "job": 139562450951,
+        "scope": "FreeBSD 15.1-RELEASE GENERICSD on QEMU virt Cortex-A15, SHA256/SHA512 verified, console uname confirms FreeBSD armv7. Not ADSP boot or native IPC acceptance."
+      }
+    },
+    {
+      "id": "armv7-mixed-ipc-reference",
+      "origin": "exodus/frankenstein/ipc_mailbox.c",
+      "state": "qemu-mixed-width-tested",
+      "depends": [],
+      "evidence": {
+        "run": 45716108190,
+        "job": 139562451291,
+        "scope": "QEMU Linux user mode Cortex-A9 and Cortex-A57, 128 frames each direction with both role assignments, all four exit codes zero; not FreeBSD IPC or physical cache coherence. Earlier independent job 139560877553 also passed."
+      }
     }
   ],
-  "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. No physical Switch execution or full SteamOS runtime proven.",
-  "name": "EXODUS Tumor"
+  "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. Reference evidence does not satisfy physical gates. No physical Switch execution or full SteamOS runtime proven. Physical AMP target is explicitly separate from the ARM64 reference recipes; no ADSP execution is proven.",
+  "name": "EXODUS Tumor",
+  "physical_target": {
+    "topology": "AMP",
+    "state": "needs-hardware-proof",
+    "horizon": {
+      "cpu": "cortex-a57",
+      "cores": 4,
+      "ownership": "retain all four application cores"
+    },
+    "freebsd": {
+      "cpu": "cortex-a9",
+      "arch": "armv7",
+      "release": "15.1-RELEASE",
+      "location": "ADSP candidate",
+      "state": "unverified-on-target"
+    },
+    "a53": "deferred",
+    "transport": "bounded typed mailbox IPC; coherency and notification mechanism require target proof",
+    "graphics_compute": "execution placement and ABI unresolved; ARM64 reference packages cannot execute on ARMv7",
+    "install": "clean SD only after verified target-specific candidate and recovery; preserve internal eMMC"
+  }
 }
