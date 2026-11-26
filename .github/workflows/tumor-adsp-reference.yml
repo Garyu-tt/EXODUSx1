@@ -1,0 +1,31 @@
+name: Tumor ADSP reference contract
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/adsp_service_reference.c'
+      - 'exodus/frankenstein/ADSP_SERVICE_CONTRACT.md'
+      - '.github/workflows/tumor-adsp-reference.yml'
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Native sanitizer reference
+        run: |
+          set -eu
+          clang -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined exodus/frankenstein/adsp_service_reference.c -o "$RUNNER_TEMP/adsp"
+          "$RUNNER_TEMP/adsp"
+      - name: Mixed-width reference
+        run: |
+          set -eu
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu libc6-dev-armhf-cross libc6-dev-arm64-cross qemu-user
+          src=exodus/frankenstein/adsp_service_reference.c
+          arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 -std=c11 -Wall -Wextra -Werror -pedantic "$src" -o "$RUNNER_TEMP/adsp32"
+          aarch64-linux-gnu-gcc -static -march=armv8-a -O2 -std=c11 -Wall -Wextra -Werror -pedantic "$src" -o "$RUNNER_TEMP/adsp64"
+          qemu-arm -cpu cortex-a9 "$RUNNER_TEMP/adsp32"
+          qemu-aarch64 -cpu cortex-a57 "$RUNNER_TEMP/adsp64"
