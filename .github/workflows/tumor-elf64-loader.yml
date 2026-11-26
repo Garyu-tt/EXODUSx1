@@ -1,0 +1,33 @@
+name: Tumor bounded ARM64 ELF loader
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/elf64_loader*'
+      - 'exodus/frankenstein/test_elf64_loader.c'
+      - 'exodus/frankenstein/elf64_fixture*'
+      - 'exodus/frankenstein/ELF64_LOADER.md'
+      - '.github/workflows/tumor-elf64-loader.yml'
+permissions:
+  contents: read
+jobs:
+  elf64-loader:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu qemu-user clang
+      - run: |
+          set -eu
+          src=exodus/frankenstein
+          aarch64-linux-gnu-as -march=armv8-a "$src/elf64_fixture.S" -o "$RUNNER_TEMP/fixture.o"
+          aarch64-linux-gnu-ld -z max-page-size=4096 --build-id=none -T "$src/elf64_fixture.ld" "$RUNNER_TEMP/fixture.o" -o "$RUNNER_TEMP/fixture.elf"
+          aarch64-linux-gnu-readelf -lW "$RUNNER_TEMP/fixture.elf"
+          clang -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-sanitize-recover=all "$src/elf64_loader.c" "$src/test_elf64_loader.c" -o "$RUNNER_TEMP/test"
+          "$RUNNER_TEMP/test" "$RUNNER_TEMP/fixture.elf"
+          rc=0
+          qemu-aarch64 -cpu cortex-a57 "$RUNNER_TEMP/fixture.elf" || rc=$?
+          test "$rc" = 23
