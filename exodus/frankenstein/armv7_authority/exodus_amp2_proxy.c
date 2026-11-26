@@ -128,7 +128,9 @@ amp_commit_exit(SYSCTL_HANDLER_ARGS)
     if(stopping||!pending[i]||committed[i]||memcmp(q,pending_req[i],AMP_SIZE)){
         mtx_unlock(&gate);return EINVAL;
     }
-    if(!observed[i]){mtx_unlock(&gate);return EAGAIN;}
+    /* FreeBSD 15.1 userland_sysctl retries EAGAIN internally.
+     * EBUSY returns to the supervisor without deadlocking child exit. */
+    if(!observed[i]){mtx_unlock(&gate);return EBUSY;}
     if(owner[i]||actual_signal[i]||actual_code[i]!=exit_status[i]){
         mtx_unlock(&gate);return EINVAL;
     }

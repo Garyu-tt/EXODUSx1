@@ -30,3 +30,9 @@ checks ECHILD on repeat reaping. Final kernel frame is checked against
 original request identity and forwarded unchanged. Eight wait4, eight
 WNOHANG and sixteen ECHILD checks are required. This is native parent
 wait4, not A57 syscall 7, remote status copyout or remote rusage.
+
+Regression correction: FreeBSD 15.1 userland_sysctl internally retries
+EAGAIN, so premature exit commit could block the sole supervisor before
+it releases the child. Use EBUSY instead; verify it on every lane.
+See https://reviews.freebsd.org/D60444. Preserve one-shot commit, no
+increased timeout or synthetic fallback. Serial tail printed on failure.

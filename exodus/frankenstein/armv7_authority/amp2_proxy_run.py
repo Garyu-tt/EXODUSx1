@@ -82,6 +82,10 @@ with open(log,"w",encoding="utf-8") as f:
             child.expect(r"(?m)^EXODUS_LIVE_KERNEL_COUNT=16\r*\n",timeout=30)
             child.expect(r"(?m)^EXODUS_LIVE_UNLOAD_PASS\r*\n",timeout=30)
             child.expect(r"(?m)^EXODUS_LIVE_RESULT=0\r*\n",timeout=30)
+        except Exception:
+            f.flush()
+            print(pathlib.Path(log).read_text(errors='replace')[-12000:],file=sys.stderr)
+            raise
         finally:
             if vm.poll() is None:vm.kill()
             vm.wait()

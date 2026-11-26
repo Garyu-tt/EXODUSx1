@@ -90,8 +90,8 @@ int main(void){
             if(wait4(children[i],&status,WNOHANG,NULL)!=0)return 23;
             if(wait4(getpid(),&status,WNOHANG,NULL)!=-1||errno!=ECHILD)return 24;
             uint8_t final[FRAME];size_t final_len=sizeof(final);
-            /* Prove the kernel refuses final acknowledgement before exit. */
-            if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,q,sizeof q)!=-1||errno!=EAGAIN)return 18;
+            /* EBUSY, never EAGAIN: the latter is retried inside sysctl. */
+            if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,q,sizeof q)!=-1||errno!=EBUSY)return 18;
             if(write(go[i],&code,1)!=1)return 13;
             close(go[i]);go[i]=-1;
             pid_t p=children[i],got;
