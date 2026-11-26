@@ -31,3 +31,26 @@ jobs:
           name: frankenstein-boot-r05-evidence
           path: ${{ runner.temp }}/frankenstein-results/
           if-no-files-found: warn
+  ssh-reference:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install isolated VM build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
+      - name: Validate scripts and verify native OpenSSH and session intent on FreeBSD
+        run: |
+          sh -n exodus/frankenstein/guest-ssh.sh
+          sh -n exodus/frankenstein/run-reference.sh
+          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" ssh
+      - name: Publish boot and build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frankenstein-session-r04-evidence
+          path: ${{ runner.temp }}/frankenstein-results/
+          if-no-files-found: warn
