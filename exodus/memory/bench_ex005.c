@@ -43,6 +43,52 @@ static bool report(FILE *out,const char *name,uint64_t start,uint64_t end,uint64
             (double)(end-start)*1e9/((double)hz()*N));
     return true;
 }
+/* A deterministic dispersed mask at three compression densities. Validate
+ * the actual adaptive encoding and every logical word outside the timer. */
+static bool bench_mixed(FILE *out,size_t packed,const char *read_case,
+                        const char *hash_case,const char *meta_case)
+{
+    uint8_t expected_mask[8]={0};
+    for(size_t b=0;b<64;b++){
+        bool compact=((b*17u)%64u)<packed;
+        if(compact)expected_mask[b/8]|=(uint8_t)(1u<<(b%8));
+        for(size_t w=0;w<16;w++){
+            uint32_t v=compact?1000u+(uint32_t)b*1000u+(uint32_t)w:
+                UINT32_C(0x40000000)+(uint32_t)(b*16+w)*UINT32_C(65537);
+            put(page+4*(b*16+w),v);
+        }
+    }
+    size_t n=exodus_page_encode_adaptive(page,wire);
+    if(n!=9+64*64-packed*44||wire[0]!=EXODUS_PAGE_BDI_VERSION||
+       memcmp(wire+1,expected_mask,8))return false;
+    if(!exodus_page_decode(wire,n,restored)||memcmp(page,restored,P))return false;
+    for(size_t w=0;w<1024;w++){
+        uint8_t v[4];
+        if(!exodus_page_bdi_read_word(wire,n,w,v)||memcmp(v,page+4*w,4))return false;
+    }
+    uint64_t oracle=0,expected_hash=exodus_page_fingerprint(page);
+    for(size_t i=0;i<N;i++)oracle+=get(page+4*((i*17u)%1024u));
+    for(unsigned trial=0;trial<B;trial++){
+        uint64_t digest=0,start=now(),end;
+        for(size_t i=0;i<N;i++){
+            uint8_t v[4];
+            if(!exodus_page_bdi_read_word(wire,n,(i*17u)%1024u,v))return false;
+            digest+=get(v);
+        }
+        end=now();
+        if(digest!=oracle||!report(out,read_case,start,end,digest))return false;
+        digest=0;start=now();
+        for(size_t i=0;i<N;i++){
+            uint64_t h;
+            if(!exodus_page_bdi_fingerprint(wire,n,&h))return false;
+            digest+=h;
+        }
+        end=now();
+        if(digest!=expected_hash*(uint64_t)N||!report(out,hash_case,start,end,digest))return false;
+    }
+    fprintf(out,"%s,%zu,0,0,0,0\n",meta_case,n);
+    return true;
+}
 bool exodus_bench_ex005(FILE *out){
     if(!out)return false;
     for(size_t w=0;w<P/4;w++)put(page+4*w,1000u+(uint32_t)(w/16)*1000u+(uint32_t)(w%16));
@@ -97,7 +143,9 @@ bool exodus_bench_ex005(FILE *out){
     fprintf(out,"fixture_bytes,%zu,0,0,0,0\n",n);
     fprintf(out,"slab_payload_bytes,%zu,0,0,0,0\n",sizeof small);
     fprintf(out,"slab_ref_bytes,%zu,0,0,0,0\n",sizeof refs);
-    return true;
+    return bench_mixed(out,8,"mixed_read_08","mixed_hash_08","mixed_bytes_08")&&
+           bench_mixed(out,32,"mixed_read_32","mixed_hash_32","mixed_bytes_32")&&
+           bench_mixed(out,56,"mixed_read_56","mixed_hash_56","mixed_bytes_56");
 }
 #ifndef __SWITCH__
 int main(void){return exodus_bench_ex005(stdout)?0:1;}
