@@ -34,6 +34,12 @@ bool exodus_bdi_slab_release(struct exodus_bdi_slab *,struct exodus_bdi_slab_pag
 bool exodus_bdi_slab_restore(const struct exodus_bdi_slab *,const struct exodus_bdi_slab_page *,uint8_t *);
 bool exodus_bdi_slab_read(const struct exodus_bdi_slab *,const struct exodus_bdi_slab_page *,size_t,uint8_t out[4]);
 bool exodus_bdi_slab_write(struct exodus_bdi_slab *,struct exodus_bdi_slab_page *,size_t,const uint8_t value[4]);
+/* Compare a prospective one-word edit against another hot page, without
+ * restoring either complete page. Validate both descriptors before comparison.
+ * False means invalid input; otherwise equal receives logical equality. */
+bool exodus_bdi_slab_compare_patched(const struct exodus_bdi_slab *,
+    const struct exodus_bdi_slab_page *,size_t,const uint8_t value[4],
+    const struct exodus_bdi_slab_page *,bool *equal);
 /* Build from current reference counts; no payload changes. Attach only
  * with an independent index buffer. Detach before changing capacities. */
 bool exodus_bdi_slab_attach_index(struct exodus_bdi_slab *,struct exodus_bdi_free_index *);

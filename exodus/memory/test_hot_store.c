@@ -39,8 +39,85 @@ static void append_and_fallback(void){
  memset(hot,0,sizeof hot);memset(arena,0,sizeof arena);memset(start,0,sizeof start);memset(length,0,sizeof length);memset(order,0,sizeof order);memset(fp,0,sizeof fp);memset(refs,0,sizeof refs);
  puts("Hot/cold append, placeholder isolation, exhausted slab fallback and remerge passed");
 }
+/* Exercise the public write path with a false matching fingerprint before
+ * the real match. Run once with hot targets and once with cold targets. */
+static void check_patched_candidates(bool hot_targets){
+ uint8_t v[4];put(v,UINT32_MAX);
+ for(size_t w=0;w<1024;w++)put(want[0]+4*w,1000+(uint32_t)(w/16)*1000+(uint32_t)(w%16));
+ memcpy(want[1],want[0],P);memcpy(want[1],v,4);want[1][P-1]^=1;
+ memcpy(want[2],want[0],P);memcpy(want[2],v,4);
+ for(size_t i=0;i<3;i++)assert(exodus_page_dedup_store_append_adaptive(&s,want[i]));
+ assert(exodus_page_dedup_store_promote(&s,0));
+ if(hot_targets){
+  assert(exodus_page_dedup_store_promote(&s,1));
+  assert(exodus_page_dedup_store_promote(&s,2));
+ }
+ assert(refs[0]==0&&refs[1]==1&&refs[2]==2);
+ uint64_t saved=fp[1];fp[1]=fp[2]; /* inject collision, not a real hash change */
+ /* Malformed candidate must fail before any replacement or slot release. */
+ size_t old_count=s.unique.page_count,old_used=s.unique.payload_used;
+ if(hot_targets){
+  struct exodus_hot_entry *h=NULL;
+  for(size_t k=0;k<N;k++)if(hot[k].page.active&&hot[k].physical==refs[1])h=&hot[k];
+  assert(h);
+  uint16_t id=h->page.ids[63];h->page.ids[63]=h->page.ids[62];
+  assert(!exodus_page_dedup_store_write_word(&s,0,0,v));
+  h->page.ids[63]=id;
+ }else{
+  size_t a,b;assert(exodus_page_store_extent(&s.unique,refs[1],&a,&b));
+  assert(b-a>9&&arena[a]==EXODUS_PAGE_BDI_VERSION);
+  arena[a+1]^=1;
+  assert(!exodus_page_dedup_store_write_word(&s,0,0,v));
+  arena[a+1]^=1;
+ }
+ assert(s.unique.page_count==old_count&&s.unique.payload_used==old_used);
+ assert(refs[0]==0&&refs[1]==1&&refs[2]==2&&fp[1]==fp[2]);
+ fp[1]=saved;verify();
+ fp[1]=fp[2];
+ assert(exodus_page_dedup_store_write_word(&s,0,0,v));
+ memcpy(want[0],v,4);
+ assert(s.unique.page_count==2&&refs[0]==refs[2]&&refs[1]!=refs[0]);
+ fp[refs[1]]=saved;verify();
+ for(size_t i=0;i<3;i++)assert(exodus_page_dedup_store_demote(&s,i));
+ verify();for(size_t k=0;k<S;k++)assert(!sr[k]&&!rr[k]);
+ s.page_count=s.unique.page_count=s.unique.payload_used=0;
+ memset(hot,0,sizeof hot);memset(arena,0,sizeof arena);memset(start,0,sizeof start);
+ memset(length,0,sizeof length);memset(order,0,sizeof order);memset(fp,0,sizeof fp);memset(refs,0,sizeof refs);
+}
+/* Exercise the store-level prospective hot write against a false hash
+ * candidate followed by an exact match, independently hot or cold. */
+static void prospective_collision_matrix(void){
+ for(unsigned mode=0;mode<4;mode++){
+  assert(s.page_count==0 && s.unique.page_count==0);
+  for(size_t w=0;w<1024;w++)put(want[0]+4*w,1000+(uint32_t)(w/16)*1000+(uint32_t)(w%16));
+  memcpy(want[2],want[0],P);put(want[2],UINT32_MAX);
+  memcpy(want[1],want[2],P);want[1][P-1]^=1;
+  for(size_t i=0;i<3;i++)assert(exodus_page_dedup_store_append_adaptive(&s,want[i]));
+  assert(s.unique.page_count==3 && refs[0]==0 && refs[1]==1 && refs[2]==2);
+  assert(exodus_page_dedup_store_promote(&s,0));
+  if(mode&1u)assert(exodus_page_dedup_store_promote(&s,1));
+  if(mode&2u)assert(exodus_page_dedup_store_promote(&s,2));
+  verify();
+  /* Fault injection only: first candidate has the prospective hash but
+   * differs at the final byte; the second candidate is genuinely equal. */
+  fp[refs[1]]=fp[refs[2]];
+  assert(exodus_page_dedup_store_write_word(&s,0,0,want[2]));
+  memcpy(want[0],want[2],P);
+  assert(s.unique.page_count==2 && refs[0]==refs[2] && refs[0]!=refs[1]);
+  fp[refs[1]]=exodus_page_fingerprint(want[1]);
+  verify();
+  for(size_t i=0;i<3;i++)assert(exodus_page_dedup_store_demote(&s,i));
+  verify();assert(exodus_bdi_slab_check_index(&slab));
+  for(size_t k=0;k<S;k++)assert(!sr[k]&&!rr[k]);
+  s.page_count=s.unique.page_count=s.unique.payload_used=0;
+  memset(hot,0,sizeof hot);memset(arena,0,sizeof arena);memset(start,0,sizeof start);
+  memset(length,0,sizeof length);memset(order,0,sizeof order);memset(fp,0,sizeof fp);memset(refs,0,sizeof refs);
+ }
+ puts("Four hot/cold prospective hash-collision cases passed");
+}
 int main(void){
- append_and_fallback();assert(exodus_bdi_slab_attach_index(&slab,&free_index));rng=0x63821u;
+ append_and_fallback();
+ check_patched_candidates(true);check_patched_candidates(false);assert(exodus_bdi_slab_attach_index(&slab,&free_index));prospective_collision_matrix();rng=0x63821u;
  for(size_t i=0;i<N;i++){for(size_t w=0;w<1024;w++)put(want[i]+4*w,1000+(uint32_t)(i%3)*100000+(uint32_t)(w/16)*1000+(uint32_t)(w%16));assert(exodus_page_dedup_store_append_adaptive(&s,want[i]));}verify();
  assert(exodus_page_dedup_store_promote(&s,0));assert(exodus_hot_find(&s,refs[3]));verify();
  uint8_t v[4];put(v,UINT32_MAX);assert(exodus_page_dedup_store_write_word(&s,3,0,v));memcpy(want[3],v,4);assert(refs[0]!=refs[3]);const struct exodus_hot_entry *a=exodus_hot_find(&s,refs[0]),*b=exodus_hot_find(&s,refs[3]);assert(a&&b&&a->page.ids[0]!=b->page.ids[0]);for(size_t k=1;k<64;k++)assert(a->page.ids[k]==b->page.ids[k]);verify();

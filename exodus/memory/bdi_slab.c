@@ -17,9 +17,19 @@ static bool live(const struct exodus_bdi_slab *s,uint16_t id){return (size_t)(id
 static bool page_ok(const struct exodus_bdi_slab *s,const struct exodus_bdi_slab_page *p)
 {
     if(!valid(s)||!p||!p->active)return false;
+    /* Separate RAW and BDI classes. An unset bit proves no previous ID
+     * matches; a set bit is only a filter and requires exact comparison.
+     * No additional persistent metadata, and worst-case scan is unchanged. */
+    uint64_t seen[2]={0};
     for(size_t i=0;i<64;i++){
-        if(!live(s,p->ids[i]))return false;
-        for(size_t j=0;j<i;j++)if(p->ids[j]==p->ids[i])return false;
+        uint16_t id=p->ids[i];
+        if(!live(s,id))return false;
+        unsigned cls=(id&RAW_BIT)!=0;
+        uint64_t mask=UINT64_C(1)<<(id&63u);
+        if(seen[cls]&mask){
+            for(size_t j=0;j<i;j++)if(p->ids[j]==id)return false;
+        }
+        seen[cls]|=mask;
     }
     return true;
 }
@@ -128,7 +138,7 @@ bool exodus_bdi_slab_import(struct exodus_bdi_slab *s,struct exodus_bdi_slab_pag
     if(!valid(s)||!p||p->active||!page)return false;
     uint16_t ids[64];size_t cursors[2]={0};uint8_t encoded[64];
     for(size_t i=0;i<64;i++){
-        bool raw=exodus_bdi_block_encode(page+i*64,encoded)==RAW;
+        bool raw=exodus_bdi_block_encode(page+i*64,NULL)==RAW;
         if(!reserve(s,raw,&cursors[raw],&ids[i]))return false;
     }
     for(size_t i=0;i<64;i++){
@@ -156,6 +166,24 @@ bool exodus_bdi_slab_restore(const struct exodus_bdi_slab *s,const struct exodus
     for(size_t i=0;i<64;i++)exodus_bdi_block_decode(slot(s,p->ids[i]),bytes(p->ids[i]),page+i*64);
     return true;
 }
+bool exodus_bdi_slab_compare_patched(const struct exodus_bdi_slab *s,
+    const struct exodus_bdi_slab_page *a,size_t word,const uint8_t value[4],
+    const struct exodus_bdi_slab_page *b,bool *equal)
+{
+    if(!value||!equal||word>=EXODUS_PAGE_BYTES/4||
+       !page_ok(s,a)||!page_ok(s,b))return false;
+    const size_t edited=word/16;
+    uint8_t left[64],right[64];
+    for(size_t i=0;i<EXODUS_BDI_SLAB_BLOCKS;i++){
+        uint16_t x=a->ids[i],y=b->ids[i];
+        if(i!=edited&&x==y)continue;
+        if(!exodus_bdi_block_decode(slot(s,x),bytes(x),left)||
+           !exodus_bdi_block_decode(slot(s,y),bytes(y),right))return false;
+        if(i==edited)memcpy(left+(word%16)*4,value,4);
+        if(memcmp(left,right,sizeof left)){*equal=false;return true;}
+    }
+    *equal=true;return true;
+}
 bool exodus_bdi_slab_read(const struct exodus_bdi_slab *s,const struct exodus_bdi_slab_page *p,size_t word,uint8_t out[4])
 {
     if(!out||!valid(s)||!p||!p->active||word>=1024)return false;
@@ -165,9 +193,21 @@ bool exodus_bdi_slab_read(const struct exodus_bdi_slab *s,const struct exodus_bd
 bool exodus_bdi_slab_write(struct exodus_bdi_slab *s,struct exodus_bdi_slab_page *p,size_t word,const uint8_t value[4])
 {
     if(!value||word>=1024||!page_ok(s,p))return false;
-    size_t b=word/16,w=word%16;uint16_t old=p->ids[b];uint8_t block[64],encoded[64];
-    exodus_bdi_block_decode(slot(s,old),bytes(old),block);
-    if(!memcmp(block+w*4,value,4))return true;
+    size_t b=word/16,w=word%16;uint16_t old=p->ids[b];
+    uint8_t *src=slot(s,old), current[4];
+    if(!exodus_bdi_block_read(src,bytes(old),w,current))return false;
+    if(!memcmp(current,value,4))return true;
+    uint8_t delta;
+    if(bytes(old)==SMALL&&exodus_bdi_direct_delta(src,w,value,&delta)){
+        if(*ref(s,old)==1){src[4+w]=delta;return true;}
+        size_t cursor=0;uint16_t id;
+        if(!reserve(s,false,&cursor,&id))return false;
+        uint8_t *dst=slot(s,id);
+        memcpy(dst,src,SMALL);dst[4+w]=delta;
+        occupy(s,id);drop(s,old);p->ids[b]=id;return true;
+    }
+    uint8_t block[64],encoded[64];
+    exodus_bdi_block_decode(src,bytes(old),block);
     memcpy(block+w*4,value,4);size_t n=exodus_bdi_block_encode(block,encoded);
     if(n==bytes(old)&&*ref(s,old)==1){memcpy(slot(s,old),encoded,n);return true;}
     size_t cursor=0;uint16_t id;
