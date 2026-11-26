@@ -133,26 +133,47 @@ size_t exodus_page_encode(const uint8_t *page, uint8_t *encoded)
 enum { BDI_HEADER = 9, BDI_BYTES = 20 };
 static uint32_t bdi_load(const uint8_t *p)
 {
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    /* Express an alignment-safe native word load directly, including
+     * when the compiler vectorizes consecutive RAW token loads. */
+    uint32_t v;
+    memcpy(&v,p,sizeof v);
+    return v;
+#else
     return (uint32_t)p[0] | (uint32_t)p[1]<<8 |
            (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24;
+#endif
 }
 static void bdi_put(uint8_t *p, uint32_t v)
 {
     for (unsigned i=0;i<4;i++) p[i]=(uint8_t)(v>>(8*i));
 }
-/* Fixed-cost byte population count; no table, alignment or ISA dependency. */
-static unsigned bdi_byte_count(unsigned x)
+/* Read the full mask without alignment assumptions. The wire is little
+ * endian; use a byte assembly fallback on unknown or big-endian targets. */
+static uint64_t bdi_mask_load(const uint8_t *p)
 {
-    x -= (x >> 1) & 0x55u;
-    x = (x & 0x33u) + ((x >> 2) & 0x33u);
-    return (x + (x >> 4)) & 0x0fu;
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    uint64_t v;
+    memcpy(&v,p,sizeof v);
+    return v;
+#else
+    uint64_t v=0;
+    for(unsigned i=0;i<8;i++)v|=(uint64_t)p[i]<<(8*i);
+    return v;
+#endif
 }
-static size_t bdi_count(const uint8_t *mask, size_t limit)
+static size_t bdi_popcount(uint64_t v)
 {
-    size_t n=0, full=limit/8, tail=limit%8;
-    for(size_t i=0;i<full;i++)n+=bdi_byte_count(mask[i]);
-    if(tail)n+=bdi_byte_count(mask[full]&((1u<<tail)-1u));
-    return n;
+    v-=(v>>1)&UINT64_C(0x5555555555555555);
+    v=(v&UINT64_C(0x3333333333333333))+((v>>2)&UINT64_C(0x3333333333333333));
+    v=(v+(v>>4))&UINT64_C(0x0f0f0f0f0f0f0f0f);
+    return (size_t)((v*UINT64_C(0x0101010101010101))>>56);
+}
+static size_t bdi_count(const uint8_t *mask,size_t limit)
+{
+    uint64_t v=bdi_mask_load(mask);
+    if(limit<64)v&=(UINT64_C(1)<<limit)-1;
+    return bdi_popcount(v);
 }
 static size_t encode_bdi(const uint8_t *page, uint8_t *encoded, size_t best)
 {
@@ -212,8 +233,11 @@ bool exodus_page_bdi_read_word(const uint8_t *p,size_t size,size_t word,uint8_t 
         bdi_put(out,bdi_load(p+pos)+p[pos+4+w]);
         return true;
     }
-    if(!bdi_valid(p,size))return false;
-    size_t pos=BDI_HEADER+b*BLOCK_BYTES-bdi_count(p+1,b)*(BLOCK_BYTES-BDI_BYTES);
+    if(size<BDI_HEADER||size>=EXODUS_PAGE_BYTES||p[0]!=EXODUS_PAGE_BDI_VERSION)return false;
+    uint64_t mask=bdi_mask_load(p+1);
+    if(size!=BDI_HEADER+BLOCKS*BLOCK_BYTES-bdi_popcount(mask)*(BLOCK_BYTES-BDI_BYTES))return false;
+    size_t pos=BDI_HEADER+b*BLOCK_BYTES-
+        bdi_popcount(mask&((UINT64_C(1)<<b)-1))*(BLOCK_BYTES-BDI_BYTES);
     if(p[1+b/8]&(1u<<(b%8))) bdi_put(out,bdi_load(p+pos)+p[pos+4+w]);
     else memcpy(out,p+pos+w*4,4);
     return true;
