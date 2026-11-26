@@ -390,7 +390,8 @@
       "depends": [
         "horizon-bridge",
         "resident-network",
-        "gpu-mediation"
+        "gpu-mediation",
+        "adsp-native-service-admission"
       ],
       "gate": "Native title execution while BSD SSH and heartbeat remain live; measure memory, CPU and frame time."
     },
@@ -586,6 +587,36 @@
         "resident-network"
       ],
       "scope": "Recoverable boot to EXODUS, genuine dual liveness, A57 BSD execution and SSH; no permanent NRO launcher."
+    },
+    {
+      "id": "adsp-native-service-contract",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "adsp-board-admission"
+      ],
+      "scope": "Inventory original supported ADSP functions, firmware/task ABI, timing, memory, interrupts, DMA and recovery. No assumption of reusable firmware."
+    },
+    {
+      "id": "adsp-native-compat-driver",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "adsp-native-service-contract",
+        "adsp-freebsd-boot",
+        "interkernel-ipc"
+      ],
+      "scope": "Co-resident FreeBSD driver/service preserves original ADSP functions on demand, while kernel remains resident."
+    },
+    {
+      "id": "adsp-native-service-admission",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "adsp-native-compat-driver",
+        "device-arbitration"
+      ],
+      "scope": "Verify original supported functionality, audio latency and continuity, scheduling, suspend/resume and stock recovery while BSD stays live; block if exclusive firmware required."
     }
   ],
   "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. Reference evidence does not satisfy physical gates. No physical Switch execution or full SteamOS runtime proven. Physical AMP target is explicitly separate from the ARM64 reference recipes; no ADSP execution is proven.",
@@ -603,7 +634,8 @@
       "arch": "armv7",
       "release": "15.1-RELEASE",
       "location": "ADSP candidate",
-      "state": "unverified-on-target"
+      "state": "unverified-on-target",
+      "native_compatibility": "Co-resident ADSP compatibility driver/service preserves original supported functions on demand; simultaneous kernel liveness and functional timing require physical proof."
     },
     "a53": "deferred",
     "transport": "bounded typed mailbox IPC; coherency and notification mechanism require target proof",
