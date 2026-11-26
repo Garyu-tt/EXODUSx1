@@ -1,0 +1,28 @@
+name: Tumor EL2 AMP bridge reference
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/el2_amp_reference.S'
+      - 'exodus/frankenstein/el2_amp_bridge.c'
+      - 'exodus/frankenstein/test_el2_amp_bridge.py'
+      - 'exodus/frankenstein/EL2_AMP_BRIDGE.md'
+      - '.github/workflows/tumor-el2-amp-bridge.yml'
+permissions:
+  contents: read
+jobs:
+  bridge-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf libc6-dev-arm64-cross libc6-dev-armhf-cross qemu-system-arm qemu-user
+      - run: |
+          set -eu
+          src=exodus/frankenstein
+          aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none -T "$src/el2_monitor_reference.ld" "$src/el2_amp_reference.S" "$src/el2_amp_bridge.c" -o "$RUNNER_TEMP/bridge.elf"
+          arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 "$src/amp_execution_peer.c" -o "$RUNNER_TEMP/authority"
+          python3 "$src/test_el2_amp_bridge.py" "$RUNNER_TEMP/bridge.elf" "$RUNNER_TEMP/authority"
