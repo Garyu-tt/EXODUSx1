@@ -10,6 +10,13 @@
 bool exodus_bench_ex005(FILE *out);
 
 #define SAMPLE_PATH "sdmc:/switch/exodus-page-probe/sample.bin"
+#ifdef EXODUS_BENCH_BASELINE
+#define BENCH_LABEL "Baseline"
+#define BENCH_PATH "sdmc:/switch/exodus-page-probe/ex005-baseline.csv"
+#else
+#define BENCH_LABEL "Candidate"
+#define BENCH_PATH "sdmc:/switch/exodus-page-probe/ex005-candidate.csv"
+#endif
 
 static void make_demo_page(uint8_t *page, size_t index)
 {
@@ -140,10 +147,10 @@ int main(void)
 
         if (redraw) {
             consoleClear();
-            puts("EXODUS memory page probe\n");
+            puts("EXODUS memory page probe (" BENCH_LABEL ")\n");
             if (benchmark) {
                 benchmark = false;
-                FILE *csv = fopen("sdmc:/switch/exodus-page-probe/ex005-bench.csv", "w");
+                FILE *csv = fopen(BENCH_PATH, "w");
                 if (!csv) puts("Cannot open benchmark CSV. No measurements taken.");
                 else {
                     bool ok = exodus_bench_ex005(csv);
