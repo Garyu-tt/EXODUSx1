@@ -21,3 +21,12 @@ each of eight exits, forwards the committed kernel bytes unchanged.
 Initial intent reply is provisional and never sent to A57 on exit.
 This does not yet replace the native parent supervisor or implement remote
 wait4. Fresh CI required.
+
+R15.5 wait4 admission: EXIT_INTENT preparation yields 64 zero bytes, not a
+valid AMP reply; only the native exit commit releases the original frame.
+The actual parent uses wait4 with WNOHANG while each child is alive,
+checks ECHILD for its own PID, reaps with wait4 and native rusage, then
+checks ECHILD on repeat reaping. Final kernel frame is checked against
+original request identity and forwarded unchanged. Eight wait4, eight
+WNOHANG and sixteen ECHILD checks are required. This is native parent
+wait4, not A57 syscall 7, remote status copyout or remote rusage.

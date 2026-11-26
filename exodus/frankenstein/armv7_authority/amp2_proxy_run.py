@@ -78,7 +78,7 @@ with open(log,"w",encoding="utf-8") as f:
             assert read_exact(vm.stdout,len(marker),deadline)==marker
             assert len(pids)==8
             child.expect(r"(?m)^EXODUS_AMP2_KERNEL_EXITED23=8\r*\n",timeout=30)
-            child.expect(r"(?m)^EXODUS_NATIVE_PROXY_ACK_PASS children=8 waitpid=8\r*\n",timeout=30)
+            child.expect(r"(?m)^EXODUS_NATIVE_PROXY_ACK_PASS children=8 wait4=8 nohang=8 echild=16\r*\n",timeout=30)
             child.expect(r"(?m)^EXODUS_LIVE_KERNEL_COUNT=16\r*\n",timeout=30)
             child.expect(r"(?m)^EXODUS_LIVE_UNLOAD_PASS\r*\n",timeout=30)
             child.expect(r"(?m)^EXODUS_LIVE_RESULT=0\r*\n",timeout=30)
@@ -100,4 +100,4 @@ data=pathlib.Path(log).read_text(errors="replace").replace("\r","")
 for marker in ("EXODUS_ARMV7_KERNEL_AMP_LOADED","EXODUS_ARMV7_KERNEL_AMP2_PROXY_LOADED","EXODUS_ARMV7_KERNEL_AMP_PASS lanes=8 transactions=16 replay=reject","EXODUS_ARMV7_KERNEL_UNLOAD_PASS","EXODUS_ARMV7_KERNEL_GATE_RESULT=0"):
     if len(re.findall(r"^"+re.escape(marker)+r"$",data,re.M))!=1:raise SystemExit("missing/duplicate "+marker)
 if not re.search(r"^EXODUS_ARMV7_NATIVE_CALLER_PID_PASS pid=[1-9][0-9]*$",data,re.M):raise SystemExit("native PID evidence missing")
-print("PASS: 8 real native proxy PIDs, 8 native waitpid confirmations, 16 AMP2 replies, 512 IRQs")
+print("PASS: 8 real native proxy PIDs, 8 native wait4 confirmations, 16 AMP2 replies, 512 IRQs")

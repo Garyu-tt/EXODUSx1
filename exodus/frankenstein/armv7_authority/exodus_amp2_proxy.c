@@ -96,6 +96,9 @@ amp_exchange(SYSCTL_HANDLER_ARGS)
         memcpy(pending_req[i],q,AMP_SIZE);
         memcpy(pending_reply[i],r,AMP_SIZE);
         pending[i]=1;
+        /* The preparation response is deliberately NOT a valid AMP frame.
+         * Only commit_exit may release the final wire acknowledgement. */
+        memset(r,0,sizeof(r));
         exited++;
     }
     transactions++;

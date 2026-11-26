@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -82,16 +83,23 @@ int main(void){
             if(get64(r+40)!=(uint64_t)children[i])return 12;
         }else if(q[6]==2){
             uint8_t code=(uint8_t)get64(q+32);int status;
+            struct rusage usage;
+            uint8_t empty[FRAME]={0};
+            if(memcmp(r,empty,sizeof r))return 22;
+            /* Native wait4 must not reap a live child or an unrelated PID. */
+            if(wait4(children[i],&status,WNOHANG,NULL)!=0)return 23;
+            if(wait4(getpid(),&status,WNOHANG,NULL)!=-1||errno!=ECHILD)return 24;
             uint8_t final[FRAME];size_t final_len=sizeof(final);
             /* Prove the kernel refuses final acknowledgement before exit. */
             if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,q,sizeof q)!=-1||errno!=EAGAIN)return 18;
             if(write(go[i],&code,1)!=1)return 13;
             close(go[i]);go[i]=-1;
             pid_t p=children[i],got;
-            do{got=waitpid(p,&status,0);}while(got<0&&errno==EINTR);
+            do{got=wait4(p,&status,0,&usage);}while(got<0&&errno==EINTR);
             if(got!=p)return 14;
             children[i]=0;
             if(!WIFEXITED(status)||WEXITSTATUS(status)!=code)return 15;
+            if(wait4(p,&status,WNOHANG,NULL)!=-1||errno!=ECHILD)return 25;
             uint32_t v[LANES*4];
             if(!snapshot(v)||v[4*i]!=(uint32_t)p||v[4*i+1]!=1||
                v[4*i+2]!=code||v[4*i+3]!=0)return 16;
@@ -101,7 +109,10 @@ int main(void){
             if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,wrong,sizeof wrong)!=-1||errno!=EINVAL)return 19;
             final_len=sizeof(final);
             if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,q,sizeof q)||
-               final_len!=sizeof(final)||memcmp(final,r,sizeof r))return 20;
+               final_len!=sizeof(final)||memcmp(final,q,5)||
+               final[5]!=2||final[6]!=q[6]||final[7]!=0||
+               memcmp(final+8,q+8,32)||get64(final+40)!=0)return 20;
+            for(unsigned j=48;j<FRAME;j++)if(final[j])return 26;
             memcpy(r,final,sizeof r);
             final_len=sizeof(final);
             if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,q,sizeof q)!=-1||errno!=EINVAL)return 21;
@@ -116,7 +127,7 @@ int main(void){
     unsigned exited=0;len=sizeof(exited);
     if(sysctlbyname("kern.exodus_amp2_exited23",&exited,&len,NULL,0)||exited!=8)return 8;
     puts("EXODUS_AMP2_KERNEL_EXITED23=8");
-    puts("EXODUS_NATIVE_PROXY_ACK_PASS children=8 waitpid=8");
+    puts("EXODUS_NATIVE_PROXY_ACK_PASS children=8 wait4=8 nohang=8 echild=16");
     puts("EXODUS_LIVE_KERNEL_COUNT=16");
     return fflush(stdout)!=0;
 }
