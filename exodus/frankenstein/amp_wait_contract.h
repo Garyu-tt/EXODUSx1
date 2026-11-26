@@ -2,9 +2,14 @@
  * Caller serializes access; native kernel adapter must authenticate owner. */
 #ifndef EXODUS_WAIT_CONTRACT_H
 #define EXODUS_WAIT_CONTRACT_H
+#ifdef _KERNEL
+#include <sys/param.h>
+#include <sys/systm.h>
+#else
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#endif
 enum { EW_SIZE=64, EW_REQUEST=1, EW_REPLY=2, EW_NOHANG=1,
        EW_OK=0, EW_ECHILD=10, EW_EINVAL=22 };
 enum { EW_EMPTY=0, EW_LIVE=1, EW_ZOMBIE=2, EW_REAPED=3 };
