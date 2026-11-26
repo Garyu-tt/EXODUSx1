@@ -359,23 +359,24 @@ bool exodus_page_bdi_fingerprint(const uint8_t *p,size_t size,uint64_t *out)
 {
     if(!out || !bdi_valid(p,size))return false;
     uint64_t hash=UINT64_C(0x45584f4455530002);
-    size_t pos=BDI_HEADER;
-    for(size_t b=0;b<BLOCKS;b++){
-        /* Hash logical words directly. Unsigned addition matches the
-         * decoder's modulo-2^32 semantics even for noncanonical bases. */
-        if(p[1+b/8]&(1u<<(b%8))){
+    uint64_t mask=bdi_mask_load(p+1);
+    size_t pos=BDI_HEADER,b=0;
+    while(b<BLOCKS){
+        if(mask&(UINT64_C(1)<<b)){
             uint32_t base=bdi_load(p+pos);
             for(size_t w=0;w<16;w++)
                 hash^=word_token_value(b*16+w,base+(uint32_t)p[pos+4+w]);
             pos+=BDI_BYTES;
+            ++b;
         }else{
-            /* Retain the original fixed-size RAW staging path: on host
-             * compilers this enables vectorized token loads. Packed blocks
-             * still hash without materialization. */
-            uint8_t raw[BLOCK_BYTES];
-            memcpy(raw,p+pos,sizeof raw);
-            for(size_t w=0;w<16;w++)hash^=word_token(b*16+w,raw+4*w);
-            pos+=BLOCK_BYTES;
+            /* One token loop for the entire contiguous RAW run.
+             * Check b before shifting; no staging or speculative reads. */
+            size_t first=b;
+            do{++b;}while(b<BLOCKS&&!(mask&(UINT64_C(1)<<b)));
+            size_t words=(b-first)*16;
+            for(size_t w=0;w<words;w++)
+                hash^=word_token(first*16+w,p+pos+4*w);
+            pos+=words*4;
         }
     }
     *out=hash;
