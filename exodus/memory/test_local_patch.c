@@ -51,6 +51,14 @@ static void check_direct_cold_patch(void){
     assert(exodus_bdi_block_decode(src,20,block));
     memcpy(block+4*w,value,4);
     size_t n=exodus_bdi_block_encode(block,canonical);
+    /* Independent canonical encoder is the eligibility oracle. */
+    bool eligible=n==20&&!memcmp(src,canonical,4)&&
+        !memcmp(src+4,canonical+4,w)&&
+        !memcmp(src+5+w,canonical+5+w,15-w);
+    uint8_t direct=0xa5;
+    assert(exodus_bdi_direct_delta(src,w,value,&direct)==eligible);
+    if(eligible)assert(direct==canonical[4+w]);
+    else assert(direct==0xa5);
     struct exodus_bdi_patch patch;
     assert(exodus_page_bdi_prepare_patch(wire,1289,63*16+w,value,&patch));
     assert(patch.offset==9+20*63&&patch.old_len==20&&patch.new_len==n);
