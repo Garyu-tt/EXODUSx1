@@ -77,6 +77,8 @@ identity:
     mov x0, #1
     mov x1, #0
     bl bridge_call
+    cmn x0, #3
+    b.eq rejected
     cmn x0, #2
     b.eq fail
 resume:
@@ -138,6 +140,9 @@ user_fail:
     svc #0
     b user_fail
 
+rejected:
+    adr x1, rejected_msg
+    b report
 fail:
     adr x1, failed
 report:
@@ -155,6 +160,7 @@ report:
 passed: .asciz "EXODUS_EL2_AMP_PASS\n"
 blocked: .asciz "EXODUS_EL2_AMP_EL1_BLOCKED\n"
 failed: .asciz "EXODUS_EL2_AMP_FAIL\n"
+rejected_msg: .asciz "EXODUS_EL2_AMP_REJECT\n"
 .section .bss,"aw",%nobits
 .balign 16
 monitor_stack: .skip 16384
