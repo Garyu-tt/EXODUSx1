@@ -73,6 +73,7 @@ class TaskCenter:
         self.lifecycle = None
         self.lifecycle_result = None
         self.uncertain_lifecycle = None
+        self.uncertain_handoff = None
 
     def _session(self, key, now):
         if not valid_key(key):
@@ -109,6 +110,8 @@ class TaskCenter:
             self._finish_lifecycle(UNKNOWN)
 
     def _invalidate(self):
+        if self.pending is not None:
+            self.uncertain_handoff = self.pending
         self.owner = UNKNOWN
         self.pending = None
 
@@ -168,8 +171,8 @@ class TaskCenter:
         """
         now = self.clock()
         self._tick(now)
-        if self.pending or self.lifecycle:
-            raise ValueError("operation pending")
+        if self.pending or self.lifecycle or self.uncertain_handoff:
+            raise ValueError("operation pending or handoff not quiescent")
         if observed_owner is not None and not self._live(observed_owner, now):
             raise ValueError("owner must be a live session or verified released")
         self.owner = observed_owner
@@ -177,7 +180,7 @@ class TaskCenter:
     def begin(self, target):
         now = self.clock()
         self._tick(now)
-        if (self.pending or self.lifecycle or self.uncertain_lifecycle
+        if (self.pending or self.lifecycle or self.uncertain_lifecycle or self.uncertain_handoff
                 or self.owner == UNKNOWN or not self._live(target, now)):
             raise ValueError("handoff unavailable")
         if target == self.owner:
@@ -194,7 +197,7 @@ class TaskCenter:
         now = self.clock()
         self._tick(now)
         s = self._session(target, now)
-        if (self.pending or self.lifecycle or self.uncertain_lifecycle
+        if (self.pending or self.lifecycle or self.uncertain_lifecycle or self.uncertain_handoff
                 or self.owner == UNKNOWN or self.owner == target
                 or s is None or type(operation) is not str or operation not in OPERATIONS or operation not in s.capabilities):
             raise ValueError("lifecycle unavailable")
@@ -235,6 +238,19 @@ class TaskCenter:
         # A snapshot predating acceptance cannot confirm the command.
         self.lifecycle = Lifecycle(p.token, p.operation, p.target,
                                    self.snapshots[p.target[0]][1], p.deadline, True)
+
+    def resolve_uncertain_handoff(self, token, phase, target, *, quiesced):
+        """Mediator attests the exact timed-out phase cannot execute later.
+
+        Ownership stays unknown until a subsequent fresh reconciliation.
+        """
+        self._tick(self.clock())
+        p = self.uncertain_handoff
+        if (not p or type(token) is not int or token != p.token
+                or type(phase) is not str or phase != p.phase
+                or not valid_key(target) or target != p.target or quiesced is not True):
+            raise ValueError("unresolved handoff")
+        self.uncertain_handoff = None
 
     def acknowledge(self, token, phase, observed_owner):
         """Only mediator-confirmed observations advance the handoff.

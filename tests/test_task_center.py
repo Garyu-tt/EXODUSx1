@@ -50,6 +50,10 @@ class TaskCenterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.center.acknowledge(h.token, "release", None)
         self.assertEqual(self.center.owner, UNKNOWN)
+        with self.assertRaises(ValueError):
+            self.center.reconcile(None)
+        self.center.resolve_uncertain_handoff(h.token, h.phase, h.target, quiesced=True)
+        self.assertEqual(self.center.owner, UNKNOWN)
         self.center.reconcile(None)
         self.assertEqual(self.center.begin(self.b.key).phase, "acquire")
 
@@ -59,12 +63,41 @@ class TaskCenterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.center.acknowledge(h.token, "release", self.b.key)
         self.assertEqual(self.center.owner, UNKNOWN)
+        self.center.resolve_uncertain_handoff(h.token, h.phase, h.target, quiesced=True)
         self.center.reconcile(self.a.key)
         h = self.center.begin(self.b.key)
         self.center.acknowledge(h.token, "release", None)
         self.center.disconnect("freebsd")
         self.assertEqual(self.center.owner, UNKNOWN)
         self.assertIsNone(self.center.pending)
+
+    def test_timed_out_acquire_blocks_regrant_until_quiescence_and_reconcile(self):
+        self.center.reconcile(None)
+        h = self.center.begin(self.a.key)
+        self.now += 2
+        self.center.view()
+        self.assertEqual(self.center.uncertain_handoff, h)
+        for token, phase, target, quiesced in (
+            (h.token + 1, h.phase, h.target, True),
+            (h.token, "release", h.target, True),
+            (h.token, h.phase, self.b.key, True),
+            (h.token, h.phase, h.target, False),
+            (True, h.phase, h.target, True),
+        ):
+            with self.assertRaises(ValueError):
+                self.center.resolve_uncertain_handoff(token, phase, target, quiesced=quiesced)
+        self.center.publish("horizon", 1, 2, [self.a])
+        with self.assertRaises(ValueError):
+            self.center.reconcile(None)
+        with self.assertRaises(ValueError):
+            self.center.begin(self.b.key)
+        with self.assertRaises(ValueError):
+            self.center.acknowledge(h.token, h.phase, h.target)
+        self.center.resolve_uncertain_handoff(h.token, h.phase, h.target, quiesced=True)
+        with self.assertRaises(ValueError):
+            self.center.begin(self.b.key)
+        self.center.reconcile(None)
+        self.assertNotEqual(self.center.begin(self.b.key).token, h.token)
 
     def test_restart_rejects_old_identity(self):
         self.center.reconcile(self.a.key)
