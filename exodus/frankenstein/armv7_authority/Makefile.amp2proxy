@@ -1,0 +1,3 @@
+KMOD=exodus_amp2_proxy
+SRCS=exodus_amp2_proxy.c
+.include <bsd.kmod.mk>
