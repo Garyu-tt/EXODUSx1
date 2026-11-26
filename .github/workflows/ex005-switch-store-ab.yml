@@ -1,0 +1,70 @@
+name: EX-005 Switch store trace build
+
+on:
+  pull_request:
+    paths:
+      - 'exodus/memory/bench_store_trace.c'
+      - 'exodus/memory/switch/store_main.c'
+      - 'exodus/memory/switch/Makefile.store'
+      - '.github/workflows/ex005-switch-store-ab.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Fetch exact baseline
+        uses: actions/checkout@v6
+        with:
+          ref: a000dba9cd71da1568134f6308bb67bc439f8506
+          path: .qa-switch-baseline
+          persist-credentials: false
+      - name: Build both NROs using the same devkitA64 image
+        shell: bash
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          candidate="$GITHUB_WORKSPACE/exodus/memory"
+          baseline="$GITHUB_WORKSPACE/.qa-switch-baseline/exodus/memory"
+          cp "$candidate/bench_store_trace.c" "$baseline/bench_store_trace.c"
+          cp "$candidate/switch/store_main.c" "$candidate/switch/Makefile.store" "$baseline/switch/"
+          mkdir -p "$RUNNER_TEMP/ex005-store-pair"
+          image=devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
+          docker pull "$image"
+          image_id=$(docker image inspect --format '{{.Id}}' "$image")
+          {
+            echo "baseline=$(git -C "$GITHUB_WORKSPACE/.qa-switch-baseline" rev-parse HEAD)"
+            echo "candidate_head=$HEAD_SHA"
+            echo "candidate_checkout=$(git rev-parse HEAD)"
+            echo "image_id=$image_id"
+            docker image inspect --format '{{json .RepoDigests}}' "$image"
+          } > "$RUNNER_TEMP/ex005-store-pair/build.txt"
+          docker run --rm --network none \
+            -v "$GITHUB_WORKSPACE:/src" \
+            -v "$RUNNER_TEMP/ex005-store-pair:/out" \
+            "$image_id" bash -ec '
+              "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc" --version >> /out/build.txt
+              dkp-pacman -Q devkitA64 libnx switch-tools >> /out/build.txt
+              make -C /src/.qa-switch-baseline/exodus/memory/switch -f Makefile.store CFLAGS="-Werror -DEXODUS_BENCH_BASELINE"
+              make -C /src/exodus/memory/switch -f Makefile.store CFLAGS=-Werror
+              cp /src/.qa-switch-baseline/exodus/memory/switch/exodus-store-trace.nro /out/exodus-store-baseline.nro
+              cp /src/exodus/memory/switch/exodus-store-trace.nro /out/exodus-store-candidate.nro
+              cd /out
+              sha256sum exodus-store-baseline.nro exodus-store-candidate.nro > SHA256SUMS
+            '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ex005-switch-store-ab
+          path: ${{ runner.temp }}/ex005-store-pair/
+          if-no-files-found: error

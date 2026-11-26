@@ -4,6 +4,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#ifdef __SWITCH__
+#include <switch.h>
+#endif
+static uint64_t now(void){
+#ifdef __SWITCH__
+    return armGetSystemTick();
+#else
+    clock_t v=clock();return v==(clock_t)-1?UINT64_MAX:(uint64_t)v;
+#endif
+}
+static uint64_t hz(void){
+#ifdef __SWITCH__
+    return armGetSystemTickFreq();
+#else
+    return CLOCKS_PER_SEC;
+#endif
+}
 enum { N=32, P=4096, W=P/4, S=N*64, OPS=32768, TRIALS=7 };
 static uint8_t arena[N*P], packed[S*20], raw[S*64], original[N][P], oracle[N][P], restored[P];
 static uint16_t sr[S], rr[S], lengths[N];
@@ -64,14 +81,15 @@ static int verify(void){
     }
     return 1;
 }
-int main(void){
+int exodus_bench_store_trace(FILE *out){
+    if(!out||!hz())return 7;
     uint64_t expected=make_trace();
-    puts("trial,operations,ticks,tick_hz,digest,unique_pages,cold_payload,packed_slots,raw_slots,hot_reads,cold_reads,hot_writes,cold_writes,promotions,demotions");
+    if(fputs("trial,operations,ticks,tick_hz,digest,unique_pages,cold_payload,packed_slots,raw_slots,hot_reads,cold_reads,hot_writes,cold_writes,promotions,demotions\n",out)==EOF)return 7;
     for(unsigned trial=0;trial<TRIALS;trial++){
         if(!setup())return 1;
         uint64_t digest=UINT64_C(14695981039346656037);
         unsigned hr=0,cr=0,hw=0,cw=0,up=0,down=0;
-        clock_t begin=clock();
+        uint64_t begin=now();
         for(unsigned i=0;i<OPS;i++){
             const struct operation *o=&trace[i];uint8_t v[4];
             bool is_hot=exodus_hot_find(&store,refs[o->page])!=NULL;
@@ -90,12 +108,15 @@ int main(void){
                 if(is_hot)++down;
             }
         }
-        clock_t end=clock();
-        if(begin==(clock_t)-1||end<=begin||digest!=expected||!verify())return 5;
+        uint64_t end=now();
+        if(begin==UINT64_MAX||end==UINT64_MAX||end<=begin||digest!=expected||!verify())return 5;
         /* Ensure both tiers receive substantial work, not only initial migration. */
         if(hr<1024||cr<1024||hw<256||cw<256||up<128||down<128)return 6;
         size_t a=0,b=0;for(unsigned i=0;i<S;i++){a+=sr[i]!=0;b+=rr[i]!=0;}
-        printf("%u,%u,%llu,%llu,%llu,%zu,%zu,%zu,%zu,%u,%u,%u,%u,%u,%u\n",trial,(unsigned)OPS,(unsigned long long)(end-begin),(unsigned long long)CLOCKS_PER_SEC,(unsigned long long)digest,store.unique.page_count,store.unique.payload_used,a,b,hr,cr,hw,cw,up,down);
+        if(fprintf(out,"%u,%u,%llu,%llu,%llu,%zu,%zu,%zu,%zu,%u,%u,%u,%u,%u,%u\n",trial,(unsigned)OPS,(unsigned long long)(end-begin),(unsigned long long)hz(),(unsigned long long)digest,store.unique.page_count,store.unique.payload_used,a,b,hr,cr,hw,cw,up,down)<0)return 7;
     }
-    return 0;
+    return ferror(out)?7:0;
 }
+#ifndef __SWITCH__
+int main(void){return exodus_bench_store_trace(stdout);}
+#endif
