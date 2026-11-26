@@ -2,6 +2,7 @@
 #include <cassert>
 #include <unistd.h>
 #include <cstdlib>
+#include <cstring>
 using namespace exodus::home;
 int main() {
     auto c=ParseCorkDeck("version=3\nnext-id=3\n[game 1]\npath=sdmc:/switch/wine/drive_c/game.exe\ntitle=Game%20One\nportrait-art=sdmc:/switch/wine/a.jpg\n");
@@ -28,6 +29,23 @@ int main() {
     { std::ofstream f(old); f<<valid; }
     { std::ofstream f(newer); f<<"broken"; }
     { std::ofstream f(unrelated); f<<valid; }
+    // Inject an I/O failure after a valid older generation was observed.
+    // Partial enumeration must never replace a previously known catalog.
+    auto failed_read = +[](DIR *) -> struct dirent * {
+        static unsigned calls=0;
+        static struct dirent entry{};
+        if(calls++==0) {
+            std::strcpy(entry.d_name,"steam-catalog-00000000000000000001.json");
+            return &entry;
+        }
+        errno=EIO;
+        return nullptr;
+    };
+    auto incomplete=ReadSteamLatest(temp,4096,failed_read);
+    assert(incomplete.status==CatalogStatus::Unavailable);
+    Catalog known{CatalogStatus::Ready,{{Provider::Steam,"Existing","999","",0}}};
+    MergeProvider(known,std::move(incomplete),Provider::Steam);
+    assert(known.entries.size()==1&&known.entries[0].id=="999");
     auto steam=ReadSteamLatest(temp,4096);
     assert(steam.status==CatalogStatus::Ready&&steam.entries.size()==1&&steam.entries[0].id=="123");
     assert(ReadSteamLatest(temp,0).status==CatalogStatus::Unavailable);

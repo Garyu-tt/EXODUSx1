@@ -10,6 +10,7 @@
 #include <string_view>
 #include <utility>
 #include <dirent.h>
+#include <cerrno>
 #include <sys/stat.h>
 
 namespace exodus::home {
@@ -129,13 +130,20 @@ inline Catalog ReadCorkDeck(const char *path)
         return {CatalogStatus::Unavailable,{}};
     return ParseCorkDeck(text);
 }
-inline Catalog ReadSteamLatest(const char *directory,size_t remaining)
+inline Catalog ReadSteamLatest(const char *directory,size_t remaining,
+                               struct dirent *(*next_entry)(DIR *) = ::readdir)
 {
     DIR *d=opendir(directory);
     if(!d) return {CatalogStatus::Unavailable,{}};
     std::vector<std::string> names;
     unsigned visited=0;
-    while(auto *e=readdir(d)) {
+    for (;;) {
+        errno=0;
+        auto *e=next_entry(d);
+        if(!e) {
+            if(errno) { closedir(d); return {CatalogStatus::Unavailable,{}}; }
+            break;
+        }
         if(++visited>4096) {closedir(d);return {CatalogStatus::TooLarge,{}};}
         std::string n=e->d_name;
         if(n.size()!=39||n.compare(0,14,"steam-catalog-")||n.compare(34,5,".json")) continue;
