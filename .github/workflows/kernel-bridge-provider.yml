@@ -1,0 +1,22 @@
+name: Kernel Bridge provider host tests
+on:
+  pull_request:
+    paths:
+      - 'tools/kernel_bridge/**'
+      - '.github/workflows/kernel-bridge-provider.yml'
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          "$CC" -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -fno-sanitize-recover=all tools/kernel_bridge/provider_test.c -o "$RUNNER_TEMP/exk-test"
+          "$RUNNER_TEMP/exk-test"

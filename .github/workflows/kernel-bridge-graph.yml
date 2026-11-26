@@ -1,0 +1,27 @@
+name: Kernel Bridge graph CLI
+on:
+  pull_request:
+    paths:
+      - 'tools/kernel_bridge/kernel_bridge.mjs'
+      - '.github/workflows/kernel-bridge-graph.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/kernel_bridge/kernel_bridge.mjs'
+      - '.github/workflows/kernel-bridge-graph.yml'
+permissions:
+  contents: read
+jobs:
+  graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node tools/kernel_bridge/kernel_bridge.mjs --test
+          node tools/kernel_bridge/kernel_bridge.mjs exodus.kde
+          node tools/kernel_bridge/kernel_bridge.mjs exodus.headless
