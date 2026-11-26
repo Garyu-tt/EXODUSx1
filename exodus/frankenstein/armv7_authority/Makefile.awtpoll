@@ -1,0 +1,3 @@
+KMOD=exodus_awt_poll
+SRCS=exodus_awt_poll.c
+.include <bsd.kmod.mk>
