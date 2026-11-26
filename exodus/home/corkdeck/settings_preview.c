@@ -296,7 +296,13 @@ static int open_tool(struct ui *ui, const struct exodus_page_info *page)
         return 0;
     }
     if (!ui_confirm(ui, page->name, page->nro, "Open")) return 0;
-    Result rc = envSetNextLoad(page->nro, page->nro);
+    char args[256];
+    int n = snprintf(args, sizeof(args), "%s --exodus-return-home", page->nro);
+    if (n < 0 || (size_t)n >= sizeof(args)) {
+        ui_message(ui, page->name, "Tool arguments exceed loader limit.");
+        return 0;
+    }
+    Result rc = envSetNextLoad(page->nro, args);
     if (R_SUCCEEDED(rc)) return 1;
     char detail[64];
     snprintf(detail, sizeof(detail), "Handoff failed: 0x%08lx", (unsigned long)rc);
