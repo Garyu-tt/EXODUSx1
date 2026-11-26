@@ -8,8 +8,8 @@ TARGET := exodus-page-probe
 BUILD := build
 LIBNX := $(DEVKITPRO)/libnx
 ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
-SOURCES := main.c ../page_codec.c ../page_probe_stats.c ../page_store.c ../page_compact_index.c
-HEADERS := ../page_codec.h ../page_probe_stats.h ../page_store.h ../page_compact_index.h
+SOURCES := main.c ../bench_ex005.c ../bdi_slab.c ../page_codec.c ../page_probe_stats.c ../page_store.c ../page_compact_index.c
+HEADERS := ../bdi_slab.h ../page_codec.h ../page_probe_stats.h ../page_store.h ../page_compact_index.h
 
 all: $(TARGET).nro
 
