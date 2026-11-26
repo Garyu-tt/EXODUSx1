@@ -10,6 +10,7 @@
 #include "control_metrics.h"
 #include "launcher_image.h"
 #include "native_artwork.h"
+#include "nro_artwork.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,6 +98,19 @@ static void load_cover(struct ui *ui, const char *path, const char *provider,
     int loaded = exodus_artwork_path(path) && launcher_image_load(path, &icon);
     if (!loaded && !strcmp(provider, "Switch"))
         loaded = exodus_title_artwork(id, &icon);
+#ifdef __SWITCH__
+    if (!loaded && !strcmp(provider, "Homebrew")) {
+        char nro_path[512];
+        if (exodus_nro_path(id, nro_path)) {
+            size_t bytes;
+            unsigned char *data = exodus_read_nro_icon(nro_path, &bytes);
+            if (data) {
+                loaded = launcher_image_decode(data, bytes, &icon);
+                free(data);
+            }
+        }
+    }
+#endif
     if (!loaded) return;
     if (launcher_icon_fit(&icon, 256)) {
         slot->texture = SDL_CreateTexture(ui->renderer, SDL_PIXELFORMAT_RGBA32,
@@ -282,7 +296,13 @@ static int open_tool(struct ui *ui, const struct exodus_page_info *page)
         return 0;
     }
     if (!ui_confirm(ui, page->name, page->nro, "Open")) return 0;
-    Result rc = envSetNextLoad(page->nro, page->nro);
+    char args[256];
+    int n = snprintf(args, sizeof(args), "%s --exodus-return-home", page->nro);
+    if (n < 0 || (size_t)n >= sizeof(args)) {
+        ui_message(ui, page->name, "Tool arguments exceed loader limit.");
+        return 0;
+    }
+    Result rc = envSetNextLoad(page->nro, args);
     if (R_SUCCEEDED(rc)) return 1;
     char detail[64];
     snprintf(detail, sizeof(detail), "Handoff failed: 0x%08lx", (unsigned long)rc);
