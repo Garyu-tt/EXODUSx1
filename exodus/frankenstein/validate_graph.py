@@ -28,3 +28,22 @@ print("Integration order (not a transitive Ports dependency closure):")
 for key in order:
     print(f"{key}: {nodes[key]['state']}")
 print(f"PASS: {len(order)} nodes")
+
+# Physical admission must not be satisfied by reference-only nodes.
+def ancestors(key):
+    result = set()
+    pending = list(nodes[key]["depends"])
+    while pending:
+        dep = pending.pop()
+        if dep not in result:
+            result.add(dep)
+            pending.extend(nodes[dep]["depends"])
+    return result
+required = {"adsp-freebsd-boot", "a57-execution-substrate", "amp-syscall-transport",
+            "a57-bsd-userspace", "horizon-multidriver", "horizon-minimal-backend",
+            "resident-network"}
+assert required <= ancestors("amp-boot-mvp")
+assert {"amp-boot-mvp", "steam-hos-compatibility", "inbox-import", "desktop-mode"} <= ancestors("physical-release-admission")
+assert not any(nodes[k]["state"].startswith("qemu-") for k in required)
+assert graph["physical_target"]["topology"] == "AMP"
+print("PASS: physical AMP admission dependency separation")

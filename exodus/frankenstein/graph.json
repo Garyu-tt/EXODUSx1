@@ -190,7 +190,9 @@
         "gpu-mediation",
         "unified-library",
         "settings-registry",
-        "resident-network"
+        "resident-network",
+        "steam-hos-compatibility",
+        "horizon-minimal-backend"
       ]
     },
     {
@@ -246,7 +248,8 @@
         "irq-dma-arbitration",
         "device-arbitration",
         "dual-kernel-reference",
-        "armv7-kernel-reference"
+        "armv7-kernel-reference",
+        "adsp-freebsd-boot"
       ],
       "gate": "Real FreeBSD/armv7 kernel on candidate Cortex-A9 ADSP and native Horizon on all A57 cores concurrently on physical Switch; ARM64 Bao evidence reference-only."
     },
@@ -255,7 +258,8 @@
       "origin": "frankyfife/mesa-switch_ff@0ff52079ca9e9e837ed27eb95a8d239f439a1864",
       "state": "needs-hardware-proof",
       "depends": [
-        "dual-kernel"
+        "dual-kernel",
+        "horizon-multidriver"
       ]
     },
     {
@@ -374,7 +378,8 @@
       "depends": [
         "dual-kernel",
         "device-arbitration",
-        "resident-rc"
+        "resident-rc",
+        "a57-bsd-userspace"
       ],
       "gate": "FreeBSD/armv7 network endpoint and native sshd reachable over approved LAN/VPN during Horizon title; prove mediated or exclusive NIC ownership and ARMv7 service build."
     },
@@ -415,7 +420,9 @@
         "plasma",
         "gpu-mediation",
         "resident-network",
-        "settings-registry"
+        "settings-registry",
+        "a57-bsd-userspace",
+        "horizon-multidriver"
       ],
       "gate": "Actual KDE desktop and return to Gaming Mode without reboot."
     },
@@ -426,7 +433,9 @@
       "depends": [
         "gaming-mode",
         "desktop-mode",
-        "native-game-resident"
+        "native-game-resident",
+        "amp-boot-mvp",
+        "inbox-import"
       ],
       "gate": "Physical end-to-end acceptance including clean SD install and recovery, audio, CPU/RAM/frame budgets, display/HID transitions and save integrity; preserve internal eMMC."
     },
@@ -464,6 +473,119 @@
         "job": 139562451291,
         "scope": "QEMU Linux user mode Cortex-A9 and Cortex-A57, 128 frames each direction with both role assignments, all four exit codes zero; not FreeBSD IPC or physical cache coherence. Earlier independent job 139560877553 also passed."
       }
+    },
+    {
+      "id": "adsp-board-admission",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "boot-context"
+      ],
+      "scope": "Board-specific ADSP CPU/MMU/timer/IRQ/audio and recoverable ownership."
+    },
+    {
+      "id": "adsp-freebsd-boot",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "adsp-board-admission",
+        "cpu-memory-isolation",
+        "irq-dma-arbitration",
+        "armv7-kernel-reference"
+      ],
+      "scope": "Actual FreeBSD armv7 kernel boot on ADSP, not an ARM64 VM."
+    },
+    {
+      "id": "a57-execution-substrate",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "privileged-mediator",
+        "cpu-memory-isolation"
+      ],
+      "scope": "Local AArch64 exception, VM, context and process execution mechanism; compatibility with kernel-only ADSP constraint unresolved."
+    },
+    {
+      "id": "amp-syscall-transport",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "a57-execution-substrate",
+        "interkernel-ipc"
+      ],
+      "scope": "Typed syscall request/response, task identity, address-space ownership, cancellation and reset."
+    },
+    {
+      "id": "a57-bsd-userspace",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "adsp-freebsd-boot",
+        "amp-syscall-transport"
+      ],
+      "scope": "Real AArch64 BSD process, local execution and remote kernel authority; demonstrate syscalls, faults and teardown."
+    },
+    {
+      "id": "horizon-multidriver",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "a57-bsd-userspace",
+        "horizon-bridge",
+        "device-arbitration"
+      ],
+      "scope": "One BSD service with typed capability adapters; HOS retains physical drivers."
+    },
+    {
+      "id": "horizon-minimal-backend",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "horizon-multidriver",
+        "native-game-resident"
+      ],
+      "scope": "Boot handoff, required services remain, recovery; no removal of required titles."
+    },
+    {
+      "id": "steam-hos-compatibility",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "horizon-multidriver",
+        "unified-library",
+        "steam-client"
+      ],
+      "scope": "Actual Steam custom tool integration for separate HOS Native and Homebrew descriptors."
+    },
+    {
+      "id": "sd-logical-layout",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "horizon-multidriver"
+      ],
+      "scope": "Preserve required HOS paths; EXODUS-owned System/Data/Library/Inbox/Recovery."
+    },
+    {
+      "id": "inbox-import",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "sd-logical-layout",
+        "unified-library"
+      ],
+      "scope": "Validated type routing, journal, recovery and unresolved items."
+    },
+    {
+      "id": "amp-boot-mvp",
+      "origin": null,
+      "state": "needs-hardware-proof",
+      "depends": [
+        "a57-bsd-userspace",
+        "horizon-minimal-backend",
+        "resident-network"
+      ],
+      "scope": "Recoverable boot to EXODUS, genuine dual liveness, A57 BSD execution and SSH; no permanent NRO launcher."
     }
   ],
   "evidence": "Pinned source recipes and separately scoped CI evidence. Edges describe integration, not complete package dependency closure. Reference evidence does not satisfy physical gates. No physical Switch execution or full SteamOS runtime proven. Physical AMP target is explicitly separate from the ARM64 reference recipes; no ADSP execution is proven.",
@@ -485,7 +607,8 @@
     },
     "a53": "deferred",
     "transport": "bounded typed mailbox IPC; coherency and notification mechanism require target proof",
-    "graphics_compute": "execution placement and ABI unresolved; ARM64 reference packages cannot execute on ARMv7",
-    "install": "clean SD only after verified target-specific candidate and recovery; preserve internal eMMC"
+    "graphics_compute": "A57 runs all user applications and daemons, including BSD services. ADSP runs FreeBSD armv7 kernel/control authority only. Local execution substrate and cross-ISA syscall semantics unresolved.",
+    "install": "clean SD only after verified target-specific candidate and recovery; preserve internal eMMC",
+    "mvp": "amp-boot-mvp; full release still requires Steam Gaming Mode, KDE and import"
   }
 }

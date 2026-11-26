@@ -1,0 +1,17 @@
+name: Tumor AMP architecture contract
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/graph.json'
+      - 'exodus/frankenstein/validate_graph.py'
+      - '.github/workflows/tumor-amp-contract.yml'
+permissions:
+  contents: read
+jobs:
+  graph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python3 exodus/frankenstein/validate_graph.py
