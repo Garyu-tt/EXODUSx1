@@ -158,7 +158,10 @@ trap:
     tst x0,#15
     b.ne fail
     mrs x0,elr_el2
-    ldr x1,=0x3000+relay_after-service_vectors
+    adr x1,relay_after
+    adr x2,service_vectors
+    sub x1,x1,x2
+    add x1,x1,#3,lsl #12
     cmp x0,x1
     b.ne fail
     ldr x0,[sp,#64]
@@ -176,7 +179,10 @@ clone:
     mov x1,#1
     str x1,[x0]
     mrs x0,elr_el1
-    ldr x1,=0x1000+after_clone-user_code
+    adr x1,after_clone
+    adr x2,user_code
+    sub x1,x1,x2
+    add x1,x1,#1,lsl #12
     cmp x0,x1
     b.ne fail
     adr x1,snapshot
