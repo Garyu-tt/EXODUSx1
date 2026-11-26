@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <errno.h>
 enum { FRAME=64, COUNT=16, LANES=8 };
 static pid_t children[LANES];
 static int go[LANES];
@@ -43,7 +44,10 @@ static int start_workers(void){
 }
 static void cleanup(void){
     for(unsigned i=0;i<LANES;i++)if(children[i]>0){
-        close(go[i]);kill(children[i],SIGTERM);waitpid(children[i],NULL,0);children[i]=0;
+        if(go[i]>=0)close(go[i]);
+        kill(children[i],SIGTERM);
+        while(waitpid(children[i],NULL,0)<0&&errno==EINTR){}
+        children[i]=0;go[i]=-1;
     }
 }
 static int nibble(char c){
@@ -78,17 +82,31 @@ int main(void){
             if(get64(r+40)!=(uint64_t)children[i])return 12;
         }else if(q[6]==2){
             uint8_t code=(uint8_t)get64(q+32);int status;
+            uint8_t final[FRAME];size_t final_len=sizeof(final);
+            /* Prove the kernel refuses final acknowledgement before exit. */
+            if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,q,sizeof q)!=-1||errno!=EAGAIN)return 18;
             if(write(go[i],&code,1)!=1)return 13;
-            close(go[i]);
-            pid_t p=children[i];
-            if(waitpid(p,&status,0)!=p)return 14;
+            close(go[i]);go[i]=-1;
+            pid_t p=children[i],got;
+            do{got=waitpid(p,&status,0);}while(got<0&&errno==EINTR);
+            if(got!=p)return 14;
             children[i]=0;
             if(!WIFEXITED(status)||WEXITSTATUS(status)!=code)return 15;
             uint32_t v[LANES*4];
             if(!snapshot(v)||v[4*i]!=(uint32_t)p||v[4*i+1]!=1||
                v[4*i+2]!=code||v[4*i+3]!=0)return 16;
+            /* Wrong request must not consume the real confirmation. */
+            uint8_t wrong[FRAME];memcpy(wrong,q,sizeof wrong);wrong[32]^=1;
+            final_len=sizeof(final);
+            if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,wrong,sizeof wrong)!=-1||errno!=EINVAL)return 19;
+            final_len=sizeof(final);
+            if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,q,sizeof q)||
+               final_len!=sizeof(final)||memcmp(final,r,sizeof r))return 20;
+            memcpy(r,final,sizeof r);
+            final_len=sizeof(final);
+            if(sysctlbyname("kern.exodus_amp2_commit_exit",final,&final_len,q,sizeof q)!=-1||errno!=EINVAL)return 21;
         }else return 17;
-        /* Send original kernel reply only after native wait/exit evidence. */
+        /* Exit replies must additionally pass the kernel's one-shot commit gate. */
         fputs("EXODUS_LIVE_REPLY ",stdout);
         for(unsigned i=0;i<FRAME;i++)printf("%02x",(unsigned)r[i]);
         putchar('\n');if(fflush(stdout))return 6;

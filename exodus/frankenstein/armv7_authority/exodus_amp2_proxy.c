@@ -19,7 +19,8 @@ static uint8_t actual_code[LANES], actual_signal[LANES], observed[LANES];
 static eventhandler_tag exit_tag;
 static int stopping;
 static uint32_t vpid[LANES];
-static uint8_t exit_status[LANES];
+static uint8_t exit_status[LANES], pending[LANES], committed[LANES];
+static uint8_t pending_req[LANES][AMP_SIZE],pending_reply[LANES][AMP_SIZE];
 static const uint64_t generation=UINT64_C(0x1020304050607080);
 static const uint64_t base=UINT64_C(0x1234567887654300);
 
@@ -92,6 +93,9 @@ amp_exchange(SYSCTL_HANDLER_ARGS)
     }
     if (m.op==AMP_EXIT_INTENT) {
         exit_status[i]=(uint8_t)m.arg;
+        memcpy(pending_req[i],q,AMP_SIZE);
+        memcpy(pending_reply[i],r,AMP_SIZE);
+        pending[i]=1;
         exited++;
     }
     transactions++;
@@ -103,6 +107,37 @@ SYSCTL_PROC(_kern, OID_AUTO, exodus_amp2,
     CTLTYPE_OPAQUE | CTLFLAG_RW | CTLFLAG_MPSAFE,
     NULL, 0, amp_exchange, "S,amp2", "EXODUS disposable AMP2 fixture");
 
+/* Final exit reply is available exactly once, only after the kernel's
+ * own exit hook observes the matching native process status. */
+static int
+amp_commit_exit(SYSCTL_HANDLER_ARGS)
+{
+    uint8_t q[AMP_SIZE],r[AMP_SIZE];
+    struct amp_msg m;
+    if(req->newptr==NULL||req->oldptr==NULL||
+       req->newlen!=AMP_SIZE||req->oldlen!=AMP_SIZE)return EINVAL;
+    int error=SYSCTL_IN(req,q,sizeof(q));
+    if(error)return error;
+    if(!decode(&m,q,sizeof(q))||m.kind!=AMP_REQ||m.op!=AMP_EXIT_INTENT||
+       m.task<=base||m.task>base+LANES)return EINVAL;
+    unsigned i=(unsigned)(m.task-base-1);
+    mtx_lock(&gate);
+    if(stopping||!pending[i]||committed[i]||memcmp(q,pending_req[i],AMP_SIZE)){
+        mtx_unlock(&gate);return EINVAL;
+    }
+    if(!observed[i]){mtx_unlock(&gate);return EAGAIN;}
+    if(owner[i]||actual_signal[i]||actual_code[i]!=exit_status[i]){
+        mtx_unlock(&gate);return EINVAL;
+    }
+    memcpy(r,pending_reply[i],AMP_SIZE);
+    pending[i]=0;committed[i]=1;
+    mtx_unlock(&gate);
+    /* Copyout failure consumes commit; no ambiguous retry. */
+    return SYSCTL_OUT(req,r,sizeof(r));
+}
+SYSCTL_PROC(_kern,OID_AUTO,exodus_amp2_commit_exit,
+    CTLTYPE_OPAQUE|CTLFLAG_RW|CTLFLAG_MPSAFE,NULL,0,amp_commit_exit,
+    "S,amp2","One-shot native exit confirmation");
 static int
 amp_caller_pid(SYSCTL_HANDLER_ARGS)
 {
@@ -133,7 +168,8 @@ amp_audit(SYSCTL_HANDLER_ARGS)
     mtx_lock(&gate);
     for(unsigned i=0;i<LANES;i++)
         if(vpid[i] && lanes[i].closed && exit_status[i]==23 &&
-           observed[i] && actual_code[i]==23 && actual_signal[i]==0)n++;
+           observed[i] && committed[i] && !pending[i] &&
+           actual_code[i]==23 && actual_signal[i]==0)n++;
     if(exited!=n)n=0;
     mtx_unlock(&gate);
     return SYSCTL_OUT(req,&n,sizeof(n));
@@ -153,6 +189,8 @@ amp_event(module_t mod,int event,void *arg)
         memset(owner,0,sizeof(owner));memset(observed,0,sizeof(observed));
         memset(actual_code,0,sizeof(actual_code));memset(actual_signal,0,sizeof(actual_signal));
         memset(vpid,0,sizeof(vpid));memset(exit_status,0,sizeof(exit_status));
+        memset(pending,0,sizeof(pending));memset(committed,0,sizeof(committed));
+        memset(pending_req,0,sizeof(pending_req));memset(pending_reply,0,sizeof(pending_reply));
         for(unsigned i=0;i<LANES;i++){
             if(!init(&lanes[i],generation,base+i+1)){
                 mtx_destroy(&gate);return (EINVAL);

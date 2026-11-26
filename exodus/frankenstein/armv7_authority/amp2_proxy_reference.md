@@ -12,3 +12,12 @@ Kernel hook owns actual exit evidence; parent supervises execution of exit.
 This is not native remote fork/wait4/signal routing, nor a production process
 namespace; it is a fixed eight-child admission. No physical Tegra claim.
 CI required. Refs #103 #105 #372 #373.
+
+R15.5 hardening: final EXIT_INTENT acknowledgement is separately authorized
+by a kernel sysctl after process_exit evidence. Match the exact pending
+frame, exit code and no signal, permit one commit only. The native relay
+checks premature EAGAIN, wrong request EINVAL and duplicate EINVAL for
+each of eight exits, forwards the committed kernel bytes unchanged.
+Initial intent reply is provisional and never sent to A57 on exit.
+This does not yet replace the native parent supervisor or implement remote
+wait4. Fresh CI required.
