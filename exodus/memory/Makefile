@@ -217,3 +217,15 @@ clean-slab-index:
 	$(RM) test_slab_index$(EXEEXT)
 
 .PHONY: check-slab-index clean-slab-index
+
+bench_ex005$(EXEEXT): bench_ex005.c page_codec.c page_codec.h bdi_slab.c bdi_slab.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARN) $(LDFLAGS) -o $@ bench_ex005.c page_codec.c bdi_slab.c $(LDLIBS)
+
+bench-ex005: bench_ex005$(EXEEXT)
+	./bench_ex005$(EXEEXT)
+
+clean: clean-bench-ex005
+clean-bench-ex005:
+	$(RM) bench_ex005$(EXEEXT)
+
+.PHONY: bench-ex005 clean-bench-ex005

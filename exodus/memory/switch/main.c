@@ -7,7 +7,16 @@
 #include <string.h>
 #include <switch.h>
 
+bool exodus_bench_ex005(FILE *out);
+
 #define SAMPLE_PATH "sdmc:/switch/exodus-page-probe/sample.bin"
+#ifdef EXODUS_BENCH_BASELINE
+#define BENCH_LABEL "Baseline"
+#define BENCH_PATH "sdmc:/switch/exodus-page-probe/ex005-baseline.csv"
+#else
+#define BENCH_LABEL "Candidate"
+#define BENCH_PATH "sdmc:/switch/exodus-page-probe/ex005-candidate.csv"
+#endif
 
 static void make_demo_page(uint8_t *page, size_t index)
 {
@@ -95,6 +104,7 @@ int main(void)
     FILE *input = NULL;
     const char *status = NULL;
     bool redraw = true;
+    bool benchmark = false;
 
     while (appletMainLoop()) {
         padUpdate(&pad);
@@ -110,6 +120,9 @@ int main(void)
             memset(&stats, 0, sizeof(stats));
             input = fopen(SAMPLE_PATH, "rb");
             status = input ? "Scanning file..." : "Could not open the sample file.";
+            redraw = true;
+        } else if (!input && (buttons & HidNpadButton_Y)) {
+            benchmark = true;
             redraw = true;
         } else if (!input && (buttons & HidNpadButton_A)) {
             status = NULL;
@@ -134,15 +147,24 @@ int main(void)
 
         if (redraw) {
             consoleClear();
-            puts("EXODUS memory page probe\n");
-            if (status)
+            puts("EXODUS memory page probe (" BENCH_LABEL ")\n");
+            if (benchmark) {
+                benchmark = false;
+                FILE *csv = fopen(BENCH_PATH, "w");
+                if (!csv) puts("Cannot open benchmark CSV. No measurements taken.");
+                else {
+                    bool ok = exodus_bench_ex005(csv);
+                    if (fclose(csv) != 0) ok = false;
+                    puts(ok ? "Benchmark passed; CSV saved." : "Benchmark FAILED; discard CSV.");
+                }
+            } else if (status)
                 show_measurement(status, &stats);
             else {
                 show_demo();
                 show_word_run_demo();
             }
             puts("\nOptional sample: " SAMPLE_PATH);
-            puts(input ? "B  Cancel scan     +  Exit" : "A  Run demo     X  Scan sample     +  Exit");
+            puts(input ? "B  Cancel scan     +  Exit" : "A  Demo    X  Scan    Y  EX-005 bench    +  Exit");
             redraw = false;
         }
         consoleUpdate(NULL);
