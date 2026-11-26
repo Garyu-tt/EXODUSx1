@@ -1,0 +1,9 @@
+# Kernel Bridge R04: process lifecycle
+
+Stacked on #32. Introduces a fixed-capacity process manager with generation-tagged tokens, explicit ownership, nonblocking polling, cached exit status and rejection of stale tokens. The POSIX reference provider launches actual child executables without a shell, using posix_spawn and waitpid(WNOHANG). Test launches /bin/true and /bin/false independently, checks distinct PIDs and exit codes, rejects early release and stale tokens, and checks slot reuse. This is not a Horizon process launcher.
+
+Single-threaded, zero-initialized manager; never copy it or replace the backend while children are owned. Caller must keep polling until all children are reaped and released. No implicit termination, no arbitrary attach, no inherited shell interpretation. Trusted caller chooses absolute executable paths; environment is inherited; no security sandbox or production policy enforcement. Native errors are backend-specific, not POSIX-normalized across providers. No deadline inside backend; nonblocking poll is a required backend contract. Host smoke applies a bounded polling loop. A real supervisor will need explicit shutdown and lost-child reconciliation.
+
+Horizon adapter is intentionally unsupported pending authorized launch and wait contract evidence. Reuse the existing handle wait primitives where appropriate (#19/#27); distinguish process handles from PIDs and loader session ownership. Next step: map authorized loader/PM launch interfaces, verify real process identity and wait semantics on the console. Do not substitute threads for independent native processes or bypass service permissions.
+
+Host build: `cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined tools/kernel_bridge/process_test.c -o /tmp/exodus-process && /tmp/exodus-process`. CI configured for GCC and Clang. No execution verified at submission.
