@@ -1,0 +1,68 @@
+name: EX-005 integrated store A/B
+on:
+  pull_request:
+    paths:
+      - 'exodus/memory/bench_store_trace.c'
+      - '.github/workflows/ex005-store-ab.yml'
+permissions:
+  contents: read
+jobs:
+  store:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: a000dba9cd71da1568134f6308bb67bc439f8506
+          path: .qa-store-baseline
+          persist-credentials: false
+      - name: Validate archived physical evidence
+        run: |
+          set -euo pipefail
+          evidence=docs/exodus/evidence/ex005-2026-11-26
+          (cd "$evidence" && sha256sum -c SHA256SUMS)
+          for order in device-ab device-ba; do
+            python3 exodus/memory/compare_ex005_bench.py "$evidence/$order/ex005-baseline.csv" "$evidence/$order/ex005-candidate.csv"
+          done
+      - name: Integrated trace on baseline and candidate
+        run: |
+          set -euo pipefail
+          trace="$GITHUB_WORKSPACE/exodus/memory/bench_store_trace.c"
+          for variant in baseline candidate; do
+            if [ "$variant" = baseline ]; then src=.qa-store-baseline/exodus/memory; else src=exodus/memory; fi
+            cc -O2 -std=c99 -Wall -Wextra -Wpedantic -Werror -I"$src" "$trace" "$src"/{page_codec,page_store,page_dedup_store,page_read,bdi_slab}.c -o "$RUNNER_TEMP/$variant"
+          done
+          "$RUNNER_TEMP/baseline" > "$RUNNER_TEMP/baseline-ab.csv"
+          "$RUNNER_TEMP/candidate" > "$RUNNER_TEMP/candidate-ab.csv"
+          "$RUNNER_TEMP/candidate" > "$RUNNER_TEMP/candidate-ba.csv"
+          "$RUNNER_TEMP/baseline" > "$RUNNER_TEMP/baseline-ba.csv"
+          python3 - <<'PY'
+          import csv, os, statistics
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"])
+          reference = None
+          for order in ("ab", "ba"):
+              med = {}
+              for variant in ("baseline", "candidate"):
+                  rows = list(csv.DictReader((root / f"{variant}-{order}.csv").open()))
+                  assert len(rows) == 7
+                  assert [int(r["trial"]) for r in rows] == list(range(7))
+                  assert all(int(r["operations"]) == 32768 and int(r["ticks"]) > 0 and int(r["tick_hz"]) > 0 for r in rows)
+                  signatures = {(r["digest"], r["unique_pages"]) for r in rows}
+                  assert len(signatures) == 1
+                  if reference is None:
+                      reference = signatures
+                  assert signatures == reference
+                  med[variant] = statistics.median(int(r["ticks"])*1e9/(int(r["tick_hz"])*int(r["operations"])) for r in rows)
+                  print(variant, order, "median_ns", med[variant], "state", rows[-1])
+              print(order, "speedup", med["baseline"]/med["candidate"])
+          PY
+      - name: Sanitized integrated trace
+        run: |
+          set -euo pipefail
+          src=exodus/memory
+          clang -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -std=c99 -Wall -Wextra -Wpedantic -Werror -I"$src" "$src"/{bench_store_trace,page_codec,page_store,page_dedup_store,page_read,bdi_slab}.c -o "$RUNNER_TEMP/trace-sanitized"
+          "$RUNNER_TEMP/trace-sanitized"
