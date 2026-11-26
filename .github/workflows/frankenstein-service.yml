@@ -1,0 +1,570 @@
+name: Tumor session service validation
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/graph.json'
+      - 'exodus/frankenstein/validate_graph.py'
+      - 'exodus/frankenstein/partition_contract.py'
+      - 'exodus/frankenstein/ipc_contract.py'
+      - 'exodus/frankenstein/ipc_native.c'
+      - 'exodus/frankenstein/ipc_mailbox.c'
+      - 'exodus/frankenstein/el_probe.S'
+      - 'exodus/frankenstein/el_probe.ld'
+      - 'exodus/frankenstein/bao_guest.S'
+      - 'exodus/frankenstein/bao_mailbox_guest.S'
+      - 'exodus/frankenstein/verify_bao_peer.py'
+      - 'exodus/frankenstein/bao_guest.ld'
+      - 'exodus/frankenstein/bao_reference.c'
+      - 'exodus/frankenstein/bao_freebsd_boot.S'
+      - 'exodus/frankenstein/bao_freebsd_guest.dts'
+      - 'exodus/frankenstein/bao_freebsd_headless.dts'
+      - 'exodus/frankenstein/bao_freebsd_peer_init.S'
+      - 'exodus/frankenstein/bao_freebsd_reference.c'
+      - 'exodus/frankenstein/pack_bao_freebsd.py'
+      - 'exodus/frankenstein/pack_bao_freebsd_root.py'
+      - 'exodus/frankenstein/bao_freebsd_init_probe.S'
+      - 'exodus/frankenstein/bao-freebsd-rescue-rc.sh'
+      - 'exodus/frankenstein/bao-freebsd-ssh-rc.sh'
+      - 'exodus/frankenstein/prepare_bao_ssh_root.py'
+      - 'exodus/frankenstein/test_prepare_bao_ssh_root.py'
+      - 'exodus/frankenstein/test_ipc_process.py'
+      - 'exodus/frankenstein/sessiond.c'
+      - 'exodus/frankenstein/test_sessiond.py'
+      - 'exodus/frankenstein/sessiond-dbus.inc'
+      - 'exodus/frankenstein/test_sessiond_dbus.sh'
+      - 'exodus/frankenstein/test_dbus_contract.py'
+      - '.github/workflows/frankenstein-service.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host:
+    strategy:
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: |
+          python3 exodus/frankenstein/validate_graph.py
+          python3 exodus/frankenstein/partition_contract.py
+          python3 exodus/frankenstein/pack_bao_freebsd_root.py --selftest
+          python3 exodus/frankenstein/test_prepare_bao_ssh_root.py
+          python3 exodus/frankenstein/verify_bao_peer.py --selftest
+          python3 exodus/frankenstein/ipc_contract.py
+          python3 -W error::ResourceWarning exodus/frankenstein/test_ipc_process.py
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -DTMR_SELFTEST -fsanitize=address,undefined -fno-sanitize-recover=all exodus/frankenstein/ipc_native.c -o /tmp/tumor-ipc-native
+          ASAN_OPTIONS=detect_leaks=1 /tmp/tumor-ipc-native
+          cc -std=c11 -Wall -Wextra -Werror -pedantic -DTMR_MAILBOX_SELFTEST -fsanitize=address,undefined -fno-sanitize-recover=all exodus/frankenstein/ipc_mailbox.c -o /tmp/tumor-ipc-mailbox
+          ASAN_OPTIONS=detect_leaks=1 /tmp/tumor-ipc-mailbox
+          cc -std=c11 -Wall -Wextra -Werror -O2 exodus/frankenstein/sessiond.c -o /tmp/exodus-sessiond
+          python3 exodus/frankenstein/test_sessiond.py /tmp/exodus-sessiond
+      - name: Install native GLib and D-Bus test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglib2.0-dev libglib2.0-bin dbus-daemon
+      - name: Test upstream session interface subset on an isolated bus
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -O2 -DEXODUS_DBUS exodus/frankenstein/sessiond.c $(pkg-config --cflags --libs gio-2.0) -o /tmp/exodus-sessiond-dbus
+          dbus-run-session -- sh exodus/frankenstein/test_sessiond_dbus.sh /tmp/exodus-sessiond-dbus
+          dbus-run-session -- python3 exodus/frankenstein/test_dbus_contract.py /tmp/exodus-sessiond-dbus
+
+  armv7-ipc-reference:
+    # Cortex-A9 Linux userspace emulation only; not FreeBSD or ADSP runtime.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install ARMv7 reference tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf libc6-dev-armhf-cross binutils-arm-linux-gnueabihf qemu-user gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+      - name: Test heartbeat and mailbox on emulated Cortex-A9
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=exodus/frankenstein
+          flags=(-mcpu=cortex-a9 -mfpu=vfpv3-d16 -mfloat-abi=hard -std=c11 -O2 -Wall -Wextra -Werror -pedantic -static)
+          arm-linux-gnueabihf-gcc "${flags[@]}" -DTMR_SELFTEST "$src/ipc_native.c" -o /tmp/tumor-armv7-codec
+          arm-linux-gnueabihf-gcc "${flags[@]}" -DTMR_MAILBOX_SELFTEST "$src/ipc_mailbox.c" -o /tmp/tumor-armv7-mailbox
+          for bin in /tmp/tumor-armv7-codec /tmp/tumor-armv7-mailbox; do
+            arm-linux-gnueabihf-readelf -h "$bin" > "$bin.header"
+            grep -E 'Class:.*ELF32' "$bin.header"
+            grep -E 'Machine:.*ARM$' "$bin.header"
+            timeout 30s qemu-arm -cpu cortex-a9 "$bin"
+          done
+          echo TUMOR_ARMV7_IPC_REFERENCE_PASS
+
+      - name: Test mixed ARMv7 and AArch64 mailbox ABI in shared host RAM
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(mktemp -d)"
+          trap 'rm -rf "$out"' EXIT
+          src="$GITHUB_WORKSPACE/exodus/frankenstein"
+          cat > "$out/mixed.c" <<'EOF'
+          #define TMR_MAILBOX_SELFTEST
+          #define main mailbox_selftest_main
+          #include "ipc_mailbox.c"
+          #undef main
+          #include <fcntl.h>
+          #include <sys/stat.h>
+
+          int main(int argc, char **argv) {
+              if (argc != 3 || strlen(argv[1]) != 1) return 10;
+              char mode = argv[1][0];
+              if (mode != 'i' && mode != '1' && mode != '2') return 11;
+              int fd = open(argv[2], mode == 'i' ? O_RDWR | O_CREAT | O_EXCL : O_RDWR, 0600);
+              if (fd < 0) return 12;
+              if (mode == 'i' && ftruncate(fd, sizeof(tmr_mailbox))) return 13;
+              struct stat st;
+              if (fstat(fd, &st) || st.st_size != (off_t)sizeof(tmr_mailbox)) return 14;
+              tmr_mailbox *m = mmap(NULL, sizeof(*m), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+              if (m == MAP_FAILED) return 15;
+              int rc = mode == 'i' ? !mailbox_init(m) : exchange(m, (uint8_t)(mode - '0'));
+              if (munmap(m, sizeof(*m)) || close(fd)) return 16;
+              return rc;
+          }
+          EOF
+          common=(-std=c11 -O2 -Wall -Wextra -Werror -pedantic -static -I"$src")
+          arm-linux-gnueabihf-gcc "${common[@]}" -mcpu=cortex-a9 -mfpu=vfpv3-d16 -mfloat-abi=hard "$out/mixed.c" -o "$out/peer32"
+          aarch64-linux-gnu-gcc "${common[@]}" -mcpu=cortex-a57 "$out/mixed.c" -o "$out/peer64"
+          for role32 in 1 2; do
+            role64=$((3-role32))
+            file="$out/mailbox-$role32"
+            qemu-aarch64 -cpu cortex-a57 "$out/peer64" i "$file"
+            timeout 30s qemu-arm -cpu cortex-a9 "$out/peer32" "$role32" "$file" &
+            p32=$!
+            timeout 30s qemu-aarch64 -cpu cortex-a57 "$out/peer64" "$role64" "$file" &
+            p64=$!
+            rc32=0; rc64=0
+            wait "$p32" || rc32=$?
+            wait "$p64" || rc64=$?
+            echo "mixed role32=$role32 rc32=$rc32 rc64=$rc64"
+            test "$rc32" -eq 0
+            test "$rc64" -eq 0
+          done
+          echo TUMOR_MIXED_WIDTH_IPC_REFERENCE_PASS
+
+  armv7-kernel-reference:
+    # QEMU virt / Cortex-A15 is a 32-bit OS control, not the Cortex-A9 ADSP.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install isolated reference emulator
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-system-arm u-boot-qemu curl xz-utils expect dosfstools mtools
+      - name: Boot verified FreeBSD ARMv7 release without network
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(mktemp -d)"
+          trap 'rm -rf "$out"' EXIT
+          cd "$out"
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 240 \
+            "https://download.freebsd.org/releases/ISO-IMAGES/15.1/$image.xz" -o "$image.xz"
+          # Official release announcement, SHA512 and SHA256 for compressed image.
+          printf '%s  %s\n' a50077a25a44a38cf3ff55b0a6e3da839ea96b829e5d975f27e1f3c0a6f0f68ef97a7d5ce845f3f0d76fce800814e57ff9c3499d518257210eb7e32913c720f5 "$image.xz" | sha512sum -c -
+          printf '%s  %s\n' d568d7324825af9072405b11b7d0f4ba892d10ca05687fe4fd65e328e72cf7b8 "$image.xz" | sha256sum -c -
+          xz -d "$image.xz"
+          uboot=/usr/lib/u-boot/qemu_arm/u-boot.bin
+          test -s "$uboot"
+          qemu-system-arm --version
+          dpkg-query -W qemu-system-arm u-boot-qemu
+          sha256sum "$uboot"
+          src="$GITHUB_WORKSPACE/exodus/frankenstein"
+          truncate -s 16M ipc-source.img
+          mkfs.vfat -n TMRIPC ipc-source.img
+          mcopy -i ipc-source.img "$src/ipc_native.c" "$src/ipc_mailbox.c" ::
+          cat > ipc-test.sh <<'SCRIPT'
+          #!/bin/sh
+          set -eu
+          work="$(mktemp -d /tmp/tmr-ipc.XXXXXX)"
+          trap 'rm -rf "$work"' EXIT
+          cp /mnt/ipc_native.c /mnt/ipc_mailbox.c "$work/"
+          cd "$work"
+          sha256 -q ipc_native.c
+          sha256 -q ipc_mailbox.c
+          cc --version
+          cc -std=c11 -O2 -Wall -Wextra -Werror -pedantic -DTMR_SELFTEST ipc_native.c -o codec
+          cc -std=c11 -O2 -Wall -Wextra -Werror -pedantic -DTMR_MAILBOX_SELFTEST ipc_mailbox.c -o mailbox
+          file codec mailbox
+          ./codec
+          ./mailbox
+          printf '%s%s\n' EXODUS_FREEBSD_ARMV7_IPC_ PASS
+          SCRIPT
+          mcopy -i ipc-source.img ipc-test.sh ::
+          sha256sum "$src/ipc_native.c" "$src/ipc_mailbox.c"
+          cat > boot.exp <<'EOF'
+          set timeout 420
+          set uboot [lindex $argv 0]
+          set image [lindex $argv 1]
+          set source [lindex $argv 2]
+          spawn -noecho qemu-system-arm -M virt -cpu cortex-a15 -m 768 -smp 1 -nographic -monitor none -nic none -bios $uboot -drive if=virtio,file=$image,format=raw,snapshot=on -drive if=virtio,file=$source,format=raw,readonly=on -no-reboot
+          proc fail {message} {
+              puts stderr $message
+              catch {exec kill -TERM [exp_pid]}
+              catch {close}
+              catch {wait}
+              exit 1
+          }
+          expect {
+              -re {login: *$} {}
+              timeout {fail "ARMv7 reference: login timed out"}
+              eof {fail "ARMv7 reference: emulator exited before login"}
+          }
+          set timeout 30
+          send -- "root\r"
+          expect {
+              -re {Password: *$} {
+                  send -- "root\r"
+                  exp_continue
+              }
+              -re {# *$} {}
+              -re {Login incorrect} {fail "ARMv7 reference: console login rejected"}
+              timeout {fail "ARMv7 reference: shell unavailable"}
+              eof {fail "ARMv7 reference: unexpected emulator exit"}
+          }
+          # Split marker so terminal echo of the command cannot satisfy the gate.
+          send -- {/bin/sh -c 'uname -a; test "$(uname -s)" = FreeBSD && test "$(uname -p)" = armv7 && case "$(uname -r)" in 15.1-RELEASE*) printf "%s%s\n" EXODUS_ARMV7_KERNEL_ PASS;; esac'}
+          send -- "\r"
+          expect {
+              -re {(?m)^EXODUS_ARMV7_KERNEL_PASS\r*$} {}
+              timeout {fail "ARMv7 reference: OS identity gate failed"}
+              eof {fail "ARMv7 reference: exited before OS identity gate"}
+          }
+          set timeout 180
+          send -- "mount -t msdosfs -o ro /dev/vtbd1 /mnt && /bin/sh /mnt/ipc-test.sh\r"
+          expect {
+              -re {(?m)^EXODUS_FREEBSD_ARMV7_IPC_PASS\r*$} {}
+              timeout {fail "ARMv7 reference: native IPC test failed or timed out"}
+              eof {fail "ARMv7 reference: exited before native IPC gate"}
+          }
+          # Disposable snapshot only. No target device or persistent disk attached.
+          catch {exec kill -TERM [exp_pid]}
+          catch {close}
+          catch {wait}
+          exit 0
+          EOF
+          timeout 13m expect boot.exp "$uboot" "$image" ipc-source.img | tee boot.log
+          tr -d '\r' < boot.log | grep -Fxq EXODUS_ARMV7_KERNEL_PASS
+          tr -d '\r' < boot.log | grep -Fxq EXODUS_FREEBSD_ARMV7_IPC_PASS
+          echo TUMOR_FREEBSD_ARMV7_REFERENCE_PASS
+          echo TUMOR_FREEBSD_ARMV7_NATIVE_IPC_PASS
+
+  reference-el:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install reference tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang lld qemu-system-arm
+      - name: Build and check reference privilege contexts
+        run: |
+          set -eu
+          clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -c exodus/frankenstein/el_probe.S -o /tmp/el-probe.o
+          ld.lld --no-undefined -T exodus/frankenstein/el_probe.ld /tmp/el-probe.o -o /tmp/el-probe.elf
+          test -z "$(nm -u /tmp/el-probe.elf)"
+          for mode in on off; do
+            rc=0
+            timeout 12s qemu-system-aarch64 -machine "virt,virtualization=$mode,gic-version=2,secure=off" -cpu cortex-a57 -smp 1 -m 128 -nic none -display none -monitor none -serial stdio -no-reboot -kernel /tmp/el-probe.elf > "/tmp/el-$mode.log" 2>&1 || rc=$?
+            cat "/tmp/el-$mode.log"
+            test "$rc" -eq 124
+            expected=EL2
+            if [ "$mode" = off ]; then expected=EL1_BLOCKED; fi
+            test "$(grep -c '^TUMOR_REF:' "/tmp/el-$mode.log")" -eq 1
+            grep -qx "TUMOR_REF: $expected" "/tmp/el-$mode.log"
+          done
+
+  bao-reference-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install isolated cross toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross clang lld libssl-dev qemu-system-arm device-tree-compiler curl xz-utils makefs
+      - name: Build synthetic guests and pinned Bao reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          src="$GITHUB_WORKSPACE/exodus/frankenstein"
+          out="$(mktemp -d /tmp/tumor-bao.XXXXXX)"
+          mkdir "$out/config"
+          cp "$src/bao_reference.c" "$out/config/tumor.c"
+          for role in A B; do
+            clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DGUEST_$role -c "$src/bao_guest.S" -o "$out/guest-$role.o"
+            ld.lld --no-undefined -T "$src/bao_guest.ld" "$out/guest-$role.o" -o "$out/guest-$role.elf"
+            ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/guest-$role.o" -o "$out/guest-$role.bin"
+            test -z "$(nm -u "$out/guest-$role.elf")"
+          done
+          git init "$out/bao"
+          git -C "$out/bao" remote add origin https://github.com/bao-project/bao-hypervisor.git
+          git -C "$out/bao" fetch --depth=1 origin 0af4a1ab558ad60c9658af4f43756c4536dd3141
+          git -C "$out/bao" checkout --detach FETCH_HEAD
+          test "$(git -C "$out/bao" rev-parse HEAD)" = 0af4a1ab558ad60c9658af4f43756c4536dd3141
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor CPPFLAGS="-DTUMOR_IMAGES=$out"
+          elf="$out/bao/bin/qemu-aarch64-virt/tumor/bao.elf"
+          test -s "$elf"
+          readelf -h "$elf" | grep AArch64
+          sha256sum "$elf" "$out/bao/bin/qemu-aarch64-virt/tumor/bao.bin"
+          echo "BAO_BUILD_OK"
+          # Minimal reference BL33; QEMU virt only. No physical target payload.
+          printf '.text\n.global _start\n_start:\n mov x0, #0x50000000\n br x0\n' > "$out/ref-bl33.S"
+          aarch64-linux-gnu-gcc -ffreestanding -c "$out/ref-bl33.S" -o "$out/ref-bl33.o"
+          aarch64-linux-gnu-objcopy -O binary -j .text "$out/ref-bl33.o" "$out/ref-bl33.bin"
+          git init "$out/tfa"
+          git -C "$out/tfa" remote add origin https://github.com/bao-project/arm-trusted-firmware.git
+          git -C "$out/tfa" fetch --depth=1 origin e4ffdd76c3c4b1488eb9c290e5b5c676f68f6b38
+          git -C "$out/tfa" checkout --detach FETCH_HEAD
+          test "$(git -C "$out/tfa" rev-parse HEAD)" = e4ffdd76c3c4b1488eb9c290e5b5c676f68f6b38
+          make -C "$out/tfa" -j2 PLAT=qemu CROSS_COMPILE=aarch64-linux-gnu- QEMU_USE_GIC_DRIVER=QEMU_GICV3 BL33="$out/ref-bl33.bin" bl1 fip
+          cp "$out/tfa/build/qemu/release/bl1.bin" "$out/ref-flash.bin"
+          dd if="$out/tfa/build/qemu/release/fip.bin" of="$out/ref-flash.bin" seek=64 bs=4096 conv=notrunc status=none
+          rc=0
+          timeout 15s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$out/bao/bin/qemu-aarch64-virt/tumor/bao.bin,addr=0x50000000,force-raw=on" > "$out/bao-boot.log" 2>&1 || rc=$?
+          cat "$out/bao-boot.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-boot.log" > "$out/bao-boot.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF:' "$out/bao-boot.normalized")" -eq 1
+          grep -ax 'TUMOR_BAO_REF: TWO_EL1_GUESTS_IPC' "$out/bao-boot.normalized"
+          echo "QEMU reference IPC admission only; physical target and OS guests unverified"
+
+          # R35: separate synthetic stage-2 stress control. No OS or stage-1
+          # cacheability claim; preserve the original R25/R32 binaries.
+          mkdir "$out/mailbox-images"
+          for role in A B; do
+            clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DGUEST_$role -c "$src/bao_mailbox_guest.S" -o "$out/mailbox-images/guest-$role.o"
+            ld.lld --no-undefined -T "$src/bao_guest.ld" "$out/mailbox-images/guest-$role.o" -o "$out/mailbox-images/guest-$role.elf"
+            ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/mailbox-images/guest-$role.o" -o "$out/mailbox-images/guest-$role.bin"
+            test -z "$(nm -u "$out/mailbox-images/guest-$role.elf")"
+          done
+          cp "$src/bao_reference.c" "$out/config/tumor_mailbox.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_mailbox CPPFLAGS="-DTUMOR_IMAGES=$out/mailbox-images"
+          mailbox_bao="$out/bao/bin/qemu-aarch64-virt/tumor_mailbox/bao.bin"
+          test -s "$mailbox_bao"
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$mailbox_bao,addr=0x50000000,force-raw=on" > "$out/bao-mailbox.log" 2>&1 || rc=$?
+          cat "$out/bao-mailbox.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-mailbox.log" > "$out/bao-mailbox.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF:' "$out/bao-mailbox.normalized")" -eq 1
+          grep -ax 'TUMOR_BAO_REF: STAGE2_MAILBOX_256_EACH' "$out/bao-mailbox.normalized"
+
+
+          # R26: same reference firmware, real release FreeBSD guest, no root disk.
+          # Archive and ELF are independently pinned; no physical boot payload.
+          curl --fail --location --retry 2 --max-time 180 -o "$out/kernel.txz" https://download.freebsd.org/releases/arm64/aarch64/15.1-RELEASE/kernel.txz
+          printf '%s  %s\n' 05f770c6af035fab312cd65592f1dbd1bff020c7daa75d8d4ecc96cae8f042c0 "$out/kernel.txz" | sha256sum -c -
+          mkdir "$out/freebsd"
+          member="$(tar -tJf "$out/kernel.txz" | awk '$0 == "boot/kernel/kernel" || $0 == "./boot/kernel/kernel" { print }')"
+          test "$(printf '%s\n' "$member" | wc -l)" -eq 1
+          test -n "$member"
+          tar -xJf "$out/kernel.txz" -C "$out/freebsd" "$member"
+          kernel="$out/freebsd/boot/kernel/kernel"
+          printf '%s  %s\n' e66c772fb7b1144c61735c18dceb1f598f87f18b5acd9781c1d78327a6f68379 "$kernel" | sha256sum -c -
+          clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -c "$src/bao_freebsd_boot.S" -o "$out/freebsd-boot.o"
+          ld.lld --no-undefined -T "$src/bao_guest.ld" "$out/freebsd-boot.o" -o "$out/freebsd-boot.elf"
+          ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/freebsd-boot.o" -o "$out/freebsd-boot.bin"
+          test -z "$(nm -u "$out/freebsd-boot.elf")"
+          dtc -I dts -O dtb -o "$out/freebsd.dtb" "$src/bao_freebsd_guest.dts"
+          mkdir "$out/freebsd-images"
+          cp "$out/guest-A.bin" "$out/freebsd-images/guest-A.bin"
+          python3 "$src/pack_bao_freebsd.py" "$kernel" "$out/freebsd-boot.bin" "$out/freebsd.dtb" "$out/freebsd-images/guest-B.bin"
+          cp "$src/bao_freebsd_reference.c" "$out/config/tumor_freebsd.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_freebsd CPPFLAGS="-DTUMOR_IMAGES=$out/freebsd-images"
+          bao_freebsd="$out/bao/bin/qemu-aarch64-virt/tumor_freebsd/bao.bin"
+          test -s "$bao_freebsd"
+          sha256sum "$out/freebsd-images/guest-B.bin" "$out/freebsd.dtb" "$bao_freebsd"
+          rc=0
+          timeout 120s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_freebsd,addr=0x50000000,force-raw=on" > "$out/bao-freebsd.log" 2>&1 || rc=$?
+          cat "$out/bao-freebsd.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-freebsd.log" > "$out/bao-freebsd.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-freebsd.normalized")" -eq 1
+          grep -aE 'FreeBSD 15\.1-RELEASE .*GENERIC arm64' "$out/bao-freebsd.normalized"
+          grep -aF 'mountroot>' "$out/bao-freebsd.normalized"
+          if grep -aiE 'panic:|fatal exception' "$out/bao-freebsd.normalized"; then exit 1; fi
+          echo 'R26 kernel mountroot only; root filesystem, resident peer, userspace and physical Switch remain unverified'
+
+          # R27: actual kernel + isolated UFS RAM disk + synthetic PID1.
+          # The previous rootless gate remains mandatory and independent.
+          # UFS1 control: NetBSD-derived makefs has incompatible UFS2
+          # superblock location metadata (NetBSD PR bin/60947).
+          # This run does not establish UFS2 compatibility.
+          echo 'TUMOR_ROOT_FORMAT=UFS1_CONTROL'
+          mkdir -p "$out/root/sbin" "$out/root/dev" "$out/root/etc" "$out/root-images"
+          clang --target=aarch64-unknown-freebsd -c "$src/bao_freebsd_init_probe.S" -o "$out/init.o"
+          ld.lld -static --no-undefined -e _start "$out/init.o" -o "$out/root/sbin/init"
+          chmod 0755 "$out/root/sbin/init"
+          readelf -h "$out/root/sbin/init" | grep FreeBSD
+          test -z "$(nm -u "$out/root/sbin/init")"
+          makefs -t ffs -o version=1 -B little -s 8m "$out/root.ufs" "$out/root"
+          clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DTUMOR_FREEBSD_NATIVE_METADATA -c "$src/bao_freebsd_boot.S" -o "$out/root-boot.o"
+          ld.lld --no-undefined -T "$src/bao_guest.ld" "$out/root-boot.o" -o "$out/root-boot.elf"
+          ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/root-boot.o" -o "$out/root-boot.bin"
+          cp "$out/guest-A.bin" "$out/root-images/guest-A.bin"
+          python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/root.ufs" "$out/root-images/guest-B.bin"
+          cp "$src/bao_freebsd_reference.c" "$out/config/tumor_root.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_root CPPFLAGS="-DTUMOR_IMAGES=$out/root-images"
+          bao_root="$out/bao/bin/qemu-aarch64-virt/tumor_root/bao.bin"
+          test -s "$bao_root"
+          sha256sum "$out/root.ufs" "$out/root-images/guest-B.bin" "$bao_root"
+          rc=0
+          timeout 120s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_root,addr=0x50000000,force-raw=on" > "$out/bao-root.log" 2>&1 || rc=$?
+          cat "$out/bao-root.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-root.log" > "$out/bao-root.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-root.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_SYNTHETIC_PID1$' "$out/bao-root.normalized")" -eq 1
+          if grep -aiE 'panic:|fatal exception' "$out/bao-root.normalized"; then exit 1; fi
+          echo 'R27 UFS1 control: synthetic PID1 admission only; full FreeBSD userspace and physical coexistence remain unverified'
+
+          # R28: original FreeBSD rescue init and shell, isolated custom rc.
+          # The publisher manifest must match the already pinned kernel archive.
+          release=https://download.freebsd.org/releases/arm64/aarch64/15.1-RELEASE
+          curl --fail --location --retry 2 --max-time 60 -o "$out/MANIFEST" "$release/MANIFEST"
+          kernel_manifest="$(awk '$1 == "kernel.txz" {print $2}' "$out/MANIFEST")"
+          test "$kernel_manifest" = 05f770c6af035fab312cd65592f1dbd1bff020c7daa75d8d4ecc96cae8f042c0
+          base_manifest="$(awk '$1 == "base.txz" {print $2}' "$out/MANIFEST")"
+          printf '%s\n' "$base_manifest" | grep -Ex '[a-f0-9]{64}'
+          curl --fail --location --retry 2 --max-time 300 -o "$out/base.txz" "$release/base.txz"
+          printf '%s  %s\n' "$base_manifest" "$out/base.txz" | sha256sum -c -
+          mkdir -p "$out/base" "$out/stock-root/sbin" "$out/stock-root/bin" "$out/stock-root/rescue" "$out/stock-root/etc" "$out/stock-root/dev" "$out/stock-root/var/run" "$out/stock-root/tmp" "$out/stock-images"
+          # Extract the rescue directory as a group to preserve archive hardlinks.
+          tar -tJf "$out/base.txz" | awk '/^(\.\/)?rescue\// { print }' > "$out/rescue-members"
+          test -s "$out/rescue-members"
+          tar -xJf "$out/base.txz" -C "$out/base" --no-same-owner --no-recursion -T "$out/rescue-members"
+          for tool in init sh sysctl ps mount; do
+            test -f "$out/base/rescue/$tool"
+            test ! -L "$out/base/rescue/$tool"
+            test -x "$out/base/rescue/$tool"
+            cmp "$out/base/rescue/init" "$out/base/rescue/$tool"
+          done
+          readelf -h "$out/base/rescue/init" | grep AArch64
+          sha256sum "$out/base/rescue/init"
+          install -m 0755 "$out/base/rescue/init" "$out/stock-root/sbin/init"
+          ln "$out/stock-root/sbin/init" "$out/stock-root/bin/sh"
+          for tool in sysctl ps; do ln "$out/stock-root/sbin/init" "$out/stock-root/rescue/$tool"; done
+          install -m 0755 "$src/bao-freebsd-rescue-rc.sh" "$out/stock-root/etc/rc"
+          : > "$out/stock-root/etc/ttys"
+          chmod 1777 "$out/stock-root/tmp"
+          makefs -t ffs -o version=1 -B little -s 64m "$out/stock.ufs" "$out/stock-root"
+          cp "$out/guest-A.bin" "$out/stock-images/guest-A.bin"
+          python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/stock.ufs" "$out/stock-images/guest-B.bin"
+          cp "$src/bao_freebsd_reference.c" "$out/config/tumor_stock.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_stock CPPFLAGS="-DTUMOR_IMAGES=$out/stock-images"
+          bao_stock="$out/bao/bin/qemu-aarch64-virt/tumor_stock/bao.bin"
+          test -s "$bao_stock"
+          sha256sum "$out/stock.ufs" "$out/stock-images/guest-B.bin" "$bao_stock"
+          rc=0
+          timeout 120s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_stock,addr=0x50000000,force-raw=on" > "$out/bao-stock.log" 2>&1 || rc=$?
+          cat "$out/bao-stock.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-stock.log" > "$out/bao-stock.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-stock.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_STOCK_INIT_RC$' "$out/bao-stock.normalized")" -eq 1
+          if grep -aiE 'panic:|fatal exception' "$out/bao-stock.normalized"; then exit 1; fi
+          echo 'R28 UFS1 control: original rescue init and custom rc only; stock rc.d, SSH, resident peer and physical coexistence remain unverified'
+
+          # R29: actual release OpenSSH binaries on a separate RAM root.
+          # All networking remains inside the guest, with no QEMU NIC.
+          mkdir "$out/ssh-root" "$out/ssh-base" "$out/ssh-images"
+          tar -xJf "$out/base.txz" -C "$out/ssh-base" --no-same-owner
+          cp -a "$out/stock-root/." "$out/ssh-root/"
+          ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/mount"
+          ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/ifconfig"
+          ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/sleep"
+          for tool in cat id chmod; do ln "$out/ssh-root/sbin/init" "$out/ssh-root/rescue/$tool"; done
+          python3 "$src/prepare_bao_ssh_root.py" "$out/ssh-base" "$out/ssh-root"
+          mkdir -p "$out/ssh-root/etc/ssh" "$out/ssh-root/var/empty" "$out/ssh-root/root" "$out/ssh-root/home/tumor-probe"
+          install -m 0755 "$src/bao-freebsd-ssh-rc.sh" "$out/ssh-root/etc/rc"
+          sh -n "$out/ssh-root/etc/rc"
+          sed -i 's/^root::/root:*:/' "$out/ssh-root/etc/master.passwd"
+          # Unique nonprivileged account; no usable password, no password auth.
+          ! grep -Eq '^([^:]+:){2}60001:|^tumor-probe:' "$out/ssh-root/etc/master.passwd"
+          ! grep -Eq '^([^:]+:){2}60001:|^tumor-probe:' "$out/ssh-root/etc/group"
+          printf '%s\n' 'tumor-probe:x:60001:60001::0:0:Tumor probe:/home/tumor-probe:/bin/sh' >> "$out/ssh-root/etc/master.passwd"
+          printf '%s\n' 'tumor-probe:*:60001:' >> "$out/ssh-root/etc/group"
+          chmod 0600 "$out/ssh-root/etc/master.passwd"
+          printf '%s\n' 'Port 2222' 'ListenAddress 127.0.0.1' 'AddressFamily inet' 'HostKey /etc/ssh/ssh_host_ed25519_key' 'PidFile /var/run/tumor-sshd.pid' 'PermitRootLogin no' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PubkeyAuthentication yes' 'AuthorizedKeysFile /etc/ssh/tumor-authorized-keys' 'UsePAM no' 'PermitEmptyPasswords no' 'AllowTcpForwarding no' 'AllowAgentForwarding no' 'X11Forwarding no' 'PermitTunnel no' 'AllowUsers tumor-probe' 'PermitTTY no' 'PermitUserRC no' > "$out/ssh-root/etc/ssh/tumor-test.conf"
+          chmod 0755 "$out/ssh-root/var/empty"
+          # Only the disposable generated root is affected. sshd verifies
+          # root ownership of its privilege-separation directory.
+          sudo chown -R 0:0 "$out/ssh-root"
+          sudo chown 60001:60001 "$out/ssh-root/home/tumor-probe"
+          sudo chmod 0755 "$out/ssh-root/home/tumor-probe"
+          sudo makefs -t ffs -o version=1 -B little -s 64m "$out/ssh.ufs" "$out/ssh-root"
+          sudo chown "$(id -u):$(id -g)" "$out/ssh.ufs"
+          # Only the SSH control uses a resident synthetic peer; earlier controls unchanged.
+          clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DGUEST_A -DTUMOR_RESIDENT_PEER -c "$src/bao_guest.S" -o "$out/peer.o"
+          ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/peer.o" -o "$out/ssh-images/guest-A.bin"
+          python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/root-boot.bin" "$out/freebsd.dtb" "$out/ssh.ufs" "$out/ssh-images/guest-B.bin"
+          cp "$src/bao_freebsd_reference.c" "$out/config/tumor_ssh.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_ssh CPPFLAGS="-DTUMOR_IMAGES=$out/ssh-images"
+          bao_ssh="$out/bao/bin/qemu-aarch64-virt/tumor_ssh/bao.bin"
+          test -s "$bao_ssh"
+          sha256sum "$out/ssh.ufs" "$out/ssh-images/guest-B.bin" "$bao_ssh"
+          rc=0
+          timeout 300s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -qmp "unix:$out/peer-qmp.sock,server=on,wait=off" -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_ssh,addr=0x50000000,force-raw=on" > "$out/bao-ssh.log" 2>&1 &
+          qemu_pid=$!
+          peer_rc=0
+          python3 "$src/verify_bao_peer.py" "$out/peer-qmp.sock" "$out/bao-ssh.log" || peer_rc=$?
+          wait "$qemu_pid" || rc=$?
+          test "$peer_rc" -eq 0
+          cat "$out/bao-ssh.log"
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-ssh.log" > "$out/bao-ssh.normalized"
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_HANDOFF_AFTER_PEER_IPC$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_RAMROOT_WRITABLE$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LISTENER_READY$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_LOOPBACK_KEX$' "$out/bao-ssh.normalized")" -eq 1
+          if grep -aiE 'panic:|fatal exception' "$out/bao-ssh.normalized"; then exit 1; fi
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_AUTH_COMMAND$' "$out/bao-ssh.normalized")" -eq 1
+          test "$(grep -ac '^TUMOR_BAO_REF: FREEBSD_OPENSSH_REMOTE_EXIT_23$' "$out/bao-ssh.normalized")" -eq 1
+          echo 'R31 control: synthetic EL1 peer counter progresses across authenticated FreeBSD commands; not two real OS kernels or physical coexistence'
+
+          # R32: two original release FreeBSD kernels, separate RAM roots.
+          # Guest A has no UART or other shared device; PID 1 proves kernel
+          # syscall liveness via EL0 register samples. Guest B retains R31 SSH.
+          mkdir -p "$out/dual-images" "$out/peer-root/sbin" "$out/peer-root/dev" "$out/peer-root/etc"
+          clang --target=aarch64-unknown-freebsd -c "$src/bao_freebsd_peer_init.S" -o "$out/peer-init.o"
+          ld.lld -static --no-undefined -e _start -Ttext=0x400000 "$out/peer-init.o" -o "$out/peer-root/sbin/init"
+          chmod 0755 "$out/peer-root/sbin/init"
+          readelf -h "$out/peer-root/sbin/init" | grep FreeBSD
+          readelf -h "$out/peer-root/sbin/init" | grep -E 'Entry point address:.*0x400000$'
+          test -z "$(nm -u "$out/peer-root/sbin/init")"
+          makefs -t ffs -o version=1 -B little -s 8m "$out/peer.ufs" "$out/peer-root"
+          dtc -I dts -O dtb -o "$out/headless.dtb" "$src/bao_freebsd_headless.dts"
+          clang --target=aarch64-none-elf -march=armv8-a -ffreestanding -DTUMOR_HEADLESS_PEER -DTUMOR_FREEBSD_NATIVE_METADATA -c "$src/bao_freebsd_boot.S" -o "$out/headless.o"
+          ld.lld --oformat=binary -T "$src/bao_guest.ld" "$out/headless.o" -o "$out/headless.bin"
+          python3 "$src/pack_bao_freebsd_root.py" "$kernel" "$out/headless.bin" "$out/headless.dtb" "$out/peer.ufs" "$out/dual-images/guest-A.bin"
+          cp "$out/ssh-images/guest-B.bin" "$out/dual-images/guest-B.bin"
+          cp "$src/bao_freebsd_reference.c" "$out/config/tumor_dual.c"
+          make -C "$out/bao" -j2 CROSS_COMPILE=aarch64-linux-gnu- PLATFORM=qemu-aarch64-virt CONFIG_REPO="$out/config" CONFIG=tumor_dual CPPFLAGS="-DTUMOR_IMAGES=$out/dual-images -DTUMOR_DUAL_FREEBSD"
+          bao_dual="$out/bao/bin/qemu-aarch64-virt/tumor_dual/bao.bin"
+          test -s "$bao_dual"
+          sha256sum "$out/dual-images/guest-A.bin" "$out/dual-images/guest-B.bin" "$bao_dual"
+          rc=0
+          timeout 300s qemu-system-aarch64 -machine virt,secure=on,virtualization=on,gic-version=3 -cpu cortex-a53 -smp 4 -m 1024 -nodefaults -nic none -display none -monitor none -qmp "unix:$out/dual-qmp.sock,server=on,wait=off" -serial stdio -no-reboot -bios "$out/ref-flash.bin" -device "loader,file=$bao_dual,addr=0x50000000,force-raw=on" > "$out/bao-dual.log" 2>&1 &
+          qemu_pid=$!
+          peer_rc=0
+          python3 "$src/verify_bao_peer.py" "$out/dual-qmp.sock" "$out/bao-dual.log" --headless-pid1 || peer_rc=$?
+          wait "$qemu_pid" || rc=$?
+          cat "$out/bao-dual.log"
+          test "$peer_rc" -eq 0
+          test "$rc" -eq 124
+          tr -d '\r' < "$out/bao-dual.log" > "$out/bao-dual.normalized"
+          for marker in FREEBSD_HANDOFF_AFTER_PEER_IPC FREEBSD_RAMROOT_WRITABLE FREEBSD_OPENSSH_LISTENER_READY FREEBSD_OPENSSH_LOOPBACK_KEX FREEBSD_OPENSSH_AUTH_COMMAND FREEBSD_OPENSSH_REMOTE_EXIT_23; do
+            test "$(grep -ac "^TUMOR_BAO_REF: $marker$" "$out/bao-dual.normalized")" -eq 1
+          done
+          if grep -aiE 'panic:|fatal exception' "$out/bao-dual.normalized"; then exit 1; fi
+          echo 'R32 reference: two FreeBSD kernel instances, headless PID 1 and authenticated SSH; no Horizon or physical-device claim'

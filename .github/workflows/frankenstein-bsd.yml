@@ -1,0 +1,64 @@
+name: Tumor FreeBSD ARM64 reference
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/guest-*.sh'
+      - 'exodus/frankenstein/tumor_reference_*'
+      - 'exodus/frankenstein/linux-abi-probe.S'
+      - 'exodus/frankenstein/linux-dynamic-probe.c'
+      - 'exodus/frankenstein/run-reference.sh'
+      - 'exodus/frankenstein/sessiond.c'
+      - 'exodus/frankenstein/sessiond-dbus.inc'
+      - 'exodus/frankenstein/test_sessiond.py'
+      - 'exodus/frankenstein/test_sessiond_dbus.sh'
+      - '.github/workflows/frankenstein-bsd.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      max-parallel: 9
+      matrix:
+        include:
+          - mode: graphics
+            minutes: 165
+          - mode: manager
+            minutes: 165
+          - mode: rcresident
+            minutes: 100
+          - mode: native
+            minutes: 85
+          - mode: resident
+            minutes: 85
+          - mode: ssh
+            minutes: 85
+          - mode: linuxdynamic
+            minutes: 35
+          - mode: linuxabi
+            minutes: 35
+          - mode: boot
+            minutes: 35
+    timeout-minutes: ${{ matrix.minutes }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install isolated VM build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-arm qemu-efi-aarch64 qemu-utils dosfstools mtools xz-utils
+      - name: Validate scripts and run FreeBSD ARM64 workload
+        run: |
+          for script in exodus/frankenstein/guest-*.sh; do sh -n "$script"; done
+          sh -n exodus/frankenstein/run-reference.sh
+          sh exodus/frankenstein/run-reference.sh "$RUNNER_TEMP/frankenstein-results" "${{ matrix.mode }}"
+      - name: Publish boot evidence and verified build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tumor-r16-${{ matrix.mode }}-evidence
+          path: ${{ runner.temp }}/frankenstein-results/
+          if-no-files-found: warn

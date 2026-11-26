@@ -1,0 +1,20 @@
+#!/bin/sh
+# PROVIDE: tumor_reference_bus
+# REQUIRE: LOGIN FILESYSTEMS
+# KEYWORD: shutdown
+# Reference service: opt-in, fixed unprivileged test account.
+. /etc/rc.subr
+name=tumor_reference_bus
+rcvar=tumor_reference_bus_enable
+load_rc_config "$name"
+: "${tumor_reference_bus_enable:=NO}"
+command=/usr/sbin/daemon
+pidfile=/var/run/tumor-reference-bus.supervisor.pid
+command_args="-f -P $pidfile -p /var/run/tumor-reference-bus.child.pid -u exodusref -o /var/log/tumor-reference-bus.log /usr/local/bin/dbus-daemon --session --nofork --address=unix:path=/home/exodusref/.config/exodus/bus"
+start_precmd=bus_pre
+bus_pre() {
+    test "$(id -u exodusref)" -gt 0 || return 1
+    # Never unlink an account-controlled path as root.
+    su -m exodusref -c 'test -d /home/exodusref/.config/exodus && test ! -e /home/exodusref/.config/exodus/bus && test ! -L /home/exodusref/.config/exodus/bus'
+}
+run_rc_command "$1"
