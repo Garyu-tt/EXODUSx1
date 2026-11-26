@@ -1,0 +1,36 @@
+name: Tumor EL2 monitor reference
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/el2_monitor_reference.S'
+      - 'exodus/frankenstein/el2_monitor_reference.ld'
+      - 'exodus/frankenstein/EL2_MONITOR.md'
+      - '.github/workflows/tumor-el2-monitor.yml'
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install reference tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu qemu-system-arm
+      - name: Build and verify both privilege paths
+        run: |
+          set -eu
+          src=exodus/frankenstein
+          aarch64-linux-gnu-as -march=armv8-a "$src/el2_monitor_reference.S" -o "$RUNNER_TEMP/monitor.o"
+          aarch64-linux-gnu-ld -T "$src/el2_monitor_reference.ld" "$RUNNER_TEMP/monitor.o" -o "$RUNNER_TEMP/monitor.elf"
+          for mode in on off; do
+            rc=0
+            timeout 8s qemu-system-aarch64 -machine virt,virtualization=$mode -cpu cortex-a57 -smp 1 -m 128M -nographic -monitor none -serial stdio -net none -kernel "$RUNNER_TEMP/monitor.elf" > "$RUNNER_TEMP/$mode.log" 2>&1 || rc=$?
+            cat "$RUNNER_TEMP/$mode.log"
+            test "$rc" = 124
+            if [ "$mode" = on ]; then expected=EXODUS_EL2_REF_PASS; else expected=EXODUS_EL2_REF_EL1_BLOCKED; fi
+            test "$(grep -c '^EXODUS_EL2_REF_' "$RUNNER_TEMP/$mode.log")" = 1
+            tr -d '\r' < "$RUNNER_TEMP/$mode.log" | grep -Fx "$expected"
+          done
