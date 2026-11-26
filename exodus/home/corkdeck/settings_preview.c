@@ -11,6 +11,7 @@
 #include "launcher_image.h"
 #include "native_artwork.h"
 #include "nro_artwork.h"
+#include "library_state.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -125,12 +126,29 @@ static void load_cover(struct ui *ui, const char *path, const char *provider,
     launcher_icon_free(&icon);
 }
 
+#define STATE_A "sdmc:/switch/exodus-shell/library-state.0"
+#define STATE_B "sdmc:/switch/exodus-shell/library-state.1"
+
+static void save_library_state(struct ui *ui, struct exodus_state *state)
+{
+#ifdef __SWITCH__
+    if (!exodus_state_save(state, STATE_A, STATE_B))
+        ui_toast(ui, "Library state not saved", 2500);
+#else
+    (void)ui;
+    (void)state;
+#endif
+}
+
 static size_t filter_cards(const struct exodus_library *library, enum exodus_filter filter,
-                           const unsigned char *favorites, struct exodus_card_index *cards)
+                           const unsigned char *favorites, const struct exodus_state *state,
+                           struct exodus_card_index *cards)
 {
     size_t count = 0;
     for (size_t n = 0; n < exodus_library_count(library); ++n) {
-        uint64_t recent = exodus_library_last_played(library, n);
+        const struct exodus_state_row *row = exodus_state_find(state,
+            exodus_library_provider(library, n), exodus_library_id(library, n));
+        uint64_t recent = row ? row->requested : 0;
         if (exodus_filter_matches(filter, exodus_library_provider(library, n), favorites[n], recent))
             cards[count++] = (struct exodus_card_index){n, recent};
     }
@@ -149,6 +167,11 @@ static int show_library(struct ui *ui, const char *path)
         exodus_library_close(library);
         return 0;
     }
+    struct exodus_state state = {0};
+    state.slot = -1;
+#ifdef __SWITCH__
+    exodus_state_open(&state, STATE_A, STATE_B);
+#endif
     unsigned char *favorites = calloc(total, 1);
     struct exodus_card_index *cards = calloc(total, sizeof(*cards));
     struct cover_slot covers[8] = {{0}};
@@ -158,7 +181,12 @@ static int show_library(struct ui *ui, const char *path)
         ui_message(ui, "EXODUS Library", "Not enough memory");
         goto done;
     }
-    count = filter_cards(library, filter, favorites, cards);
+    for (size_t n=0; n<total; ++n) {
+        const struct exodus_state_row *row = exodus_state_find(&state,
+            exodus_library_provider(library,n), exodus_library_id(library,n));
+        if (row) favorites[n] = row->favorite;
+    }
+    count = filter_cards(library, filter, favorites, &state, cards);
     const struct ui_hint hints[] = {
         {UI_A, "A: Open"}, {UI_B, "B: Back"}, {UI_L, "L: Previous"}, {UI_R, "R: Next"},
         {UI_X, "X: Favorite"}, {UI_Y, "Y: Filter"}
@@ -171,7 +199,7 @@ static int show_library(struct ui *ui, const char *path)
             if (input.button == UI_B) goto done;
             if (input.button == UI_Y) {
                 filter = (enum exodus_filter)((filter + 1) % FILTER_COUNT);
-                count = filter_cards(library, filter, favorites, cards);
+                count = filter_cards(library, filter, favorites, &state, cards);
                 selection = 0;
                 cached_page = (size_t)-1;
                 continue;
@@ -180,8 +208,14 @@ static int show_library(struct ui *ui, const char *path)
             size_t index = cards[selection].index;
             if (input.button == UI_X) {
                 favorites[index] = !favorites[index];
+                struct exodus_state_row *row = exodus_state_get(&state,
+                    exodus_library_provider(library,index), exodus_library_id(library,index));
+                if (row) {
+                    row->favorite = favorites[index];
+                    save_library_state(ui, &state);
+                } else ui_toast(ui, "Favorite kept for this session only", 2500);
                 if (filter == FILTER_FAVORITES) {
-                    count = filter_cards(library, filter, favorites, cards);
+                    count = filter_cards(library, filter, favorites, &state, cards);
                     if (selection >= count) selection = count ? count - 1 : 0;
                     cached_page = (size_t)-1;
                 }
@@ -208,7 +242,20 @@ static int show_library(struct ui *ui, const char *path)
                     snprintf(detail, sizeof(detail), "Target: %s\n%.500s", exodus_route_name(route), id);
                     if (ui_confirm(ui, exodus_library_title(library, index), detail,
                                    route == EXODUS_ROUTE_STEAM ? "Open library" : "Launch")) {
-                        if (exodus_launch(route, id, result)) { handoff = 1; goto done; }
+                        if (exodus_launch(route, id, result)) {
+                            /* Steam only opens its library, not an individual game. */
+                            if (route != EXODUS_ROUTE_STEAM) {
+                                uint64_t sequence=0;
+                                for (size_t k=0;k<state.count;k++)
+                                    if (state.rows[k].requested>sequence) sequence=state.rows[k].requested;
+                                struct exodus_state_row *row=exodus_state_get(&state,provider,id);
+                                if (row && sequence<UINT64_MAX) {
+                                    row->requested=sequence+1;
+                                    save_library_state(ui,&state);
+                                }
+                            }
+                            handoff = 1; goto done;
+                        }
                         ui_message(ui, "Launch unavailable", result);
                     }
                     break;
@@ -266,6 +313,7 @@ done:
     clear_covers(covers);
     free(cards);
     free(favorites);
+    exodus_state_clear(&state);
     exodus_library_close(library);
     return handoff;
 }

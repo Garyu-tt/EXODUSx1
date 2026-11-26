@@ -12,7 +12,7 @@ enum exodus_filter { FILTER_ALL, FILTER_SWITCH, FILTER_HOMEBREW, FILTER_STEAM,
 static inline const char *exodus_filter_name(enum exodus_filter filter)
 {
     static const char *const names[] = {"All", "Switch", "Homebrew", "Steam",
-        "CorkDeck", "Other", "Favorites", "Recently played"};
+        "CorkDeck", "Other", "Favorites", "Recent requests"};
     return filter >= 0 && filter < FILTER_COUNT ? names[filter] : "All";
 }
 
