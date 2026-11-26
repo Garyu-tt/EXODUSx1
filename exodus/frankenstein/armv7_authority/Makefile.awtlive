@@ -1,0 +1,3 @@
+KMOD=exodus_awt_live
+SRCS=exodus_awt_live.c
+.include <bsd.kmod.mk>
