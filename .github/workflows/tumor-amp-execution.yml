@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'exodus/frankenstein/amp_execution_contract.c'
+      - 'exodus/frankenstein/amp_execution_peer.c'
+      - 'exodus/frankenstein/test_amp_execution_peers.py'
       - '.github/workflows/tumor-amp-execution.yml'
 permissions:
   contents: read
@@ -28,3 +30,10 @@ jobs:
           aarch64-linux-gnu-gcc -static -march=armv8-a -O2 -std=c11 -Wall -Wextra -Werror -pedantic -DAMP_SELFTEST "$src" -o "$RUNNER_TEMP/amp64"
           qemu-arm -cpu cortex-a9 "$RUNNER_TEMP/amp32"
           qemu-aarch64 -cpu cortex-a57 "$RUNNER_TEMP/amp64"
+      - name: Actual bidirectional cross-ISA process exchange
+        run: |
+          set -eu
+          src=exodus/frankenstein/amp_execution_peer.c
+          arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 -std=c11 -Wall -Wextra -Werror -pedantic "$src" -o "$RUNNER_TEMP/peer32"
+          aarch64-linux-gnu-gcc -static -march=armv8-a -O2 -std=c11 -Wall -Wextra -Werror -pedantic "$src" -o "$RUNNER_TEMP/peer64"
+          python3 exodus/frankenstein/test_amp_execution_peers.py "$RUNNER_TEMP/peer32" "$RUNNER_TEMP/peer64"
