@@ -51,14 +51,19 @@ jobs:
 
   native:
     runs-on: ubuntu-latest
-    container: devkitpro/devkita64:latest
+    container: devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Install Switch portlibs and host headers
+      - name: Verify pinned Switch SDK and install host headers
         run: |
-          dkp-pacman -Syu --noconfirm --needed switch-dev switch-sdl2 switch-sdl2_ttf switch-libpng switch-libjpeg-turbo
+          # The pinned image already ships the toolchain and required portlibs.
+          # Fail closed if any are absent; never depend on a live SDK upgrade.
+          dkp-pacman -Q devkitA64 libnx switch-sdl2 switch-sdl2_ttf switch-libpng switch-libjpeg-turbo
+          test -x "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc"
+          test -x "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-g++"
+          "$DEVKITPRO/devkitA64/bin/aarch64-none-elf-gcc" --version
           apt-get update
           apt-get install -y git pkg-config nlohmann-json3-dev file
       - name: Checkout exact donor source
