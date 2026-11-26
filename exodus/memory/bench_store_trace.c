@@ -45,10 +45,10 @@ static uint64_t make_trace(void){
     uint64_t expected=UINT64_C(14695981039346656037);
     for(unsigned i=0;i<OPS;i++){
         struct operation *o=&trace[i];unsigned x=random32();
-        o->page=x%N;o->word=random32()%W;o->kind=(x>>8)%10;
+        o->page=x%N;o->word=random32()%W;o->kind=(x>>8)%20;
         uint8_t *p=oracle[o->page]+4*o->word;
-        if(o->kind<7)expected=mix(expected,get(p));
-        else if(o->kind<9){
+        if(o->kind<14)expected=mix(expected,get(p));
+        else if(o->kind<18){
             uint32_t value=(i%11==0)?random32():1000u+(o->page%8)*100000u+(o->word/16)*1000u+random32()%128u;
             put(o->value,value);memcpy(p,o->value,4);
         }
@@ -66,21 +66,36 @@ static int verify(void){
 }
 int main(void){
     uint64_t expected=make_trace();
-    puts("trial,operations,ticks,tick_hz,digest,unique_pages,cold_payload,packed_slots,raw_slots");
+    puts("trial,operations,ticks,tick_hz,digest,unique_pages,cold_payload,packed_slots,raw_slots,hot_reads,cold_reads,hot_writes,cold_writes,promotions,demotions");
     for(unsigned trial=0;trial<TRIALS;trial++){
         if(!setup())return 1;
         uint64_t digest=UINT64_C(14695981039346656037);
+        unsigned hr=0,cr=0,hw=0,cw=0,up=0,down=0;
         clock_t begin=clock();
         for(unsigned i=0;i<OPS;i++){
             const struct operation *o=&trace[i];uint8_t v[4];
-            if(o->kind<7){if(!exodus_page_dedup_store_read_word(&store,o->page,o->word,v))return 2;digest=mix(digest,get(v));}
-            else if(o->kind<9){if(!exodus_page_dedup_store_write_word(&store,o->page,o->word,o->value))return 3;}
-            else {if(!exodus_page_dedup_store_demote(&store,o->page))return 4;}
+            bool is_hot=exodus_hot_find(&store,refs[o->page])!=NULL;
+            if(o->kind<14){
+                if(is_hot)++hr;else ++cr;
+                if(!exodus_page_dedup_store_read_word(&store,o->page,o->word,v))return 2;
+                digest=mix(digest,get(v));
+            }else if(o->kind<18){
+                if(is_hot)++hw;else ++cw;
+                if(!exodus_page_dedup_store_write_word(&store,o->page,o->word,o->value))return 3;
+            }else if(o->kind==18){
+                if(!exodus_page_dedup_store_promote(&store,o->page))return 4;
+                if(!is_hot)++up;
+            }else{
+                if(!exodus_page_dedup_store_demote(&store,o->page))return 4;
+                if(is_hot)++down;
+            }
         }
         clock_t end=clock();
         if(begin==(clock_t)-1||end<=begin||digest!=expected||!verify())return 5;
+        /* Ensure both tiers receive substantial work, not only initial migration. */
+        if(hr<1024||cr<1024||hw<256||cw<256||up<128||down<128)return 6;
         size_t a=0,b=0;for(unsigned i=0;i<S;i++){a+=sr[i]!=0;b+=rr[i]!=0;}
-        printf("%u,%u,%llu,%llu,%llu,%zu,%zu,%zu,%zu\n",trial,(unsigned)OPS,(unsigned long long)(end-begin),(unsigned long long)CLOCKS_PER_SEC,(unsigned long long)digest,store.unique.page_count,store.unique.payload_used,a,b);
+        printf("%u,%u,%llu,%llu,%llu,%zu,%zu,%zu,%zu,%u,%u,%u,%u,%u,%u\n",trial,(unsigned)OPS,(unsigned long long)(end-begin),(unsigned long long)CLOCKS_PER_SEC,(unsigned long long)digest,store.unique.page_count,store.unique.payload_used,a,b,hr,cr,hw,cw,up,down);
     }
     return 0;
 }

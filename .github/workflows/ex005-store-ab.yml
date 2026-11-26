@@ -51,7 +51,11 @@ jobs:
                   assert len(rows) == 7
                   assert [int(r["trial"]) for r in rows] == list(range(7))
                   assert all(int(r["operations"]) == 32768 and int(r["ticks"]) > 0 and int(r["tick_hz"]) > 0 for r in rows)
-                  signatures = {(r["digest"], r["unique_pages"]) for r in rows}
+                  for r in rows:
+                      assert int(r["hot_reads"]) >= 1024 and int(r["cold_reads"]) >= 1024
+                      assert int(r["hot_writes"]) >= 256 and int(r["cold_writes"]) >= 256
+                      assert int(r["promotions"]) >= 128 and int(r["demotions"]) >= 128
+                  signatures = {(r["digest"], r["unique_pages"], r["hot_reads"], r["cold_reads"], r["hot_writes"], r["cold_writes"], r["promotions"], r["demotions"]) for r in rows}
                   assert len(signatures) == 1
                   if reference is None:
                       reference = signatures
