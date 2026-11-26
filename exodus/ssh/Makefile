@@ -17,7 +17,7 @@ all: $(TARGET).nro
 $(BUILD):
 	mkdir -p $@
 
-$(BUILD)/$(TARGET).elf: main.c Makefile | $(BUILD)
+$(BUILD)/$(TARGET).elf: main.c tool_return.h Makefile | $(BUILD)
 	$(CC) -std=gnu11 -O2 -Wall -Wextra $(CFLAGS) $(ARCH) -D__SWITCH__ \
 		-I$(LIBNX)/include -I$(PORTLIBS)/include -specs=$(LIBNX)/switch.specs \
 		$(LDFLAGS) main.c -L$(PORTLIBS)/lib -L$(LIBNX)/lib $(SSH_LIBS) -lnx -o $@
