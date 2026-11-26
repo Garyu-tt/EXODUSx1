@@ -1,0 +1,30 @@
+name: Tumor EL2 guest AMP request reference
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/el2_guest_amp_reference.S'
+      - 'exodus/frankenstein/el2_guest_amp_bridge.c'
+      - 'exodus/frankenstein/amp_smp_authority.c'
+      - 'exodus/frankenstein/test_el2_guest_amp.py'
+      - 'exodus/frankenstein/el2_amp_smp_reference.ld'
+      - 'exodus/frankenstein/EL2_GUEST_AMP.md'
+      - '.github/workflows/tumor-el2-guest-amp.yml'
+permissions:
+  contents: read
+jobs:
+  guest-amp-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf libc6-dev-arm64-cross libc6-dev-armhf-cross qemu-system-arm qemu-user
+      - run: |
+          set -eu
+          src=exodus/frankenstein
+          aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none -T "$src/el2_amp_smp_reference.ld" "$src/el2_guest_amp_reference.S" "$src/el2_guest_amp_bridge.c" -o "$RUNNER_TEMP/amp.elf"
+          arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 "$src/amp_smp_authority.c" -o "$RUNNER_TEMP/authority"
+          python3 "$src/test_el2_guest_amp.py" "$RUNNER_TEMP/amp.elf" "$RUNNER_TEMP/authority"
