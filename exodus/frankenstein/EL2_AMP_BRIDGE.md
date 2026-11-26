@@ -3,3 +3,6 @@ Separate QEMU system Cortex-A57 EL0/EL2 and QEMU Linux user-mode Cortex-A9 autho
 
 ## R02 first CI failure and diagnostic correction
 Job 140141423889 compiled both peers but timed out receiving a frame; the old reader hid partial bytes and transaction index. Root cause not yet proven. Configure reference PL011 explicitly, require a startup marker, print transaction progress, report partial bytes and QEMU exception trace on failure. A malformed response must now produce a dedicated REJECT marker rather than accepting a generic fault. Retest required. No physical change.
+
+## Alignment fault diagnosis
+Job 140143319868 reported a real same-EL data abort ESR 0x96000021 (alignment fault), FAR 0x4008183e, ELR 0x40081358 before READY. The guest emitted FAIL. With MMU off, ordinary C accesses must not rely on unaligned normal-memory behavior. Build the bare-metal AArch64 code with -mstrict-align and include annotated disassembly on failure. This targets the observed fault; exact instruction in the previous binary and success of the correction are not yet verified.

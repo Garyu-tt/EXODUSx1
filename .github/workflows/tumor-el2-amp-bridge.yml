@@ -23,6 +23,7 @@ jobs:
       - run: |
           set -eu
           src=exodus/frankenstein
-          aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none -T "$src/el2_monitor_reference.ld" "$src/el2_amp_reference.S" "$src/el2_amp_bridge.c" -o "$RUNNER_TEMP/bridge.elf"
+          aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -mstrict-align -g -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none -T "$src/el2_monitor_reference.ld" "$src/el2_amp_reference.S" "$src/el2_amp_bridge.c" -o "$RUNNER_TEMP/bridge.elf"
           arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 "$src/amp_execution_peer.c" -o "$RUNNER_TEMP/authority"
-          python3 "$src/test_el2_amp_bridge.py" "$RUNNER_TEMP/bridge.elf" "$RUNNER_TEMP/authority"
+          aarch64-linux-gnu-objdump -d -S "$RUNNER_TEMP/bridge.elf" > "$RUNNER_TEMP/bridge.dis"
+          python3 "$src/test_el2_amp_bridge.py" "$RUNNER_TEMP/bridge.elf" "$RUNNER_TEMP/authority" || { cat "$RUNNER_TEMP/bridge.dis"; exit 1; }
