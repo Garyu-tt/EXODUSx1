@@ -28,6 +28,18 @@ static void *load_font(const char *path, size_t *size)
     return bytes;
 }
 
+/* Preserve the donor header layout; replace only its fixed product label.
+ * Keep the donor's touch hitboxes by supplying plain ASCII button names. */
+static void exodus_header(struct ui *ui, const char *title, const char *context)
+{
+    ui_header(ui, title, context);
+    const int band = UI_HEADER_HEIGHT - 4;
+    SDL_Color opaque = ui->panel;
+    opaque.a = 255;
+    ui_fill(ui, 0, 0, 250, band, opaque);
+    ui_text(ui, ui->normal, 28, (band - TTF_FontHeight(ui->normal)) / 2, "EXODUS", ui->value);
+}
+
 static void set_row(struct ui_row *row, int group, const char *label,
                     const char *value, const char *help)
 {
@@ -125,8 +137,8 @@ static int show_library(struct ui *ui, const char *path)
     }
     count = filter_cards(library, filter, favorites, cards);
     const struct ui_hint hints[] = {
-        {UI_A, "Open"}, {UI_B, "Back"}, {UI_L, "Previous"}, {UI_R, "Next"},
-        {UI_X, "Favorite"}, {UI_Y, "Filter"}
+        {UI_A, "A: Open"}, {UI_B, "B: Back"}, {UI_L, "L: Previous"}, {UI_R, "R: Next"},
+        {UI_X, "X: Favorite"}, {UI_Y, "Y: Filter"}
     };
     ui_start_screen(ui);
     while (ui_begin_frame(ui)) {
@@ -197,8 +209,8 @@ static int show_library(struct ui *ui, const char *path)
         snprintf(page, sizeof(page), "%s | %zu items | %zu / %zu", exodus_filter_name(filter),
                  count, count ? selection / 8 + 1 : 0, (count + 7) / 8);
         ui_background(ui);
-        ui_header(ui, "EXODUS Library", page);
-        if (!count) ui_text(ui, ui.normal, 84, 180, "No matching entries. Press Y to change filter.", ui->text);
+        exodus_header(ui, "EXODUS Library", page);
+        if (!count) ui_text(ui, ui->normal, 84, 180, "No matching entries. Press Y to change filter.", ui->text);
         for (size_t n = first; n < count && n < first + 8; ++n) {
             size_t index = cards[n].index;
             int col = (int)((n - first) % 4), row = (int)((n - first) / 4);
@@ -207,7 +219,7 @@ static int show_library(struct ui *ui, const char *path)
             if (n == selection) ui_outline(ui, x, y, 264, 220, 6, 3, ui->selection);
             ui_text_fit(ui, ui->small, x + 12, y + 12, 200,
                         exodus_library_provider(library, index), ui->dim, 0);
-            if (favorites[index]) ui_text(ui, ui.small, x + 230, y + 12, "*", ui->text);
+            if (favorites[index]) ui_text(ui, ui->small, x + 230, y + 12, "*", ui->text);
             struct cover_slot *cover = &covers[n - first];
             if (cover->texture) {
                 float scale = 116.0f / cover->height;
@@ -274,7 +286,7 @@ static void show_control_center(struct ui *ui)
 {
     struct exodus_metrics metrics;
     struct exodus_settings settings;
-    const struct ui_hint hints[] = {{UI_X, "Refresh"}, {UI_B, "Back"}};
+    const struct ui_hint hints[] = {{UI_X, "X: Refresh"}, {UI_B, "B: Back"}};
     int refresh = 1;
     ui_start_screen(ui);
     while (ui_begin_frame(ui)) {
@@ -290,13 +302,13 @@ static void show_control_center(struct ui *ui)
             refresh = 0;
         }
         const char *labels[] = {"Battery", "Network", "Wi-Fi", "Bluetooth",
-                                "Brightness", "Performance", "Process memory",
+                                "Brightness", "Performance", "Kernel memory charge",
                                 "SD used / capacity", "SoC temperature", "Board temperature"};
         const char *values[] = {settings.battery, settings.network, settings.wifi,
                                 settings.bluetooth, settings.brightness, settings.performance,
                                 metrics.memory, metrics.storage, metrics.soc, metrics.board};
         ui_background(ui);
-        ui_header(ui, "Control Center", "Read-only snapshot");
+        exodus_header(ui, "Control Center", "Read-only snapshot");
         for (int n = 0; n < 10; ++n) {
             int x = 84 + (n % 2) * 568, y = 116 + (n / 2) * 98;
             ui_panel(ui, x, y, 548, 88);
@@ -312,7 +324,7 @@ static void show_control_center(struct ui *ui)
 static void draw_home(struct ui *ui, size_t selection)
 {
     ui_background(ui);
-    ui_header(ui, "EXODUS", "Gaming Mode");
+    exodus_header(ui, "Home", "Gaming Mode");
     for (size_t n = 0; n < PAGE_COUNT; ++n) {
         int x = 84, y = 120 + (int)n * 94;
         ui_panel(ui, x, y, 1112, 82);
@@ -321,7 +333,7 @@ static void draw_home(struct ui *ui, size_t selection)
         ui_text_fit(ui, ui->small, x + 22, y + 47, 1068,
                     exodus_pages[n].description, ui->dim, 0);
     }
-    const struct ui_hint hints[] = {{UI_A, "Open"}, {UI_PLUS, "Control Center"}, {UI_B, "Exit"}};
+    const struct ui_hint hints[] = {{UI_A, "A: Open"}, {UI_PLUS, "+: Control Center"}, {UI_B, "B: Exit"}};
     ui_footer(ui, hints, 3);
 }
 
