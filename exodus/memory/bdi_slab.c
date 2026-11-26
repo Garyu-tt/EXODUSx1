@@ -190,11 +190,6 @@ bool exodus_bdi_slab_read(const struct exodus_bdi_slab *s,const struct exodus_bd
     uint16_t id=p->ids[word/16];if(!live(s,id))return false;
     return exodus_bdi_block_read(slot(s,id),bytes(id),word%16,out);
 }
-static uint32_t load_word(const uint8_t *p)
-{
-    return (uint32_t)p[0] | (uint32_t)p[1]<<8 |
-           (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24;
-}
 bool exodus_bdi_slab_write(struct exodus_bdi_slab *s,struct exodus_bdi_slab_page *p,size_t word,const uint8_t value[4])
 {
     if(!value||word>=1024||!page_ok(s,p))return false;
@@ -202,28 +197,14 @@ bool exodus_bdi_slab_write(struct exodus_bdi_slab *s,struct exodus_bdi_slab_page
     uint8_t *src=slot(s,old), current[4];
     if(!exodus_bdi_block_read(src,bytes(old),w,current))return false;
     if(!memcmp(current,value,4))return true;
-    if(bytes(old)==SMALL){
-        uint32_t base=load_word(src), next=load_word(value);
-        if(next>=base && next-base<=255u){
-            uint8_t delta=(uint8_t)(next-base);
-            bool minimum=delta==0, canonical=true;
-            /* Preserve the encoder's minimum base and reject wrapping
-             * source words from this shortcut. Fall back to re-encoding
-             * if the base would move or the source is noncanonical. */
-            for(size_t i=0;i<16;i++){
-                if(i==w)continue;
-                if((uint32_t)src[4+i]>UINT32_MAX-base){canonical=false;break;}
-                if(src[4+i]==0)minimum=true;
-            }
-            if(canonical&&minimum){
-                if(*ref(s,old)==1){src[4+w]=delta;return true;}
-                size_t cursor=0;uint16_t id;
-                if(!reserve(s,false,&cursor,&id))return false;
-                uint8_t *dst=slot(s,id);
-                memcpy(dst,src,SMALL);dst[4+w]=delta;
-                occupy(s,id);drop(s,old);p->ids[b]=id;return true;
-            }
-        }
+    uint8_t delta;
+    if(bytes(old)==SMALL&&exodus_bdi_direct_delta(src,w,value,&delta)){
+        if(*ref(s,old)==1){src[4+w]=delta;return true;}
+        size_t cursor=0;uint16_t id;
+        if(!reserve(s,false,&cursor,&id))return false;
+        uint8_t *dst=slot(s,id);
+        memcpy(dst,src,SMALL);dst[4+w]=delta;
+        occupy(s,id);drop(s,old);p->ids[b]=id;return true;
     }
     uint8_t block[64],encoded[64];
     exodus_bdi_block_decode(src,bytes(old),block);
