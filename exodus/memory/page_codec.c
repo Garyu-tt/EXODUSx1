@@ -199,8 +199,20 @@ static bool bdi_valid(const uint8_t *p,size_t size)
 }
 bool exodus_page_bdi_read_word(const uint8_t *p,size_t size,size_t word,uint8_t out[4])
 {
-    if(!out || word>=PAGE_WORDS || !bdi_valid(p,size)) return false;
+    if(!out || word>=PAGE_WORDS || !p)return false;
     size_t b=word/16,w=word%16;
+    /* The minimum BDI length uniquely implies 64 packed blocks. Validate
+     * the entire mask before any payload access; memcpy is alignment-safe
+     * and UINT64_MAX is independent of host byte order. No rank scan. */
+    if(size==BDI_HEADER+BLOCKS*BDI_BYTES){
+        uint64_t mask;
+        memcpy(&mask,p+1,sizeof mask);
+        if(p[0]!=EXODUS_PAGE_BDI_VERSION||mask!=UINT64_MAX)return false;
+        size_t pos=BDI_HEADER+b*BDI_BYTES;
+        bdi_put(out,bdi_load(p+pos)+p[pos+4+w]);
+        return true;
+    }
+    if(!bdi_valid(p,size))return false;
     size_t pos=BDI_HEADER+b*BLOCK_BYTES-bdi_count(p+1,b)*(BLOCK_BYTES-BDI_BYTES);
     if(p[1+b/8]&(1u<<(b%8))) bdi_put(out,bdi_load(p+pos)+p[pos+4+w]);
     else memcpy(out,p+pos+w*4,4);
