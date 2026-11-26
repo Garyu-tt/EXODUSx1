@@ -72,6 +72,15 @@ static void check_bdi_direct_fingerprint(void)
         for(size_t i=0;i<8;i++)p[1+i]=(uint8_t)next_random();
         if(trial==0)memset(p+1,0xff,8);
         if(trial==1){memset(p+1,0,8);p[8]=0x80;}
+        /* Cover every possible valid packed count, including 16/17
+         * dispatch boundary, with dispersed masks and wrapping bases. */
+        if(trial>=2&&trial<=65){
+            memset(p+1,0,8);
+            for(unsigned k=0;k<trial-1;k++){
+                unsigned b=(63u+17u*k)%64u;
+                p[1+b/8]|=(uint8_t)(1u<<(b%8));
+            }
+        }
         p[8]|=0x80; /* At least one packed block keeps record below RAW size. */
         size_t pos=9;
         for(size_t block=0;block<64;block++){
