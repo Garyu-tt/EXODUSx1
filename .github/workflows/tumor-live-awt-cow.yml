@@ -13,6 +13,14 @@ on:
       - 'exodus/frankenstein/elf64_loader*'
       - 'exodus/frankenstein/elf_exec_*'
       - 'exodus/frankenstein/amp_execution_contract.c'
+      - 'exodus/frankenstein/armv7_authority/exodus_amp1.c'
+      - 'exodus/frankenstein/armv7_authority/Makefile'
+      - 'exodus/frankenstein/armv7_authority/test_kernel_amp.c'
+      - 'exodus/frankenstein/armv7_authority/guest.sh'
+      - 'exodus/frankenstein/armv7_authority/test_serial_patterns.py'
+      - 'exodus/frankenstein/amp_wait_contract.h'
+      - 'exodus/frankenstein/amp_spawn_contract.h'
+      - 'exodus/frankenstein/test_el2_freebsd_abi.py'
       - '.github/workflows/tumor-live-awt-cow.yml'
   workflow_dispatch:
 permissions:
