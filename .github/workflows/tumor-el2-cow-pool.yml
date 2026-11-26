@@ -1,0 +1,38 @@
+name: Tumor stage-2 COW backing pool
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/el2_cow_pool_reference.S'
+      - 'exodus/frankenstein/el2_cow_pool_bridge.c'
+      - 'exodus/frankenstein/cow_pool.h'
+      - 'exodus/frankenstein/EL2_COW_POOL_REFERENCE.md'
+      - '.github/workflows/tumor-el2-cow-pool.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cow-pool-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross qemu-system-arm
+      - run: |
+          set -eu
+          src=exodus/frankenstein
+          aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none,--fatal-warnings -T "$src/el2_freebsd_abi_reference.ld" "$src/el2_cow_pool_reference.S" "$src/el2_cow_pool_bridge.c" -o "$RUNNER_TEMP/clone.elf"
+          for mode in on off; do
+            rc=0
+            timeout 8s qemu-system-aarch64 -machine virt,virtualization=$mode -cpu cortex-a57 -smp 1 -m 128M -nographic -monitor none -serial stdio -net none -d int,guest_errors -D "$RUNNER_TEMP/$mode.trace" -kernel "$RUNNER_TEMP/clone.elf" > "$RUNNER_TEMP/$mode.log" 2>&1 || rc=$?
+            cat "$RUNNER_TEMP/$mode.log"
+            tail -c 8192 "$RUNNER_TEMP/$mode.trace"
+            test "$rc" = 124
+            if [ "$mode" = on ]; then expected=EXODUS_COW_POOL_REF_PASS; else expected=EXODUS_COW_POOL_REF_EL1_BLOCKED; fi
+            test "$(grep -c '^EXODUS_COW_POOL_REF_' "$RUNNER_TEMP/$mode.log")" = 1
+            tr -d '\r' < "$RUNNER_TEMP/$mode.log" | grep -Fx "$expected"
+          done
+          test "$(grep -c 'Taking exception 2 \[SVC\] on CPU 0' "$RUNNER_TEMP/on.trace")" = 3
+          test "$(grep -c 'Taking exception 11 \[Hypervisor Call\] on CPU 0' "$RUNNER_TEMP/on.trace")" = 3
+          test "$(grep -c 'Taking exception 4 \[Data Abort\] on CPU 0' "$RUNNER_TEMP/on.trace")" = 2
