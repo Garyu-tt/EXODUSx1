@@ -1,0 +1,44 @@
+name: Tumor native FreeBSD ARMv7 kernel AMP gate
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/armv7_authority/**'
+      - 'exodus/frankenstein/amp_execution_contract.c'
+      - '.github/workflows/tumor-armv7-authority.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  armv7-kernel-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python3 exodus/frankenstein/armv7_authority/test_serial_patterns.py
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-system-arm qemu-utils u-boot-qemu dosfstools mtools xz-utils python3-pexpect curl
+      - run: |
+          set -eu
+          src="$GITHUB_WORKSPACE/exodus/frankenstein"
+          mkdir -p "$RUNNER_TEMP/armv7-gate"
+          cd "$RUNNER_TEMP/armv7-gate"
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz
+          curl -fL --retry 3 "https://download.freebsd.org/releases/ISO-IMAGES/15.1/$image" -o "$image"
+          printf '%s  %s\n' d568d7324825af9072405b11b7d0f4ba892d10ca05687fe4fd65e328e72cf7b8 "$image" | sha256sum -c -
+          xz -dc "$image" > disk.raw
+          qemu-img resize -f raw disk.raw 12G
+          curl -fL --retry 3 https://download.freebsd.org/releases/arm64/aarch64/15.1-RELEASE/src.txz -o src.txz
+          printf '%s  src.txz\n' cf5762da53fd52e1eaf0f9ceee9bf58cbe314c821031d0d9ffa76823185a89e1 | sha256sum -c -
+          truncate -s 512M seed.img
+          mkfs.vfat -n EXODUSSEED seed.img
+          mcopy -i seed.img src.txz "$src/amp_execution_contract.c" "$src/armv7_authority/"{exodus_amp1.c,Makefile,test_kernel_amp.c,guest.sh} ::
+          bios=/usr/lib/u-boot/qemu_arm/u-boot.bin
+          test -s "$bios"
+          /usr/bin/python3 "$src/armv7_authority/run.py" disk.raw seed.img "$bios" serial.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: armv7-kernel-authority-evidence
+          path: ${{ runner.temp }}/armv7-gate/serial.log
+          if-no-files-found: warn
