@@ -1,0 +1,37 @@
+name: Tumor A57 stage-2 copy on write
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/el2_cow_reference.S'
+      - 'exodus/frankenstein/EL2_COW_REFERENCE.md'
+      - '.github/workflows/tumor-el2-cow.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cow-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu qemu-system-arm
+      - run: |
+          set -eu
+          src=exodus/frankenstein
+          aarch64-linux-gnu-as -march=armv8-a "$src/el2_cow_reference.S" -o "$RUNNER_TEMP/clone.o"
+          aarch64-linux-gnu-ld -T "$src/el2_freebsd_abi_reference.ld" "$RUNNER_TEMP/clone.o" -o "$RUNNER_TEMP/clone.elf"
+          for mode in on off; do
+            rc=0
+            timeout 8s qemu-system-aarch64 -machine virt,virtualization=$mode -cpu cortex-a57 -smp 1 -m 128M -nographic -monitor none -serial stdio -net none -d int,guest_errors -D "$RUNNER_TEMP/$mode.trace" -kernel "$RUNNER_TEMP/clone.elf" > "$RUNNER_TEMP/$mode.log" 2>&1 || rc=$?
+            cat "$RUNNER_TEMP/$mode.log"
+            tail -c 8192 "$RUNNER_TEMP/$mode.trace"
+            test "$rc" = 124
+            if [ "$mode" = on ]; then expected=EXODUS_COW_REF_PASS; else expected=EXODUS_COW_REF_EL1_BLOCKED; fi
+            test "$(grep -c '^EXODUS_COW_REF_' "$RUNNER_TEMP/$mode.log")" = 1
+            tr -d '\r' < "$RUNNER_TEMP/$mode.log" | grep -Fx "$expected"
+          done
+          test "$(grep -c 'Taking exception 2 \[SVC\] on CPU 0' "$RUNNER_TEMP/on.trace")" = 3
+          test "$(grep -c 'Taking exception 11 \[Hypervisor Call\] on CPU 0' "$RUNNER_TEMP/on.trace")" = 3
+          test "$(grep -c 'Taking exception 4 \[Data Abort\] on CPU 0' "$RUNNER_TEMP/on.trace")" = 2
