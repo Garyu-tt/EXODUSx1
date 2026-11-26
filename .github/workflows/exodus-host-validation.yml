@@ -59,8 +59,30 @@ jobs:
         with:
           persist-credentials: false
       - run: make -C exodus/memory check
-      - name: EX-005 benchmark correctness smoke (not performance gate)
-        run: make -C exodus/memory bench-ex005 WARN='-std=c99 -Wall -Wextra -Wpedantic -Werror'
+      - name: Check out pinned EX-005 baseline
+        uses: actions/checkout@v6
+        with:
+          ref: 400192345d584f91fb5797f40019738b73819c85
+          path: .qa-ex005-baseline
+          persist-credentials: false
+      - name: EX-005 host A/B correctness and indicative timing
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate="$GITHUB_WORKSPACE/exodus/memory"
+          baseline="$GITHUB_WORKSPACE/.qa-ex005-baseline/exodus/memory"
+          flags=(-O2 -std=c99 -Wall -Wextra -Wpedantic -Werror)
+          cp "$candidate/bench_ex005.c" "$baseline/bench_ex005.c"
+          cc "${flags[@]}" -I"$baseline" "$baseline/bench_ex005.c" "$baseline/page_codec.c" "$baseline/bdi_slab.c" -o "$RUNNER_TEMP/ex005-baseline"
+          cc "${flags[@]}" -I"$candidate" "$candidate/bench_ex005.c" "$candidate/page_codec.c" "$candidate/bdi_slab.c" -o "$RUNNER_TEMP/ex005-candidate"
+          "$RUNNER_TEMP/ex005-baseline" > "$RUNNER_TEMP/baseline-first.csv"
+          "$RUNNER_TEMP/ex005-candidate" > "$RUNNER_TEMP/candidate-second.csv"
+          "$RUNNER_TEMP/ex005-candidate" > "$RUNNER_TEMP/candidate-first.csv"
+          "$RUNNER_TEMP/ex005-baseline" > "$RUNNER_TEMP/baseline-second.csv"
+          echo "Host A/B order 1 (not Tegra and not a performance gate)"
+          python3 "$candidate/compare_ex005_bench.py" "$RUNNER_TEMP/baseline-first.csv" "$RUNNER_TEMP/candidate-second.csv"
+          echo "Host A/B order 2 (not Tegra and not a performance gate)"
+          python3 "$candidate/compare_ex005_bench.py" "$RUNNER_TEMP/baseline-second.csv" "$RUNNER_TEMP/candidate-first.csv"
 
   catalog:
     name: Catalog C++ host checks
