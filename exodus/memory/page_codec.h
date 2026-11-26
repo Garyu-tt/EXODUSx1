@@ -35,6 +35,31 @@ size_t exodus_bdi_block_encode(const uint8_t *block,uint8_t *out);
 bool exodus_bdi_block_decode(const uint8_t *encoded,size_t n,uint8_t *out);
 bool exodus_bdi_block_read(const uint8_t *encoded,size_t n,size_t word,uint8_t out[4]);
 
+/* Internal shared fast-path predicate for a 20-byte packed block.
+ * True only if changing one delta preserves canonical encoding.
+ * On false, delta is untouched; callers use the general encoder.
+ * Inline to avoid adding a call to the hot slab write path. */
+static inline bool exodus_bdi_direct_delta(const uint8_t *src,size_t word,
+                                           const uint8_t value[4],uint8_t *delta)
+{
+    if(!src||!value||!delta||word>=16)return false;
+    uint32_t base=(uint32_t)src[0]|(uint32_t)src[1]<<8|
+                  (uint32_t)src[2]<<16|(uint32_t)src[3]<<24;
+    uint32_t next=(uint32_t)value[0]|(uint32_t)value[1]<<8|
+                  (uint32_t)value[2]<<16|(uint32_t)value[3]<<24;
+    if(next<base||next-base>255u)return false;
+    uint8_t d=(uint8_t)(next-base);
+    bool minimum=d==0;
+    for(size_t i=0;i<16;i++){
+        if(i==word)continue;
+        if((uint32_t)src[4+i]>UINT32_MAX-base)return false;
+        if(src[4+i]==0)minimum=true;
+    }
+    if(!minimum)return false;
+    *delta=d;
+    return true;
+}
+
 /* Prepare a single replacement block in independent scratch storage. The
  * original encoded buffer is unchanged; output unchanged on invalid input. */
 struct exodus_bdi_patch {
