@@ -21,3 +21,8 @@ the password prompt. Use the release-documented default root credential only
 in the disposable network-disabled QEMU image, with bounded login steps and
 explicit UID 0 evidence. No production credentials or authentication bypass.
 Native module execution still awaits fresh CI.
+
+Second CI correction: stock console authentication and UID 0 marker were
+observed in the serial log, but the raw regex contained a double-escaped CR.
+Match actual CR/LF (including repeated CR) and require a complete line in
+both authentication and native result gates. Kernel module not yet tested.

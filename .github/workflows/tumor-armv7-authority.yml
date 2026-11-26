@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - run: python3 exodus/frankenstein/armv7_authority/test_serial_patterns.py
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qemu-system-arm qemu-utils u-boot-qemu dosfstools mtools xz-utils python3-pexpect curl
       - run: |
           set -eu
