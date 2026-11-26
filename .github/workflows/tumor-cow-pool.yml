@@ -1,0 +1,28 @@
+name: Tumor COW ownership pool
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/cow_pool.h'
+      - 'exodus/frankenstein/test_cow_pool.c'
+      - '.github/workflows/tumor-cow-pool.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cow-pool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu libc6-dev-armhf-cross libc6-dev-arm64-cross qemu-user
+      - run: |
+          set -eu
+          src=exodus/frankenstein/test_cow_pool.c
+          cc -std=c11 -Wall -Wextra -Werror -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all "$src" -o "$RUNNER_TEMP/native"
+          "$RUNNER_TEMP/native"
+          arm-linux-gnueabihf-gcc -static -std=c11 -Wall -Wextra -Werror -O2 -march=armv7-a -mfpu=vfpv3-d16 "$src" -o "$RUNNER_TEMP/arm"
+          qemu-arm -cpu cortex-a9 "$RUNNER_TEMP/arm"
+          aarch64-linux-gnu-gcc -static -std=c11 -Wall -Wextra -Werror -O2 "$src" -o "$RUNNER_TEMP/a64"
+          qemu-aarch64 -cpu cortex-a57 "$RUNNER_TEMP/a64"
