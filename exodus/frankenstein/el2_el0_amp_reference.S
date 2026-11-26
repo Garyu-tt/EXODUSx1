@@ -392,7 +392,10 @@ sync_saved:
     cmp x2, x3
     b.ne fail
     ldr x2, [x0, #248]
-    ldr x3, =0x4000 + relay_after_hvc - service_vectors
+    adr x3, relay_after_hvc
+    adr x4, service_vectors
+    sub x3, x3, x4
+    add x3, x3, #4, lsl #12
     cmp x2, x3
     b.ne fail
     msr cnthp_ctl_el2, xzr

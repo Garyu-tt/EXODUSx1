@@ -15,3 +15,8 @@ user stack, process termination, hostile-guest security proof, real
 Horizon or physical ADSP. EL0 stub is trusted test code. SVC #0x45 is a
 fixture-only continuation and must not be exposed in a production ABI.
 No physical writes. Refs #103 #105 #364.
+
+CI correction: GNU as rejected a cross-section literal expression for the
+trusted HVC return address. Compute the offset at EL2 using two ADRs and
+translate it into the fixed guest VA instead; the exact-address check remains.
+Execution proof is pending fresh CI.
