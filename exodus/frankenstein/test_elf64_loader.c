@@ -26,9 +26,9 @@ int main(int argc,char **argv){
     memset(snapshot,0,sizeof snapshot);
     for(size_t i=0;i<p.count;i++){
         struct elf64_segment *q=&p.seg[i];
-        memcpy(snapshot+q->va-lo,s+q->file_offset,(size_t)q->filesz);
+        memcpy(snapshot+(size_t)(q->va-lo),s+q->file_offset,(size_t)q->filesz);
         if(q->flags==5){rx++;assert(q->filesz>=12);}
-        if(q->flags==6){rw++;assert(q->memsz-q->filesz>=8192);assert(get(dst+q->va-lo,8)==UINT64_C(0x1234567887654321));}
+        if(q->flags==6){rw++;assert(q->memsz-q->filesz>=8192);assert(get(dst+(size_t)(q->va-lo),8)==UINT64_C(0x1234567887654321));}
     }
     assert(rx==1&&rw==1&&!memcmp(dst,snapshot,sizeof dst));
     uint64_t ph=get(s+32,8);assert(get(s+56,2)==2);

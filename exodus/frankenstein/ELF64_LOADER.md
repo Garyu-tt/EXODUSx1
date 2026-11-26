@@ -16,3 +16,7 @@ loaded backing under EXODUS. Next gate: install the plan into the R12 EL0
 address space and execute the loaded image, then adapt real FreeBSD ABI.
 No PIE, ET_DYN, TLS, relocations, dynamic libraries or physical deployment.
 Refs #103 #105 #365.
+
+QA correction: original CI returned success despite UBSan diagnostics in the
+test's pointer arithmetic. Parenthesize the bounded offset before pointer
+addition, and make every sanitizer diagnostic fatal. Fresh CI required.
