@@ -59,6 +59,8 @@ jobs:
         with:
           persist-credentials: false
       - run: make -C exodus/memory check
+      - name: EX-005 benchmark correctness smoke (not performance gate)
+        run: make -C exodus/memory bench-ex005 WARN='-std=c99 -Wall -Wextra -Wpedantic -Werror'
 
   catalog:
     name: Catalog C++ host checks
