@@ -12,6 +12,9 @@ GATES = (
     "adsp_timer_irq", "reset_clock_ownership", "shared_memory_visibility",
     "dma_isolation", "horizon_audio_renderer", "horizon_audio_output",
     "horizon_opus", "suspend_resume", "stock_recovery",
+    "a57_el2_entry", "a57_stage2_isolation", "cross_kernel_irq_ownership",
+    "cross_kernel_memory_ownership", "dual_kernel_liveness",
+    "native_game_bsd_ssh", "display_hid_handoff",
 )
 def evaluate(data, root):
     if not isinstance(data, dict) or data.get("schema") != 1:
