@@ -15,3 +15,9 @@ QEMU boot, compiler availability, KLD load and test all require fresh CI.
 Next: transport bridge to R14 and real process ownership/lifecycle.
 Refs #103 #105 #369. Official image:
 https://www.freebsd.org/releases/15.1R/announce/
+
+CI correction: first boot reached ttyu0 login, but the runner did not answer
+the password prompt. Use the release-documented default root credential only
+in the disposable network-disabled QEMU image, with bounded login steps and
+explicit UID 0 evidence. No production credentials or authentication bypass.
+Native module execution still awaits fresh CI.
