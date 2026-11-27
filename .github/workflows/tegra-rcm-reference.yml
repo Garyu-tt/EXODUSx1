@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [docs/tegra-research-evidence-r01]
-    paths: ['.github/workflows/tegra-rcm-reference.yml']
+    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py']
 permissions:
   contents: read
 jobs:
@@ -14,6 +14,10 @@ jobs:
       RCM_EMU_NO_AUDIO: "1"
       SDL_VIDEODRIVER: dummy
     steps:
+      - name: Checkout EXODUS fixture
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Install build dependencies
         run: |
           sudo apt-get update -qq
@@ -34,10 +38,23 @@ jobs:
         run: |
           set -o pipefail
           make test 2>&1 | tee reference-test.log
+      - name: EXODUS synthetic mixed-width IPC reference
+        run: |
+          set -o pipefail
+          python3 exodus/tests/rcm_ipc_reference.py upstream
+          cd upstream
+          sh tests/kernelcpu/build.sh
+          LOG=exodus-ipc-emulator.log sh tests/kernelcpu/run.sh ./rcm_emu tests/kernelcpu/payload.bin 2>&1 | tee exodus-ipc-test.log
+          grep -q 'EXODUS IPC REFERENCE: PASS' exodus-ipc-emulator.log
+          if grep -q 'EXODUS IPC REFERENCE: FAIL' exodus-ipc-emulator.log; then exit 1; fi
+          echo 'EXODUS synthetic IPC: PASS' | tee -a exodus-ipc-test.log
       - name: Preserve reference log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: rcm-reference-test
-          path: upstream/reference-test.log
+          path: |
+            upstream/reference-test.log
+            upstream/exodus-ipc-test.log
+            upstream/exodus-ipc-emulator.log
           if-no-files-found: ignore
