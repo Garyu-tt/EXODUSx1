@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ram: [64, 128, 256]
+        ram: [32, 64, 128, 256]
     env:
       RAM_MIB: ${{ matrix.ram }}
     timeout-minutes: 20
@@ -80,27 +80,39 @@ jobs:
               timeout {fail "A9 login timeout"}
               eof {fail "A9 emulator exited before login"}
           }
-          set timeout 45
+          set timeout 90
           send -- "root\r"
           expect {
               -re {Password: *$} {send -- "root\r"; exp_continue}
-              -re {# *$} {}
-              timeout {fail "A9 shell timeout"}
+              -re {(?m)^root@[^\r\n]+# *$} {}
+              timeout {fail "A9 root prompt timeout"}
               eof {fail "A9 emulator exited before shell"}
           }
-          send -- {/bin/sh -c 'set -e; uname -a; sysctl hw.model hw.physmem hw.realmem hw.pagesize vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; sysctl -n hw.model | grep -i cortex-a9; mount; p=/tmp/exodus-memory-test; trap "rm -f $p" EXIT; dd if=/dev/zero of=$p bs=1m count=4; test "$(stat -f %z $p)" -eq 4194304; sha256 $p; (sha256 $p >/dev/null) & child=$!; wait $child; rm -f $p; printf "%s%s\n" EXODUS_A9_MEMORY_ PASS'}
-          send -- "\r"
-          expect {
-              -re {(?m)^EXODUS_A9_MEMORY_PASS\r*$} {}
-              timeout {fail "A9 userspace identity gate failed"}
-              eof {fail "A9 emulator exited before identity gate"}
+          # Synchronize after login's resizewin rather than matching a generic '#'.
+          proc gate {command marker} {
+              send -- "$command\r"
+              expect {
+                  -re "(?m)^$marker\\r*$" {}
+                  timeout {fail "A9 command gate failed: $marker"}
+                  eof {fail "A9 emulator exited: $marker"}
+              }
+              expect {
+                  -re {(?m)^root@[^\r\n]+# *$} {}
+                  timeout {fail "A9 prompt after command missing"}
+                  eof {fail "A9 emulator exited after command"}
+              }
           }
+          gate {printf '%s%s\n' EXODUS_SHELL_ READY} EXODUS_SHELL_READY
+          gate {/bin/sh -c 'set -e; uname -a; sysctl hw.model hw.physmem hw.realmem hw.pagesize; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; sysctl -n hw.model | grep -i cortex-a9; printf "%s%s\n" EXODUS_ID_ PASS'} EXODUS_ID_PASS
+          gate {/bin/sh -c 'set -e; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; mount; printf "%s%s\n" EXODUS_VM_ PASS'} EXODUS_VM_PASS
+          gate {/bin/sh -c 'set -e; dd if=/dev/zero of=/tmp/exodus-memory-test bs=1m count=4; test "$(stat -f %z /tmp/exodus-memory-test)" -eq 4194304; printf "%s%s\n" EXODUS_FILE_ PASS'} EXODUS_FILE_PASS
+          gate {/bin/sh -c 'set -e; sha256 /tmp/exodus-memory-test; (sha256 /tmp/exodus-memory-test >/dev/null) & child=$!; wait $child; rm -f /tmp/exodus-memory-test; printf "%s%s\n" EXODUS_A9_MEMORY_ PASS'} EXODUS_A9_MEMORY_PASS
           catch {exec kill -TERM [exp_pid]}
           catch {close}
           catch {wait}
           exit 0
           EOF
-          timeout 5m expect boot.exp 2>&1 | tee evidence/userspace.log
+          timeout 9m expect boot.exp 2>&1 | tee evidence/userspace.log
           tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_A9_MEMORY_PASS
       - uses: actions/upload-artifact@v4
         if: always()
