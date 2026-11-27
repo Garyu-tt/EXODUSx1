@@ -1,0 +1,33 @@
+name: EXODUS diagnostic shell build
+on:
+  pull_request:
+    paths:
+      - 'tools/exodus-diagnostic-shell/**'
+      - '.github/workflows/exodus-diagnostic-shell.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: make -C tools/exodus-diagnostic-shell
+      - run: sha256sum tools/exodus-diagnostic-shell/exodus-diagnostic-shell.nro
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exodus-diagnostic-shell
+          path: |
+            tools/exodus-diagnostic-shell/exodus-diagnostic-shell.nro
+            tools/exodus-diagnostic-shell/client.py
+          if-no-files-found: error
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tools/exodus-diagnostic-shell -p 'test_*.py'
