@@ -60,3 +60,7 @@ class ClientTests(unittest.TestCase):
 
     def test_probe_inventory(self):
         self.assertEqual(plan("probes"),["probes"])
+
+    def test_ping(self):
+        self.assertEqual(plan("ping"),["ping"])
+        self.assertEqual(plan("repeat ping 3"),["ping"]*3)
