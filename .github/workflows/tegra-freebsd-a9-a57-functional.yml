@@ -1,4 +1,4 @@
-name: EXODUS A9 source kernel and A57 process integration
+name: EXODUS A9 A57 packaged functional reference R70
 on:
   pull_request:
     paths:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RAM_MIB: '512'
-    timeout-minutes: 55
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -142,6 +142,82 @@ jobs:
           set -euo pipefail
           /usr/bin/python3 authority/exodus/frankenstein/armv7_authority/awt_clone_run.py disk.raw seed.img unused evidence/serial.log amp.elf evidence/a57-trace.log
           grep -Fxq 'EXODUS_A9_ID_PASS' <(tr -d '\r' < evidence/serial.log)
+      - name: Assemble reproducible dual-CPU kit
+        run: |
+          set -euo pipefail
+          kit=exodus-dual-cpu
+          mkdir -p "$kit/evidence" "$kit/runner/armv7_authority"
+          cp evidence/kernel.bin evidence/board.dtb evidence/board.dts "$kit/evidence/"
+          cp handoff.bin amp.elf FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz "$kit/"
+          cp authority/exodus/frankenstein/armv7_authority/awt_clone_run.py "$kit/runner/armv7_authority/"
+          cp authority/exodus/frankenstein/test_el2_freebsd_abi.py "$kit/runner/"
+          xz -T2 -1 -c seed.img > "$kit/seed.img.xz"
+          printf '%s\n' "$GITHUB_SHA" > "$kit/workflow-commit.txt"
+          printf '%s\n' fb86a126fb7c9f04476a3a429bdacbf5ab38a9e8 > "$kit/authority-commit.txt"
+          cat > "$kit/run.sh" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          cd -- "$(dirname -- "$0")"
+          sha256sum -c SHA256SUMS
+          for exe in qemu-system-arm qemu-system-aarch64 qemu-img xz python3 timeout; do
+            command -v "$exe" >/dev/null || { echo "Missing dependency: $exe" >&2; exit 2; }
+          done
+          python3 -c 'import pexpect'
+          kit="$PWD"
+          out=$(mktemp -d "$kit/results.XXXXXXXX")
+          tmp=$(mktemp -d)
+          trap 'rm -rf -- "$tmp"' EXIT
+          xz -dc FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz > "$tmp/disk.raw"
+          qemu-img resize -f raw "$tmp/disk.raw" 12G
+          xz -dc seed.img.xz > "$tmp/seed.img"
+          for path in handoff.bin amp.elf evidence runner; do
+            ln -s "$kit/$path" "$tmp/$path"
+          done
+          cd -- "$tmp"
+          timeout 45m python3 runner/armv7_authority/awt_clone_run.py disk.raw seed.img unused "$out/serial.log" amp.elf "$out/a57-trace.log" | tee "$out/result.log"
+          grep -Fxq 'EXODUS_A9_ID_PASS' <(tr -d '\r' < "$out/serial.log")
+          grep -Fxq 'PASS: live native PID, A57 parent/child clone, private RW, native exit status and ECHILD' "$out/result.log"
+          printf 'Logs: %s\n' "$out"
+          EOF
+          cat > "$kit/README.txt" <<'EOF'
+          EXODUS dual-CPU QEMU integration reference, not Switch firmware.
+          Linux dependencies: qemu-system-arm, qemu-utils, python3-pexpect,
+          xz-utils, bash and coreutils. Allow at least 15 GiB free temporary disk.
+          Run: bash run.sh
+          The kit uses a pinned FreeBSD ARMv7 release root, source-built
+          EXODUS_A9_REF kernel (512 MiB), and A57 EL2/EL0 fixture (128 MiB).
+          The original native FreeBSD modules are built in the disposable guest
+          using the included pinned FreeBSD source archive on the FAT seed.
+          The host relays bytes; it does not manufacture authority responses.
+          The test checks native PID, clone isolation, wait/exit and ECHILD.
+          No external network, persistent disk writes or physical hardware.
+          No Horizon, arbitrary AArch64 BSD application, desktop or SSH claim.
+          Upstream FreeBSD sources and distribution retain their own licenses.
+          EOF
+          chmod +x "$kit/run.sh"
+          bash -n "$kit/run.sh"
+          (
+            cd "$kit"
+            sha256sum README.txt run.sh workflow-commit.txt authority-commit.txt \
+              evidence/kernel.bin evidence/board.dtb evidence/board.dts \
+              handoff.bin amp.elf seed.img.xz \
+              runner/armv7_authority/awt_clone_run.py runner/test_el2_freebsd_abi.py \
+              FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+          tar -cf exodus-dual-cpu.tar "$kit"
+      - name: Re-run the actual packaged kit
+        run: |
+          set -euo pipefail
+          mkdir -p packaged
+          tar -xf exodus-dual-cpu.tar -C packaged
+          bash packaged/exodus-dual-cpu/run.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exodus-dual-cpu-functional-kit
+          path: exodus-dual-cpu.tar
+          if-no-files-found: error
+          compression-level: 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
