@@ -25,15 +25,24 @@ def main():
     peer = folder / "cpu0.S"
     c = replace_once(host.read_text(),
         "    /* The bring-up, in ccplex_boot_cpu0() order (Erista). */",
-        """    /* Synthetic fixed-width request: sequence, value, stale generation. */
-    mb[9] = 7u;
+        """    /* Two independent requests: sequence, value, generation. */
+    mb[9] = 42u;
     mb[10] = 0xFFFFFFFFu;
-    mb[11] = 6u;
+    mb[11] = 7u;
+    mb[16] = 43u;
+    mb[17] = 0xFFFFFFFFu;
+    mb[18] = 6u;
+    mb[19] = 0xA5A5A5A5u;
+    mb[20] = 0x5A5A5A5Au;
+    mb[21] = 0u;
+    mb[22] = 0u;
     /* The bring-up, in ccplex_boot_cpu0() order (Erista). */""")
     c = replace_once(c, '    hold_cpu0();',
         """    /* Completion marker is written by CPU0 after these reply fields. */
     if (mb[0] == KCPU_MAGIC && mb[12] == 0u && mb[13] == 1u &&
-        mb[14] == 7u && mb[15] == 1u)
+        mb[14] == 42u && mb[15] == 0u &&
+        mb[19] == 0xA5A5A5A5u && mb[20] == 0x5A5A5A5Au &&
+        mb[21] == 43u && mb[22] == 1u)
         puts_("EXODUS IPC REFERENCE: PASS\\n");
     else
         puts_("EXODUS IPC REFERENCE: FAIL\\n");
@@ -42,15 +51,36 @@ def main():
         """        /* EXODUS synthetic request/reply; no native pointers. */
         ldr     w13, [x1, #36]         /* sequence */
         ldr     w14, [x1, #40]         /* zero extends into x14 */
-        ldr     w15, [x1, #44]         /* stale generation */
+        ldr     w15, [x1, #44]         /* generation */
+        cmp     w15, #7
+        b.ne    exodus_first_reject
         add     x14, x14, #1
         str     w14, [x1, #48]         /* low result word */
         lsr     x14, x14, #32
         str     w14, [x1, #52]         /* high result word */
         str     w13, [x1, #56]         /* echoed sequence */
-        cmp     w15, w13
-        cset    w15, ne
-        str     w15, [x1, #60]         /* generation mismatch flag */
+        str     wzr, [x1, #60]         /* accepted */
+        b       exodus_second
+exodus_first_reject:
+        mov     w15, #1
+        str     w15, [x1, #60]
+exodus_second:
+        ldr     w13, [x1, #64]
+        ldr     w15, [x1, #72]
+        str     w13, [x1, #84]
+        cmp     w15, #7
+        b.ne    exodus_second_reject
+        ldr     w14, [x1, #68]
+        add     x14, x14, #1
+        str     w14, [x1, #76]
+        lsr     x14, x14, #32
+        str     w14, [x1, #80]
+        str     wzr, [x1, #88]
+        b       exodus_complete
+exodus_second_reject:
+        mov     w15, #1
+        str     w15, [x1, #88]         /* no result writes */
+exodus_complete:
         dmb     sy
         ldr     w2, =0x4B435055""")
     # All replacements checked before modifying either file.
