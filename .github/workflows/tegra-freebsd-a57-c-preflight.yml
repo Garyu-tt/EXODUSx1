@@ -1,0 +1,117 @@
+name: EXODUS A57 C ABI fast preflight R91
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - '.github/workflows/tegra-freebsd-a57-c-preflight.yml'
+      - 'exodus/tests/a57_freebsd_process_entry.c'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: cc028a3a359344f1631d8c558b64038aec5e7af1
+          path: authority
+          persist-credentials: false
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang gcc-aarch64-linux-gnu libc6-dev-arm64-cross gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-system-arm qemu-user
+      - name: Build exact R81 process entry and monitor
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          src="$PWD/authority/exodus/frankenstein"
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path("authority/exodus/frankenstein")
+          p=base/"elf_exec_boot.c"
+          s=p.read_text()
+          old="        if(!elf64_load_image(_binary_elf_input_elf_start,n,0x3000,0x6000,b,WINDOW,&p))return 0;"
+          assert s.count(old)==1
+          s=s.replace(old,old+'''
+                  /* Fixed private RW page: data/BSS at bottom, bounded stack at top. */
+                  uint64_t initial[]={2,0x5f60,0x5f70,0,0x5f80,0,6,4096,0,0};
+                  memcpy(b+0x2f00,initial,sizeof initial);
+                  memcpy(b+0x2f60,"exodus",7);
+                  memcpy(b+0x2f70,"lane-0",7);
+                  b[0x2f75]=(uint8_t)('1'+i);
+                  memcpy(b+0x2f80,"MODE=TEST",10);
+          ''')
+          p.write_text(s)
+          p=base/"el2_freebsd_abi_reference.S"
+          s=p.read_text()
+          old="    /* Enter an EL0-only page; EL1 continuation is fixed by the relay. */"
+          assert s.count(old)==1
+          s=s.replace(old,old+"\n    mov x2,#0x5f00\n    msr sp_el0,x2")
+          p.write_text(s)
+          p=base/"elf_exec_fixture.ld"
+          s=p.read_text()
+          assert s.count("*(.text*)")==1
+          s=s.replace("*(.text*)","*(.text.start) *(.text*) *(.rodata*)")
+          p.write_text(s)
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("authority/exodus/frankenstein/el2_freebsd_abi_reference.S")
+          s=p.read_text()
+          # EL1 relay scratch registers belong to the interrupted EL0 context.
+          # Save on private EL1 stack; restore before HVC snapshot or ERET.
+          for old,new in (
+              ("relay_sync:\n    mrs x9", "relay_sync:\n    stp x9,x10,[sp,#-16]!\n    mrs x9"),
+              ("    msr spsr_el1, x9\n    eret\nrelay_submit:\n    hvc #0x44",
+               "    msr spsr_el1, x9\n    ldp x9,x10,[sp],#16\n    eret\nrelay_submit:\n    ldp x9,x10,[sp],#16\n    hvc #0x44"),
+          ):
+              assert s.count(old)==1
+              s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          clang --target=aarch64-unknown-freebsd15.1 -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -fno-unwind-tables -fno-asynchronous-unwind-tables -O2 -Wall -Wextra -Werror -c exodus/tests/a57_freebsd_process_entry.c -o fixture.o
+          aarch64-linux-gnu-objdump -dr fixture.o | tee evidence/c-fixture-disassembly.log
+          aarch64-linux-gnu-nm -u fixture.o > evidence/c-fixture-undefined.log
+          test ! -s evidence/c-fixture-undefined.log
+          aarch64-linux-gnu-ld -z max-page-size=4096 --build-id=none -T "$src/elf_exec_fixture.ld" fixture.o -o elf_input.elf
+          aarch64-linux-gnu-objcopy -I binary -O elf64-littleaarch64 -B aarch64 --rename-section .data=.rodata.elf,alloc,load,readonly,data,contents elf_input.elf elf_input.o
+          aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none,--fatal-warnings -T "$src/el2_freebsd_abi_reference.ld" "$src/el2_freebsd_abi_reference.S" "$src/amp2_pid_bridge.c" "$src/elf64_loader.c" "$src/elf_exec_boot.c" elf_input.o -o amp.elf
+      - name: Synthetic AMP2 peer preflight (not native FreeBSD)
+        run: |
+          set -euo pipefail
+          src="$PWD/authority/exodus/frankenstein"
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("authority/exodus/frankenstein/amp_smp_authority.c")
+          s=p.read_text().replace('amp_execution_contract.c','amp2_pid_contract.c')
+          old='serve(p,q,sizeof q,r)'
+          assert s.count(old)==1
+          s=s.replace(old,'serve(p,q,sizeof q,r,(uint32_t)(100+m.task-base))')
+          p.write_text(s)
+          p=Path("authority/exodus/frankenstein/test_el2_freebsd_abi.py")
+          s=p.read_text().replace('b"AMP1"', 'b"AMP2"').replace('b"AMP1\\x01"', 'b"AMP2\\x02"')
+          old='                write_all(vm.stdin,r)'
+          assert s.count(old)==1
+          s=s.replace(old,'''                assert r[6:7]==q[6:7] and r[8:40]==q[8:40] and r[7]==0
+                          expected=100+task-0x1234567887654300 if i==0 else 0
+                          assert int.from_bytes(r[40:48],"little")==expected
+                          assert r[48:]==bytes(16)
+          '''+old)
+          # Retain full QEMU trace without duplicating the if block.
+          old='            if trace.exists():'
+          assert s.count(old)==1
+          s=s.replace(old,old+'\n                pathlib.Path("evidence/a57-preflight-trace.log").write_bytes(trace.read_bytes())')
+          compile(s,str(p),"exec")
+          p.write_text(s)
+          PY
+          arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 "$src/amp_smp_authority.c" -o synthetic-peer
+          python3 "$src/test_el2_freebsd_abi.py" amp.elf synthetic-peer | tee evidence/preflight.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a57-c-abi-preflight
+          path: evidence/*.log

@@ -1,8 +1,9 @@
-name: EXODUS source A9 and A57 runtime ELF reference R75
+name: EXODUS A57 C process entry reference R79
 on:
   pull_request:
     paths:
       - '.github/workflows/tegra-freebsd-a9-a57-elf.yml'
+      - 'exodus/tests/a57_freebsd_process_entry.c'
   workflow_dispatch:
 permissions:
   contents: read
@@ -72,7 +73,54 @@ jobs:
           truncate -s 512M seed.img
           mkfs.vfat -n EXODUSSEED seed.img
           mcopy -i seed.img src.txz "$src/amp_execution_contract.c" "$src/armv7_authority/"{exodus_amp1.c,Makefile,test_kernel_amp.c,guest.sh,amp2_proxy_relay.c,amp2_proxy_guest.sh,exodus_amp2_proxy.c,Makefile.amp2proxy} "$src/amp2_pid_contract.c" ::
-          aarch64-linux-gnu-as -march=armv8-a "$src/amp2_pid_fixture.S" -o fixture.o
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path("authority/exodus/frankenstein")
+          p=base/"elf_exec_boot.c"
+          s=p.read_text()
+          old="        if(!elf64_load_image(_binary_elf_input_elf_start,n,0x3000,0x6000,b,WINDOW,&p))return 0;"
+          assert s.count(old)==1
+          s=s.replace(old,old+'''
+                  /* Fixed private RW page: data/BSS at bottom, bounded stack at top. */
+                  uint64_t initial[]={2,0x5f60,0x5f70,0,0x5f80,0,6,4096,0,0};
+                  memcpy(b+0x2f00,initial,sizeof initial);
+                  memcpy(b+0x2f60,"exodus",7);
+                  memcpy(b+0x2f70,"lane-0",7);
+                  b[0x2f75]=(uint8_t)('1'+i);
+                  memcpy(b+0x2f80,"MODE=TEST",10);
+          ''')
+          p.write_text(s)
+          p=base/"el2_freebsd_abi_reference.S"
+          s=p.read_text()
+          old="    /* Enter an EL0-only page; EL1 continuation is fixed by the relay. */"
+          assert s.count(old)==1
+          s=s.replace(old,old+"\n    mov x2,#0x5f00\n    msr sp_el0,x2")
+          p.write_text(s)
+          p=base/"elf_exec_fixture.ld"
+          s=p.read_text()
+          assert s.count("*(.text*)")==1
+          s=s.replace("*(.text*)","*(.text.start) *(.text*) *(.rodata*)")
+          p.write_text(s)
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("authority/exodus/frankenstein/el2_freebsd_abi_reference.S")
+          s=p.read_text()
+          # EL1 relay scratch registers belong to the interrupted EL0 context.
+          # Save on private EL1 stack; restore before HVC snapshot or ERET.
+          for old,new in (
+              ("relay_sync:\n    mrs x9", "relay_sync:\n    stp x9,x10,[sp,#-16]!\n    mrs x9"),
+              ("    msr spsr_el1, x9\n    eret\nrelay_submit:\n    hvc #0x44",
+               "    msr spsr_el1, x9\n    ldp x9,x10,[sp],#16\n    eret\nrelay_submit:\n    ldp x9,x10,[sp],#16\n    hvc #0x44"),
+          ):
+              assert s.count(old)==1
+              s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          clang --target=aarch64-unknown-freebsd15.1 -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -fno-unwind-tables -fno-asynchronous-unwind-tables -O2 -Wall -Wextra -Werror -c exodus/tests/a57_freebsd_process_entry.c -o fixture.o
+          aarch64-linux-gnu-objdump -dr fixture.o | tee evidence/c-fixture-disassembly.log
+          aarch64-linux-gnu-nm -u fixture.o > evidence/c-fixture-undefined.log
+          test ! -s evidence/c-fixture-undefined.log
           aarch64-linux-gnu-ld -z max-page-size=4096 --build-id=none -T "$src/elf_exec_fixture.ld" fixture.o -o elf_input.elf
           aarch64-linux-gnu-objcopy -I binary -O elf64-littleaarch64 -B aarch64 --rename-section .data=.rodata.elf,alloc,load,readonly,data,contents elf_input.elf elf_input.o
           aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none,--fatal-warnings -T "$src/el2_freebsd_abi_reference.ld" "$src/el2_freebsd_abi_reference.S" "$src/amp2_pid_bridge.c" "$src/elf64_loader.c" "$src/elf_exec_boot.c" elf_input.o -o amp.elf
@@ -150,7 +198,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: a9-a57-elf-evidence
+          name: a9-a57-process-entry-evidence
           path: |
             evidence/*.log
             elf_input.elf
