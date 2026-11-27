@@ -355,7 +355,7 @@ int main(void){
     consoleInit(NULL);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
-    printf("EXODUS Diagnostic Shell R03\nTrusted isolated LAN only. No encryption.\nA: open one diagnostic session; PLUS: exit.\n");
+    printf("EXODUS Diagnostic Shell R04\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
     bool approve=false;
     while(appletMainLoop()){
         padUpdate(&pad);u64 keys=padGetButtonsDown(&pad);
@@ -371,25 +371,37 @@ int main(void){
     struct sockaddr_in addr={0};
     addr.sin_family=AF_INET;addr.sin_port=htons(17491);addr.sin_addr.s_addr=htonl(INADDR_ANY);
     if(bind(listener,(struct sockaddr*)&addr,sizeof addr)<0||listen(listener,1)<0)goto done;
-    unsigned char random[16];randomGet(random,sizeof random);
-    char code[33];
-    for(unsigned i=0;i<16;i++)snprintf(code+i*2,3,"%02x",(unsigned)random[i]);
     struct in_addr ip={.s_addr=gethostid()};
-    printf("IP: %s port 17491\nPairing code: %s\nPLUS: stop. Five minute idle limit.\n",inet_ntoa(ip),code);
+    printf("IP: %s port 17491\nWaiting for PC. PLUS: stop.\n",inet_ntoa(ip));
     consoleUpdate(NULL);
     u64 deadline=armGetSystemTick()+armNsToTicks(300000000000ull);
+    struct sockaddr_in peer={0};socklen_t peer_len=sizeof peer;
     while(appletMainLoop()&&armGetSystemTick()<deadline){
         padUpdate(&pad);if(padGetButtonsDown(&pad)&HidNpadButton_Plus)goto done;
-        if(wait_io(listener,POLLIN,100)==1){client=accept(listener,NULL,NULL);break;}
+        if(wait_io(listener,POLLIN,100)==1){client=accept(listener,(struct sockaddr*)&peer,&peer_len);break;}
         consoleUpdate(NULL);
     }
     close(listener);listener=-1;
     if(client<0)goto done;
     if(fcntl(client,F_SETFL,O_NONBLOCK)<0)goto done;
     char line[1024];
-    if(!send_text(client,"EXODUS-DIAG/1\n")||!read_line(client,line,sizeof line,&pad))goto done;
-    if(strlen(line)!=32||strcmp(line,code)){send_text(client,"ERR pairing\n");goto done;}
-    memset(code,0,sizeof code);memset(random,0,sizeof random);
+    if(!send_text(client,"EXODUS-DIAG/2\n"))goto done;
+    printf("PC: %s\nA: approve this PC. PLUS: reject.\n",inet_ntoa(peer.sin_addr));
+    consoleUpdate(NULL);
+    bool confirmed=false;
+    deadline=armGetSystemTick()+armNsToTicks(30000000000ull);
+    while(appletMainLoop()&&armGetSystemTick()<deadline){
+        padUpdate(&pad);
+        u64 keys=padGetButtonsDown(&pad);
+        if(keys&HidNpadButton_Plus)break;
+        struct pollfd pending={.fd=client,.events=POLLIN};
+        /* Before approval the client must remain silent and connected. */
+        if(poll(&pending,1,0)!=0)break;
+        if(keys&HidNpadButton_A){confirmed=true;break;}
+        consoleUpdate(NULL);
+        svcSleepThread(16000000);
+    }
+    if(!confirmed){send_text(client,"ERR pairing\n");goto done;}
     printf("Paired. Diagnostic commands only.\n");consoleUpdate(NULL);
     if(!send_text(client,"OK\n"))goto done;
     for(unsigned count=0;count<100&&appletMainLoop();count++){
