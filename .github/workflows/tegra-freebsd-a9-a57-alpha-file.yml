@@ -1,5 +1,8 @@
-name: EXODUS combined Alpha C file reference R94
+name: EXODUS combined Alpha C file reference R96
 on:
+  push:
+    branches:
+      - integration/exodus-alpha-c-file
   pull_request:
     paths:
       - '.github/workflows/tegra-freebsd-a9-a57-alpha-file.yml'
