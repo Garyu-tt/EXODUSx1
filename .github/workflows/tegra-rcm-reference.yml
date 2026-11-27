@@ -1,0 +1,43 @@
+name: Tegra RCM reference
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths: ['.github/workflows/tegra-rcm-reference.yml']
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RCM_EMU_NO_AUDIO: "1"
+      SDL_VIDEODRIVER: dummy
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libunicorn-dev libsdl2-dev gcc-arm-none-eabi libnewlib-arm-none-eabi gcc-aarch64-linux-gnu python3
+      - name: Fetch pinned public reference
+        run: |
+          git init upstream
+          git -C upstream remote add origin https://github.com/Creased/RCM-Emulator.git
+          git -C upstream fetch --depth=1 origin 6e7274187861172d67e6ce2d123b89fec31bffc1
+          git -C upstream checkout --detach FETCH_HEAD
+          git -C upstream submodule update --init --recursive --depth=1
+          test "$(git -C upstream rev-parse HEAD)" = 6e7274187861172d67e6ce2d123b89fec31bffc1
+      - name: Build
+        working-directory: upstream
+        run: make -j2
+      - name: Synthetic upstream regression tests (not EXODUS acceptance)
+        working-directory: upstream
+        run: |
+          set -o pipefail
+          make test 2>&1 | tee reference-test.log
+      - name: Preserve reference log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcm-reference-test
+          path: upstream/reference-test.log
+          if-no-files-found: ignore
