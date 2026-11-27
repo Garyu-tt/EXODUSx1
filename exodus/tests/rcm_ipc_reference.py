@@ -64,7 +64,28 @@ def main():
         mb[80u+i] = 0xA5000000u + i;
         mb[104u+i] = 0x5A000000u + i;
     }
+    /* Separate mailbox for live, post-start generation handoff. */
+    for (u32 i = 120u; i < 128u; i++) mb[i] = 0u;
     /* The bring-up, in ccplex_boot_cpu0() order (Erista). */""")
+    c = replace_once(c, """    while (mb[0] != KCPU_MAGIC && REG(TIMERUS) - start < 200000)
+        udelay(100);""",
+        """    u32 live_phase = 0u;
+    while (mb[0] != KCPU_MAGIC && REG(TIMERUS) - start < 200000) {
+        if (live_phase == 0u && mb[120] == 1u) {
+            mb[121] = 8u; mb[122] = 501u; mb[123] = 9u;
+            mb[124] = 0xCCCCCCCCu; mb[125] = 99u; mb[126] = 0u;
+            mb[120] = 2u;
+            live_phase = 1u;
+        } else if (live_phase == 1u && mb[120] == 3u) {
+            if (mb[124] != 10u || mb[125] != 0u || mb[126] != 501u)
+                break;
+            mb[121] = 7u; mb[122] = 502u; mb[123] = 20u;
+            mb[124] = 0xDDDDDDDDu; mb[125] = 99u; mb[126] = 0u;
+            mb[120] = 4u;
+            live_phase = 2u;
+        }
+        udelay(100);
+    }""")
     c = replace_once(c, '    hold_cpu0();',
         """    /* Completion marker is written by CPU0 after these reply fields. */
     if (mb[0] == KCPU_MAGIC && mb[12] == 0u && mb[13] == 1u &&
@@ -95,7 +116,14 @@ def main():
         puts_("EXODUS EDGE REFERENCE: PASS\\n");
     else
         puts_("EXODUS EDGE REFERENCE: FAIL\\n");
-    if (mb[0] == KCPU_MAGIC && edge_ok && mb[28] == 0u &&
+    u32 live_ok = live_phase == 2u && mb[120] == 5u &&
+        mb[124] == 0xDDDDDDDDu && mb[125] == 1u &&
+        mb[126] == 502u && mb[127] == 8u;
+    if (mb[0] == KCPU_MAGIC && live_ok)
+        puts_("EXODUS LIVE REFERENCE: PASS\\n");
+    else
+        puts_("EXODUS LIVE REFERENCE: FAIL\\n");
+    if (mb[0] == KCPU_MAGIC && edge_ok && live_ok && mb[28] == 0u &&
         mb[24] == 7u && mb[25] == 7u &&
         mb[26] == 4u && mb[27] == 102u &&
         mb[46] == 11u && mb[47] == 0u &&
@@ -199,6 +227,54 @@ exodus_ring_invalid:
 exodus_ring_done:
         ret
 exodus_rings_complete:
+        /* Simulated session generation changes from 7 to 8, no CPU reset. */
+        add     x0, x1, #480
+        mov     w17, #8
+        str     w17, [x0, #28]
+        dmb     sy
+        mov     w18, #1
+        str     w18, [x0]
+exodus_live_wait_first:
+        ldr     w18, [x0]
+        cmp     w18, #2
+        b.eq    exodus_live_first
+        wfe
+        b       exodus_live_wait_first
+exodus_live_first:
+        dmb     sy
+        bl      exodus_live_reply
+        dmb     sy
+        mov     w18, #3
+        str     w18, [x0]
+exodus_live_wait_second:
+        ldr     w18, [x0]
+        cmp     w18, #4
+        b.eq    exodus_live_second
+        wfe
+        b       exodus_live_wait_second
+exodus_live_second:
+        dmb     sy
+        bl      exodus_live_reply
+        dmb     sy
+        mov     w18, #5
+        str     w18, [x0]
+        b       exodus_live_done
+exodus_live_reply:
+        ldr     w19, [x0, #4]
+        ldr     w20, [x0, #8]
+        str     w20, [x0, #24]
+        cmp     w19, w17
+        b.ne    exodus_live_reject
+        ldr     w21, [x0, #12]
+        add     w21, w21, #1
+        str     w21, [x0, #16]
+        str     wzr, [x0, #20]
+        ret
+exodus_live_reject:
+        mov     w21, #1
+        str     w21, [x0, #20]
+        ret
+exodus_live_done:
         dmb     sy
         ldr     w2, =0x4B435055""")
     # All replacements checked before modifying either file.
