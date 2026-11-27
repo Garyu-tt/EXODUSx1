@@ -182,3 +182,9 @@ R19 adds tumor_ipc32_cache_model.c at dd3c152 and CI 015212f. Model has shared b
 ## R20 — Split publication and acknowledgement ordering
 
 R19 [CI 46024574566](https://github.com/Garyu-tt/EXODUSx1/actions/runs/46024574566), job 140592533162, passed. Raw log confirms cache maintenance negative controls, 20000 cache-model exchanges and both coherent-host stress cases. R20 adds tumor_ipc32_order_model.c (e21fdc8) and CI da4b9fb. The deterministic model enumerates all 8! = 40320 permutations of six independent 32-bit payload write completions, publication and one read. Unguarded schedules may expose torn payload; guarded publication is deferred until all six writes complete. Reader retries after eventual publication, only acknowledges a fully matching payload. Separate negative control shows that early acknowledgement permits reuse before read completion. This model uses a full-payload oracle and abstract completed writes, not actual TMR1 receiver integrity guarantees, hardware barriers or a proven noncoherent adapter. R20 runtime result pending. No physical access.
+
+## R21 — Integrated IPC32 and actual TMR1 codec
+
+[R20 run 46025752671](https://github.com/Garyu-tt/EXODUSx1/actions/runs/46025752671): R20 ordering-model step passed; full workflow pending.
+
+R21 adds tumor_ipc32_transport_model.c (bc8c840) and CI bdbf578. Uses the actual pinned Tumor ipc_native.c codec and receiver state machine, two abstract lanes, distinct frame/publication/ack regions, explicit synchronous data clean before publication and invalidate/read before acknowledgement. Tests 40000 frames total across two bidirectional cases, backpressure, token rollover, early publication with absent payload, stale generation, bad sequence and timeout. Model remains deterministic, not concurrent in noncoherent memory; no real cache instructions or device adapter, not all torn frames necessarily detectable by TMR1, no hardware admission. R21 runtime pending. No physical access.
