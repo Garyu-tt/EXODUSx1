@@ -1,7 +1,8 @@
 import io
 import unittest
 from contextlib import redirect_stdout
-from client import report, fields, plan, summary
+from client import report, fields, plan, summary, pair
+from unittest.mock import Mock, patch
 
 BODY=b"schema=1\nkind=exodus_diagnostic_shell\ncommand=all\nadsp_execution=not_tested\na57_el2=not_tested\ndual_kernel=not_tested\ndeployment_authorized=0\nrepeat_safe=yes\n"
 
@@ -26,3 +27,17 @@ class ClientTests(unittest.TestCase):
         with redirect_stdout(out):summary([{"copy_integrity":"pass","copy_bytes":"4000","copy_ns":"1000"},{"copy_integrity":"pass","copy_bytes":"2000","copy_ns":"1000"},{"copy_integrity":"fail","copy_bytes":"9999","copy_ns":"1"}])
         self.assertIn("n=2/3 min=2.000 median=3.000 max=4.000",out.getvalue())
         self.assertIn("pass=2/3",out.getvalue())
+
+    def test_local_pair(self):
+        sock=Mock()
+        with redirect_stdout(io.StringIO()):
+            pair(sock,io.BytesIO(b"EXODUS-DIAG/2\nOK\n"))
+        sock.sendall.assert_not_called()
+    def test_pair_denied(self):
+        with redirect_stdout(io.StringIO()),self.assertRaises(ValueError):
+            pair(Mock(),io.BytesIO(b"EXODUS-DIAG/2\nERR pairing\n"))
+    def test_legacy_pair(self):
+        sock=Mock()
+        with patch("client.getpass.getpass",return_value="a"*32):
+            pair(sock,io.BytesIO(b"EXODUS-DIAG/1\nOK\n"))
+        sock.sendall.assert_called_once_with(b"a"*32+b"\n")
