@@ -145,10 +145,18 @@ jobs:
           gate {mount -uw / && printf '%s%s\n' EXODUS_WRITABLE_ PASS} EXODUS_WRITABLE_PASS
           source transfer.exp
           gate {chmod 700 /tmp/exodus-shm.elf && printf '%s%s\n' EXODUS_MODE_ PASS} EXODUS_MODE_PASS
-          puts [exec qemu-aarch64 ./peer ram.bin $ram init]
+          set init_result [exec qemu-aarch64 ./peer ram.bin $ram init]
+          if {$init_result ne "EXODUS_ARM64_RAM_INIT"} {fail "ARM64 init marker mismatch"}
+          set host_log [open evidence/arm64-peer.log w]
+          puts $host_log $init_result
+          close $host_log
           gate {test -c /dev/mem && printf '%s%s\n' EXODUS_MEMDEV_ PASS} EXODUS_MEMDEV_PASS
           gate {/tmp/exodus-shm.elf && printf '%s%s\n' EXODUS_GUEST_RAM_ EXIT_OK} EXODUS_GUEST_RAM_EXIT_OK
-          puts [exec qemu-aarch64 ./peer ram.bin $ram check]
+          set check_result [exec qemu-aarch64 ./peer ram.bin $ram check]
+          if {$check_result ne "EXODUS_ARM64_RAM_PASS"} {fail "ARM64 check marker mismatch"}
+          set host_log [open evidence/arm64-peer.log a]
+          puts $host_log $check_result
+          close $host_log
           catch {exec kill -TERM [exp_pid]}
           catch {close}
           catch {wait}
@@ -159,11 +167,27 @@ jobs:
           tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_PROBE_PASS
           tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_RAM_PASS
           tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_RAM_EXIT_OK
-          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_ARM64_RAM_PASS
+          grep -Fxq EXODUS_ARM64_RAM_INIT evidence/arm64-peer.log
+          grep -Fxq EXODUS_ARM64_RAM_PASS evidence/arm64-peer.log
+          tr -d '\r' < evidence/userspace.log | grep -Fxq "hw.realmem: $((RAM_MIB * 1024 * 1024 - 4096))"
+          python3 - <<'PY' | tee evidence/backing-page.log
+          import os,struct,pathlib
+          size=int(os.environ['RAM_MIB'])*1024*1024
+          path=pathlib.Path('ram.bin')
+          assert path.stat().st_size==size
+          with path.open('rb') as f:
+              f.seek(size-4096)
+              data=f.read(4096)
+          expected=bytearray(4096)
+          for off,val in ((0,0x544d5231),(64,0x12345678),(68,0xedcba987),(128,0x87654321),(132,0x789abcde),(192,1)):
+              struct.pack_into('<I',expected,off,val)
+          assert data==expected, 'unexpected shared page content'
+          print('EXODUS_BACKING_PAGE_PASS: all 4096 bytes match')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cross-guest-ram-r64-${{ matrix.ram }}mib
+          name: cross-guest-ram-r65-${{ matrix.ram }}mib
           path: |
             evidence/*.log
             evidence/board.dts
