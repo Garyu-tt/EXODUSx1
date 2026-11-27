@@ -367,7 +367,7 @@ static void run_test(const char *cmd){
     }
     if(!strcmp(cmd,"ping")||!strcmp(cmd,"info")||!strcmp(cmd,"all")){
         bool disabled=false;Result power_rc=appletIsAutoSleepDisabled(&disabled);
-        logline("shell_revision=8\nsession_idle_seconds=1800\nauto_sleep_query_rc=0x%08" PRIx32 "\nauto_sleep_set_rc=0x%08" PRIx32 "\n",(uint32_t)power_rc,(uint32_t)sleep_set_rc);
+        logline("shell_revision=9\nsession_idle_seconds=1800\nauto_sleep_query_rc=0x%08" PRIx32 "\nauto_sleep_set_rc=0x%08" PRIx32 "\n",(uint32_t)power_rc,(uint32_t)sleep_set_rc);
         if(R_SUCCEEDED(power_rc))logline("auto_sleep_disabled=%s\n",disabled?"yes":"no");
     }
     if(!strcmp(cmd,"info")||!strcmp(cmd,"all")){
@@ -420,7 +420,7 @@ static int wait_io(int fd,short events,int timeout){
     int n=poll(&p,1,timeout);
     return n>0&&(p.revents&events)?1:n==0?0:-1;
 }
-/* All network buffers are bounded, no native executable payloads or real file paths. */
+/* All network buffers are bounded, diagnostic commands use bounded buffers; authenticated updater is separate. */
 static bool send_all(int fd,const char *p,size_t n){
     u64 end=armGetSystemTick()+armNsToTicks(5000000000ull);
     while(n&&armGetSystemTick()<end){
@@ -448,11 +448,96 @@ static bool read_line(int fd,char *out,size_t cap,PadState *pad){
     }
     return false;
 }
+
+#include "update_manifest.h"
+#include <sys/stat.h>
+#include <switch/crypto/sha256.h>
+#define UPDATE_KEY "sdmc:/switch/exodus-update.key"
+/* Key is provisioned offline. Never expose through the diagnostics protocol. */
+static bool update_auth(const TdaUpdate *u){
+    unsigned char key[32],ipad[64],opad[64],inner[32],actual[32],expected[32];
+    char manifest[128];FILE *f=fopen(UPDATE_KEY,"rb");
+    if(!f)return false;
+    bool ok=fread(key,1,sizeof key,f)==sizeof key&&fgetc(f)==EOF&&!ferror(f);
+    fclose(f);
+    int n=td_manifest(u,manifest,sizeof manifest);
+    if(ok&&n&&td_hex(u->mac,expected)){
+        for(unsigned i=0;i<64;i++){
+            unsigned char k=i<32?key[i]:0;ipad[i]=k^0x36;opad[i]=k^0x5c;
+        }
+        Sha256Context ctx;sha256ContextCreate(&ctx);
+        sha256ContextUpdate(&ctx,ipad,64);sha256ContextUpdate(&ctx,manifest,(size_t)n);sha256ContextGetHash(&ctx,inner);
+        sha256ContextCreate(&ctx);sha256ContextUpdate(&ctx,opad,64);sha256ContextUpdate(&ctx,inner,32);sha256ContextGetHash(&ctx,actual);
+        ok=td_equal(actual,expected,32);
+    }else ok=false;
+    /* Volatile clearing avoids optimizing away the wipe. */
+    volatile unsigned char *v=key;for(unsigned i=0;i<sizeof key;i++)v[i]=0;
+    v=ipad;for(unsigned i=0;i<sizeof ipad;i++)v[i]=0;
+    v=opad;for(unsigned i=0;i<sizeof opad;i++)v[i]=0;
+    return ok;
+}
+/* Returns true only when a locally approved, authenticated candidate is ready
+ * for the standard hbloader relaunch. Existing NRO is never overwritten. */
+static bool update_candidate(int fd,const char *line,PadState *pad){
+    TdaUpdate u;unsigned char expected[32],actual[32],buf[4096],head[128];
+    if(!td_parse(line,&u)||!update_auth(&u)||!td_hex(u.digest,expected)){
+        send_text(fd,"ERR update_manifest\n");return false;
+    }
+    char final[96],part[96];
+    snprintf(final,sizeof final,"sdmc:/switch/exodus-update-r%u.nro",u.rev);
+    snprintf(part,sizeof part,"sdmc:/switch/exodus-update-r%u.part",u.rev);
+    struct stat st;
+    if(stat(final,&st)==0||errno!=ENOENT){send_text(fd,"ERR update_exists\n");return false;}
+    int out=open(part,O_WRONLY|O_CREAT|O_EXCL,0600);
+    if(out<0){send_text(fd,"ERR update_open\n");return false;}
+    bool ok=send_text(fd,"READY\n");unsigned total=0;Sha256Context hash;sha256ContextCreate(&hash);
+    u64 end=armGetSystemTick()+armNsToTicks(120000000000ull);
+    while(ok&&total<u.size){
+        padUpdate(pad);
+        if(!appletMainLoop()||(padGetButtonsDown(pad)&HidNpadButton_Plus)||armGetSystemTick()>=end){ok=false;break;}
+        int ready=wait_io(fd,POLLIN,100);
+        if(ready<0){ok=false;break;}if(!ready){consoleUpdate(NULL);continue;}
+        size_t want=u.size-total;if(want>sizeof buf)want=sizeof buf;
+        ssize_t got=recv(fd,buf,want,0);if(got<=0){ok=false;break;}
+        if(total<sizeof head){size_t k=sizeof head-total;if(k>(size_t)got)k=(size_t)got;memcpy(head+total,buf,k);}
+        sha256ContextUpdate(&hash,buf,(size_t)got);
+        size_t off=0;while(off<(size_t)got){ssize_t n=write(out,buf+off,(size_t)got-off);if(n<=0){ok=false;break;}off+=(size_t)n;}
+        total+=(unsigned)got;
+    }
+    sha256ContextGetHash(&hash,actual);
+    ok=ok&&total==u.size&&td_equal(actual,expected,32)&&td_nro_header(head,sizeof head,u.size);
+    if(ok&&fsync(out)!=0)ok=false;
+    if(close(out)!=0)ok=false;
+    if(!ok){unlink(part);send_text(fd,"ERR update_verify\n");return false;}
+    printf("Authenticated update R%u (%u bytes)\nSHA256: %s\nA: install and relaunch. PLUS: cancel.\n",u.rev,u.size,u.digest);
+    consoleUpdate(NULL);
+    bool approve=false;end=armGetSystemTick()+armNsToTicks(60000000000ull);
+    while(appletMainLoop()&&armGetSystemTick()<end){
+        padUpdate(pad);u64 buttons=padGetButtonsDown(pad);
+        if(buttons&HidNpadButton_Plus)break;
+        struct pollfd pending={.fd=fd,.events=POLLIN};
+        if(poll(&pending,1,0)!=0)break;
+        if(buttons&HidNpadButton_A){approve=true;break;}
+        consoleUpdate(NULL);svcSleepThread(16000000);
+    }
+    if(!approve){unlink(part);send_text(fd,"ERR update_cancelled\n");return false;}
+    if(stat(final,&st)==0||errno!=ENOENT||rename(part,final)!=0){
+        unlink(part);send_text(fd,"ERR update_commit\n");return false;
+    }
+    /* Only use the loader's documented next-load request, no native injection. */
+    Result rc=envSetNextLoad(final,final);
+    if(R_FAILED(rc)){
+        printf("Candidate saved; select R%u in hbmenu. Relaunch rc=%08x\n",u.rev,(unsigned)rc);
+        send_text(fd,"STAGED\n");return false;
+    }
+    send_text(fd,"RELAUNCH\n");return true;
+}
+
 int main(void){
     consoleInit(NULL);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
-    printf("EXODUS Diagnostic Shell R08\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
+    printf("EXODUS Diagnostic Shell R09\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
     bool approve=false;
     while(appletMainLoop()){
         padUpdate(&pad);u64 keys=padGetButtonsDown(&pad);
@@ -463,6 +548,7 @@ int main(void){
     if(!approve){consoleExit(NULL);return 0;}
     Result rc=socketInitializeDefault();
     if(R_FAILED(rc)){printf("Socket init failed: %08x\n",(unsigned)rc);goto screen;}
+    bool relaunch=false;
     int listener=socket(AF_INET,SOCK_STREAM,0),client=-1;
     if(listener<0)goto done;
     struct sockaddr_in addr={0};
@@ -506,6 +592,10 @@ int main(void){
     for(unsigned count=0;count<100&&appletMainLoop();count++){
         if(!read_line(client,line,sizeof line,&pad))break;
         if(!strcmp(line,"quit")){send_text(client,"BYE\n");break;}
+        if(!strncmp(line,"update ",7)){
+            relaunch=update_candidate(client,line,&pad);
+            break; /* binary phase always ends this session */
+        }
         if(!allowed(line)){if(!send_text(client,"ERR command\n"))break;continue;}
         run_test(line);
         if(overflow){send_text(client,"ERR report_overflow\n");break;}
@@ -519,6 +609,7 @@ done:
     if(client>=0)close(client);
     if(listener>=0)close(listener);
     socketExit();
+    if(relaunch){consoleExit(NULL);return 0;}
 screen:
     printf("Session closed. PLUS: exit.\n");
     while(appletMainLoop()){
