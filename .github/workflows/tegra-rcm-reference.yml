@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [docs/tegra-research-evidence-r01]
-    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c']
+    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c', 'exodus/tests/tumor_doorbell_reference.c']
 permissions:
   contents: read
 jobs:
@@ -24,6 +24,11 @@ jobs:
           ref: d6b9524ddba5aa429835934db4da685f45ddfaf4
           path: tumor-reference
           persist-credentials: false
+      - name: Test synthetic Tegra mailbox doorbell reference
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror -I tumor-reference/exodus/frankenstein exodus/tests/tumor_doorbell_reference.c -o /tmp/tumor-doorbell-reference
+          timeout 10s /tmp/tumor-doorbell-reference | tee tumor-doorbell-reference.log
       - name: Test IPC32 platform callback contract
         run: |
           set -o pipefail
@@ -136,6 +141,7 @@ jobs:
           path: |
             cache-reference/*.txt
             atomic-reference/*.txt
+            tumor-doorbell-reference.log
             tumor-ipc32-platform-contract.log
             tumor-ipc32-transport-model.log
             tumor-ipc32-order-model.log
