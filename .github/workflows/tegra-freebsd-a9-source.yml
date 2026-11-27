@@ -1,0 +1,68 @@
+name: Tegra FreeBSD A9 source kernel build
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-freebsd-a9-source.yml'
+      - 'exodus/tests/freebsd/EXODUS_A9'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch exact release source
+        uses: actions/checkout@v4
+        with:
+          repository: freebsd/freebsd-src
+          ref: 96841ea08dcfa84b954a32dc5ae1a26c28966cf4
+          path: freebsd
+          persist-credentials: false
+      - name: Install cross-build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang-19 llvm-19 lld-19 build-essential bison flex libarchive-dev libbz2-dev liblzma-dev libssl-dev zlib1g-dev libncurses-dev python3 pkg-config
+          mkdir -p evidence obj
+      - name: Prepare source-level reference platform fix
+        run: |
+          set -e
+          cp exodus/tests/freebsd/EXODUS_A9 freebsd/sys/arm/conf/
+          python3 - <<'PY'
+          import pathlib
+          p=pathlib.Path("freebsd/sys/arm/qemu/virt_machdep.c")
+          s=p.read_text()
+          old="devmap_add_entry(0x1c090000, 0x100000); /* Uart */"
+          assert s.count(old)==1
+          # This is the QEMU vexpress-a9 reference, not gem5 or physical Tegra.
+          s=s.replace(old,"devmap_add_entry(0x10000000, 0x100000); /* QEMU vexpress-a9 UART window */")
+          p.write_text(s)
+          PY
+          git -C freebsd diff -- sys/arm/qemu/virt_machdep.c | tee evidence/source-patch.log
+          cp exodus/tests/freebsd/EXODUS_A9 evidence/kernel-config.txt
+      - name: Build compact ARMv7 kernel from source
+        run: |
+          set -o pipefail
+          export MAKEOBJDIRPREFIX="$PWD/obj"
+          cd freebsd
+          python3 tools/build/make.py --cross-bindir=/usr/lib/llvm-19/bin --host-compiler-type=clang -j2 TARGET=arm TARGET_ARCH=armv7 KERNCONF=EXODUS_A9 -DNO_MODULES -DWITHOUT_CTF buildkernel 2>&1 | tee ../evidence/build.log
+      - name: Inventory compiled ELF
+        run: |
+          set -e
+          mapfile -t kernels < <(find obj -type f -path '*/EXODUS_A9/kernel')
+          test "${#kernels[@]}" -eq 1
+          cp "${kernels[0]}" evidence/kernel.elf
+          llvm-readelf-19 -h -l evidence/kernel.elf | tee evidence/elf.log
+          llvm-size-19 evidence/kernel.elf | tee evidence/size.log
+          sha256sum evidence/kernel.elf | tee evidence/sha256.log
+          grep -q 'ARM' evidence/elf.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exodus-a9-source-kernel
+          path: evidence/
+          if-no-files-found: warn
