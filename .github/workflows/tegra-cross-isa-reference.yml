@@ -1,0 +1,80 @@
+name: Cross ISA TMR1 coherent shared memory R63
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-cross-isa-reference.yml'
+      - 'exodus/tests/tumor_cross_isa_reference.c'
+permissions:
+  contents: read
+jobs:
+  cross-isa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build independent ARM binaries
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu libc6-dev-armhf-cross libc6-dev-arm64-cross qemu-user
+          mkdir -p evidence
+          arm-linux-gnueabihf-gcc -std=c11 -O2 -Wall -Wextra -Werror -static -march=armv7-a -mfpu=vfpv3-d16 exodus/tests/tumor_cross_isa_reference.c -o arm32
+          aarch64-linux-gnu-gcc -std=c11 -O2 -Wall -Wextra -Werror -static exodus/tests/tumor_cross_isa_reference.c -o arm64
+          readelf -h arm32 arm64 | tee evidence/elf.log
+      - name: Separate processes and both role assignments
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib,struct,subprocess
+          path=pathlib.Path('shared.bin')
+          prefix=0xffffffff-500
+          end=(prefix+1000)&0xffffffff
+          def prepare():
+              data=bytearray(4096)
+              for o in (0,64,128,192): struct.pack_into('<I',data,o,prefix)
+              path.write_bytes(data)
+          def run(first,second,bad=False):
+              prepare()
+              with subprocess.Popen([*first,str(path),'1','normal'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True) as a, subprocess.Popen([*second,str(path),'2','bad' if bad else 'normal'],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True) as b:
+                  try:
+                      if bad:
+                          bo=b.communicate(timeout=15)[0]
+                          assert b.returncode!=0 and 'TMR1 frame mismatch; no ACK' in bo,bo
+                          a.terminate()
+                          ao=a.communicate(timeout=5)[0]
+                      else:
+                          ao=a.communicate(timeout=30)[0]
+                          bo=b.communicate(timeout=30)[0]
+                          assert a.returncode==b.returncode==0,(ao,bo)
+                          for output,role,cmd in ((ao,1,first),(bo,2,second)):
+                              bits=32 if cmd[0]=='qemu-arm' else 64
+                              assert f'EXODUS_CROSS_ISA_PASS role={role} pointer_bits={bits} rounds=1000' in output,output
+                  finally:
+                      for p in (a,b):
+                          if p.poll() is None: p.kill()
+                  print(ao,bo,sep='')
+                  data=path.read_bytes()
+                  tokens=tuple(struct.unpack_from('<I',data,o)[0] for o in (0,64,128,192))
+                  if bad:
+                      assert tokens==(prefix+1,prefix,prefix,prefix),tokens
+                      print('PASS stale generation rejected without ACK')
+                  else:
+                      assert tokens==(end,)*4,tokens
+                      print('PASS both lanes crossed uint32 wrap')
+          with open('evidence/result.log','w') as log:
+              import contextlib
+              with contextlib.redirect_stdout(log):
+                  run(['qemu-arm','./arm32'],['qemu-aarch64','./arm64'])
+                  run(['qemu-aarch64','./arm64'],['qemu-arm','./arm32'])
+                  run(['qemu-arm','./arm32'],['qemu-aarch64','./arm64'],True)
+          print(pathlib.Path('evidence/result.log').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-isa-r63
+          path: evidence/

@@ -1,0 +1,19 @@
+name: Tegra source ELF loader validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-source-elf-loader.yml'
+      - 'exodus/tests/*tumor_freebsd_source_load.py'
+permissions:
+  contents: read
+jobs:
+  loader:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 exodus/tests/test_tumor_freebsd_source_load.py

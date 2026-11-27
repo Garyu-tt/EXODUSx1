@@ -1,0 +1,54 @@
+name: Tegra FreeBSD A9 devmap experiment
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-freebsd-a9-devmap.yml'
+      - 'exodus/tests/tumor_a9_devmap_reference.py'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  devmap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: freebsd-direct-a9
+          run-id: '46035241552'
+          github-token: ${{ github.token }}
+          path: prior
+      - name: Prepare guarded experimental kernel
+        run: |
+          set -o pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm gcc-arm-linux-gnueabihf device-tree-compiler python3
+          mkdir -p evidence
+          python3 exodus/tests/tumor_freebsd_direct_a9.py prior/kernel.elf evidence | tee evidence/load-plan.log
+          arm-linux-gnueabihf-objdump -d --disassemble=gem5_devmap_init prior/kernel.elf | tee evidence/devmap-before.log
+          python3 exodus/tests/tumor_a9_devmap_reference.py prior/kernel.elf patched.elf evidence/kernel.bin | tee evidence/patch.log
+          arm-linux-gnueabihf-objdump -d --disassemble=gem5_devmap_init patched.elf | tee evidence/devmap-after.log
+          arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_freebsd_direct_a9.S -o handoff.o
+          arm-linux-gnueabihf-ld -Ttext=0x60010000 -e _start handoff.o -o handoff.elf
+          arm-linux-gnueabihf-objcopy -O binary handoff.elf handoff.bin
+          dtc -I dts -O dtb -o evidence/board.dtb exodus/tests/tumor_freebsd_direct_a9.dts
+      - name: Test corrected early UART mapping
+        run: |
+          set -o pipefail
+          set +e
+          timeout 35s qemu-system-arm -M vexpress-a9 -cpu cortex-a9 -m 1024 -smp 1 -display none -serial stdio -monitor none -nic none -no-reboot -device loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on -device loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on -device loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on 2>&1 | tee evidence/boot.log
+          status=${PIPESTATUS[0]}
+          set -e
+          case "$status" in 0|124) ;; *) exit 1;; esac
+          grep -E 'FreeBSD 15\.1-RELEASE.*GENERIC arm' evidence/boot.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a9-devmap-experiment
+          path: evidence/*.log
+          if-no-files-found: warn

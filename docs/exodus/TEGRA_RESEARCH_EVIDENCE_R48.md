@@ -1,0 +1,5 @@
+# R48 — Low-memory boot observed, workload gate synchronization
+
+R47 run 46041064306: all three jobs booted actual patched FreeBSD ARMv7 on QEMU Cortex-A9, mounted root and reached root shell after login. 64 MiB job 140648620223: available 51335168 bytes; 128 MiB job 140648620047: 117096448 bytes; 256 MiB job 140648620114: 248709120 bytes. All jobs failed the final workload gate after resizewin timeout, with no command output observed; do not mark workload PASS or claim memory exhaustion. Prompt synchronization is the likely test harness issue.
+
+R48 commit 828c5cc84215e761acead4bb181d46863f445209 requires exact root prompt, explicit shell readiness marker, separate identity/VM/file/hash and child-process gates, increases timeouts and adds 32 MiB exploratory budget. The 32 MiB case may fail for reference layout or kernel requirements. CI https://github.com/Garyu-tt/EXODUSx1/actions/runs/46041642703. Memory budgets are QEMU reference, not physical Tegra ADSP measurements. No physical hardware access.

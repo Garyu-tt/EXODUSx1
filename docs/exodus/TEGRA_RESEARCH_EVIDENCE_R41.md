@@ -1,0 +1,7 @@
+# R41 — Resolve sampled PC against audited kernel
+
+R39 run 46034893500 job 140627682186: verified ELF export passed, five PT_LOAD segments, physical placement 0x61000000, physical entry 0x61000200, image size 12353536. Direct boot timed out without kernel banner; no proof of entry or console liveness.
+
+R40 completed failure; 2026-11-27T16:40:18.0533928Z PSR=800001d7 N--- A S abt32; 2026-11-27T16:40:18.0549764Z --- sample at 20s ---; 2026-11-27T16:40:18.0553760Z R12=c0b83e80 R13=c0c0c000 R14=ffff1004 R15=ffff1000; 2026-11-27T16:40:18.0554043Z PSR=800001d7 N--- A S abt32; 2026-11-27T16:40:18.0563786Z --- sample at 45s ---; 2026-11-27T16:40:18.0567047Z R12=c0b83e80 R13=c0c0c000 R14=ffff1004 R15=ffff1000; 2026-11-27T16:40:18.0567285Z PSR=800001d7 N--- A S abt32; 2026-11-27T16:40:18.0574323Z --- sample at 65s ---; 2026-11-27T16:40:18.0576994Z R12=c0b83e80 R13=c0c0c000 R14=ffff1004 R15=ffff1000; 2026-11-27T16:40:18.0577155Z PSR=800001d7 N--- A S abt32; 2026-11-27T16:40:18.0583426Z QEMU status 0; 2026-11-27T16:40:18.0602603Z ##[error]Process completed with exit code 1.
+
+R41 commit e0c613c5d93d4889109386ce5927e66f29021621 adds early 0.2s and 1s QEMU HMP samples and nearest text symbol lookup for R15 within the audited RX range. Physical reference range 0x61000200–0x6174e600 is normalized to linked range 0xc0000200–0xc074e600; other PCs explicitly remain unresolved. Nearest symbols are not proof of execution of a particular function without disassembly/size evidence. CI https://github.com/Garyu-tt/EXODUSx1/actions/runs/46035573386. No physical access.

@@ -1,0 +1,246 @@
+name: Tegra RCM reference
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c', 'exodus/tests/tumor_doorbell_reference.c', 'exodus/tests/tumor_doorbell_wakeup_model.c', 'exodus/tests/tumor_adsp_recovery_model.c', 'exodus/tests/tumor_smmu_retirement_model.c', 'exodus/tests/tumor_address_domain_model.c', 'exodus/tests/tumor_elf32_load_plan_reference.c', 'exodus/tests/tumor_a9_boot_fixture.S', 'exodus/tests/tumor_a9_boot_fixture.ld', 'exodus/tests/tumor_a9_elf_execution_reference.c', 'exodus/tests/tumor_a9_mmu_reference.S', 'exodus/tests/tumor_a9_mmu_reference.ld', 'exodus/tests/tumor_a9_boot_abi_reference.S', 'exodus/tests/tumor_a9_boot_abi_reference.dts', 'exodus/tests/tumor_a9_peripheral_reference.S']
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RCM_EMU_NO_AUDIO: "1"
+      SDL_VIDEODRIVER: dummy
+    steps:
+      - name: Checkout EXODUS fixture
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout pinned Tumor reference
+        uses: actions/checkout@v4
+        with:
+          ref: d6b9524ddba5aa429835934db4da685f45ddfaf4
+          path: tumor-reference
+          persist-credentials: false
+      - name: Test offline ARM ELF32 load plan
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_elf32_load_plan_reference.c -o /tmp/tumor-elf32-load-plan-reference
+          timeout 10s /tmp/tumor-elf32-load-plan-reference | tee tumor-elf32-load-plan-reference.log
+      - name: Test abstract ADSP address-domain admission
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_address_domain_model.c -o /tmp/tumor-address-domain-model
+          timeout 10s /tmp/tumor-address-domain-model | tee tumor-address-domain-model.log
+      - name: Test abstract SMMU retirement model
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_smmu_retirement_model.c -o /tmp/tumor-smmu-retirement-model
+          timeout 10s /tmp/tumor-smmu-retirement-model | tee tumor-smmu-retirement-model.log
+      - name: Test abstract ADSP session recovery policy
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror -I tumor-reference/exodus/frankenstein exodus/tests/tumor_adsp_recovery_model.c -o /tmp/tumor-adsp-recovery-model
+          timeout 10s /tmp/tumor-adsp-recovery-model | tee tumor-adsp-recovery-model.log
+      - name: Test advisory IRQ lost-wakeup model
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_doorbell_wakeup_model.c -o /tmp/tumor-doorbell-wakeup-model
+          timeout 10s /tmp/tumor-doorbell-wakeup-model | tee tumor-doorbell-wakeup-model.log
+      - name: Test synthetic Tegra mailbox doorbell reference
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror -I tumor-reference/exodus/frankenstein exodus/tests/tumor_doorbell_reference.c -o /tmp/tumor-doorbell-reference
+          timeout 10s /tmp/tumor-doorbell-reference | tee tumor-doorbell-reference.log
+      - name: Test IPC32 platform callback contract
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror -I tumor-reference/exodus/frankenstein exodus/tests/tumor_ipc32_platform_contract.c -o /tmp/tumor-ipc32-platform-contract
+          timeout 10s /tmp/tumor-ipc32-platform-contract | tee tumor-ipc32-platform-contract.log
+      - name: Test integrated IPC32 TMR1 transport model
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror -I tumor-reference/exodus/frankenstein exodus/tests/tumor_ipc32_transport_model.c -o /tmp/tumor-ipc32-transport-model
+          timeout 10s /tmp/tumor-ipc32-transport-model | tee tumor-ipc32-transport-model.log
+      - name: Test IPC32 partial publication ordering model
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_ipc32_order_model.c -o /tmp/tumor-ipc32-order-model
+          timeout 10s /tmp/tumor-ipc32-order-model | tee tumor-ipc32-order-model.log
+      - name: Test IPC32 abstract noncoherent cache model
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_ipc32_cache_model.c -o /tmp/tumor-ipc32-cache-model
+          timeout 10s /tmp/tumor-ipc32-cache-model | tee tumor-ipc32-cache-model.log
+      - name: Test IPC32 coherent-host reference
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror -pthread exodus/tests/tumor_ipc32_reference.c -o /tmp/tumor-ipc32
+          timeout 50s /tmp/tumor-ipc32 | tee tumor-ipc32-reference.log
+      - name: Test actual Tumor reference mailbox on host
+        run: |
+          set -o pipefail
+          test "$(git -C tumor-reference rev-parse HEAD)" = d6b9524ddba5aa429835934db4da685f45ddfaf4
+          cc -std=c11 -Wall -Wextra -O2 -I tumor-reference/exodus/frankenstein exodus/tests/tumor_mailbox_recovery_reference.c -o /tmp/tumor-mailbox-recovery
+          /tmp/tumor-mailbox-recovery | tee tumor-mailbox-recovery.log
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libunicorn-dev libsdl2-dev gcc-arm-none-eabi libnewlib-arm-none-eabi gcc-aarch64-linux-gnu python3 qemu-system-arm device-tree-compiler
+      - name: Execute QEMU Cortex-A9 timer IRQ and UART reference
+        run: |
+          set -o pipefail
+          mkdir -p a9-peripheral-reference
+          arm-none-eabi-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_a9_peripheral_reference.S -o a9-peripheral-reference/boot.o
+          arm-none-eabi-ld -T exodus/tests/tumor_a9_mmu_reference.ld a9-peripheral-reference/boot.o -o a9-peripheral-reference/boot.elf
+          arm-none-eabi-objcopy -O binary a9-peripheral-reference/boot.elf a9-peripheral-reference/boot.bin
+          QEMU_AUDIO_DRV=none timeout 20s qemu-system-arm -machine vexpress-a9 -cpu cortex-a9 -smp 1 -m 128M -nographic -monitor none -serial stdio -semihosting-config enable=on,target=native -no-reboot -device loader,file=a9-peripheral-reference/boot.bin,addr=0x60010000,cpu-num=0,force-raw=on 2>&1 | tee a9-peripheral-reference/execution.log
+          grep -Fq 'PASS: PL011 early console' a9-peripheral-reference/execution.log
+          grep -Fq 'PASS: Cortex-A9 private timer GIC PPI 29 delivered three IRQs' a9-peripheral-reference/execution.log
+      - name: Execute synthetic ARM boot ABI and FDT reference
+        run: |
+          set -o pipefail
+          mkdir -p a9-abi-reference
+          dtc -I dts -O dtb -o a9-abi-reference/boot.dtb exodus/tests/tumor_a9_boot_abi_reference.dts
+          test "$(fdtget -t x a9-abi-reference/boot.dtb /memory@60000000 reg)" = "60000000 8000000"
+          test "$(fdtget -t x a9-abi-reference/boot.dtb /reserved-memory/handoff@60040000 reg)" = "60040000 10000"
+          test "$(fdtget a9-abi-reference/boot.dtb /cpus/cpu@0 compatible)" = "arm,cortex-a9"
+          arm-none-eabi-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_a9_boot_abi_reference.S -o a9-abi-reference/boot.o
+          arm-none-eabi-ld -T exodus/tests/tumor_a9_mmu_reference.ld a9-abi-reference/boot.o -o a9-abi-reference/boot.elf
+          arm-none-eabi-objcopy -O binary a9-abi-reference/boot.elf a9-abi-reference/boot.bin
+          QEMU_AUDIO_DRV=none timeout 20s qemu-system-arm -machine vexpress-a9 -cpu cortex-a9 -smp 1 -m 128M -nographic -monitor none -serial none -semihosting-config enable=on,target=native -no-reboot -device loader,file=a9-abi-reference/boot.dtb,addr=0x60040000,force-raw=on -device loader,file=a9-abi-reference/boot.bin,addr=0x60010000,cpu-num=0,force-raw=on 2>&1 | tee a9-abi-reference/execution.log
+          grep -Fq 'PASS: ARM boot ABI registers and FDT header accepted' a9-abi-reference/execution.log
+          cp a9-abi-reference/boot.dtb a9-abi-reference/bad.dtb
+          printf '\000' | dd of=a9-abi-reference/bad.dtb bs=1 count=1 conv=notrunc status=none
+          set +e
+          QEMU_AUDIO_DRV=none timeout 20s qemu-system-arm -machine vexpress-a9 -cpu cortex-a9 -smp 1 -m 128M -nographic -monitor none -serial none -semihosting-config enable=on,target=native -no-reboot -device loader,file=a9-abi-reference/bad.dtb,addr=0x60040000,force-raw=on -device loader,file=a9-abi-reference/boot.bin,addr=0x60010000,cpu-num=0,force-raw=on 2>&1 | tee a9-abi-reference/negative.log
+          status=${PIPESTATUS[0]}
+          set -e
+          test "$status" -eq 1
+          grep -Fq 'FAIL: ARM boot ABI or FDT rejected' a9-abi-reference/negative.log
+          echo 'PASS: corrupted FDT rejected by guest'
+      - name: Execute QEMU Cortex-A9 MMU reference
+        run: |
+          set -o pipefail
+          mkdir -p a9-mmu-reference
+          arm-none-eabi-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_a9_mmu_reference.S -o a9-mmu-reference/boot.o
+          arm-none-eabi-ld -T exodus/tests/tumor_a9_mmu_reference.ld a9-mmu-reference/boot.o -o a9-mmu-reference/boot.elf
+          arm-none-eabi-objcopy -O binary a9-mmu-reference/boot.elf a9-mmu-reference/boot.bin
+          arm-none-eabi-objdump -d a9-mmu-reference/boot.elf > a9-mmu-reference/disassembly.txt
+          QEMU_AUDIO_DRV=none timeout 20s qemu-system-arm -machine vexpress-a9 -cpu cortex-a9 -smp 1 -m 128M -nographic -monitor none -serial none -semihosting-config enable=on,target=native -no-reboot -device loader,file=a9-mmu-reference/boot.bin,addr=0x60010000,cpu-num=0,force-raw=on 2>&1 | tee a9-mmu-reference/execution.log
+          grep -Fq 'PASS: QEMU Cortex-A9 MMU identity/high alias and unmapped section abort' a9-mmu-reference/execution.log
+      - name: Execute toolchain ARM ELF32 on Unicorn Cortex-A9
+        run: |
+          set -o pipefail
+          mkdir -p a9-elf-reference
+          arm-none-eabi-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_a9_boot_fixture.S -o a9-elf-reference/boot.o
+          arm-none-eabi-ld -z max-page-size=0x1000 -T exodus/tests/tumor_a9_boot_fixture.ld a9-elf-reference/boot.o -o a9-elf-reference/boot.elf
+          arm-none-eabi-readelf -h -l a9-elf-reference/boot.elf | tee a9-elf-reference/headers.txt
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_a9_elf_execution_reference.c $(pkg-config --cflags --libs unicorn) -o /tmp/a9-elf-reference
+          timeout 10s /tmp/a9-elf-reference a9-elf-reference/boot.elf | tee a9-elf-reference/execution.log
+      - name: Compile A9 and A57 atomic ISA references (not fabric proof)
+        run: |
+          set -o pipefail
+          mkdir -p atomic-reference
+          arm-none-eabi-gcc -std=c11 -mcpu=cortex-a9 -marm -O2 -ffreestanding -c exodus/tests/tumor_atomic_isa_reference.c -o atomic-reference/a9.o
+          aarch64-linux-gnu-gcc -std=c11 -mcpu=cortex-a57 -mno-outline-atomics -O2 -ffreestanding -c exodus/tests/tumor_atomic_isa_reference.c -o atomic-reference/a57.o
+          arm-none-eabi-objdump -d atomic-reference/a9.o > atomic-reference/a9.txt
+          aarch64-linux-gnu-objdump -d atomic-reference/a57.o > atomic-reference/a57.txt
+          grep -w ldrexd atomic-reference/a9.txt
+          grep -w strexd atomic-reference/a9.txt
+          grep -w dmb atomic-reference/a9.txt
+          grep -w ldaxr atomic-reference/a57.txt
+          grep -w stlxr atomic-reference/a57.txt
+          grep -w ldar atomic-reference/a57.txt
+          grep -w stlr atomic-reference/a57.txt
+          test -z "$(arm-none-eabi-nm -u atomic-reference/a9.o)"
+          test -z "$(aarch64-linux-gnu-nm -u atomic-reference/a57.o)"
+          echo 'Atomic ISA reference: PASS (compile only)'
+      - name: Compile cache maintenance ISA probes (never execute)
+        run: |
+          set -o pipefail
+          mkdir -p cache-reference
+          cc -std=c11 -Wall -Wextra -Werror -DCACHE_SHAPE_TEST exodus/tests/tumor_cache_isa_reference.c -o /tmp/cache-shape-test
+          /tmp/cache-shape-test
+          arm-none-eabi-gcc -std=c11 -mcpu=cortex-a9 -marm -O2 -ffreestanding -c exodus/tests/tumor_cache_isa_reference.c -o cache-reference/a9.o
+          aarch64-linux-gnu-gcc -std=c11 -mcpu=cortex-a57 -O2 -ffreestanding -c exodus/tests/tumor_cache_isa_reference.c -o cache-reference/a57.o
+          arm-none-eabi-objdump -d cache-reference/a9.o > cache-reference/a9.txt
+          aarch64-linux-gnu-objdump -d cache-reference/a57.o > cache-reference/a57.txt
+          grep -E 'mcr.*(cr|c)7, *(cr|c)10, *[{]?1' cache-reference/a9.txt
+          grep -E 'mcr.*(cr|c)7, *(cr|c)6, *[{]?1' cache-reference/a9.txt
+          grep -w dsb cache-reference/a9.txt
+          grep -E 'dc[[:space:]]+cvac' cache-reference/a57.txt
+          grep -E 'dc[[:space:]]+ivac' cache-reference/a57.txt
+          grep -w dsb cache-reference/a57.txt
+          echo 'Cache maintenance ISA reference: PASS (compile only)'
+      - name: Fetch pinned public reference
+        run: |
+          git init upstream
+          git -C upstream remote add origin https://github.com/Creased/RCM-Emulator.git
+          git -C upstream fetch --depth=1 origin 6e7274187861172d67e6ce2d123b89fec31bffc1
+          git -C upstream checkout --detach FETCH_HEAD
+          git -C upstream submodule update --init --recursive --depth=1
+          test "$(git -C upstream rev-parse HEAD)" = 6e7274187861172d67e6ce2d123b89fec31bffc1
+      - name: Build
+        working-directory: upstream
+        run: make -j2
+      - name: Synthetic upstream regression tests (not EXODUS acceptance)
+        working-directory: upstream
+        run: |
+          set -o pipefail
+          make test 2>&1 | tee reference-test.log
+      - name: EXODUS synthetic mixed-width IPC reference
+        run: |
+          set -o pipefail
+          python3 exodus/tests/rcm_ipc_reference.py upstream
+          cd upstream
+          sh tests/kernelcpu/build.sh
+          LOG=exodus-ipc-emulator.log sh tests/kernelcpu/run.sh ./rcm_emu tests/kernelcpu/payload.bin 2>&1 | tee exodus-ipc-test.log
+          grep -q 'EXODUS IPC REFERENCE: PASS' exodus-ipc-emulator.log
+          if grep -q 'EXODUS IPC REFERENCE: FAIL' exodus-ipc-emulator.log; then exit 1; fi
+          grep -q 'EXODUS RING REFERENCE: PASS' exodus-ipc-emulator.log
+          if grep -q 'EXODUS RING REFERENCE: FAIL' exodus-ipc-emulator.log; then exit 1; fi
+          echo 'EXODUS synthetic IPC: PASS' | tee -a exodus-ipc-test.log
+          echo 'EXODUS synthetic ring: PASS' | tee -a exodus-ipc-test.log
+          for stage in EDGE LIVE RESET; do
+            grep -q "EXODUS $stage REFERENCE: PASS" exodus-ipc-emulator.log
+            if grep -q "EXODUS $stage REFERENCE: FAIL" exodus-ipc-emulator.log; then exit 1; fi
+            echo "EXODUS $stage reference: PASS" | tee -a exodus-ipc-test.log
+          done
+      - name: Preserve reference log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rcm-reference-test
+          path: |
+            a9-peripheral-reference/boot.elf
+            a9-peripheral-reference/execution.log
+            a9-abi-reference/boot.dtb
+            a9-abi-reference/boot.elf
+            a9-abi-reference/*.log
+            a9-mmu-reference/boot.elf
+            a9-mmu-reference/disassembly.txt
+            a9-mmu-reference/execution.log
+            a9-elf-reference/boot.elf
+            a9-elf-reference/headers.txt
+            a9-elf-reference/execution.log
+            cache-reference/*.txt
+            atomic-reference/*.txt
+            tumor-elf32-load-plan-reference.log
+            tumor-address-domain-model.log
+            tumor-smmu-retirement-model.log
+            tumor-adsp-recovery-model.log
+            tumor-doorbell-wakeup-model.log
+            tumor-doorbell-reference.log
+            tumor-ipc32-platform-contract.log
+            tumor-ipc32-transport-model.log
+            tumor-ipc32-order-model.log
+            tumor-ipc32-cache-model.log
+            tumor-ipc32-reference.log
+            tumor-mailbox-recovery.log
+            upstream/reference-test.log
+            upstream/exodus-ipc-test.log
+            upstream/exodus-ipc-emulator.log
+          if-no-files-found: ignore

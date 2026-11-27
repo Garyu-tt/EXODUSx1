@@ -1,0 +1,168 @@
+name: Tegra FreeBSD Cortex-A9 boot experiment
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths: ['.github/workflows/tegra-freebsd-a9-boot.yml']
+permissions:
+  contents: read
+jobs:
+  a9:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install isolated reference tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm gcc-arm-linux-gnueabihf make bison flex bc libssl-dev libgnutls28-dev python3 python3-pyelftools python3-setuptools swig device-tree-compiler curl xz-utils expect
+          mkdir -p evidence
+      - name: Build pinned Versatile Express U-Boot
+        run: |
+          set -o pipefail
+          git init uboot
+          git -C uboot remote add origin https://github.com/u-boot/u-boot.git
+          git -C uboot fetch --depth=1 origin 6d41f0a39d6423c8e57e92ebbe9f8c0333a63f72
+          git -C uboot checkout --detach FETCH_HEAD
+          test "$(git -C uboot rev-parse HEAD)" = 6d41f0a39d6423c8e57e92ebbe9f8c0333a63f72
+          # Reference-only experiment: R35 faulting LDRH used an odd address.
+          # Change only the initial SCTLR.A policy in this disposable U-Boot.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("uboot/arch/arm/cpu/armv7/start.S")
+          s=p.read_text()
+          old="orr\tr0, r0, #0x00000002\t@ set bit 1 (--A-) Align"
+          new="bic\tr0, r0, #0x00000002\t@ R36: permit normal-memory unaligned access"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("uboot/arch/arm/lib/interrupts.c")
+          s=p.read_text()
+          old='\tefi_restore_gd();\n\tprintf ("data abort\\n");'
+          new='''\tunsigned int sctlr, dfsr, dfar;
+          \tasm volatile("mrc p15, 0, %0, c1, c0, 0" : "=r"(sctlr));
+          \tasm volatile("mrc p15, 0, %0, c5, c0, 0" : "=r"(dfsr));
+          \tasm volatile("mrc p15, 0, %0, c6, c0, 0" : "=r"(dfar));
+          \tefi_restore_gd();
+          \tprintf("R37 abort SCTLR=%08x DFSR=%08x DFAR=%08x\\n", sctlr, dfsr, dfar);
+          \tprintf ("data abort\\n");'''
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          p=Path("uboot/lib/efi_loader/efi_boottime.c")
+          s=p.read_text()
+          old='\tret = EFI_CALL(image_obj->entry(image_handle, &systab));'
+          new='''\t{
+          \t\tunsigned int sctlr;
+          \t\tasm volatile("mrc p15, 0, %0, c1, c0, 0" : "=r"(sctlr));
+          \t\tprintf("R37 EFI entry SCTLR=%08x\\n", sctlr);
+          \t}
+          '''+old
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          git -C uboot diff | tee evidence/uboot-alignment-experiment.patch
+          make -C uboot CROSS_COMPILE=arm-linux-gnueabihf- vexpress_ca9x4_defconfig
+          uboot/scripts/config --file uboot/.config -e EFI_LOADER -e CMD_BOOTEFI -e CMD_FAT -e EFI_PARTITION -e CMD_CACHE -d SYS_DCACHE_OFF
+          make -C uboot CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
+          grep '^CONFIG_CMD_BOOTEFI=y$' uboot/.config
+          make -C uboot CROSS_COMPILE=arm-linux-gnueabihf- -j2 2>&1 | tee evidence/uboot-build.log
+          sha256sum uboot/u-boot uboot/u-boot.bin | tee evidence/uboot-sha256.log
+          cp uboot/.config evidence/uboot-config.txt
+      - name: Download verified release image and prepare disposable SD
+        run: |
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 300 "https://download.freebsd.org/releases/arm/armv7/ISO-IMAGES/15.1/$image.xz" -o "$image.xz"
+          printf '%s  %s\n' a50077a25a44a38cf3ff55b0a6e3da839ea96b829e5d975f27e1f3c0a6f0f68ef97a7d5ce845f3f0d76fce800814e57ff9c3499d518257210eb7e32913c720f5 "$image.xz" | sha512sum -c -
+          printf '%s  %s\n' d568d7324825af9072405b11b7d0f4ba892d10ca05687fe4fd65e328e72cf7b8 "$image.xz" | sha256sum -c -
+          xz -d "$image.xz"
+          python3 - "$image" <<'PY'
+          import os,sys
+          p=sys.argv[1]
+          n=os.path.getsize(p)
+          os.truncate(p,1 << (n-1).bit_length())
+          PY
+      - name: Attempt real FreeBSD EFI boot on emulated Cortex-A9
+        run: |
+          set -o pipefail
+          cat > boot.exp <<'EOF'
+          set timeout 60
+          spawn -noecho qemu-system-arm -d int,guest_errors -D evidence/qemu-exceptions.log -M vexpress-a9 -cpu cortex-a9 -m 1024 -smp 1 -nographic -monitor none -nic none -kernel uboot/u-boot -drive if=sd,file=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img,format=raw,snapshot=on -no-reboot
+          proc fail {message} {
+              puts stderr $message
+              catch {exec kill -TERM [exp_pid]}
+              catch {close}
+              catch {wait}
+              exit 1
+          }
+          expect {
+              -re {Hit any key to stop autoboot:} {send -- " "}
+              -re {=> *$} {}
+              timeout {fail "A9 U-Boot prompt not reached"}
+              eof {fail "A9 emulator exited before U-Boot"}
+          }
+          expect {
+              -re {=> *$} {}
+              timeout {fail "A9 U-Boot prompt unavailable"}
+              eof {fail "A9 emulator exited"}
+          }
+          send -- "mmc list; mmc dev 0; part list mmc 0; fatls mmc 0:1 /EFI/BOOT\r"
+          expect {
+              -re {=> *$} {}
+              timeout {fail "A9 SD enumeration failed"}
+              eof {fail "A9 emulator exited"}
+          }
+          send -- {fatload mmc 0:1 0x62000000 /EFI/BOOT/BOOTARM.EFI}
+          send -- "\r"
+          expect {
+              -re {[0-9]+ bytes read} {}
+              timeout {fail "A9 EFI loader not read"}
+              eof {fail "A9 emulator exited"}
+          }
+          expect -re {=> *$}
+          send -- "dcache on; dcache\r"
+          expect {
+              -re {Cache is ON} {}
+              timeout {fail "A9 data cache/MMU enable not confirmed"}
+              eof {fail "A9 emulator exited"}
+          }
+          expect -re {=> *$}
+          send -- {bootefi 0x62000000 ${fdtcontroladdr}}
+          send -- "\r"
+          set timeout 420
+          expect {
+              -re {login: *$} {}
+              -re {(?i)panic:} {fail "A9 FreeBSD kernel panic"}
+              -re {=> *$} {fail "A9 EFI returned to U-Boot"}
+              timeout {fail "A9 FreeBSD login not reached"}
+              eof {fail "A9 emulator exited before login"}
+          }
+          set timeout 45
+          send -- "root\r"
+          expect {
+              -re {Password: *$} {send -- "root\r"; exp_continue}
+              -re {# *$} {}
+              timeout {fail "A9 FreeBSD shell unavailable"}
+              eof {fail "A9 emulator exited"}
+          }
+          send -- {/bin/sh -c 'set -e; uname -a; sysctl hw.model; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; sysctl -n hw.model | grep -i cortex-a9; printf "%s%s\n" EXODUS_A9_FREEBSD_ PASS'}
+          send -- "\r"
+          expect {
+              -re {(?m)^EXODUS_A9_FREEBSD_PASS\r*$} {}
+              timeout {fail "A9 FreeBSD identity gate failed"}
+              eof {fail "A9 emulator exited before identity gate"}
+          }
+          catch {exec kill -TERM [exp_pid]}
+          catch {close}
+          catch {wait}
+          exit 0
+          EOF
+          timeout 12m expect boot.exp 2>&1 | tee evidence/boot.log
+          tr -d '\r' < evidence/boot.log | grep -Fxq EXODUS_A9_FREEBSD_PASS
+      - name: Preserve experimental boot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-cortex-a9-boot-experiment
+          path: evidence/
+          if-no-files-found: warn

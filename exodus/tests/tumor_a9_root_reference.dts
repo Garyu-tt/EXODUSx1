@@ -1,0 +1,75 @@
+/dts-v1/;
+/ {
+    compatible = "arm,vexpress,v2p-ca9", "arm,vexpress";
+    model = "EXODUS QEMU vexpress A9 direct boot";
+    #address-cells = <1>;
+    #size-cells = <1>;
+    interrupt-parent = <&gic>;
+    chosen { stdout-path = &uart0; bootargs = "FreeBSD: vfs.root.mountfrom=ufs:/dev/ufs/rootfs"; };
+    memory@60000000 { device_type = "memory"; reg = <0x60000000 0x40000000>; };
+    cpus {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        cpu@0 { device_type = "cpu"; compatible = "arm,cortex-a9"; reg = <0>; };
+    };
+    gic: interrupt-controller@1e001000 {
+        compatible = "arm,cortex-a9-gic";
+        interrupt-controller;
+        #interrupt-cells = <3>;
+        #address-cells = <0>;
+        reg = <0x1e001000 0x1000 0x1e000100 0x100>;
+    };
+    timer@1e000200 {
+        compatible = "arm,cortex-a9-global-timer";
+        reg = <0x1e000200 0x20>;
+        interrupts = <1 11 0x104>;
+        clocks = <&timerclk>;
+        clock-frequency = <100000000>;
+    };
+    timer@1e000600 {
+        compatible = "arm,cortex-a9-twd-timer";
+        reg = <0x1e000600 0x20>;
+        interrupts = <1 13 0x104>;
+        clocks = <&timerclk>;
+        clock-frequency = <100000000>;
+    };
+    timerclk: clock-timer {
+        compatible = "fixed-clock";
+        #clock-cells = <0>;
+        clock-frequency = <100000000>;
+    };
+    uartclk: clock-uart {
+        compatible = "fixed-clock";
+        #clock-cells = <0>;
+        clock-frequency = <24000000>;
+    };
+    uart0: serial@10009000 {
+        compatible = "arm,pl011", "arm,primecell";
+        reg = <0x10009000 0x1000>;
+        interrupts = <0 5 4>;
+        clocks = <&uartclk &uartclk>;
+        clock-names = "uartclk", "apb_pclk";
+        clock-frequency = <24000000>;
+        current-speed = <38400>;
+    };
+    virtio_mmio@10013000 {
+        compatible = "virtio,mmio";
+        reg = <0x10013000 0x200>;
+        interrupts = <0 40 4>;
+    };
+    virtio_mmio@10013200 {
+        compatible = "virtio,mmio";
+        reg = <0x10013200 0x200>;
+        interrupts = <0 41 4>;
+    };
+    virtio_mmio@10013400 {
+        compatible = "virtio,mmio";
+        reg = <0x10013400 0x200>;
+        interrupts = <0 42 4>;
+    };
+    virtio_mmio@10013600 {
+        compatible = "virtio,mmio";
+        reg = <0x10013600 0x200>;
+        interrupts = <0 43 4>;
+    };
+};

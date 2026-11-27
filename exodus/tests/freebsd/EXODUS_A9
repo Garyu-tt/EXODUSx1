@@ -1,0 +1,33 @@
+# EXODUS Cortex-A9 QEMU reference only; not Tegra hardware config.
+# Keep standard ARMv7 ABI and filesystem options for first source build.
+ident EXODUS_A9
+machine arm armv7
+cpu CPU_CORTEXA
+makeoptions CONF_CFLAGS="-march=armv7a"
+include "std.armv7"
+files "../qemu/files.qemu"
+
+options SCHED_ULE
+options PLATFORM
+options LINUX_BOOT_ABI
+options FDT
+
+device clk
+device gic
+device mpcore_timer
+device generic_timer
+device uart
+device pl011
+device uart_ns8250
+device pty
+device loop
+device ether
+device virtio
+device virtio_mmio
+device virtio_blk
+device md
+device firmware
+
+# Preserve user ABI and existing UFS root support in std.armv7.
+# No board-specific SoC drivers, USB, GPU, sound, PCI or SMP.
+# First build keeps standard VM/network features to isolate platform changes.

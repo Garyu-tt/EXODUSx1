@@ -1,0 +1,68 @@
+name: Tegra FreeBSD reduced A9 kernel source build
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-freebsd-a9-reduced.yml'
+      - 'exodus/tests/EXODUS_A9_REF'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: freebsd/freebsd-src
+          ref: 96841ea08dcfa84b954a32dc5ae1a26c28966cf4
+          path: freebsd
+          persist-credentials: false
+      - name: Install cross-build prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang-19 lld-19 llvm-19 build-essential bison flex libarchive-dev libbz2-dev libssl-dev zlib1g-dev liblzma-dev python3
+          mkdir -p evidence obj
+      - name: Prepare reduced kernel and source UART correction
+        run: |
+          set -o pipefail
+          test "$(git -C freebsd rev-parse HEAD)" = 96841ea08dcfa84b954a32dc5ae1a26c28966cf4
+          cp exodus/tests/EXODUS_A9_REF freebsd/sys/arm/conf/EXODUS_A9_REF
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("freebsd/sys/arm/qemu/virt_machdep.c")
+          s=p.read_text()
+          old="devmap_add_entry(0x1c090000, 0x100000); /* Uart */"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,"devmap_add_entry(0x10000000, 0x100000); /* QEMU vexpress-a9 UART reference */"))
+          PY
+          git -C freebsd diff | tee evidence/source-patch.log
+          cp exodus/tests/EXODUS_A9_REF evidence/
+      - name: Build reduced kernel using pinned release source
+        run: |
+          set -o pipefail
+          export MAKEOBJDIRPREFIX="$PWD/obj"
+          export XCC=/usr/bin/clang-19 XCXX=/usr/bin/clang++-19 XCPP=/usr/bin/clang-cpp-19 XLD=/usr/bin/ld.lld-19
+          cd freebsd
+          python3 tools/build/make.py --cross-bindir=/usr/lib/llvm-19/bin -j4 TARGET=arm TARGET_ARCH=armv7 KERNCONF=EXODUS_A9_REF -DNO_MODULES kernel-toolchain 2>&1 | tee ../evidence/toolchain.log
+          python3 tools/build/make.py --cross-bindir=/usr/lib/llvm-19/bin -j4 TARGET=arm TARGET_ARCH=armv7 KERNCONF=EXODUS_A9_REF -DNO_MODULES buildkernel 2>&1 | tee ../evidence/buildkernel.log
+      - name: Inspect source-built ELF
+        run: |
+          set -o pipefail
+          kernel="$(find obj -path '*/EXODUS_A9_REF/kernel' -type f -print -quit)"
+          test -n "$kernel"
+          cp "$kernel" evidence/kernel.elf
+          llvm-readelf-19 -h -l evidence/kernel.elf | tee evidence/kernel-headers.log
+          sha256sum evidence/kernel.elf | tee evidence/kernel.sha256
+          stat -c '%s bytes' evidence/kernel.elf
+          echo 'PASS: reduced FreeBSD source kernel built; boot not tested'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a9-reduced-source-build
+          path: evidence/
+          if-no-files-found: warn

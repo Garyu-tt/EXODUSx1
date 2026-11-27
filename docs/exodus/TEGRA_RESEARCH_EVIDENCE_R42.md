@@ -1,0 +1,5 @@
+# R42 — Bounded first exception trace with reusable kernel
+
+R40 run 46035241552, job 140628871563: all five samples showed PC ffff1000, LR ffff1004, SP c0c0c000 and CPSR 800001d7 (ABT mode). This supports a persistent exception condition but does not identify the first exception. Artifact 15216047469 (freebsd-direct-a9, 5828671 bytes, not expired) includes the verified original kernel ELF; workflow rechecks the exact R34 SHA256 before using it.
+
+R42 commit b896850234b611a21e5794372a866df77e956bc9 introduces independent workflow with read-only Actions access, downloads R40 artifact, rebuilds identical direct boot reference, captures QEMU int,in_asm trace from initial entry with 8 MiB file cap and 12s timeout. Emits context around first four exception-marker candidates. Translated blocks are not an exact retired-instruction trace; diagnostic termination by file cap or timeout is expected, not proof of guest failure. Diagnostic PASS only indicates trace/event capture. R41 at observation: in_progress, no conclusion. R42 CI https://github.com/Garyu-tt/EXODUSx1/actions/runs/46035865489. No physical Switch access.

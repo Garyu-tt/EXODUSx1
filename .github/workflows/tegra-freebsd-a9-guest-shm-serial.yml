@@ -1,0 +1,219 @@
+name: FreeBSD A9 guest shared memory serial R60 functional baseline
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-freebsd-a9-guest-shm-serial.yml'
+      - 'exodus/tests/tumor_freebsd_guest_shm.S'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  memory:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ram: [128, 256]
+    env:
+      RAM_MIB: ${{ matrix.ram }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: a9-reduced-source-build
+          run-id: '46045173543'
+          github-token: ${{ github.token }}
+          path: prior
+      - name: Prepare pinned source-built kernel
+        run: |
+          set -o pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm gcc-arm-linux-gnueabihf device-tree-compiler python3 curl xz-utils expect clang lld
+          mkdir -p evidence
+          python3 exodus/tests/tumor_freebsd_source_load.py prior/kernel.elf evidence --sha256 e32e0e0120720464ef0789e4e3d6d85fb823a34fb63d3e7e16c8dba5b51b312f --ram-mib "$RAM_MIB" | tee evidence/load-plan.log
+          test "$(cat evidence/entry.txt)" = 0x61000200
+          arm-linux-gnueabihf-objdump -d --disassemble=gem5_devmap_init prior/kernel.elf | tee evidence/source-devmap.log
+          arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_freebsd_direct_a9.S -o handoff.o
+          arm-linux-gnueabihf-ld -Ttext=0x60010000 -e _start handoff.o -o handoff.elf
+          arm-linux-gnueabihf-objcopy -O binary handoff.elf handoff.bin
+          python3 - <<'PY'
+          import os,pathlib
+          source=pathlib.Path("exodus/tests/tumor_a9_root_reference.dts").read_text()
+          old="reg = <0x60000000 0x40000000>;"
+          assert source.count(old)==1
+          ram=int(os.environ["RAM_MIB"])
+          assert source.count("FreeBSD: vfs.root.mountfrom=")==1
+          source=source.replace("FreeBSD: vfs.root.mountfrom=", "FreeBSD: -s vfs.root.mountfrom=")
+          pathlib.Path("evidence/board.dts").write_text(source.replace(old, f"reg = <0x60000000 {ram*1024*1024:#x}>;"))
+          PY
+          dtc -I dts -O dtb -o evidence/board.dtb evidence/board.dts
+          fdtget -t x evidence/board.dtb /memory@60000000 reg | tee evidence/memory-map.log
+      - name: Download verified disposable root disk
+        run: |
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 300 "https://download.freebsd.org/releases/arm/armv7/ISO-IMAGES/15.1/$image.xz" -o "$image.xz"
+          printf '%s  %s\n' d568d7324825af9072405b11b7d0f4ba892d10ca05687fe4fd65e328e72cf7b8 "$image.xz" | sha256sum -c -
+          printf '%s  %s\n' a50077a25a44a38cf3ff55b0a6e3da839ea96b829e5d975f27e1f3c0a6f0f68ef97a7d5ce845f3f0d76fce800814e57ff9c3499d518257210eb7e32913c720f5 "$image.xz" | sha512sum -c -
+          xz -dk "$image.xz"
+      - name: Build native FreeBSD guest fixture and serial transfer
+        run: |
+          set -euo pipefail
+          clang --target=armv7-unknown-freebsd15.1 -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,--build-id=none -o shm.elf exodus/tests/tumor_freebsd_guest_shm.S
+          readelf -h -l -n shm.elf | tee evidence/guest-elf.log
+          grep -E 'OS/ABI:.*FreeBSD' evidence/guest-elf.log
+          sha256sum shm.elf | tee evidence/guest-sha256.log
+          python3 - <<'PY'
+          import base64,hashlib,pathlib
+          data=pathlib.Path('shm.elf').read_bytes()
+          assert 0<len(data)<=8192
+          encoded=base64.b64encode(data).decode('ascii')
+          cmds=[]
+          for i in range(0,len(encoded),64):
+              mode='>' if i==0 else '>>'
+              marker=f'EXODUS_CHUNK_{i:04d}'
+              command=f"printf '%s\\n' '{encoded[i:i+64]}' {mode} /tmp/exodus-shm.b64 && printf '%s%s\\n' EXODUS_CHUNK_ {i:04d}"
+              cmds.append(f'gate {{{command}}} {marker}')
+          digest=hashlib.sha256(data).hexdigest()
+          cmds.append("gate {base64 -d /tmp/exodus-shm.b64 > /tmp/exodus-shm.elf && printf '%s%s\\n' EXODUS_DECODE_ PASS} EXODUS_DECODE_PASS")
+          cmds.append(f'gate {{wc -c /tmp/exodus-shm.elf; sha256 /tmp/exodus-shm.elf; test "$(wc -c < /tmp/exodus-shm.elf | tr -d " ")" = {len(data)} && test "$(sha256 -q /tmp/exodus-shm.elf)" = {digest} && printf "%s%s\\n" EXODUS_FIXTURE_ PASS}} EXODUS_FIXTURE_PASS')
+          pathlib.Path('transfer.exp').write_text('\n'.join(cmds)+'\n')
+          PY
+      - name: Boot real FreeBSD single-user shell on Cortex-A9
+        run: |
+          set -o pipefail
+          cat > boot.exp <<'EOF'
+          set timeout 180
+          set ram $env(RAM_MIB)
+          spawn -noecho qemu-system-arm -M vexpress-a9 -cpu cortex-a9 -m $ram -smp 1 -display none -serial stdio -monitor none -nic none -no-reboot -device loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on -device loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on -device loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on -drive if=none,id=root,file=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img,format=raw,snapshot=on -device virtio-blk-device,drive=root
+          proc fail {message} {
+              puts stderr $message
+              catch {exec kill -TERM [exp_pid]}
+              catch {close}
+              catch {wait}
+              exit 1
+          }
+          expect {
+              -re {mountroot> *} {send -- "ufs:/dev/ufs/rootfs\r"; exp_continue -continue_timer}
+              -re {Enter full pathname of shell or RETURN for /bin/sh: *} {send -- "\r"}
+              -re {(?i)panic:} {fail "A9 kernel panic before single user"}
+              timeout {fail "A9 single-user shell selection timeout"}
+              eof {fail "A9 emulator exited before single user"}
+          }
+          set timeout 90
+          expect {
+              -re {(?m)^(root@[^\r\n]* )?# *$} {}
+              -re {(?i)panic:|failed to reclaim memory} {fail "A9 single-user memory failure"}
+              timeout {fail "A9 single-user prompt timeout"}
+              eof {fail "A9 emulator exited before prompt"}
+          }
+          proc gate {command marker} {
+              send -- "$command\r"
+              expect {
+                  -re "(?m)^$marker\\r*$" {}
+                  timeout {fail "A9 command gate failed: $marker"}
+                  eof {fail "A9 emulator exited: $marker"}
+              }
+              expect {
+                  -re {(?m)^(root@[^\r\n]* )?# *$} {}
+                  timeout {fail "A9 prompt after command missing"}
+                  eof {fail "A9 emulator exited after command"}
+              }
+          }
+          gate {printf '%s%s\n' EXODUS_SHELL_ READY} EXODUS_SHELL_READY
+          gate {/bin/sh -c 'set -e; uname -a; sysctl hw.model hw.physmem hw.realmem hw.pagesize; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; uname -v | grep EXODUS_A9_REF; sysctl -n hw.model | grep -i cortex-a9; printf "%s%s\n" EXODUS_ID_ PASS'} EXODUS_ID_PASS
+          gate {/bin/sh -c 'set -e; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; mount; printf "%s%s\n" EXODUS_VM_ PASS'} EXODUS_VM_PASS
+          gate {/bin/sh -c 'set -e; test -r /etc/rc; sha256 /bin/sh; (uname -p) & child=$!; wait $child; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; printf "%s%s\n" EXODUS_A9_REDUCED_ PASS'} EXODUS_A9_REDUCED_PASS
+          gate {mount -uw / && printf '%s%s\n' EXODUS_WRITABLE_ PASS} EXODUS_WRITABLE_PASS
+          source transfer.exp
+          gate {chmod 700 /tmp/exodus-shm.elf && printf '%s%s\n' EXODUS_MODE_ PASS} EXODUS_MODE_PASS
+          gate {/tmp/exodus-shm.elf && printf '%s%s\n' EXODUS_GUEST_SHM_ EXIT_OK} EXODUS_GUEST_SHM_EXIT_OK
+          catch {exec kill -TERM [exp_pid]}
+          catch {close}
+          catch {wait}
+          exit 0
+          EOF
+          timeout 9m expect boot.exp 2>&1 | tee evidence/userspace.log
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_A9_REDUCED_PASS
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_SHM_PASS
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_SHM_EXIT_OK
+      - name: Assemble reproducible QEMU reference kit
+        run: |
+          set -euo pipefail
+          kit=exodus-a9-reference
+          mkdir -p "$kit/evidence"
+          cp evidence/kernel.bin evidence/board.dtb evidence/board.dts "$kit/evidence/"
+          cp handoff.bin boot.exp transfer.exp shm.elf "$kit/"
+          cp FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz "$kit/"
+          printf '%s\n' "$RAM_MIB" > "$kit/ram-mib.txt"
+          printf '%s\n' "$GITHUB_SHA" > "$kit/source-commit.txt"
+          cat > "$kit/run-reference.sh" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          cd -- "$(dirname -- "$0")"
+          sha256sum -c SHA256SUMS
+          ram=$(cat ram-mib.txt)
+          case "$ram" in 128|256) ;; *) echo "Invalid RAM profile" >&2; exit 2;; esac
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img
+          tmp=$(mktemp -d)
+          trap 'rm -rf -- "$tmp"' EXIT
+          xz -dc "$image.xz" > "$tmp/$image"
+          for path in evidence handoff.bin boot.exp transfer.exp; do
+            ln -s "$PWD/$path" "$tmp/$path"
+          done
+          cd -- "$tmp"
+          case "${1:-smoke}" in
+            smoke)
+              export RAM_MIB="$ram"
+              timeout 9m expect boot.exp
+              ;;
+            shell)
+              qemu-system-arm -M vexpress-a9 -cpu cortex-a9 -m "$ram" -smp 1 -display none -serial stdio -monitor none -nic none -no-reboot -device loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on -device loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on -device loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on -drive "if=none,id=root,file=$image,format=raw,snapshot=on" -device virtio-blk-device,drive=root
+              ;;
+            *) echo "Usage: run-reference.sh [smoke|shell]" >&2; exit 2;;
+          esac
+          EOF
+          cat > "$kit/README.txt" <<'EOF'
+          EXODUS A9 functional reference kit (QEMU only).
+          Requires Linux, bash, qemu-system-arm, expect, xz and coreutils.
+          Allow several GiB of temporary disk for the disposable root image.
+          Run: bash run-reference.sh smoke
+          Or:  bash run-reference.sh shell
+          Smoke boots the source-built FreeBSD kernel, checks identity and VM,
+          transfers a verified ELF and runs the native shared-memory fixture.
+          Shell mode is interactive and starts in single-user mode.
+          At mountroot> enter ufs:/dev/ufs/rootfs; press Enter for /bin/sh.
+          No network, SD card or real Switch hardware is used.
+          This is not a physical boot image, Horizon integration or full EXODUS.
+          Root disk is the pinned upstream FreeBSD release and is disposable.
+          EOF
+          chmod +x "$kit/run-reference.sh"
+          bash -n "$kit/run-reference.sh"
+          (
+            cd "$kit"
+            sha256sum README.txt run-reference.sh ram-mib.txt source-commit.txt \
+              evidence/kernel.bin evidence/board.dtb evidence/board.dts \
+              handoff.bin boot.exp transfer.exp shm.elf \
+              FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+          tar -cf "exodus-a9-reference-$RAM_MIB.tar" "$kit"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exodus-a9-functional-kit-${{ matrix.ram }}mib
+          path: exodus-a9-reference-${{ matrix.ram }}.tar
+          if-no-files-found: error
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a9-guest-shm-r60-${{ matrix.ram }}mib
+          path: |
+            evidence/*.log
+            evidence/board.dts
+            evidence/board.dtb
+          if-no-files-found: warn

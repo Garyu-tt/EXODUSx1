@@ -1,0 +1,5 @@
+# R43 — First real kernel data abort
+
+R41 run 46035573386 failed, earliest sample 0.2s already ABT mode PC ffff000c. R42 run 46035865489 job 140630983213 passed diagnostic gate. First trace event line 5748 Data Abort, DFSR 0x5 (section translation fault), DFAR 0x110. Last translated kernel block starts at 0xc0627eb0, preceded by calls from 0xc03b1c54. Following vector execution at ffff0010 (zero words) eventually faults on instruction fetch at ffff1000 (IFSR 0x7), explaining repeated abort. Confirms actual kernel linked virtual code executed, not full FreeBSD boot. Exact faulting instruction, function and cause still unresolved; low DFAR suggests invalid base or missing early mapping but is not proof.
+
+R43 commit 699c269337f8fda36d15a5a0fe7287cf5a982633 adds actual ELF disassembly and symbol lookups for first-fault block, and separate bounded single-instruction QEMU trace with address filter and CPU register state. Uses same verified R40 kernel artifact. No kernel patch yet. Diagnostic gate requires target register state and a Data Abort marker, not boot success. CI https://github.com/Garyu-tt/EXODUSx1/actions/runs/46036129899. No physical Switch access.

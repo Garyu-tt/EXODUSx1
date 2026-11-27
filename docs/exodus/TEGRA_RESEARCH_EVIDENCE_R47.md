@@ -1,0 +1,5 @@
+# R47 — Full ARMv7 userspace and memory budget reference
+
+R46 run 46040699305 job 140647392157 completed success. FreeBSD 15.1 GENERIC Cortex-A9 r0p0, virtio_mmio0 at 10013600 with vtblk0, UFS root mounted, local and late filesystems mounted, login root, uname and hw.model confirmed, root mount listed and exact EXODUS_A9_USERSPACE_PASS observed. Network disabled; root disk disposable snapshot; benign duplicate route and terminal resize warnings. This is actual guest userspace on emulated A9, not a Tegra ADSP or dual-kernel hardware proof.
+
+R47 commit f711662f37d0838d4fa43e9d4e3899d1aed55948 adds independent 64/128/256 MiB matrix, no fail-fast; adjusts FDT RAM size together with QEMU RAM. Uses same verified release kernel and guarded devmap patch, verified root disk snapshot. Requires shell, CPU identity, memory counters, 4 MiB file creation and hash, child process completion, explicit memory PASS. These are selected experimental budgets, not measured ADSP allocations, nor minimum physical footprint. The 64 MiB case may fail; each result is independent. CI https://github.com/Garyu-tt/EXODUSx1/actions/runs/46041064306. No physical Switch access.
