@@ -1,6 +1,7 @@
-name: EXODUS A57 C ABI fast preflight R82
+name: EXODUS A57 C ABI fast preflight R90
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
     paths:
       - '.github/workflows/tegra-freebsd-a57-c-preflight.yml'
       - 'exodus/tests/a57_freebsd_process_entry.c'
@@ -93,6 +94,20 @@ jobs:
           p.write_text(s)
           p=Path("authority/exodus/frankenstein/test_el2_freebsd_abi.py")
           s=p.read_text().replace('b"AMP1"', 'b"AMP2"').replace('b"AMP1\\x01"', 'b"AMP2\\x02"')
+          old='                write_all(vm.stdin,r)'
+          assert s.count(old)==1
+          s=s.replace(old,'''                assert r[6:7]==q[6:7] and r[8:40]==q[8:40] and r[7]==0
+                          expected=100+task-0x1234567887654300 if i==0 else 0
+                          assert int.from_bytes(r[40:48],"little")==expected
+                          assert r[48:]==bytes(16)
+          '''+old)
+          # Retain the exact trace on failure rather than losing the temporary file.
+          old='            if trace.exists():'
+          assert s.count(old)==1
+          s=s.replace(old,'''            if trace.exists():
+                      pathlib.Path("evidence/a57-preflight-trace.log").write_bytes(trace.read_bytes())
+          '''+old)
+          compile(s,str(p),"exec")
           p.write_text(s)
           PY
           arm-linux-gnueabihf-gcc -static -march=armv7-a -mfpu=vfpv3-d16 -O2 "$src/amp_smp_authority.c" -o synthetic-peer
