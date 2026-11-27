@@ -1,4 +1,4 @@
-name: EXODUS A57 C ABI fast preflight R90
+name: EXODUS A57 C ABI fast preflight R91
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -101,12 +101,10 @@ jobs:
                           assert int.from_bytes(r[40:48],"little")==expected
                           assert r[48:]==bytes(16)
           '''+old)
-          # Retain the exact trace on failure rather than losing the temporary file.
+          # Retain full QEMU trace without duplicating the if block.
           old='            if trace.exists():'
           assert s.count(old)==1
-          s=s.replace(old,'''            if trace.exists():
-                      pathlib.Path("evidence/a57-preflight-trace.log").write_bytes(trace.read_bytes())
-          '''+old)
+          s=s.replace(old,old+'\n                pathlib.Path("evidence/a57-preflight-trace.log").write_bytes(trace.read_bytes())')
           compile(s,str(p),"exec")
           p.write_text(s)
           PY
