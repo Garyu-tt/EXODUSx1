@@ -27,8 +27,8 @@ jobs:
       - name: Test IPC32 coherent-host reference
         run: |
           set -o pipefail
-          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_ipc32_reference.c -o /tmp/tumor-ipc32
-          /tmp/tumor-ipc32 | tee tumor-ipc32-reference.log
+          cc -std=c11 -O2 -Wall -Wextra -Werror -pthread exodus/tests/tumor_ipc32_reference.c -o /tmp/tumor-ipc32
+          timeout 50s /tmp/tumor-ipc32 | tee tumor-ipc32-reference.log
       - name: Test actual Tumor reference mailbox on host
         run: |
           set -o pipefail
