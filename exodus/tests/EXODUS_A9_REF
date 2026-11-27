@@ -1,0 +1,36 @@
+# EXODUS Cortex-A9 QEMU reference, NOT a physical Tegra ADSP configuration.
+# Keep standard ARMv7 ABI, VM and filesystem options in first source build.
+ident EXODUS_A9_REF
+machine arm armv7
+cpu CPU_CORTEXA
+makeoptions CONF_CFLAGS="-march=armv7a"
+include "std.armv7"
+files "../qemu/files.qemu"
+options SCHED_ULE
+options PLATFORM
+options LINUX_BOOT_ABI
+options FDT
+device clk
+device phy
+device hwreset
+device regulator
+device syscon
+device gic
+device mpcore_timer
+device generic_timer
+device uart
+device uart_ns8250
+device pl011
+device pty
+device md
+device firmware
+device pl310
+device psci
+device virtio
+device virtio_mmio
+device virtio_blk
+device loop
+device ether
+device bpf
+device crypto
+device fdt_pinctrl
