@@ -90,9 +90,16 @@ jobs:
           ssh-keygen -q -t ed25519 -N '' -f "$d/client"
           echo EXODUS_KEYS_PASS
           step=config
-          mkdir -p /var/empty /var/run
-          chown root:wheel /var/empty
-          chmod 755 /var/empty
+          mkdir -p /var/run
+          if ! test -d /var/empty; then
+              install -d -o root -g wheel -m 755 /var/empty
+          fi
+          # Preserve FreeBSD's protected (schg) privilege separation directory.
+          test ! -L /var/empty
+          ls -ldo /var/empty
+          test "$(stat -f %u /var/empty)" = 0
+          mode=$(stat -f %Lp /var/empty)
+          test "$((0$mode & 022))" = 0
           cp "$d/client.pub" /home/exodusprobe/authorized_keys
           chown exodusprobe /home/exodusprobe/authorized_keys
           chmod 600 /home/exodusprobe/authorized_keys
