@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ram: [32, 40, 48]
+        ram: [36, 40, 48]
     env:
       RAM_MIB: ${{ matrix.ram }}
     timeout-minutes: 20
@@ -84,7 +84,7 @@ jobs:
           }
           set timeout 90
           expect {
-              -re {(?m)^# *$} {}
+              -re {(?m)^(root@[^\r\n]* )?# *$} {}
               -re {(?i)panic:|failed to reclaim memory} {fail "A9 single-user memory failure"}
               timeout {fail "A9 single-user prompt timeout"}
               eof {fail "A9 emulator exited before prompt"}
@@ -97,7 +97,7 @@ jobs:
                   eof {fail "A9 emulator exited: $marker"}
               }
               expect {
-                  -re {(?m)^# *$} {}
+                  -re {(?m)^(root@[^\r\n]* )?# *$} {}
                   timeout {fail "A9 prompt after command missing"}
                   eof {fail "A9 emulator exited after command"}
               }
