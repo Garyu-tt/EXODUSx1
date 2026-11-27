@@ -3,12 +3,16 @@
  * A mediator must establish ownership and quiescence outside this protocol.
  * No compare-exchange, shared read-modify-write, device access or live reset.
  */
+#define _POSIX_C_SOURCE 200809L
 #include <stdint.h>
 #include <stddef.h>
 #include <stdatomic.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
+#include <pthread.h>
+#include <time.h>
+#include <sched.h>
 
 enum { IPC_FAULT=-1, IPC_IDLE=0, IPC_OK=1 };
 typedef struct {
@@ -65,6 +69,64 @@ static int receive(ipc32_slot *s,endpoint *e){
 static void setup(ipc32_slot *s,endpoint *tx,endpoint *rx,uint64_t gen){
     assert(init(s));*tx=*rx=(endpoint){.generation=gen,.role=1};
 }
+enum { STRESS_COUNT=100000 };
+typedef struct {
+    ipc32_slot *out,*in;
+    endpoint tx,rx;
+    uint64_t end_sequence;
+    int result;
+} worker;
+static uint64_t monotonic_ms(void){
+    struct timespec ts;
+    assert(clock_gettime(CLOCK_MONOTONIC,&ts)==0);
+    return (uint64_t)ts.tv_sec*1000+(uint64_t)ts.tv_nsec/1000000;
+}
+static void *exchange(void *arg){
+    worker *w=arg;
+    uint64_t start=monotonic_ms();
+    w->result=1;
+    for(;;){
+        int a=IPC_IDLE,b=IPC_IDLE;
+        if(w->tx.sequence<w->end_sequence)a=send(w->out,&w->tx);
+        if(w->rx.sequence<w->end_sequence)b=receive(w->in,&w->rx);
+        if(a==IPC_FAULT||b==IPC_FAULT)return NULL;
+        if(w->tx.sequence==w->end_sequence &&
+           w->rx.sequence==w->end_sequence &&
+           atomic_load_explicit(&w->out->ack.token,memory_order_acquire)==w->tx.token){
+            w->result=0;return NULL;
+        }
+        if(monotonic_ms()-start>=20000)return NULL;
+        if(a==IPC_IDLE&&b==IPC_IDLE)sched_yield();
+    }
+}
+static void stress(uint64_t prefix){
+    ipc32_slot lanes[2];
+    const uint64_t ga=UINT64_C(0x123400000001),gb=UINT64_C(0x567800000002);
+    const uint32_t token=(uint32_t)prefix;
+    for(unsigned i=0;i<2;i++){
+        assert(init(&lanes[i]));
+        atomic_store(&lanes[i].pub.token,token);
+        atomic_store(&lanes[i].ack.token,token);
+    }
+    worker a={.out=&lanes[0],.in=&lanes[1],
+        .tx={token,prefix,ga,1,0},.rx={token,prefix,gb,2,0},
+        .end_sequence=prefix+STRESS_COUNT,.result=1};
+    worker b={.out=&lanes[1],.in=&lanes[0],
+        .tx={token,prefix,gb,2,0},.rx={token,prefix,ga,1,0},
+        .end_sequence=prefix+STRESS_COUNT,.result=1};
+    pthread_t pa,pb;
+    assert(pthread_create(&pa,NULL,exchange,&a)==0);
+    assert(pthread_create(&pb,NULL,exchange,&b)==0);
+    assert(pthread_join(pa,NULL)==0);
+    assert(pthread_join(pb,NULL)==0);
+    assert(a.result==0&&b.result==0);
+    assert(a.tx.sequence==a.end_sequence&&a.rx.sequence==a.end_sequence);
+    assert(b.tx.sequence==b.end_sequence&&b.rx.sequence==b.end_sequence);
+    for(unsigned i=0;i<2;i++){
+        assert(atomic_load(&lanes[i].pub.token)==(uint32_t)a.end_sequence);
+        assert(atomic_load(&lanes[i].ack.token)==(uint32_t)a.end_sequence);
+    }
+}
 int main(void){
     ipc32_slot s;endpoint tx,rx;
     setup(&s,&tx,&rx,UINT64_C(0x100000007));
@@ -97,5 +159,9 @@ int main(void){
     setup(&s,&tx,&rx,9);tx.sequence=UINT64_MAX;
     assert(send(&s,&tx)==IPC_FAULT && atomic_load(&s.pub.token)==0);
     puts("PASS: IPC32 sequence exhaustion requires fresh session");
+    stress(0);
+    puts("PASS: IPC32 concurrent bidirectional 100000 frames per direction");
+    stress(UINT64_C(0xffffffff)-50000);
+    puts("PASS: IPC32 concurrent bidirectional 100000 frames per direction across token wrap");
     return 0;
 }
