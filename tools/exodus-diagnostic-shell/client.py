@@ -1,4 +1,4 @@
-"""EXODUS operator client R07; supports local approval and legacy NRO."""
+"""EXODUS operator client R08; supports local approval and legacy NRO."""
 import argparse
 import getpass
 import hashlib
@@ -8,8 +8,8 @@ import socket
 import statistics
 from pathlib import Path
 
-COMMANDS = ("info", "cpu", "memory", "timer", "audio", "all", "quit")
-HELP = "probes | ls | put NAME SOURCE | cat NAME | run NAME | rm NAME | vm OPCODES... | info | cpu | memory | timer | audio | all | repeat COMMAND N (2-10) | repeat run NAME N | help | quit"
+COMMANDS = ("ping", "info", "cpu", "memory", "timer", "audio", "all", "quit")
+HELP = "ping | probes | ls | put NAME SOURCE | cat NAME | run NAME | rm NAME | vm OPCODES... | info | cpu | memory | timer | audio | all | repeat COMMAND N (2-10) | repeat run NAME N | help | quit"
 
 def report(stream):
     header = stream.readline(81)
