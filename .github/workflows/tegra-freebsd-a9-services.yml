@@ -76,9 +76,20 @@ jobs:
           ifconfig lo0 inet 127.0.0.1 up
           ping -c 1 -t 5 127.0.0.1
           echo EXODUS_LOOPBACK_PASS
-          pw useradd -n exodusprobe -u 60001 -m -s /bin/sh -w random >/dev/null
+          # Single-user boot has not initialized /etc/rc services.
+          step=account
+          trap 'rc=$?; echo "EXODUS_SERVICE_RESULT=$rc stage=$step"; if test -s "$d/sshd.pid"; then kill "$(cat "$d/sshd.pid")" 2>/dev/null || :; fi' EXIT
+          mkdir -p /home /var/run /var/empty
+          test -w /etc/master.passwd
+          pw useradd -n exodusprobe -u 60001 -m -s /bin/sh -w random > "$d/pw.log" 2>&1 || { cat "$d/pw.log" >&2; exit 1; }
+          rm -f "$d/pw.log"
+          test "$(id -u exodusprobe)" = 60001
+          echo EXODUS_ACCOUNT_PASS
+          step=keys
           ssh-keygen -q -t ed25519 -N '' -f "$d/host"
           ssh-keygen -q -t ed25519 -N '' -f "$d/client"
+          echo EXODUS_KEYS_PASS
+          step=config
           mkdir -p /var/empty /var/run
           cp "$d/client.pub" /home/exodusprobe/authorized_keys
           chown exodusprobe /home/exodusprobe/authorized_keys
@@ -128,12 +139,16 @@ jobs:
               done
               rm -f "$d/sshd.pid"
           }
+          step=sshd-start
           start_server
+          echo EXODUS_SSHD_STARTED
+          step=auth
           test "$(client 'id -u')" = 60001
           rc=0
           client 'exit 23' || rc=$?
           test "$rc" = 23
           echo EXODUS_SSH_AUTH_PASS
+          step=restart
           stop_server
           rc=0
           client 'exit 0' || rc=$?
@@ -181,6 +196,7 @@ jobs:
               send -- "$command\r"
               expect {
                   -re "(?m)^$marker\\r*$" {}
+                  -re {(?m)^EXODUS_SERVICE_RESULT=[1-9][0-9]* stage=[a-z-]+\r*$} {fail "Service script failed: $expect_out(0,string)"}
                   timeout {fail "A9 command gate failed: $marker"}
                   eof {fail "A9 emulator exited: $marker"}
               }
@@ -197,7 +213,7 @@ jobs:
           gate {mount -uw / && printf '%s%s\n' EXODUS_WRITABLE_ PASS} EXODUS_WRITABLE_PASS
           gate {mkdir -p /mnt/exodus-seed && mount -t msdosfs -o ro /dev/msdosfs/EXODUSSEED /mnt/exodus-seed && printf '%s%s\n' EXODUS_SEED_ PASS} EXODUS_SEED_PASS
           set timeout 300
-          gate {sh /mnt/exodus-seed/services.sh && printf '%s%s\n' EXODUS_SERVICE_ EXIT_OK} EXODUS_SERVICE_EXIT_OK
+          gate {sh /mnt/exodus-seed/services.sh; rc=$?; test "$rc" = 0 && printf '%s%s\n' EXODUS_SERVICE_ EXIT_OK} EXODUS_SERVICE_EXIT_OK
           catch {exec kill -TERM [exp_pid]}
           catch {close}
           catch {wait}
