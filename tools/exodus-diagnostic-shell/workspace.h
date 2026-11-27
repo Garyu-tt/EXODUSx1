@@ -90,7 +90,7 @@ static inline int ws_value(const char **p,const WsResult *r,WsProbe probe,uint64
 /* repeat N { ... } with literal count 1..1024; max 4 nested blocks.
  * 4096 fuel units shared by all assignments and loop iterations.
  * Values are unsigned 64-bit and memory is reset each execution. */
-static inline const char *ws_block(const char **p,WsProbe probe,WsResult *r,unsigned depth,unsigned *fuel){
+static inline const char *ws_block(const char **p,WsProbe probe,WsResult *r,unsigned depth,unsigned *fuel,Workspace *workspace){
     ws_space(p);
     while(**p&&**p!='}'){
         if(!*fuel)return "step_limit";
@@ -111,12 +111,44 @@ static inline const char *ws_block(const char **p,WsProbe probe,WsResult *r,unsi
                 if(!*fuel)return "step_limit";
                 --*fuel;
                 const char *body=start;
-                const char *err=ws_block(&body,probe,r,depth+1,fuel);
+                const char *err=ws_block(&body,probe,r,depth+1,fuel,workspace);
                 if(err)return err;
                 if(*body!='}')return "block";
                 after=body+1;
             }
             *p=after;ws_space(p);continue;
+        }
+        if(!strncmp(*p,"call ",5)){
+            if(depth>=4)return "nesting";
+            *p+=5;ws_space(p);
+            char name[25];size_t n=0;
+            while(**p&&**p!=';'&&**p!=' '){
+                if(n==sizeof name-1)return "name";
+                name[n++]=*(*p)++;
+            }
+            name[n]=0;ws_space(p);
+            if(**p!=';')return "semicolon";
+            (*p)++;
+            WsFile *f=workspace?ws_find(workspace,name):NULL;
+            if(!f)return "not_found";
+            const char *body=f->source;
+            const char *err=ws_block(&body,probe,r,depth+1,fuel,workspace);
+            if(err)return err;
+            if(*body)return "block";
+            ws_space(p);continue;
+        }
+        if(!strncmp(*p,"assert ",7)){
+            *p+=7;uint64_t left,right;
+            if(!ws_value(p,r,probe,&left))return "value";
+            ws_space(p);
+            int neq=**p=='!';
+            if((**p!='='&&**p!='!')||(*p)[1]!='=')return "operator";
+            *p+=2;
+            if(!ws_value(p,r,probe,&right))return "value";
+            ws_space(p);if(**p!=';')return "semicolon";
+            (*p)++;
+            if(neq?(left==right):(left!=right))return "assertion";
+            r->steps++;ws_space(p);continue;
         }
         unsigned i;uint64_t v,*dest;char op;
         if(**p=='m'){
@@ -147,13 +179,14 @@ static inline const char *ws_block(const char **p,WsProbe probe,WsResult *r,unsi
     }
     return NULL;
 }
-static inline const char *ws_run(const char *p,WsProbe probe,WsResult *out){
+static inline const char *ws_run_in(Workspace *workspace,const char *p,WsProbe probe,WsResult *out){
     WsResult r={0};unsigned fuel=4096;
     if(strlen(p)>WS_SOURCE)return "length";
-    const char *err=ws_block(&p,probe,&r,0,&fuel);
+    const char *err=ws_block(&p,probe,&r,0,&fuel,workspace);
     if(err)return err;
     if(*p)return "block";
     if(!r.steps)return "empty";
     *out=r;return NULL;
 }
+static inline const char *ws_run(const char *p,WsProbe probe,WsResult *out){return ws_run_in(NULL,p,probe,out);}
 #endif
