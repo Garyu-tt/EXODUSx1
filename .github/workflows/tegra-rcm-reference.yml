@@ -87,8 +87,8 @@ jobs:
           aarch64-linux-gnu-gcc -std=c11 -mcpu=cortex-a57 -O2 -ffreestanding -c exodus/tests/tumor_cache_isa_reference.c -o cache-reference/a57.o
           arm-none-eabi-objdump -d cache-reference/a9.o > cache-reference/a9.txt
           aarch64-linux-gnu-objdump -d cache-reference/a57.o > cache-reference/a57.txt
-          grep -E 'mcr.*(cr|c)7, *(cr|c)10, *\{?1' cache-reference/a9.txt
-          grep -E 'mcr.*(cr|c)7, *(cr|c)6, *\{?1' cache-reference/a9.txt
+          grep -E 'mcr.*(cr|c)7, *(cr|c)10, *[{]?1' cache-reference/a9.txt
+          grep -E 'mcr.*(cr|c)7, *(cr|c)6, *[{]?1' cache-reference/a9.txt
           grep -w dsb cache-reference/a9.txt
           grep -E 'dc[[:space:]]+cvac' cache-reference/a57.txt
           grep -E 'dc[[:space:]]+ivac' cache-reference/a57.txt
