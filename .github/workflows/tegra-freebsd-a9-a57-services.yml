@@ -94,10 +94,30 @@ jobs:
           ifconfig lo0 inet 127.0.0.1 up
           ping -c 1 -t 5 127.0.0.1
           echo EXODUS_LOOPBACK_PASS
-          pw useradd -n exodusprobe -u 60001 -m -s /bin/sh -w random >/dev/null
+          # Single-user boot has not initialized /etc/rc services.
+          step=account
+          trap 'rc=$?; echo "EXODUS_RESIDENT_RESULT=$rc stage=$step"; if test "$rc" != 0 && test -s "$d/sshd.pid"; then kill "$(cat "$d/sshd.pid")" 2>/dev/null || :; fi' EXIT
+          mkdir -p /home /var/run /var/empty
+          test -w /etc/master.passwd
+          pw useradd -n exodusprobe -u 60001 -m -s /bin/sh -w random > "$d/pw.log" 2>&1 || { cat "$d/pw.log" >&2; exit 1; }
+          rm -f "$d/pw.log"
+          test "$(id -u exodusprobe)" = 60001
+          echo EXODUS_ACCOUNT_PASS
+          step=keys
           ssh-keygen -q -t ed25519 -N '' -f "$d/host"
           ssh-keygen -q -t ed25519 -N '' -f "$d/client"
-          mkdir -p /var/empty /var/run
+          echo EXODUS_KEYS_PASS
+          step=config
+          mkdir -p /var/run
+          if ! test -d /var/empty; then
+              install -d -o root -g wheel -m 755 /var/empty
+          fi
+          # Preserve FreeBSD's protected (schg) privilege separation directory.
+          test ! -L /var/empty
+          ls -ldo /var/empty
+          test "$(stat -f %u /var/empty)" = 0
+          mode=$(stat -f %Lp /var/empty)
+          test "$((0$mode & 022))" = 0
           cp "$d/client.pub" /home/exodusprobe/authorized_keys
           chown exodusprobe /home/exodusprobe/authorized_keys
           chmod 600 /home/exodusprobe/authorized_keys
@@ -130,10 +150,20 @@ jobs:
                   -o GlobalKnownHostsFile=/dev/null exodusprobe@127.0.0.1 "$@"
           }
           start_server() {
-              /usr/sbin/sshd -t -f "$d/sshd.conf"
-              /usr/sbin/sshd -f "$d/sshd.conf"
-              test -s "$d/sshd.pid"
-              kill -0 "$(cat "$d/sshd.pid")"
+              step=sshd-config
+              /usr/sbin/sshd -t -e -f "$d/sshd.conf"
+              step=sshd-launch
+              /usr/sbin/sshd -E "$d/sshd.log" -f "$d/sshd.conf" || { cat "$d/sshd.log" >&2; return 1; }
+              step=sshd-pid
+              i=0
+              while ! test -s "$d/sshd.pid"; do
+                  i=$((i+1))
+                  if test "$i" -ge 15; then cat "$d/sshd.log" >&2; return 1; fi
+                  sleep 1
+              done
+              kill -0 "$(cat "$d/sshd.pid")" || { cat "$d/sshd.log" >&2; return 1; }
+              step=sshd-listen
+              sockstat -4 -l | grep ':2222' || { cat "$d/sshd.log" >&2; return 1; }
           }
           stop_server() {
               pid=$(cat "$d/sshd.pid")
@@ -147,11 +177,22 @@ jobs:
               rm -f "$d/sshd.pid"
           }
           start_server
+          echo EXODUS_SSHD_STARTED
+          step=auth
           test "$(client 'id -u')" = 60001
           rc=0
           client 'exit 23' || rc=$?
           test "$rc" = 23
           echo EXODUS_SSH_AUTH_PASS
+          step=restart
+          stop_server
+          rc=0
+          client 'exit 0' || rc=$?
+          test "$rc" = 255
+          start_server
+          test "$(client 'printf "%s" EXODUS_RESTART_OK')" = EXODUS_RESTART_OK
+          echo EXODUS_SERVICE_RESTART_PASS
+          sync
           echo EXODUS_RESIDENT_SSH_READY
           EOF
           cat > probe.sh <<'EOF'
@@ -242,7 +283,8 @@ jobs:
           old='        child.sendline("mount -t msdosfs -o ro /dev/msdosfs/EXODUSSEED /mnt/exodus-seed && cp /mnt/exodus-seed/awt_clone_guest.sh'
           assert s.count(old)==1
           insert=r'''        child.sendline("mount -t msdosfs -o ro /dev/msdosfs/EXODUSSEED /mnt/exodus-seed && cp /mnt/exodus-seed/probe.sh /var/tmp/exodus-ssh-probe.sh && sh /mnt/exodus-seed/services.sh && umount /mnt/exodus-seed && printf 'EXODUS_RESIDENT_%s\\n' SETUP_PASS")
-                  child.expect(r"(?m)^EXODUS_RESIDENT_SETUP_PASS\r*\n",timeout=180)
+                  result=child.expect([r"(?m)^EXODUS_RESIDENT_SETUP_PASS\r*\n",r"(?m)^EXODUS_RESIDENT_RESULT=[1-9][0-9]* stage=[a-z-]+\r*\n"],timeout=180)
+                  if result!=0: raise RuntimeError(child.match.group(0))
                   child.expect(r"(?m)^(root@[^\r\n]* )?# *$",timeout=30)
           '''
           s=s.replace(old,insert+old)
@@ -261,7 +303,7 @@ jobs:
           set -euo pipefail
           /usr/bin/python3 authority/exodus/frankenstein/armv7_authority/awt_clone_run.py disk.raw seed.img unused evidence/serial.log amp.elf evidence/a57-trace.log
           tr -d '\r' < evidence/serial.log > evidence/normalized.log
-          for marker in EXODUS_A9_ID_PASS EXODUS_STORAGE_PASS EXODUS_LOOPBACK_PASS EXODUS_SSH_AUTH_PASS EXODUS_RESIDENT_SETUP_PASS; do
+          for marker in EXODUS_A9_ID_PASS EXODUS_STORAGE_PASS EXODUS_LOOPBACK_PASS EXODUS_SSH_AUTH_PASS EXODUS_SERVICE_RESTART_PASS EXODUS_RESIDENT_SSH_READY EXODUS_RESIDENT_SETUP_PASS; do
             test "$(grep -Fxc "$marker" evidence/normalized.log)" = 1
           done
           test "$(grep -Fxc EXODUS_SSH_DURING_A57_PASS evidence/normalized.log)" = 4
