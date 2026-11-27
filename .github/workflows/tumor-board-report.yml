@@ -1,0 +1,18 @@
+name: Tumor board report ingestion
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/tumor_board_report.py'
+      - 'exodus/frankenstein/test_tumor_board_report.py'
+      - '.github/workflows/tumor-board-report.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  board-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s exodus/frankenstein -p test_tumor_board_report.py
