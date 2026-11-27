@@ -35,9 +35,35 @@ jobs:
           assert s.count(old)==1
           p.write_text(s.replace(old,new))
           PY
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("uboot/arch/arm/lib/interrupts.c")
+          s=p.read_text()
+          old='\tefi_restore_gd();\n\tprintf ("data abort\\n");'
+          new='''\tunsigned int sctlr, dfsr, dfar;
+          \tasm volatile("mrc p15, 0, %0, c1, c0, 0" : "=r"(sctlr));
+          \tasm volatile("mrc p15, 0, %0, c5, c0, 0" : "=r"(dfsr));
+          \tasm volatile("mrc p15, 0, %0, c6, c0, 0" : "=r"(dfar));
+          \tefi_restore_gd();
+          \tprintf("R37 abort SCTLR=%08x DFSR=%08x DFAR=%08x\\n", sctlr, dfsr, dfar);
+          \tprintf ("data abort\\n");'''
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          p=Path("uboot/lib/efi_loader/efi_boottime.c")
+          s=p.read_text()
+          old='\tret = EFI_CALL(image_obj->entry(image_handle, &systab));'
+          new='''\t{
+          \t\tunsigned int sctlr;
+          \t\tasm volatile("mrc p15, 0, %0, c1, c0, 0" : "=r"(sctlr));
+          \t\tprintf("R37 EFI entry SCTLR=%08x\\n", sctlr);
+          \t}
+          '''+old
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
           git -C uboot diff | tee evidence/uboot-alignment-experiment.patch
           make -C uboot CROSS_COMPILE=arm-linux-gnueabihf- vexpress_ca9x4_defconfig
-          uboot/scripts/config --file uboot/.config -e EFI_LOADER -e CMD_BOOTEFI -e CMD_FAT -e EFI_PARTITION
+          uboot/scripts/config --file uboot/.config -e EFI_LOADER -e CMD_BOOTEFI -e CMD_FAT -e EFI_PARTITION -e CMD_CACHE -d SYS_DCACHE_OFF
           make -C uboot CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
           grep '^CONFIG_CMD_BOOTEFI=y$' uboot/.config
           make -C uboot CROSS_COMPILE=arm-linux-gnueabihf- -j2 2>&1 | tee evidence/uboot-build.log
@@ -91,6 +117,13 @@ jobs:
           expect {
               -re {[0-9]+ bytes read} {}
               timeout {fail "A9 EFI loader not read"}
+              eof {fail "A9 emulator exited"}
+          }
+          expect -re {=> *$}
+          send -- "dcache on; dcache\r"
+          expect {
+              -re {Cache is ON} {}
+              timeout {fail "A9 data cache/MMU enable not confirmed"}
               eof {fail "A9 emulator exited"}
           }
           expect -re {=> *$}
