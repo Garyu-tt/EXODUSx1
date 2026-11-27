@@ -1,0 +1,5 @@
+# R53 — Consolidate source kernel experiment and repair missing GPIO
+
+R52 report already exists and correctly documents the parallel EXODUS_A9_REF experiment. R52 alternative EXODUS_A9 run 46043828672 job 140657975922 failed before build due to host compiler inference: /usr/bin/clang-cpp absent. Primary EXODUS_A9_REF run 46043739842 job 140657672556 successfully built toolchain and compiled ARMv7 objects, then failed regulator_fixed.c because gpiobusvar.h requires gpio_if.h. Pinned FreeBSD sys/conf/files selects dev/gpio/gpio_if.m only with device gpio.
+
+R53 commit 9311a1652f87eaa004dbea5aa642221c8f3e0240 adds GPIO to primary config and automatically retriggers its workflow. Commit 5125351878845785a9ce710f65478572d46b8307 makes the redundant alternative workflow manual-only and adopts the primary invocation (explicit cross tools, kernel-toolchain first). No deletion, no change to main. Primary CI https://github.com/Garyu-tt/EXODUSx1/actions/runs/46045173543. Source kernel compilation and boot not yet confirmed. QEMU reference only, no physical Switch access.
