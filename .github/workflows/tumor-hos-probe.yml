@@ -8,6 +8,13 @@ on:
 permissions:
   contents: read
 jobs:
+  collector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tools/tumor-hos-probe -p test_collect_report.py
   build:
     runs-on: ubuntu-latest
     container: devkitpro/devkita64:latest

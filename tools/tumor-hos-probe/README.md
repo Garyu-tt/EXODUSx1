@@ -24,3 +24,9 @@ R03 adds silent 48 kHz PCM renderer sessions with 1, 4 and 8 voices,
 elapsed time. Frame waits are bounded; ordinary service IPC itself is
 not forcibly timed out. No custom ADSP code, firmware changes or proof of
 ADSP execution. Public API reference: https://switchbrew.github.io/libnx/driver_8h.html
+
+## R04 transport
+On a trusted isolated LAN, open hbmenu NetLoader (Y), then run:
+`nxlink -a SWITCH_IP -s --args "--remote" tumor-hos-probe.nro > nxlink.log 2>&1`
+`python collect_report.py nxlink.log TUMORH04.TXT`
+The report is also saved locally without replacing existing SD reports. The NRO exits automatically after a successful local send; host extraction independently checks completeness. Failure falls back to the local console. This is operator-initiated upload, not a persistent agent or arbitrary remote shell. No internet exposure.

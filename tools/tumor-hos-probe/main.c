@@ -250,9 +250,19 @@ cleanup:
     logline("audio%u_frames=%u\naudio%u_completed=%u\naudio%u_drops=%u\naudio%u_elapsed_ns=%" PRIu64 "\naudio%u=%s\n",voices,frames,voices,completed,voices,drops,voices,(uint64_t)armTicksToNs(elapsed),voices,ok?"pass":"incomplete");
 }
 
-int main(void) {
+int main(int argc,char **argv) {
     consoleInit(NULL);
-    logline("schema=1\nkind=hos_userland_inventory\nprobe_revision=3\n");
+    bool remote=false;
+    for(int i=1;i<argc;i++)if(strcmp(argv[i],"--remote")==0)remote=true;
+    bool sockets=false;
+    int remote_fd=-1;
+    if(remote){
+        sockets=R_SUCCEEDED(socketInitializeDefault());
+        if(sockets)remote_fd=nxlinkStdioForDebug();
+        printf("NXLink report transport: %s\n",remote_fd>=0?"connected":"local fallback");
+        consoleUpdate(NULL);
+    }
+    logline("schema=1\nkind=hos_userland_inventory\nprobe_revision=4\n");
     u32 version=hosversionGet();
     logline("hos_version=%u.%u.%u\n",(unsigned)HOSVER_MAJOR(version),(unsigned)HOSVER_MINOR(version),(unsigned)HOSVER_MICRO(version));
     query("process_total_bytes",InfoType_TotalMemorySize);
@@ -287,7 +297,7 @@ int main(void) {
     audio_trial(8);
     logline("adsp_execution=not_tested\na57_el2=not_tested\ndual_kernel=not_tested\ndeployment_authorized=0\n");
     if(!overflow){
-        int fd=open("sdmc:/TUMORH03.TXT",O_WRONLY|O_CREAT|O_EXCL,0644);
+        int fd=open("sdmc:/TUMORH04.TXT",O_WRONLY|O_CREAT|O_EXCL,0644);
         if(fd<0)printf("Report not saved (errno=%d)\n",errno);
         else{
             size_t off=0;
@@ -296,6 +306,19 @@ int main(void) {
             printf("Report %s (%zu/%zu)\n",off==used&&cr==0?"saved":"incomplete",off,used);
         }
     }else printf("Report overflow; not saved\n");
+    bool sent=false;
+    if(remote_fd>=0&&!overflow){
+        int b=fprintf(stderr,"TDA_REPORT_BEGIN %zu\n",used);
+        size_t written=fwrite(logbuf,1,used,stderr);
+        int e=fprintf(stderr,"TDA_REPORT_END\n");
+        sent=b>0&&written==used&&e>0&&fflush(stderr)==0;
+    }
+    if(remote_fd>=0)close(remote_fd);
+    if(sockets)socketExit();
+    if(sent){
+        consoleExit(NULL);
+        return 0;
+    }
     printf("PLUS: exit\n");
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
