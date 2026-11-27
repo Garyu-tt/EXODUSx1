@@ -47,7 +47,10 @@ jobs:
           LOG=exodus-ipc-emulator.log sh tests/kernelcpu/run.sh ./rcm_emu tests/kernelcpu/payload.bin 2>&1 | tee exodus-ipc-test.log
           grep -q 'EXODUS IPC REFERENCE: PASS' exodus-ipc-emulator.log
           if grep -q 'EXODUS IPC REFERENCE: FAIL' exodus-ipc-emulator.log; then exit 1; fi
+          grep -q 'EXODUS RING REFERENCE: PASS' exodus-ipc-emulator.log
+          if grep -q 'EXODUS RING REFERENCE: FAIL' exodus-ipc-emulator.log; then exit 1; fi
           echo 'EXODUS synthetic IPC: PASS' | tee -a exodus-ipc-test.log
+          echo 'EXODUS synthetic ring: PASS' | tee -a exodus-ipc-test.log
       - name: Preserve reference log
         if: always()
         uses: actions/upload-artifact@v4
