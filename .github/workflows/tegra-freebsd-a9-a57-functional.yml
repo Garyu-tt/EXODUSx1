@@ -109,13 +109,31 @@ jobs:
                   child.sendline("uname -v | grep EXODUS_A9_REF && sysctl -n hw.model | grep -i cortex-a9 && mount -uw / && printf 'EXODUS_A9_%s\\n' ID_PASS")
                   child.expect(r"(?m)^EXODUS_A9_ID_PASS\r*\n",timeout=90)
                   child.expect(r"(?m)^(root@[^\r\n]* )?# *$",timeout=30)
-                  child.sendline("service growfs onestart; df -h /; printf 'EXODUS_A9_%s\\n' ROOT_READY")
+                  child.sendline("service growfs onestart && df -h / && printf 'EXODUS_A9_%s\\n' ROOT_READY")
                   child.expect(r"(?m)^EXODUS_A9_ROOT_READY\r*\n",timeout=180)
                   child.expect(r"(?m)^(root@[^\r\n]* )?# *$",timeout=30)
           '''+s[end:]
           old='        child.sendline("shutdown -p now")\n        child.expect(pexpect.EOF,timeout=180)'
           assert s.count(old)==1
           s=s.replace(old,'        child.sendline("sync")\n        child.expect(r"# ",timeout=30)')
+          # Stop the disposable emulator through the host, not guest poweroff.
+          # pexpect's short signal grace period can fail while QEMU flushes.
+          old='        child.close(force=True)'
+          assert s.count(old)==1
+          s=s.replace(old,'''        import os, signal
+                  if child.isalive():
+                      child.kill(signal.SIGTERM)
+                      stop=time.monotonic()+10
+                      while child.isalive() and time.monotonic()<stop:
+                          time.sleep(0.1)
+                      if child.isalive():
+                          child.kill(signal.SIGKILL)
+                          stop=time.monotonic()+10
+                          while child.isalive() and time.monotonic()<stop:
+                              time.sleep(0.1)
+                  if child.isalive():
+                      raise RuntimeError("A9 emulator did not terminate")
+                  child.close(force=False)''')
           p.write_text(s)
           compile(s,str(p),"exec")
           PY
