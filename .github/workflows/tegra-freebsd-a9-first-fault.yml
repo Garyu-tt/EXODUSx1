@@ -77,7 +77,7 @@ jobs:
           trace=out/"fault-registers.log"
           def cap():
               resource.setrlimit(resource.RLIMIT_FSIZE,(8*1024*1024,8*1024*1024))
-          args=["qemu-system-arm","-M","vexpress-a9","-cpu","cortex-a9","-m","1024","-smp","1","-display","none","-serial","stdio","-monitor","none","-nic","none","-no-reboot","-singlestep","-d","cpu,int,in_asm","-dfilter","0xc0627eb0+0x90","-D",str(trace),"-device","loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on","-device","loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on","-device","loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on"]
+          args=["qemu-system-arm","-M","vexpress-a9","-cpu","cortex-a9","-m","1024","-smp","1","-display","none","-serial","stdio","-monitor","none","-nic","none","-no-reboot","-accel","tcg,one-insn-per-tb=on","-d","cpu,int,in_asm","-dfilter","0xc0627eb0..0xc0627f40","-D",str(trace),"-device","loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on","-device","loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on","-device","loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on"]
           with (out/"register-serial.log").open("wb") as serial:
               p=subprocess.Popen(args,stdin=subprocess.DEVNULL,stdout=serial,stderr=subprocess.STDOUT,preexec_fn=cap)
               try: p.wait(timeout=30)
@@ -85,6 +85,8 @@ jobs:
                   p.kill()
                   p.wait()
           print("Diagnostic termination:",p.returncode)
+          print((out/"register-serial.log").read_text(errors="replace")[-12000:])
+          assert trace.exists(), "QEMU did not create trace; see startup diagnostics above"
           lines=trace.read_text(errors="replace").splitlines()
           event=next((i for i,l in enumerate(lines) if "Taking exception" in l and "Data Abort" in l),None)
           report=lines[max(0,event-110):event+12] if event is not None else lines[:150]
