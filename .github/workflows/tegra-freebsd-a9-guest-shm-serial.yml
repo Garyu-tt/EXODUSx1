@@ -1,4 +1,4 @@
-name: FreeBSD A9 guest shared memory serial R59
+name: FreeBSD A9 guest shared memory serial R60 functional baseline
 on:
   workflow_dispatch:
   push:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ram: [32, 64]
+        ram: [128, 256]
     env:
       RAM_MIB: ${{ matrix.ram }}
     timeout-minutes: 20
@@ -25,8 +25,8 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: a9-minimal-source-build-r56
-          run-id: '46048553785'
+          name: a9-reduced-source-build
+          run-id: '46045173543'
           github-token: ${{ github.token }}
           path: prior
       - name: Prepare pinned source-built kernel
@@ -35,7 +35,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends qemu-system-arm gcc-arm-linux-gnueabihf device-tree-compiler python3 curl xz-utils expect clang lld
           mkdir -p evidence
-          python3 exodus/tests/tumor_freebsd_source_load.py prior/kernel.elf evidence --sha256 5aed8989d139f8448c93044cc750329e7c9166c3a8fd258371997de9c8a0255b --ram-mib "$RAM_MIB" | tee evidence/load-plan.log
+          python3 exodus/tests/tumor_freebsd_source_load.py prior/kernel.elf evidence --sha256 e32e0e0120720464ef0789e4e3d6d85fb823a34fb63d3e7e16c8dba5b51b312f --ram-mib "$RAM_MIB" | tee evidence/load-plan.log
           test "$(cat evidence/entry.txt)" = 0x61000200
           arm-linux-gnueabihf-objdump -d --disassemble=gem5_devmap_init prior/kernel.elf | tee evidence/source-devmap.log
           arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_freebsd_direct_a9.S -o handoff.o
@@ -68,18 +68,19 @@ jobs:
           grep -E 'OS/ABI:.*FreeBSD' evidence/guest-elf.log
           sha256sum shm.elf | tee evidence/guest-sha256.log
           python3 - <<'PY'
-          import hashlib,pathlib
+          import base64,hashlib,pathlib
           data=pathlib.Path('shm.elf').read_bytes()
           assert 0<len(data)<=8192
+          encoded=base64.b64encode(data).decode('ascii')
           cmds=[]
-          for i in range(0,len(data),48):
-              octal=''.join('\\0%03o'%b for b in data[i:i+48])
+          for i in range(0,len(encoded),64):
               mode='>' if i==0 else '>>'
               marker=f'EXODUS_CHUNK_{i:04d}'
-              command=f"printf '%b' '{octal}' {mode} /tmp/exodus-shm.elf && printf '%s%s\\n' EXODUS_CHUNK_ {i:04d}"
+              command=f"printf '%s\\n' '{encoded[i:i+64]}' {mode} /tmp/exodus-shm.b64 && printf '%s%s\\n' EXODUS_CHUNK_ {i:04d}"
               cmds.append(f'gate {{{command}}} {marker}')
           digest=hashlib.sha256(data).hexdigest()
-          cmds.append(f'gate {{test "$(sha256 -q /tmp/exodus-shm.elf)" = {digest} && printf "%s%s\\n" EXODUS_FIXTURE_ PASS}} EXODUS_FIXTURE_PASS')
+          cmds.append("gate {base64 -d /tmp/exodus-shm.b64 > /tmp/exodus-shm.elf && printf '%s%s\\n' EXODUS_DECODE_ PASS} EXODUS_DECODE_PASS")
+          cmds.append(f'gate {{wc -c /tmp/exodus-shm.elf; sha256 /tmp/exodus-shm.elf; test "$(wc -c < /tmp/exodus-shm.elf | tr -d " ")" = {len(data)} && test "$(sha256 -q /tmp/exodus-shm.elf)" = {digest} && printf "%s%s\\n" EXODUS_FIXTURE_ PASS}} EXODUS_FIXTURE_PASS')
           pathlib.Path('transfer.exp').write_text('\n'.join(cmds)+'\n')
           PY
       - name: Boot real FreeBSD single-user shell on Cortex-A9
@@ -124,7 +125,7 @@ jobs:
               }
           }
           gate {printf '%s%s\n' EXODUS_SHELL_ READY} EXODUS_SHELL_READY
-          gate {/bin/sh -c 'set -e; uname -a; sysctl hw.model hw.physmem hw.realmem hw.pagesize; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; uname -v | grep EXODUS_A9_MIN; sysctl -n hw.model | grep -i cortex-a9; printf "%s%s\n" EXODUS_ID_ PASS'} EXODUS_ID_PASS
+          gate {/bin/sh -c 'set -e; uname -a; sysctl hw.model hw.physmem hw.realmem hw.pagesize; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; uname -v | grep EXODUS_A9_REF; sysctl -n hw.model | grep -i cortex-a9; printf "%s%s\n" EXODUS_ID_ PASS'} EXODUS_ID_PASS
           gate {/bin/sh -c 'set -e; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; mount; printf "%s%s\n" EXODUS_VM_ PASS'} EXODUS_VM_PASS
           gate {/bin/sh -c 'set -e; test -r /etc/rc; sha256 /bin/sh; (uname -p) & child=$!; wait $child; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; printf "%s%s\n" EXODUS_A9_REDUCED_ PASS'} EXODUS_A9_REDUCED_PASS
           gate {mount -uw / && printf '%s%s\n' EXODUS_WRITABLE_ PASS} EXODUS_WRITABLE_PASS
@@ -143,7 +144,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: a9-guest-shm-r59-${{ matrix.ram }}mib
+          name: a9-guest-shm-r60-${{ matrix.ram }}mib
           path: |
             evidence/*.log
             evidence/board.dts
