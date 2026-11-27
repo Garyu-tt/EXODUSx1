@@ -14,3 +14,6 @@ No ADSP or EL2 acceptance claim. Physical networking and repeated tests pending.
 
 ## PC client R02 (same NRO)
 Use `help` or `repeat all 3`, `repeat cpu 5`, etc. At most 10 tests per batch and 100 server commands per session. Validates framing and report identity, verifies existing digest-named files, prints min/median/max for successful measurements, stops on repeat_safe=no. No automatic re-pairing. Replace the PC script only; the current session keeps using its original client until it exits.
+
+## R03 programmable diagnostic VM
+The new NRO accepts a numeric instruction sequence: `vm 0x1 0 0o377 1 1 2 2 0 1 0` returns r0=257. Decimal, 0x, 0o and 0b can mix. See diag_vm.h for opcodes. Each request uses a fresh 8-register, 64-word scratch VM, at most 63 non-END instructions; unsigned arithmetic wraps modulo 2^64. Invalid programs yield an error and no published register state. No native execution, addresses, MMIO, arbitrary files or privilege transitions. Programs update per request; replacing native functions still requires a controlled NRO replacement. No JediControl changes or bypass. The PC R03 client can still issue the previous diagnostics, but VM commands need R03 NRO. Build and physical testing pending.
