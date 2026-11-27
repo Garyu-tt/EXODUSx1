@@ -1,0 +1,201 @@
+name: FreeBSD A9 ARM64 TMR1 live recovery R69
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-cross-guest-ram-tmr1-recovery.yml'
+      - 'exodus/tests/tumor_freebsd_guest_ram_tmr1_recovery.S'
+      - 'exodus/tests/tumor_cross_guest_ram_tmr1_recovery_peer.c'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  memory:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ram: [32, 64]
+    env:
+      RAM_MIB: ${{ matrix.ram }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: a9-minimal-source-build-r56
+          run-id: '46048553785'
+          github-token: ${{ github.token }}
+          path: prior
+      - name: Prepare pinned source-built kernel
+        run: |
+          set -o pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm gcc-arm-linux-gnueabihf device-tree-compiler python3 curl xz-utils expect clang lld gcc-aarch64-linux-gnu libc6-dev-arm64-cross qemu-user
+          mkdir -p evidence
+          python3 exodus/tests/tumor_freebsd_source_load.py prior/kernel.elf evidence --sha256 5aed8989d139f8448c93044cc750329e7c9166c3a8fd258371997de9c8a0255b --ram-mib "$RAM_MIB" | tee evidence/load-plan.log
+          test "$(cat evidence/entry.txt)" = 0x61000200
+          arm-linux-gnueabihf-objdump -d --disassemble=gem5_devmap_init prior/kernel.elf | tee evidence/source-devmap.log
+          arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_freebsd_direct_a9.S -o handoff.o
+          arm-linux-gnueabihf-ld -Ttext=0x60010000 -e _start handoff.o -o handoff.elf
+          arm-linux-gnueabihf-objcopy -O binary handoff.elf handoff.bin
+          python3 - <<'PY'
+          import os,pathlib
+          source=pathlib.Path("exodus/tests/tumor_a9_root_reference.dts").read_text()
+          old="reg = <0x60000000 0x40000000>;"
+          assert source.count(old)==1
+          ram=int(os.environ["RAM_MIB"])
+          assert source.count("FreeBSD: vfs.root.mountfrom=")==1
+          source=source.replace("FreeBSD: vfs.root.mountfrom=", "FreeBSD: -s vfs.root.mountfrom=")
+          pathlib.Path("evidence/board.dts").write_text(source.replace(old, f"reg = <0x60000000 {ram*1024*1024-4096:#x}>;"))
+          PY
+          dtc -I dts -O dtb -o evidence/board.dtb evidence/board.dts
+          fdtget -t x evidence/board.dtb /memory@60000000 reg | tee evidence/memory-map.log
+          test "$(cat evidence/memory-map.log)" = "60000000 $(printf '%x' $((RAM_MIB * 1024 * 1024 - 4096)))"
+          truncate -s "$((RAM_MIB * 1024 * 1024))" ram.bin
+      - name: Download verified disposable root disk
+        run: |
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 300 "https://download.freebsd.org/releases/arm/armv7/ISO-IMAGES/15.1/$image.xz" -o "$image.xz"
+          printf '%s  %s\n' d568d7324825af9072405b11b7d0f4ba892d10ca05687fe4fd65e328e72cf7b8 "$image.xz" | sha256sum -c -
+          printf '%s  %s\n' a50077a25a44a38cf3ff55b0a6e3da839ea96b829e5d975f27e1f3c0a6f0f68ef97a7d5ce845f3f0d76fce800814e57ff9c3499d518257210eb7e32913c720f5 "$image.xz" | sha512sum -c -
+          xz -d "$image.xz"
+      - name: Build native FreeBSD guest fixture and serial transfer
+        run: |
+          set -euo pipefail
+          clang --target=armv7-unknown-freebsd15.1 -DSHARED_PA="$((0x60000000 + RAM_MIB * 1024 * 1024 - 4096))" -fuse-ld=lld -nostdlib -static -Wl,-e,_start -Wl,--build-id=none -o shm.elf exodus/tests/tumor_freebsd_guest_ram_tmr1_recovery.S
+          aarch64-linux-gnu-gcc -std=c11 -O2 -Wall -Wextra -Werror -static exodus/tests/tumor_cross_guest_ram_tmr1_recovery_peer.c -o peer
+          readelf -h peer | tee evidence/peer-elf.log
+          grep -E 'Machine:.*AArch64' evidence/peer-elf.log
+          readelf -h -l -n shm.elf | tee evidence/guest-elf.log
+          grep -E 'OS/ABI:.*FreeBSD' evidence/guest-elf.log
+          sha256sum shm.elf | tee evidence/guest-sha256.log
+          python3 - <<'PY'
+          import hashlib,pathlib
+          data=pathlib.Path('shm.elf').read_bytes()
+          assert 0<len(data)<=8192
+          cmds=[]
+          probe=bytes(range(256))
+          for i in range(0,len(probe),48):
+              octal=''.join('\\%03o'%b for b in probe[i:i+48])
+              mode='>' if i==0 else '>>'
+              marker=f'EXODUS_PROBE_{i:04d}'
+              command=f"printf '{octal}' {mode} /tmp/exodus-probe.bin && printf '%s%s\\n' EXODUS_PROBE_ {i:04d}"
+              cmds.append(f'gate {{{command}}} {marker}')
+          digest=hashlib.sha256(probe).hexdigest()
+          cmds.append(f'gate {{wc -c /tmp/exodus-probe.bin; sha256 /tmp/exodus-probe.bin; test "$(sha256 -q /tmp/exodus-probe.bin)" = {digest} && printf "%s%s\\n" EXODUS_PROBE_ PASS}} EXODUS_PROBE_PASS')
+          for i in range(0,len(data),48):
+              octal=''.join('\\%03o'%b for b in data[i:i+48])
+              mode='>' if i==0 else '>>'
+              marker=f'EXODUS_CHUNK_{i:04d}'
+              command=f"printf '{octal}' {mode} /tmp/exodus-shm.elf && printf '%s%s\\n' EXODUS_CHUNK_ {i:04d}"
+              cmds.append(f'gate {{{command}}} {marker}')
+          digest=hashlib.sha256(data).hexdigest()
+          cmds.append(f'gate {{wc -c /tmp/exodus-shm.elf; sha256 /tmp/exodus-shm.elf; test "$(sha256 -q /tmp/exodus-shm.elf)" = {digest} && printf "%s%s\\n" EXODUS_FIXTURE_ PASS}} EXODUS_FIXTURE_PASS')
+          pathlib.Path('transfer.exp').write_text('\n'.join(cmds)+'\n')
+          PY
+      - name: Boot real FreeBSD single-user shell on Cortex-A9
+        run: |
+          set -o pipefail
+          cat > boot.exp <<'EOF'
+          set timeout 180
+          set ram $env(RAM_MIB)
+          spawn -noecho qemu-system-arm -object memory-backend-file,id=sharedram,mem-path=ram.bin,size=${ram}M,share=on -M vexpress-a9,memory-backend=sharedram -cpu cortex-a9 -m $ram -smp 1 -display none -serial stdio -monitor none -nic none -no-reboot -device loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on -device loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on -device loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on -drive if=none,id=root,file=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img,format=raw,snapshot=on -device virtio-blk-device,drive=root
+          proc fail {message} {
+              puts stderr $message
+              catch {exec kill -TERM [exp_pid]}
+              catch {close}
+              catch {wait}
+              exit 1
+          }
+          expect {
+              -re {mountroot> *} {send -- "ufs:/dev/ufs/rootfs\r"; exp_continue -continue_timer}
+              -re {Enter full pathname of shell or RETURN for /bin/sh: *} {send -- "\r"}
+              -re {(?i)panic:} {fail "A9 kernel panic before single user"}
+              timeout {fail "A9 single-user shell selection timeout"}
+              eof {fail "A9 emulator exited before single user"}
+          }
+          set timeout 90
+          expect {
+              -re {(?m)^(root@[^\r\n]* )?# *$} {}
+              -re {(?i)panic:|failed to reclaim memory} {fail "A9 single-user memory failure"}
+              timeout {fail "A9 single-user prompt timeout"}
+              eof {fail "A9 emulator exited before prompt"}
+          }
+          proc gate {command marker} {
+              send -- "$command\r"
+              expect {
+                  -re "(?m)^$marker\\r*$" {}
+                  timeout {fail "A9 command gate failed: $marker"}
+                  eof {fail "A9 emulator exited: $marker"}
+              }
+              expect {
+                  -re {(?m)^(root@[^\r\n]* )?# *$} {}
+                  timeout {fail "A9 prompt after command missing"}
+                  eof {fail "A9 emulator exited after command"}
+              }
+          }
+          gate {printf '%s%s\n' EXODUS_SHELL_ READY} EXODUS_SHELL_READY
+          gate {/bin/sh -c 'set -e; uname -a; sysctl hw.model hw.physmem hw.realmem hw.pagesize; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; uname -v | grep EXODUS_A9_MIN; sysctl -n hw.model | grep -i cortex-a9; printf "%s%s\n" EXODUS_ID_ PASS'} EXODUS_ID_PASS
+          gate {/bin/sh -c 'set -e; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; mount; printf "%s%s\n" EXODUS_VM_ PASS'} EXODUS_VM_PASS
+          gate {/bin/sh -c 'set -e; test -r /etc/rc; sha256 /bin/sh; (uname -p) & child=$!; wait $child; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; printf "%s%s\n" EXODUS_A9_REDUCED_ PASS'} EXODUS_A9_REDUCED_PASS
+          gate {mount -uw / && printf '%s%s\n' EXODUS_WRITABLE_ PASS} EXODUS_WRITABLE_PASS
+          source transfer.exp
+          gate {chmod 700 /tmp/exodus-shm.elf && printf '%s%s\n' EXODUS_MODE_ PASS} EXODUS_MODE_PASS
+          set init_result [exec qemu-aarch64 ./peer ram.bin $ram init]
+          if {$init_result ne "EXODUS_ARM64_RAM_INIT"} {fail "ARM64 init marker mismatch"}
+          set host_log [open evidence/arm64-peer.log w]
+          puts $host_log $init_result
+          close $host_log
+          gate {test -c /dev/mem && printf '%s%s\n' EXODUS_MEMDEV_ PASS} EXODUS_MEMDEV_PASS
+          set peer_pipe [open [list | timeout 40s qemu-aarch64 ./peer ram.bin $ram exchange] r]
+          gate {/tmp/exodus-shm.elf && printf '%s%s\n' EXODUS_GUEST_RAM_ EXIT_OK} EXODUS_GUEST_RAM_EXIT_OK
+          set check_result [string trim [read $peer_pipe]]
+          if {[catch {close $peer_pipe} peer_error]} {fail "ARM64 exchange failed: $peer_error"}
+          if {$check_result ne "EXODUS_ARM64_RECOVERY_PASS"} {fail "ARM64 check marker mismatch"}
+          set host_log [open evidence/arm64-peer.log a]
+          puts $host_log $check_result
+          close $host_log
+          catch {exec kill -TERM [exp_pid]}
+          catch {close}
+          catch {wait}
+          exit 0
+          EOF
+          timeout 9m expect boot.exp 2>&1 | tee evidence/userspace.log
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_A9_REDUCED_PASS
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_PROBE_PASS
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_RECOVERY_PASS
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_RAM_EXIT_OK
+          grep -Fxq EXODUS_ARM64_RAM_INIT evidence/arm64-peer.log
+          grep -Fxq EXODUS_ARM64_RECOVERY_PASS evidence/arm64-peer.log
+          tr -d '\r' < evidence/userspace.log | grep -Fxq "hw.realmem: $((RAM_MIB * 1024 * 1024 - 4096))"
+          python3 - <<'PY' | tee evidence/backing-page.log
+          import os,struct,pathlib
+          size=int(os.environ['RAM_MIB'])*1024*1024
+          path=pathlib.Path('ram.bin')
+          assert path.stat().st_size==size
+          with path.open('rb') as f:
+              f.seek(size-4096)
+              data=f.read(4096)
+          expected=bytearray(4096)
+          seq=0xffffffff-500+1000
+          for off in (0,192): struct.pack_into('<I',expected,off,seq & 0xffffffff)
+          for off,role,gen in ((64,1,0x123400000009),(128,2,0x56780000000a)):
+              expected[off:off+24]=struct.pack('>4sBBHQQ',b'TMR1',1,role,0,gen,seq)
+          struct.pack_into('<I',expected,256,1)
+          struct.pack_into('<I',expected,320,2)
+          assert data==expected, 'unexpected shared page content'
+          print('EXODUS_BACKING_PAGE_PASS: all 4096 bytes match')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cross-guest-tmr1-r69-${{ matrix.ram }}mib
+          path: |
+            evidence/*.log
+            evidence/board.dts
+            evidence/board.dtb
+          if-no-files-found: warn
