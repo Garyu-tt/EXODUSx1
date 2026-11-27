@@ -8,6 +8,6 @@ all: tumor-hos-probe.nro
 tumor-hos-probe.elf: main.c
 	$(CC) $(CFLAGS) -specs=$(DEVKITPRO)/libnx/switch.specs $< -L$(DEVKITPRO)/libnx/lib -lnx -o $@
 tumor-hos-probe.nacp:
-	$(TOOLS)/nacptool --create "Tumor HOS Probe" "InfraCare-IT" "3.0" $@
+	$(TOOLS)/nacptool --create "Tumor HOS Probe" "InfraCare-IT" "4.0" $@
 tumor-hos-probe.nro: tumor-hos-probe.elf tumor-hos-probe.nacp
 	$(TOOLS)/elf2nro $< $@ --nacp=tumor-hos-probe.nacp
