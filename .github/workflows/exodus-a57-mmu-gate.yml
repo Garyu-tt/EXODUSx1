@@ -1,4 +1,4 @@
-name: EXODUS R110 ELF-derived MMU runtime gate
+name: EXODUS R111 ELF-derived MMU runtime gate
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -135,6 +135,114 @@ jobs:
           set -euo pipefail
           cp -a mmu-gate elf-mmu-gate
           cd elf-mmu-gate
+          cat > elf64_loader.c <<'R111_SRC'
+          #include "elf64_loader.h"
+          #include <string.h>
+          static uint64_t rd(const uint8_t *p,unsigned n){
+              uint64_t v=0;for(unsigned i=0;i<n;i++)v|=(uint64_t)p[i]<<(8*i);return v;
+          }
+          static int span(uint64_t p,uint64_t n,uint64_t end){return p<=end&&n<=end-p;}
+          static int aligned(uint64_t x){return (x&(ELF64_PAGE-1))==0;}
+          static uint64_t floor_page(uint64_t x){return x&~(uint64_t)(ELF64_PAGE-1);}
+          static int round_page(uint64_t x,uint64_t *out){
+              if(x>UINT64_MAX-(ELF64_PAGE-1))return 0;
+              *out=(x+(ELF64_PAGE-1))&~(uint64_t)(ELF64_PAGE-1);return 1;
+          }
+          int elf64_plan_image(const uint8_t *s,size_t n,uint64_t lo,uint64_t hi,struct elf64_plan *out){
+              if(!s||!out||n<64||lo>=hi||!aligned(lo)||!aligned(hi))return 0;
+              /* ELF64 little-endian current version, ET_EXEC, EM_AARCH64. */
+              if(memcmp(s,"\177ELF",4)||s[4]!=2||s[5]!=1||s[6]!=1||
+                 rd(s+16,2)!=2||rd(s+18,2)!=183||rd(s+20,4)!=1||
+                 rd(s+48,4)!=0||rd(s+52,2)!=64||rd(s+54,2)!=56)return 0;
+              uint64_t off=rd(s+32,8),num=rd(s+56,2);
+              if(!num||num>64||off<64||!span(off,num*56,n))return 0;
+              struct elf64_plan p={0};p.entry=rd(s+24,8);
+              if(p.entry&3)return 0;
+              unsigned executable_entry=0;
+              for(uint64_t i=0;i<num;i++){
+                  const uint8_t *h=s+off+56*i;uint64_t type=rd(h,4);
+                  /* Deliberately strict: only PT_NULL, LOAD, GNU_STACK (NX), NOTE, PHDR. */
+                  if(type==0||type==4||type==6)continue;
+                  uint32_t f=(uint32_t)rd(h+4,4);
+                  if(type==UINT64_C(0x6474e551)){if(f!=6)return 0;continue;}
+                  if(type!=1||p.count==ELF64_MAX_SEGMENTS)return 0;
+                  uint64_t fo=rd(h+8,8),va=rd(h+16,8),fs=rd(h+32,8),ms=rd(h+40,8),a=rd(h+48,8),end;
+                  if(!ms||fs>ms||!span(fo,fs,n)||va<lo||!span(va,ms,hi)||
+                     a<ELF64_PAGE||(a&(a-1))||((va^fo)&(a-1))||!round_page(va+ms,&end)||end>hi||
+                     (f!=ELF64_R&&f!=(ELF64_R|ELF64_X)&&f!=(ELF64_R|ELF64_W)))return 0;
+                  for(size_t j=0;j<p.count;j++){
+                      const struct elf64_segment *q=&p.seg[j];uint64_t qe;
+                      if(!round_page(q->va+q->memsz,&qe)||!(end<=floor_page(q->va)||qe<=floor_page(va)))return 0;
+                  }
+                  if((f&ELF64_X)&&p.entry>=va&&p.entry-va<fs&&fs-(p.entry-va)>=4)executable_entry++;
+                  p.seg[p.count++]=(struct elf64_segment){va,fo,fs,ms,f};
+              }
+              if(!p.count||executable_entry!=1)return 0;
+              *out=p;return 1;
+          }
+          int elf64_load_image(const uint8_t *s,size_t n,uint64_t lo,uint64_t hi,uint8_t *backing,size_t cap,struct elf64_plan *out){
+              struct elf64_plan p;
+              if(!out||!backing||!elf64_plan_image(s,n,lo,hi,&p)||hi-lo!=cap)return 0;
+              memset(backing,0,cap);
+              for(size_t i=0;i<p.count;i++){
+                  const struct elf64_segment *q=&p.seg[i];
+                  memcpy(backing+(size_t)(q->va-lo),s+(size_t)q->file_offset,(size_t)q->filesz);
+              }
+              *out=p;return 1;
+          }
+          R111_SRC
+          cat > elf64_loader.h <<'R111_SRC'
+          #ifndef TUMOR_ELF64_LOADER_H
+          #define TUMOR_ELF64_LOADER_H
+          #include <stddef.h>
+          #include <stdint.h>
+          enum { ELF64_MAX_SEGMENTS=16, ELF64_PAGE=4096, ELF64_R=4, ELF64_W=2, ELF64_X=1 };
+          struct elf64_segment { uint64_t va, file_offset, filesz, memsz; uint32_t flags; };
+          struct elf64_plan { uint64_t entry; size_t count; struct elf64_segment seg[ELF64_MAX_SEGMENTS]; };
+          /* Caller supplies immutable source bytes and an aligned, exclusive guest VA window.
+           * No dynamic linkage, relocations, interpreter, TLS or guest page tables. */
+          int elf64_plan_image(const uint8_t *src,size_t len,uint64_t lo,uint64_t hi,struct elf64_plan *out);
+          /* Caller supplies exclusive backing storage disjoint from source and output.
+           * On validation failure backing storage and output are untouched.
+           * On success the whole backing window is zeroed and PT_LOAD data copied. */
+          int elf64_load_image(const uint8_t *src,size_t len,uint64_t lo,uint64_t hi,
+                               uint8_t *backing,size_t capacity,struct elf64_plan *out);
+          #endif
+          R111_SRC
+          cat > elf64_page_plan.h <<'R111_SRC'
+          #ifndef EXODUS_ELF64_PAGE_PLAN_H
+          #define EXODUS_ELF64_PAGE_PLAN_H
+          #include "elf64_loader.h"
+          int elf64_page_plan(const struct elf64_plan *p,uint64_t lo,uint64_t hi,uint64_t top,size_t stack_pages,uint8_t *perm,size_t pages);
+          #endif
+          R111_SRC
+          cat > elf64_page_plan.c <<'R111_SRC'
+          #include "elf64_page_plan.h"
+          #include <string.h>
+          #define MASK ((uint64_t)ELF64_PAGE-1)
+          int elf64_page_plan(const struct elf64_plan *p,uint64_t lo,uint64_t hi,uint64_t top,size_t stack_pages,uint8_t *perm,size_t pages){
+              if(!p||!perm||hi<=lo||((lo|hi|top)&MASK)||top>hi||top<=lo||
+                 (hi-lo)/ELF64_PAGE!=pages||!stack_pages||stack_pages>=(top-lo)/ELF64_PAGE||
+                 !p->count||p->count>ELF64_MAX_SEGMENTS||(p->entry&3))return 0;
+              uint64_t bottom=top-(uint64_t)stack_pages*ELF64_PAGE,guard=bottom-ELF64_PAGE;
+              uint64_t first[ELF64_MAX_SEGMENTS],last[ELF64_MAX_SEGMENTS];unsigned entry=0;
+              for(size_t i=0;i<p->count;i++){
+                  const struct elf64_segment *s=&p->seg[i];
+                  if(s->va<lo||s->va>=hi||!s->memsz||s->filesz>s->memsz||s->memsz>hi-s->va||
+                     (s->flags!=4&&s->flags!=5&&s->flags!=6))return 0;
+                  first[i]=(s->va-lo)/ELF64_PAGE;
+                  last[i]=(s->va-lo+s->memsz-1)/ELF64_PAGE+1;
+                  if(first[i]<(top-lo)/ELF64_PAGE&&last[i]>(guard-lo)/ELF64_PAGE)return 0;
+                  for(size_t j=0;j<i;j++)if(first[i]<last[j]&&first[j]<last[i])return 0;
+                  if(s->flags==5&&p->entry>=s->va&&p->entry-s->va<s->filesz&&s->filesz-(p->entry-s->va)>=4)entry++;
+              }
+              if(entry!=1)return 0;
+              memset(perm,0,pages);
+              for(size_t i=0;i<p->count;i++)memset(perm+first[i],(int)p->seg[i].flags,(size_t)(last[i]-first[i]));
+              memset(perm+(bottom-lo)/ELF64_PAGE,6,stack_pages);
+              return 1;
+          }
+          R111_SRC
           python3 - <<'PY'
           from pathlib import Path
           p=Path("bare/monitor.c")
