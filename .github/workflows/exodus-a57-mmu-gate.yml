@@ -1,4 +1,4 @@
-name: EXODUS R104 isolated MMU runtime gate
+name: EXODUS R106 isolated MMU runtime gate
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -106,6 +106,15 @@ jobs:
         run: |
           set -euo pipefail
           cd mmu-gate
+          # Bare-metal monitor has no network dependency. Disable the default NIC
+          # rather than requiring an unrelated virtio PXE ROM.
+          mkdir -p "$PWD/bin"
+          cat > "$PWD/bin/qemu-system-aarch64" <<'EOF'
+          #!/bin/sh
+          exec /usr/bin/qemu-system-aarch64 -nic none "$@"
+          EOF
+          chmod +x "$PWD/bin/qemu-system-aarch64"
+          export PATH="$PWD/bin:$PATH"
           bash run-mmu.sh
       - uses: actions/upload-artifact@v4
         if: always()
