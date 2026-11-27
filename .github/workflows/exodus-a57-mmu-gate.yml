@@ -1,4 +1,4 @@
-name: EXODUS R112 ELF MMU and C startup gate
+name: EXODUS R114 ELF MMU and compiler TLS gate
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -449,6 +449,102 @@ jobs:
           test "$(grep -Fxc 'PASS: C startup stack and private thread pointer' ELF-MMU-RESULTS.txt)" = 2
           test "$(grep -Fxc 'PASS: independent ELF contexts' ELF-MMU-RESULTS.txt)" = 1
           test "$(grep -Fxc R112_START_PASS ELF-MMU-RESULTS.txt)" = 1
+      - name: Run compiler-generated local-exec TLS in two contexts
+        run: |
+          set -euo pipefail
+          cp -a start-gate tls-gate
+          cd tls-gate
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("elf64_loader.h")
+          s=p.read_text()
+          s=s.replace("struct elf64_plan { uint64_t entry;", "struct elf64_tls { uint64_t offset,va,filesz,memsz,align; };\nstruct elf64_plan { struct elf64_tls tls; uint64_t entry;")
+          p.write_text(s)
+          p=Path("elf64_loader.c")
+          s=p.read_text()
+          old="        if(type!=1||p.count==ELF64_MAX_SEGMENTS)return 0;"
+          assert s.count(old)==1
+          s=s.replace(old,r'''        if(type==7){
+                      uint64_t fo=rd(h+8,8),va=rd(h+16,8),fs=rd(h+32,8),ms=rd(h+40,8),a=rd(h+48,8);
+                      if(p.tls.memsz||!ms||fs>ms||!span(fo,fs,n)||va<lo||!span(va,ms,hi)||
+                         !a||(a&(a-1))||a>ELF64_PAGE||((va^fo)&(a-1))||f!=4)return 0;
+                      p.tls=(struct elf64_tls){fo,va,fs,ms,a};continue;
+                  }
+          '''+old)
+          old="    if(!p.count||executable_entry!=1)return 0;"
+          assert s.count(old)==1
+          s=s.replace(old,old+r'''
+              if(p.tls.memsz){
+                  unsigned matched=0;
+                  for(size_t i=0;i<p.count;i++){
+                      const struct elf64_segment *q=&p.seg[i];
+                      if(p.tls.va<q->va||p.tls.offset<q->file_offset)continue;
+                      uint64_t d=p.tls.va-q->va;
+                      if(d==p.tls.offset-q->file_offset&&span(d,p.tls.filesz,q->filesz)&&
+                         (q->flags&ELF64_W))matched++;
+                  }
+                  if(matched!=1)return 0;
+              }
+          ''')
+          p.write_text(s)
+          p=Path("bare/elf_guest.ld")
+          s=p.read_text().replace("data PT_LOAD FLAGS(6);","data PT_LOAD FLAGS(6); tls PT_TLS FLAGS(4);")
+          s=s.replace(" .bss : { *(.bss*) } :data"," .bss : { *(.bss*) } :data\n . = ALIGN(16); .tdata : { *(.tdata*) } :data :tls\n .tbss : { *(.tbss*) } :data :tls")
+          p.write_text(s)
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          old="entry=p.entry;prepare_start(c);"
+          assert s.count(old)==1
+          s=s.replace(old,old+r'''
+                  if(!p.tls.memsz||p.tls.align>16||p.tls.memsz>128||p.tls.filesz>p.tls.memsz||
+                     p.tls.va>=VA+TP_OFF||p.tls.memsz>VA+TP_OFF-p.tls.va||
+                     perms[c][TP_OFF/P]!=6)fail("TLS profile");
+                  memset(mem[c]+TP_OFF+16,0,128);
+                  memcpy(mem[c]+TP_OFF+16,image_start+p.tls.offset,(size_t)p.tls.filesz);
+          ''')
+          old='msg("PASS: C startup stack and private thread pointer\\n");'
+          assert s.count(old)==1
+          s=s.replace(old,r'''if(load(ctx,TP_OFF+16)!=0x111+ctx+1||load(ctx,TP_OFF+24)!=0x222+ctx+1)fail("TLS data");
+              if(ctx==0&&(load(1,TP_OFF+16)!=0x111||load(1,TP_OFF+24)!=0))fail("TLS crossed context");
+              if(ctx==1&&(load(0,TP_OFF+16)!=0x112||load(0,TP_OFF+24)!=0x223))fail("TLS state changed");
+              msg("PASS: compiler TLS initialization and isolation\n");''')
+          s=s.replace("R112_START_PASS","R114_TLS_PASS")
+          p.write_text(s)
+          p=Path("bare/start_check.c")
+          s=p.read_text()
+          s=s.replace("#include <stdint.h>","#include <stdint.h>\nstatic _Thread_local volatile uint64_t initialized=0x111;\nstatic _Thread_local volatile uint64_t zeroed;")
+          old="    *thread=0x900+lane;"
+          assert s.count(old)==1
+          s=s.replace(old,old+r'''
+              if(initialized!=0x111||zeroed!=0)return 6;
+              initialized+=lane;
+              zeroed=0x222+lane;
+              if(initialized!=0x111+lane||zeroed!=0x222+lane)return 7;
+          ''')
+          p.write_text(s)
+          PY
+          mkdir -p build
+          clang --target=aarch64-unknown-freebsd15.1 -mcpu=cortex-a57 -c bare/elf_guest.S -o build/elf_guest.o
+          clang --target=aarch64-unknown-freebsd15.1 -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -c bare/start_check.c -o build/start_check.o
+          ld.lld -T bare/elf_guest.ld --fatal-warnings -o build/guest.elf build/elf_guest.o build/start_check.o
+          printf '.section .rodata.image,"a"\n.global image_start,image_end\nimage_start: .incbin "build/guest.elf"\nimage_end:\n' > build/image.S
+          flags=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${flags[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/elf-mmu.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          readelf -lW build/guest.elf | tee TLS-PHDR.txt
+          test "$(grep -c ' TLS ' TLS-PHDR.txt)" = 1
+          rc=0
+          timeout 15s /usr/bin/qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/elf-mmu.elf > ELF-MMU-RESULTS.txt 2>&1 || rc=$?
+          cat ELF-MMU-RESULTS.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' ELF-MMU-RESULTS.txt
+          test "$(grep -Fxc 'PASS: compiler TLS initialization and isolation' ELF-MMU-RESULTS.txt)" = 2
+          test "$(grep -Fxc 'PASS: independent ELF contexts' ELF-MMU-RESULTS.txt)" = 1
+          test "$(grep -Fxc R114_TLS_PASS ELF-MMU-RESULTS.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -457,4 +553,5 @@ jobs:
             mmu-gate/
             elf-mmu-gate/
             start-gate/
+            tls-gate/
           if-no-files-found: warn
