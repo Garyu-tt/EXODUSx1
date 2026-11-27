@@ -1,4 +1,4 @@
-name: EXODUS R107 isolated MMU runtime gate
+name: EXODUS R110 ELF-derived MMU runtime gate
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -130,9 +130,140 @@ jobs:
           chmod +x "$PWD/bin/qemu-system-aarch64"
           export PATH="$PWD/bin:$PATH"
           bash run-mmu.sh
+      - name: Execute separately linked ELF with derived MMU contexts
+        run: |
+          set -euo pipefail
+          cp -a mmu-gate elf-mmu-gate
+          cd elf-mmu-gate
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          def rep(old,new):
+              global s
+              assert s.count(old)==1, old
+              s=s.replace(old,new)
+          rep('#include "a57_s1.h"','#include "a57_s1.h"\n#include "elf64_page_plan.h"')
+          rep('UINT64_C(0x10000)','UINT64_C(0x200000)')
+          rep('static _Alignas(4096) uint8_t mem[2][6*P];','enum { N=64, VECTOR=N-1 };\nextern const uint8_t image_start[],image_end[];\nstatic _Alignas(4096) uint8_t mem[2][N*P];\nstatic uint8_t perms[2][N];\nstatic uint64_t entry;')
+          rep('static unsigned ctx,phase;','static unsigned ctx;')
+          rep('static void putc(char c)', 'int memcmp(const void *a,const void *b,size_t n){const uint8_t *x=a,*y=b;while(n--){if(*x!=*y)return (int)*x-(int)*y;x++;y++;}return 0;}\nstatic void putc(char c)')
+          rep('msg(" phase=");hex(phase);','')
+          rep('static uint64_t load(unsigned c,unsigned i){uint64_t v;memcpy(&v,mem[c]+i*P,8);return v;}\nstatic void store(unsigned c,unsigned i,uint64_t v){memcpy(mem[c]+i*P,&v,8);}','static uint64_t load(unsigned c,size_t i){uint64_t v;memcpy(&v,mem[c]+i,8);return v;}')
+          rep('WRITE(vbar_el1,VA+4*P);WRITE(sp_el0,VA+2*P-16);','WRITE(vbar_el1,VA+VECTOR*P);WRITE(sp_el0,VA+VECTOR*P);')
+          rep('WRITE(elr_el2,VA);','WRITE(elr_el2,entry);')
+          rep('R103 EL2 boot','R110 EL2 boot')
+          start=s.index('    const uint8_t p1[]')
+          end=s.index('    DSB();__asm__ volatile("ic iallu;',start)
+          s=s[:start]+'''    const uint8_t ro[]={4,4,4,4};
+              size_t vec=(size_t)((uintptr_t)guest_vectors_end-(uintptr_t)guest_vectors_start);
+              if(vec>P)fail("vector size");
+              for(unsigned c=0;c<2;c++){
+                  size_t n=0,m=0;struct elf64_plan p;
+                  if(!elf64_load_image(image_start,(uintptr_t)image_end-(uintptr_t)image_start,VA,VA+N*P,mem[c],sizeof mem[c],&p))fail("ELF load");
+                  if(!elf64_page_plan(&p,VA,VA+N*P,VA+VECTOR*P,2,perms[c],N)||perms[c][VECTOR])fail("ELF page plan");
+                  entry=p.entry;
+                  memcpy(mem[c]+VECTOR*P,guest_vectors_start,vec);perms[c][VECTOR]=5;
+                  if(!a57_s1_build(perms[c],N,VA,IPA,s1[c],4,TI,&n)||n!=3)fail("S1 build");
+                  uint64_t *leaf=&s1[c][2*512+((VA>>12)&511)+VECTOR];
+                  *leaf=(*leaf&~((UINT64_C(1)<<53)|(UINT64_C(1)<<6)))|(UINT64_C(1)<<54);
+                  struct a57_s2_span spans[]={{IPA,(uintptr_t)mem[c],N,perms[c]},{TI,(uintptr_t)s1[c],n,ro}};
+                  if(!a57_s2_build(spans,2,s2[c],8,(uintptr_t)s2[c],&m))fail("S2 build");
+                  if(load(c,0x20000)!=0x123||load(c,0x20008)!=0)fail("initial data/BSS");
+              }
+          '''+s[end:]
+          s=s[:s.index('void trap(uint64_t *regs)')]+r'''void trap(uint64_t *regs){
+              uint64_t esr=READ(esr_el2),e=READ(esr_el1);
+              if((esr>>26)!=0x16||(esr&0xffff)!=1||(e>>26)!=0x15||(e&0xffff)!=0x33)fail("ELF guest exception");
+              if(load(ctx,0x20000)!=0x123||load(ctx,0x20008)!=0x789)fail("ELF guest data");
+              msg("PASS: ELF-derived EL0 entry, R/RX/RW, BSS and stack\n");
+              if(ctx==0){if(load(1,0x20008)!=0)fail("cross-context write");ctx=1;memset(regs,0,31*sizeof *regs);install(1);return;}
+              if(load(0,0x20008)!=0x789)fail("first context changed");
+              msg("PASS: independent ELF contexts\nR110_ELF_MMU_PASS\n");stop();
+          }
+          '''
+          p.write_text(s)
+          p=Path("bare/string.h")
+          s=p.read_text()
+          if 'int memcmp(' not in s: s=s.replace('#endif','int memcmp(const void *,const void *,size_t);\n#endif')
+          p.write_text(s)
+          PY
+          cat > bare/elf_guest.S <<'EOF'
+          .section .text,"ax"
+          .global _start
+          _start:
+              adrp x0, data_value
+              add x0,x0,:lo12:data_value
+              ldr x1,[x0]
+              cmp x1,#0x123
+              b.ne bad
+              ldr x2,[x0,#8]
+              cbnz x2,bad
+              adrp x3, ro_value
+              add x3,x3,:lo12:ro_value
+              ldr x4,[x3]
+              cmp x4,#0x456
+              b.ne bad
+              mov x5,#0x789
+              str x5,[x0,#8]
+              sub sp,sp,#16
+              stp x4,x5,[sp]
+              ldp x6,x7,[sp]
+              cmp x6,x4
+              b.ne bad
+              cmp x7,x5
+              b.ne bad
+              add sp,sp,#16
+              svc #0x33
+          bad:
+              svc #0x44
+              b bad
+          .section .rodata,"a"
+          .balign 8
+          ro_value: .quad 0x456
+          .section .data,"aw"
+          .balign 8
+          data_value: .quad 0x123
+          .section .bss,"aw",%nobits
+          .balign 8
+          .skip 8
+          EOF
+          cat > bare/elf_guest.ld <<'EOF'
+          ENTRY(_start)
+          PHDRS { text PT_LOAD FLAGS(5); ro PT_LOAD FLAGS(4); data PT_LOAD FLAGS(6); }
+          SECTIONS {
+           . = 0x201000; .text : { *(.text*) } :text
+           . = 0x208000; .rodata : { *(.rodata*) } :ro
+           . = 0x220000; .data : { *(.data*) } :data
+           .bss : { *(.bss*) } :data
+           /DISCARD/ : { *(.comment*) *(.note*) }
+          }
+          EOF
+          mkdir -p build
+          clang --target=aarch64-unknown-freebsd15.1 -mcpu=cortex-a57 -c bare/elf_guest.S -o build/elf_guest.o
+          ld.lld -T bare/elf_guest.ld --fatal-warnings -o build/guest.elf build/elf_guest.o
+          printf '.section .rodata.image,"a"\n.global image_start,image_end\nimage_start: .incbin "build/guest.elf"\nimage_end:\n' > build/image.S
+          flags=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${flags[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/elf-mmu.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          readelf -lW build/guest.elf
+          rc=0
+          timeout 15s /usr/bin/qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/elf-mmu.elf > ELF-MMU-RESULTS.txt 2>&1 || rc=$?
+          cat ELF-MMU-RESULTS.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' ELF-MMU-RESULTS.txt
+          test "$(grep -Fxc 'PASS: ELF-derived EL0 entry, R/RX/RW, BSS and stack' ELF-MMU-RESULTS.txt)" = 2
+          test "$(grep -Fxc 'PASS: independent ELF contexts' ELF-MMU-RESULTS.txt)" = 1
+          test "$(grep -Fxc R110_ELF_MMU_PASS ELF-MMU-RESULTS.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: r104-mmu-gate-evidence
-          path: mmu-gate/
+          path: |
+            mmu-gate/
+            elf-mmu-gate/
           if-no-files-found: warn
