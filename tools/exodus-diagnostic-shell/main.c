@@ -258,12 +258,22 @@ cleanup:
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
+#include "diag_vm.h"
 
 static void run_test(const char *cmd){
     used=0;overflow=false;logbuf[0]=0;
     logline("schema=1\nkind=exodus_diagnostic_shell\ncommand=%s\n",cmd);
     u32 v=hosversionGet();
     logline("hos_version=%u.%u.%u\n",(unsigned)HOSVER_MAJOR(v),(unsigned)HOSVER_MINOR(v),(unsigned)HOSVER_MICRO(v));
+    if(!strncmp(cmd,"vm ",3)){
+        TdaVm v;u64 start=armGetSystemTick();
+        const char *err=tda_vm_run(cmd+3,&v);
+        logline("vm_status=%s\n",err?err:"pass");
+        if(!err){
+            logline("vm_steps=%u\nvm_elapsed_ns=%" PRIu64 "\n",v.steps,(uint64_t)armTicksToNs(armGetSystemTick()-start));
+            for(unsigned i=0;i<8;i++)logline("vm_r%u=0x%016" PRIx64 "\n",i,v.reg[i]);
+        }
+    }
     if(!strcmp(cmd,"info")||!strcmp(cmd,"all")){
         query("process_total_bytes",InfoType_TotalMemorySize);
         query("process_used_bytes",InfoType_UsedMemorySize);
@@ -303,6 +313,7 @@ static void run_test(const char *cmd){
     logline("repeat_safe=%s\n",unsafe_to_repeat?"no":"yes");
 }
 static bool allowed(const char *s){
+    if(!strncmp(s,"vm ",3))return true;
     static const char *const cmds[]={"info","cpu","memory","timer","audio","all"};
     for(unsigned i=0;i<sizeof cmds/sizeof *cmds;i++)if(!strcmp(s,cmds[i]))return true;
     return false;
@@ -344,7 +355,7 @@ int main(void){
     consoleInit(NULL);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
-    printf("EXODUS Diagnostic Shell R01\nTrusted isolated LAN only. No encryption.\nA: open one diagnostic session; PLUS: exit.\n");
+    printf("EXODUS Diagnostic Shell R03\nTrusted isolated LAN only. No encryption.\nA: open one diagnostic session; PLUS: exit.\n");
     bool approve=false;
     while(appletMainLoop()){
         padUpdate(&pad);u64 keys=padGetButtonsDown(&pad);
@@ -375,7 +386,7 @@ int main(void){
     close(listener);listener=-1;
     if(client<0)goto done;
     if(fcntl(client,F_SETFL,O_NONBLOCK)<0)goto done;
-    char line[80];
+    char line[1024];
     if(!send_text(client,"EXODUS-DIAG/1\n")||!read_line(client,line,sizeof line,&pad))goto done;
     if(strlen(line)!=32||strcmp(line,code)){send_text(client,"ERR pairing\n");goto done;}
     memset(code,0,sizeof code);memset(random,0,sizeof random);
