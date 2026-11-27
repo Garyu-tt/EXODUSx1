@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [docs/tegra-research-evidence-r01]
-    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c']
+    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c']
 permissions:
   contents: read
 jobs:
@@ -77,6 +77,23 @@ jobs:
           test -z "$(arm-none-eabi-nm -u atomic-reference/a9.o)"
           test -z "$(aarch64-linux-gnu-nm -u atomic-reference/a57.o)"
           echo 'Atomic ISA reference: PASS (compile only)'
+      - name: Compile cache maintenance ISA probes (never execute)
+        run: |
+          set -o pipefail
+          mkdir -p cache-reference
+          cc -std=c11 -Wall -Wextra -Werror -DCACHE_SHAPE_TEST exodus/tests/tumor_cache_isa_reference.c -o /tmp/cache-shape-test
+          /tmp/cache-shape-test
+          arm-none-eabi-gcc -std=c11 -mcpu=cortex-a9 -marm -O2 -ffreestanding -c exodus/tests/tumor_cache_isa_reference.c -o cache-reference/a9.o
+          aarch64-linux-gnu-gcc -std=c11 -mcpu=cortex-a57 -O2 -ffreestanding -c exodus/tests/tumor_cache_isa_reference.c -o cache-reference/a57.o
+          arm-none-eabi-objdump -d cache-reference/a9.o > cache-reference/a9.txt
+          aarch64-linux-gnu-objdump -d cache-reference/a57.o > cache-reference/a57.txt
+          grep -E 'mcr.*(cr|c)7, *(cr|c)10, *\{?1' cache-reference/a9.txt
+          grep -E 'mcr.*(cr|c)7, *(cr|c)6, *\{?1' cache-reference/a9.txt
+          grep -w dsb cache-reference/a9.txt
+          grep -E 'dc[[:space:]]+cvac' cache-reference/a57.txt
+          grep -E 'dc[[:space:]]+ivac' cache-reference/a57.txt
+          grep -w dsb cache-reference/a57.txt
+          echo 'Cache maintenance ISA reference: PASS (compile only)'
       - name: Fetch pinned public reference
         run: |
           git init upstream
@@ -117,6 +134,7 @@ jobs:
         with:
           name: rcm-reference-test
           path: |
+            cache-reference/*.txt
             atomic-reference/*.txt
             tumor-ipc32-platform-contract.log
             tumor-ipc32-transport-model.log
