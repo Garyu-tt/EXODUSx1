@@ -191,17 +191,18 @@ jobs:
           exit 0
           EOF
           timeout 9m expect boot.exp 2>&1 | tee evidence/userspace.log
-          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_A9_REDUCED_PASS
-          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_PROBE_PASS
-          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_NATIVE_CODEC_PASS
-          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_RAM_EXIT_OK
+          tr -d '\r' < evidence/userspace.log > evidence/userspace-normalized.log
+          grep -Fxq EXODUS_A9_REDUCED_PASS evidence/userspace-normalized.log
+          grep -Fxq EXODUS_PROBE_PASS evidence/userspace-normalized.log
+          grep -Fxq EXODUS_GUEST_NATIVE_CODEC_PASS evidence/userspace-normalized.log
+          grep -Fxq EXODUS_GUEST_RAM_EXIT_OK evidence/userspace-normalized.log
           grep -Fxq EXODUS_ARM64_RAM_INIT evidence/arm64-peer.log
           grep -Fxq EXODUS_ARM64_NATIVE_CODEC_PASS evidence/arm64-peer.log
-          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_GUEST_HEARTBEAT_TIMEOUT
-          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_TIMEOUT_EXIT3
+          grep -Fxq EXODUS_GUEST_HEARTBEAT_TIMEOUT evidence/userspace-normalized.log
+          grep -Fxq EXODUS_TIMEOUT_EXIT3 evidence/userspace-normalized.log
           grep -Fxq EXODUS_ARM64_STOPPED_AFTER_10 evidence/stall.log
           grep -Fxq EXODUS_STALL_NO_SPURIOUS_ACK evidence/stall.log
-          tr -d '\r' < evidence/userspace.log | grep -Fxq "hw.realmem: $((RAM_MIB * 1024 * 1024 - 4096))"
+          grep -Fxq "hw.realmem: $((RAM_MIB * 1024 * 1024 - 4096))" evidence/userspace-normalized.log
           python3 - <<'PY' | tee evidence/backing-page.log
           import os,struct,pathlib
           size=int(os.environ['RAM_MIB'])*1024*1024
@@ -223,7 +224,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cross-guest-timeout-r72-${{ matrix.ram }}mib
+          name: cross-guest-timeout-r73-${{ matrix.ram }}mib
           path: |
             evidence/*.log
             evidence/board.dts
