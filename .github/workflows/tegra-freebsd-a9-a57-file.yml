@@ -233,6 +233,9 @@ jobs:
               mov x8,#4089
               svc #0
           bad:''')
+          old="    b bad\n.balign 4096\nservice_vectors:" 
+          assert s.count(old)==1
+          s=s.replace(old,"    b bad\n    .ltorg\n.balign 4096\nservice_vectors:")
           p.write_text(s)
           PY
           mcopy -o -i seed.img "$src/armv7_authority/"{awt_clone_relay.c,awt_clone_guest.sh,a57_native_file_reference.h} ::
