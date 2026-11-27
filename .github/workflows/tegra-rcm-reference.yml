@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [docs/tegra-research-evidence-r01]
-    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c', 'exodus/tests/tumor_doorbell_reference.c', 'exodus/tests/tumor_doorbell_wakeup_model.c', 'exodus/tests/tumor_adsp_recovery_model.c', 'exodus/tests/tumor_smmu_retirement_model.c', 'exodus/tests/tumor_address_domain_model.c']
+    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c', 'exodus/tests/tumor_doorbell_reference.c', 'exodus/tests/tumor_doorbell_wakeup_model.c', 'exodus/tests/tumor_adsp_recovery_model.c', 'exodus/tests/tumor_smmu_retirement_model.c', 'exodus/tests/tumor_address_domain_model.c', 'exodus/tests/tumor_elf32_load_plan_reference.c']
 permissions:
   contents: read
 jobs:
@@ -24,6 +24,11 @@ jobs:
           ref: d6b9524ddba5aa429835934db4da685f45ddfaf4
           path: tumor-reference
           persist-credentials: false
+      - name: Test offline ARM ELF32 load plan
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_elf32_load_plan_reference.c -o /tmp/tumor-elf32-load-plan-reference
+          timeout 10s /tmp/tumor-elf32-load-plan-reference | tee tumor-elf32-load-plan-reference.log
       - name: Test abstract ADSP address-domain admission
         run: |
           set -o pipefail
@@ -161,6 +166,7 @@ jobs:
           path: |
             cache-reference/*.txt
             atomic-reference/*.txt
+            tumor-elf32-load-plan-reference.log
             tumor-address-domain-model.log
             tumor-smmu-retirement-model.log
             tumor-adsp-recovery-model.log
