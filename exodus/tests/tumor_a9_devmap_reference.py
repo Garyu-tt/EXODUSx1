@@ -26,3 +26,10 @@ struct.pack_into("<I",data,hits[0],new)
 dst.write_bytes(data)
 print(f"QEMU-only devmap patch at {addr+hits[0]-start:#x}: {old:#010x} -> {new:#010x}")
 print("Patched ELF SHA256:",hashlib.sha256(data).hexdigest())
+# Apply same audited single-word change to the already validated raw image.
+raw=pathlib.Path(sys.argv[3])
+image=bytearray(raw.read_bytes())
+pos=addr+hits[0]-start-0xc0000000
+assert 0<=pos<=len(image)-4 and struct.unpack_from("<I",image,pos)[0]==old
+struct.pack_into("<I",image,pos,new)
+raw.write_bytes(image)
