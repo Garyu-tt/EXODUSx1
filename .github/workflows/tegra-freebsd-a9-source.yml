@@ -1,11 +1,6 @@
-name: Tegra FreeBSD A9 source kernel build
+name: Tegra FreeBSD A9 alternate source config (manual)
 on:
   workflow_dispatch:
-  push:
-    branches: [docs/tegra-research-evidence-r01]
-    paths:
-      - '.github/workflows/tegra-freebsd-a9-source.yml'
-      - 'exodus/tests/freebsd/EXODUS_A9'
 permissions:
   contents: read
 jobs:
@@ -48,8 +43,10 @@ jobs:
         run: |
           set -o pipefail
           export MAKEOBJDIRPREFIX="$PWD/obj"
+          export XCC=/usr/bin/clang-19 XCXX=/usr/bin/clang++-19 XCPP=/usr/bin/clang-cpp-19 XLD=/usr/bin/ld.lld-19
           cd freebsd
-          python3 tools/build/make.py --cross-bindir=/usr/lib/llvm-19/bin --host-compiler-type=clang -j2 TARGET=arm TARGET_ARCH=armv7 KERNCONF=EXODUS_A9 -DNO_MODULES -DWITHOUT_CTF buildkernel 2>&1 | tee ../evidence/build.log
+          python3 tools/build/make.py --cross-bindir=/usr/lib/llvm-19/bin -j2 TARGET=arm TARGET_ARCH=armv7 KERNCONF=EXODUS_A9 -DNO_MODULES kernel-toolchain 2>&1 | tee ../evidence/toolchain.log
+          python3 tools/build/make.py --cross-bindir=/usr/lib/llvm-19/bin -j2 TARGET=arm TARGET_ARCH=armv7 KERNCONF=EXODUS_A9 -DNO_MODULES -DWITHOUT_CTF buildkernel 2>&1 | tee ../evidence/build.log
       - name: Inventory compiled ELF
         run: |
           set -e
