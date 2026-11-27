@@ -1,4 +1,4 @@
-name: EXODUS R115 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R116 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -46,7 +46,9 @@ jobs:
               return 23;
           }
           EOF
-          clang --target=aarch64-unknown-freebsd15.1 --sysroot="$PWD/sysroot" -fuse-ld=lld -mcpu=cortex-a57 -static -no-pie -O2 -Wall -Wextra -Werror -Wl,-Map,evidence/hello.map -Wl,--build-id=none evidence/hello.c -o evidence/hello.elf
+          clang --target=aarch64-unknown-freebsd15.1 --sysroot="$PWD/sysroot" -mcpu=cortex-a57 -fno-pie -O2 -Wall -Wextra -Werror -c evidence/hello.c -o evidence/hello.o
+          clang --target=aarch64-unknown-freebsd15.1 --sysroot="$PWD/sysroot" -fuse-ld=lld -static -Wl,-no-pie -Wl,-Map,evidence/hello.map -Wl,--build-id=none evidence/hello.o -o evidence/hello.elf
+          readelf -h evidence/hello.elf | grep -Eq 'Type:[[:space:]]+EXEC'
           readelf -h -lW -d evidence/hello.elf | tee evidence/elf-layout.txt
           readelf -sW evidence/hello.elf > evidence/symbols.txt
           llvm-nm --undefined-only evidence/hello.elf > evidence/undefined.txt
