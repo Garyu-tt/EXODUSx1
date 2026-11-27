@@ -1,4 +1,4 @@
-name: EXODUS combined Alpha C file reference R96
+name: EXODUS combined Alpha 2 reproducible kit R97
 on:
   push:
     branches:
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RAM_MIB: '512'
-    timeout-minutes: 55
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
         with:
@@ -561,6 +561,104 @@ jobs:
           done
           test "$(grep -Fxc EXODUS_SSH_DURING_A57_PASS evidence/normalized.log)" = 4
           test "$(wc -c < evidence/a57-frame.rgba)" = 768
+      - name: Assemble reproducible dual-CPU kit
+        run: |
+          set -euo pipefail
+          kit=exodus-alpha2-reference
+          mkdir -p "$kit/evidence" "$kit/runner/armv7_authority" "$kit/display"
+          cp evidence/kernel.bin evidence/board.dtb evidence/board.dts "$kit/evidence/"
+          cp handoff.bin amp.elf file-c.elf FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz "$kit/"
+          cp authority/exodus/frankenstein/armv7_authority/awt_clone_run.py "$kit/runner/armv7_authority/"
+          cp authority/exodus/frankenstein/test_el2_freebsd_abi.py "$kit/runner/"
+          cp tools/kernel_bridge/{a57_display_reference.c,framebuffer_adapter.h,compositor.h} "$kit/display/"
+          xz -T2 -1 -c seed.img > "$kit/seed.img.xz"
+          printf '%s\n' "$GITHUB_SHA" > "$kit/workflow-commit.txt"
+          printf '%s\n' fb86a126fb7c9f04476a3a429bdacbf5ab38a9e8 > "$kit/authority-commit.txt"
+          cat > "$kit/run.sh" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          cd -- "$(dirname -- "$0")"
+          sha256sum -c SHA256SUMS
+          for exe in qemu-system-arm qemu-system-aarch64 qemu-img xz python3 timeout cc; do
+            command -v "$exe" >/dev/null || { echo "Missing dependency: $exe" >&2; exit 2; }
+          done
+          python3 -c 'import pexpect'
+          kit="$PWD"
+          out=$(mktemp -d "$kit/results.XXXXXXXX")
+          tmp=$(mktemp -d)
+          trap 'rm -rf -- "$tmp"' EXIT
+          xz -dc FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz > "$tmp/disk.raw"
+          qemu-img resize -f raw "$tmp/disk.raw" 12G
+          xz -dc seed.img.xz > "$tmp/seed.img"
+          for path in handoff.bin amp.elf evidence runner; do
+            ln -s "$kit/$path" "$tmp/$path"
+          done
+          cd -- "$tmp"
+          cc -std=c11 -Wall -Wextra -Werror -pedantic "$kit/display/a57_display_reference.c" -o display-reference
+          timeout 45m python3 runner/armv7_authority/awt_clone_run.py disk.raw seed.img unused "$out/serial.log" amp.elf "$out/a57-trace.log" | tee "$out/result.log"
+          tr -d '\r' < "$out/serial.log" > "$out/normalized.log"
+          for marker in EXODUS_A9_ID_PASS EXODUS_STORAGE_PASS EXODUS_LOOPBACK_PASS EXODUS_SSH_AUTH_PASS EXODUS_SERVICE_RESTART_PASS EXODUS_RESIDENT_SSH_READY EXODUS_RESIDENT_SETUP_PASS EXODUS_NATIVE_FILE_PASS; do
+            test "$(grep -Fxc "$marker" "$out/normalized.log")" = 1
+          done
+          test "$(grep -Fxc EXODUS_SSH_DURING_A57_PASS "$out/normalized.log")" = 4
+          test "$(wc -c < "$out/a57-frame.rgba")" = 768
+          grep -Fxq 'PASS: native FreeBSD file open/write/close/reopen/read and EBADF' "$out/result.log"
+          grep -Fxq 'PASS: A57 EL0 display request rendered through existing compositor' "$out/result.log"
+          python3 - "$out/a57-frame.rgba" "$out/a57-frame.ppm" <<'PY'
+          import pathlib,sys
+          data=pathlib.Path(sys.argv[1]).read_bytes()
+          assert len(data)==16*12*4 and all(x==255 for x in data[3::4])
+          pathlib.Path(sys.argv[2]).write_bytes(b'P6\n16 12\n255\n'+bytes(v for i,v in enumerate(data) if i%4!=3))
+          PY
+          grep -Fxq 'PASS: live native PID, A57 parent/child clone, private RW, native exit status and ECHILD' "$out/result.log"
+          printf 'Logs: %s\n' "$out"
+          EOF
+          cat > "$kit/README.txt" <<'EOF'
+          EXODUS Alpha 2 reference integration for QEMU, not Switch firmware.
+          Linux dependencies: qemu-system-arm, qemu-utils, python3-pexpect,
+          xz-utils, bash, coreutils and a C compiler. Allow at least 15 GiB free temporary disk.
+          Run: bash run.sh
+          The kit uses a pinned FreeBSD ARMv7 release root, source-built
+          EXODUS_A9_REF kernel (512 MiB), and A57 EL2/EL0 fixture (128 MiB).
+          The original native FreeBSD modules are built in the disposable guest
+          using the included pinned FreeBSD source archive on the FAT seed.
+          The host relays bytes; it does not manufacture authority responses.
+          The test checks native PID, clone isolation, wait/exit, ECHILD,
+          key-authenticated loopback SSH, restart, four concurrent SSH probes,
+          compiled C file open/write/close/reopen/read and EBADF,
+          exact RGBA compositor output and injected pointer return to A57 EL0.
+          Open results.*/a57-frame.ppm to view the actual 16x12 test frame.
+          No external network, persistent disk writes or physical hardware.
+          The included ELF is the bounded C file fixture, not a general BSD executable loader.
+          No actual Horizon display, physical HID, arbitrary BSD apps or desktop.
+          SSH is loopback only; no externally accessible server is provided.
+          Upstream FreeBSD sources and distribution retain their own licenses.
+          EOF
+          chmod +x "$kit/run.sh"
+          bash -n "$kit/run.sh"
+          (
+            cd "$kit"
+            sha256sum README.txt run.sh workflow-commit.txt authority-commit.txt \
+              evidence/kernel.bin evidence/board.dtb evidence/board.dts \
+              handoff.bin amp.elf file-c.elf seed.img.xz \
+              display/a57_display_reference.c display/framebuffer_adapter.h display/compositor.h \
+              runner/armv7_authority/awt_clone_run.py runner/test_el2_freebsd_abi.py \
+              FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img.xz > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+          tar -cf exodus-alpha2-reference.tar "$kit"
+      - name: Re-run the actual packaged kit
+        run: |
+          set -euo pipefail
+          mkdir -p packaged
+          tar -xf exodus-alpha2-reference.tar -C packaged
+          bash packaged/exodus-alpha2-reference/run.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exodus-alpha2-reference-kit
+          path: exodus-alpha2-reference.tar
+          if-no-files-found: error
+          compression-level: 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
