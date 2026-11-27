@@ -158,7 +158,7 @@ jobs:
           #!/bin/sh
           set -eu
           d=/var/tmp/exodus-services
-          result=$(ssh -F /dev/null -4 -T -p 2222 -i "$d/client" \
+          result=$(ssh -n -F /dev/null -4 -T -p 2222 -i "$d/client" \
               -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=5 \
               -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$d/known_hosts" \
               -o GlobalKnownHostsFile=/dev/null exodusprobe@127.0.0.1 'id -u')
