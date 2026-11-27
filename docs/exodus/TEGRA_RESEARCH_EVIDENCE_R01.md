@@ -46,3 +46,24 @@ Directly inspected ten files (4,509 lines including trailing newline counts) in 
 Switchbrew search index ([Audio services](https://switchbrew.org/wiki/Audio_services)) includes an S2-specific statement about AudioAdsp KIP/HOS. Do not apply that statement to Switch 1 firmware; direct page access still returns 403. The retrieved historical backupbrew Audio services file (blob 65d23c6bd50154471c81e5c9e20a5645689818e2) did not contain those exact phrases. Horizon audio protocol remains unresolved.
 
 Host-only next acceptance: extend existing Tumor fixtures with bounded fixed-width wire records, full/empty/wrap and malformed-length cases, separate address/opaque-handle types, completion timeout and peer restart, explicit cache/DMA ownership abstractions. Compare actual fixture contracts before implementing; do not import L4T protocol blindly. No firmware binary acquired, no scheduler source established, no compilation, no console access. Source inspection does not authorize touching the live audio owner.
+
+## R03 — APE local memory, IRQ, DMA and power lifecycle
+
+Primary hardware reference: [NVIDIA Tegra X1 embedded datasheet DS-07224-007 v1.0, p.10](https://cdck-file-uploads-global.s3.dualstack.us-west-2.amazonaws.com/nvidia/original/2X/1/1eecf66463f700c4515bfe091b2a0f6527d13571.pdf), section 1.2.5. Cortex-A9 with NEON/FPU, 32 KiB instruction and 32 KiB data L1, 128 KiB L2, 64 KiB audio RAM, dedicated audio clocks. This specifies generic T210, not available resources under Horizon.
+
+Reviewed [Switch L4T NVADSP directory](https://github.com/CTCaer/switch-l4t-kernel-nvidia/tree/linux-dev/drivers/platform/tegra/nvadsp) with these source blobs:
+
+| File | Blob | Observation |
+| --- | --- | --- |
+| amc.h | 2bf7d699975eab0ffa62ccb580a26604f22b036e | 64 KiB ARAM, 2 KiB aperture, four aliases; alias count is not additional memory. |
+| amc.c | 1d37d4f215f70a142fb25b0e067b071bc6254e18 | ARAM save/restore, AMC state and invalid-access IRQ handling. |
+| aram_manager.c | 62182c7af7e5a69507956f22cd34fbd83f18bb8b | Allocator wrapper for caller-supplied range, not proof of free space. |
+| mem_manager.c | f0dc582e118961673188290500e5ba0bcf429a1e | Host-side allocation/release implementation. |
+| hwmailbox.c | 9ae54b8bdc48e48472ba9e12e9d08948253500db | Separate receive-full and send-empty IRQ handlers. |
+| hwmailbox.h | b079296109f1d5c257bf890709adca323ffb5066 | 32-bit mailbox word; short form has validity/type plus 10-bit mailbox ID and 20-bit data; 1024-entry host software queue, not hardware FIFO depth. |
+| dev-t21x.c | 6ae797e2d4a5d0c96b81fb17a10ab6c7afdbd716 | Runtime PM saves/restores ARAM and AMISC; clock ownership and state loss are mandatory design constraints. |
+| nvadsp_shared_sema.c | 6c591466959dcabb36d2822777ae9beb950e761a | **Negative evidence:** init returns NULL; destroy/acquire/release return -ENOENT. Shared semaphore API is a stub in this snapshot. No hardware arbitration claim. |
+
+Independent source: [upstream Linux Tegra210 DTS at 1447e43](https://code.googlesource.com/linux/torvalds/linux/+/1447e43c0b735ffc0d48a6aec4f74d6877caffc2/arch/arm64/boot/dts/nvidia/tegra210.dtsi), ACONNECT subtree. ADMA lists 22 per-channel interrupt entries (SPI 24–45) under AGIC; AGIC has parent SPI 102, and ACONNECT is attached to audio power domain with APE/APB2APE clocks. [Original binding discussion](https://lkml.rescloud.iu.edu/1510.0/02683.html) corroborates channel count. ADMA is audio-specific; do not assume arbitrary memory-to-memory transfers or free channels.
+
+Host acceptance additions: model finite ARAM capacity and alias identity; reject overcommit; distinguish hardware notification from software queue; model lost/duplicate notification, full queue, suspend/resume generation changes and power loss. Do not assume hardware semaphores; require a proven cross-peer ordering and ownership protocol before enabling shared writers. Reserve audio IRQ/DMA resources by default until explicit allocation evidence. These are test requirements, not executed results. No console access, firmware modification, code import, or hardware validation.
