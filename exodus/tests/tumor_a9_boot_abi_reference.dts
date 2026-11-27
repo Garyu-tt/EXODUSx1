@@ -1,0 +1,26 @@
+/dts-v1/;
+/ {
+    compatible = "exodus,synthetic-a9-boot-reference";
+    model = "EXODUS synthetic QEMU boot ABI fixture";
+    #address-cells = <1>;
+    #size-cells = <1>;
+    chosen { bootargs = "exodus.reference=1"; };
+    memory@60000000 {
+        device_type = "memory";
+        reg = <0x60000000 0x08000000>;
+    };
+    reserved-memory {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges;
+        handoff@60040000 {
+            reg = <0x60040000 0x00010000>;
+            no-map;
+        };
+    };
+    cpus {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        cpu@0 { device_type = "cpu"; compatible = "arm,cortex-a9"; reg = <0>; };
+    };
+};
