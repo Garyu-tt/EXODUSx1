@@ -1,0 +1,143 @@
+name: Tegra FreeBSD minimal A9 boot reference R57
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-freebsd-a9-minimal-boot.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require exact successful R56 build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test "$(gh api repos/$GH_REPO/actions/runs/46048553785 --jq .head_sha)" = 43722405848031e3fc828e1a1259fd84adb7f07b
+          timeout 8m gh run watch 46048553785 --repo "$GH_REPO" --interval 10 --exit-status
+          test "$(gh api repos/$GH_REPO/actions/runs/46048553785 --jq .conclusion)" = success
+  memory:
+    needs: admission
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ram: [24, 28, 32, 64]
+    env:
+      RAM_MIB: ${{ matrix.ram }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: a9-minimal-source-build-r56
+          run-id: '46048553785'
+          github-token: ${{ github.token }}
+          path: prior
+      - name: Prepare pinned source-built kernel
+        run: |
+          set -o pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm gcc-arm-linux-gnueabihf device-tree-compiler python3 curl xz-utils expect
+          mkdir -p evidence
+          (cd prior && sha256sum -c kernel.sha256) 2>/dev/null || sha256sum -c <(sed "s@evidence/kernel.elf@prior/kernel.elf@" prior/kernel.sha256)
+          digest="$(awk 'NR==1 {print $1}' prior/kernel.sha256)"
+          printf '%s\n' "$digest" | tee evidence/kernel-digest.log
+          grep -Fx 'ident EXODUS_A9_MIN' prior/EXODUS_A9_MIN
+          python3 exodus/tests/tumor_freebsd_source_load.py prior/kernel.elf evidence --sha256 "$digest" --ram-mib "$RAM_MIB" | tee evidence/load-plan.log
+          entry="$(cat evidence/entry.txt)"
+          [[ "$entry" =~ ^0x[0-9a-f]{8}$ ]]
+          sed "s/0x61000200/$entry/" exodus/tests/tumor_freebsd_direct_a9.S > handoff.S
+          arm-linux-gnueabihf-objdump -d --disassemble=gem5_devmap_init prior/kernel.elf | tee evidence/source-devmap.log
+          arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c handoff.S -o handoff.o
+          arm-linux-gnueabihf-ld -Ttext=0x60010000 -e _start handoff.o -o handoff.elf
+          arm-linux-gnueabihf-objcopy -O binary handoff.elf handoff.bin
+          python3 - <<'PY'
+          import os,pathlib
+          source=pathlib.Path("exodus/tests/tumor_a9_root_reference.dts").read_text()
+          old="reg = <0x60000000 0x40000000>;"
+          assert source.count(old)==1
+          ram=int(os.environ["RAM_MIB"])
+          assert source.count("FreeBSD: vfs.root.mountfrom=")==1
+          source=source.replace("FreeBSD: vfs.root.mountfrom=", "FreeBSD: -s vfs.root.mountfrom=")
+          pathlib.Path("evidence/board.dts").write_text(source.replace(old, f"reg = <0x60000000 {ram*1024*1024:#x}>;"))
+          PY
+          dtc -I dts -O dtb -o evidence/board.dtb evidence/board.dts
+          fdtget -t x evidence/board.dtb /memory@60000000 reg | tee evidence/memory-map.log
+      - name: Download verified disposable root disk
+        run: |
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 300 "https://download.freebsd.org/releases/arm/armv7/ISO-IMAGES/15.1/$image.xz" -o "$image.xz"
+          printf '%s  %s\n' d568d7324825af9072405b11b7d0f4ba892d10ca05687fe4fd65e328e72cf7b8 "$image.xz" | sha256sum -c -
+          printf '%s  %s\n' a50077a25a44a38cf3ff55b0a6e3da839ea96b829e5d975f27e1f3c0a6f0f68ef97a7d5ce845f3f0d76fce800814e57ff9c3499d518257210eb7e32913c720f5 "$image.xz" | sha512sum -c -
+          xz -d "$image.xz"
+      - name: Boot real FreeBSD single-user shell on Cortex-A9
+        run: |
+          set -o pipefail
+          cat > boot.exp <<'EOF'
+          set timeout 180
+          set ram $env(RAM_MIB)
+          spawn -noecho qemu-system-arm -M vexpress-a9 -cpu cortex-a9 -m $ram -smp 1 -display none -serial stdio -monitor none -nic none -no-reboot -device loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on -device loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on -device loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on -drive if=none,id=root,file=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img,format=raw,snapshot=on -device virtio-blk-device,drive=root
+          proc fail {message} {
+              puts stderr $message
+              catch {exec kill -TERM [exp_pid]}
+              catch {close}
+              catch {wait}
+              exit 1
+          }
+          expect {
+              -re {mountroot> *} {send -- "ufs:/dev/ufs/rootfs\r"; exp_continue -continue_timer}
+              -re {Enter full pathname of shell or RETURN for /bin/sh: *} {send -- "\r"}
+              -re {(?i)panic:} {fail "A9 kernel panic before single user"}
+              timeout {fail "A9 single-user shell selection timeout"}
+              eof {fail "A9 emulator exited before single user"}
+          }
+          set timeout 90
+          expect {
+              -re {(?m)^(root@[^\r\n]* )?# *$} {}
+              -re {(?i)panic:|failed to reclaim memory} {fail "A9 single-user memory failure"}
+              timeout {fail "A9 single-user prompt timeout"}
+              eof {fail "A9 emulator exited before prompt"}
+          }
+          proc gate {command marker} {
+              send -- "$command\r"
+              expect {
+                  -re "(?m)^$marker\\r*$" {}
+                  timeout {fail "A9 command gate failed: $marker"}
+                  eof {fail "A9 emulator exited: $marker"}
+              }
+              expect {
+                  -re {(?m)^(root@[^\r\n]* )?# *$} {}
+                  timeout {fail "A9 prompt after command missing"}
+                  eof {fail "A9 emulator exited after command"}
+              }
+          }
+          gate {printf '%s%s\n' EXODUS_SHELL_ READY} EXODUS_SHELL_READY
+          gate {/bin/sh -c 'set -e; uname -a; sysctl hw.model hw.physmem hw.realmem hw.pagesize; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; uname -v | grep EXODUS_A9_MIN; sysctl -n hw.model | grep -i cortex-a9; printf "%s%s\n" EXODUS_ID_ PASS'} EXODUS_ID_PASS
+          gate {/bin/sh -c 'set -e; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; mount; printf "%s%s\n" EXODUS_VM_ PASS'} EXODUS_VM_PASS
+          gate {/bin/sh -c 'set -e; test -r /etc/rc; sha256 /bin/sh; (uname -p) & child=$!; wait $child; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; printf "%s%s\n" EXODUS_A9_REDUCED_ PASS'} EXODUS_A9_REDUCED_PASS
+          catch {exec kill -TERM [exp_pid]}
+          catch {close}
+          catch {wait}
+          exit 0
+          EOF
+          timeout 9m expect boot.exp 2>&1 | tee evidence/userspace.log
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_A9_REDUCED_PASS
+          tr -d '\r' < evidence/userspace.log | grep -Fxq "hw.realmem: $((RAM_MIB * 1024 * 1024))"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a9-minimal-boot-r57-${{ matrix.ram }}mib
+          path: |
+            evidence/*.log
+            evidence/board.dts
+            evidence/board.dtb
+          if-no-files-found: warn
