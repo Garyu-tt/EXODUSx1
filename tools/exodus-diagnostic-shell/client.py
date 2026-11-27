@@ -1,7 +1,8 @@
-"""EXODUS operator client R08; supports local approval and legacy NRO."""
+"""EXODUS operator client R09; supports local approval and legacy NRO."""
 import argparse
 import getpass
 import hashlib
+import hmac
 import ipaddress
 import re
 import socket
@@ -132,11 +133,44 @@ def pair(sock,stream):
     if stream.readline(81)!=b"OK\n":
         raise ValueError("pairing rejected")
 
+def update_manifest(rev, image, key):
+    if not 10<=rev<=9999 or not 128<=len(image)<=4*1024*1024 or len(key)!=32:
+        raise ValueError("invalid update revision, size or key")
+    if image[16:20]!=b"NRO0" or not 128<=int.from_bytes(image[24:28],"little")<=len(image):
+        raise ValueError("invalid NRO header")
+    digest=hashlib.sha256(image).hexdigest()
+    manifest=f"EXODUS-NRO-UPDATE/1\n{rev}\n{len(image)}\n{digest}\n".encode("ascii")
+    mac=hmac.new(key,manifest,hashlib.sha256).hexdigest()
+    return f"update {rev} {len(image)} {digest} {mac}\n".encode("ascii")
+
+def transfer_update(sock,stream,rev,path,key_path):
+    with path.open("rb") as f:
+        image=f.read(4*1024*1024+1)
+    with key_path.open("rb") as f:
+        key=f.read(33)
+    request=update_manifest(rev,image,key)
+    print("Update SHA256:",hashlib.sha256(image).hexdigest())
+    sock.sendall(request)
+    if stream.readline(81)!=b"READY\n":
+        raise ValueError("update rejected before transfer")
+    sock.sendall(image)
+    print("Verify the digest on Switch and press A to install.",flush=True)
+    sock.settimeout(190)
+    reply=stream.readline(81)
+    if reply not in (b"RELAUNCH\n",b"STAGED\n"):
+        raise ValueError("update not installed: "+reply.decode("ascii","replace").strip())
+    print(reply.decode("ascii").strip())
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("ip",type=ipaddress.IPv4Address)
     p.add_argument("--output",type=Path,default=Path("."))
+    p.add_argument("--update",type=Path)
+    p.add_argument("--revision",type=int)
+    p.add_argument("--update-key",type=Path)
     args=p.parse_args()
+    if any(v is not None for v in (args.update,args.revision,args.update_key)) and not all(v is not None for v in (args.update,args.revision,args.update_key)):
+        p.error("--update, --revision and --update-key are required together")
     if not args.ip.is_private or args.ip.is_loopback or args.ip.is_multicast:
         p.error("use a trusted private LAN address")
     if not args.output.is_dir():p.error("output directory must exist")
@@ -144,6 +178,9 @@ def main():
         sock.settimeout(60)
         with sock.makefile("rb") as stream:
             pair(sock,stream)
-            session(sock,stream,args.output)
+            if args.update is not None:
+                transfer_update(sock,stream,args.revision,args.update,args.update_key)
+            else:
+                session(sock,stream,args.output)
 
 if __name__=="__main__":main()

@@ -32,6 +32,7 @@ jobs:
           persist-credentials: false
       - run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=undefined,address tools/exodus-diagnostic-shell/test_diag_vm.c -o /tmp/tda-vm && /tmp/tda-vm
       - run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=undefined,address tools/exodus-diagnostic-shell/test_workspace.c -o /tmp/tda-workspace && /tmp/tda-workspace
+      - run: cc -std=c11 -Wall -Wextra -Werror -fsanitize=undefined,address tools/exodus-diagnostic-shell/test_update_manifest.c -o /tmp/tda-update && /tmp/tda-update
   client:
     runs-on: ubuntu-latest
     steps:

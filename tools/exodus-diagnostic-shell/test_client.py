@@ -64,3 +64,15 @@ class ClientTests(unittest.TestCase):
     def test_ping(self):
         self.assertEqual(plan("ping"),["ping"])
         self.assertEqual(plan("repeat ping 3"),["ping"]*3)
+
+    def test_update_manifest(self):
+        from client import update_manifest
+        import hmac, hashlib
+        image=bytearray(128);image[16:20]=b"NRO0";image[24:28]=(128).to_bytes(4,"little")
+        key=bytes(range(32))
+        cmd=update_manifest(10,image,key).decode().split()
+        self.assertEqual(cmd[:3],["update","10","128"])
+        manifest=f"EXODUS-NRO-UPDATE/1\n10\n128\n{cmd[3]}\n".encode()
+        self.assertEqual(cmd[4],hmac.new(key,manifest,hashlib.sha256).hexdigest())
+        for rev,payload,k in ((9,image,key),(10,b"x"*128,key),(10,image,b"x")):
+            with self.assertRaises(ValueError):update_manifest(rev,payload,k)
