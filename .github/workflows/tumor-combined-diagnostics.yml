@@ -1,0 +1,34 @@
+name: Tumor combined diagnostic regression
+on:
+  pull_request:
+    paths:
+      - 'exodus/frankenstein/a57_inventory*'
+      - 'exodus/frankenstein/tumor_board_report.py'
+      - 'exodus/frankenstein/test_tumor_board_report.py'
+      - 'exodus/frankenstein/tegra_physical_gate.py'
+      - 'exodus/frankenstein/test_tegra_physical_gate.py'
+      - '.github/workflows/tumor-combined-diagnostics.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  combined:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Board reports and physical admission regressions
+        run: |
+          python3 -m unittest discover -s exodus/frankenstein -p test_tumor_board_report.py -v
+          python3 -m unittest discover -s exodus/frankenstein -p test_tegra_physical_gate.py -v
+      - name: Install AArch64 reference toolchain
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu qemu-system-arm
+      - name: Build and execute A57 inventory twice in one QEMU session
+        working-directory: exodus/frankenstein
+        run: |
+          aarch64-linux-gnu-gcc -nostdlib -static -no-pie -Wl,--build-id=none,-T,a57_inventory_qemu.ld a57_inventory.S a57_inventory_qemu.S -o /tmp/tumor-inventory.elf
+          aarch64-linux-gnu-objdump -d /tmp/tumor-inventory.elf
+          timeout 20s qemu-system-aarch64 -M virt,virtualization=on -cpu cortex-a57 -m 128M -nographic -monitor none -serial none -semihosting-config enable=on,target=native -kernel /tmp/tumor-inventory.elf
+          echo 'QEMU inventory: five registers, completion marker, two canaries, two calls PASS'
