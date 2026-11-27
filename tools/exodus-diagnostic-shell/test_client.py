@@ -52,3 +52,8 @@ class ClientTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             pair(sock,io.BytesIO(b"EXODUS-DIAG/3\nOK\n"))
         sock.sendall.assert_not_called()
+
+    def test_repeat_run(self):
+        self.assertEqual(plan("repeat run bench 3"),["run bench"]*3)
+        for cmd in ("repeat run ../x 3","repeat run bench 11","repeat run bench 0"):
+            with self.assertRaises(ValueError):plan(cmd)
