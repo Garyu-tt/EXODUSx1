@@ -24,6 +24,18 @@ jobs:
           git -C uboot fetch --depth=1 origin 6d41f0a39d6423c8e57e92ebbe9f8c0333a63f72
           git -C uboot checkout --detach FETCH_HEAD
           test "$(git -C uboot rev-parse HEAD)" = 6d41f0a39d6423c8e57e92ebbe9f8c0333a63f72
+          # Reference-only experiment: R35 faulting LDRH used an odd address.
+          # Change only the initial SCTLR.A policy in this disposable U-Boot.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("uboot/arch/arm/cpu/armv7/start.S")
+          s=p.read_text()
+          old="orr\tr0, r0, #0x00000002\t@ set bit 1 (--A-) Align"
+          new="bic\tr0, r0, #0x00000002\t@ R36: permit normal-memory unaligned access"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,new))
+          PY
+          git -C uboot diff | tee evidence/uboot-alignment-experiment.patch
           make -C uboot CROSS_COMPILE=arm-linux-gnueabihf- vexpress_ca9x4_defconfig
           uboot/scripts/config --file uboot/.config -e EFI_LOADER -e CMD_BOOTEFI -e CMD_FAT -e EFI_PARTITION
           make -C uboot CROSS_COMPILE=arm-linux-gnueabihf- olddefconfig
@@ -49,7 +61,7 @@ jobs:
           set -o pipefail
           cat > boot.exp <<'EOF'
           set timeout 60
-          spawn -noecho qemu-system-arm -M vexpress-a9 -cpu cortex-a9 -m 1024 -smp 1 -nographic -monitor none -nic none -kernel uboot/u-boot -drive if=sd,file=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img,format=raw,snapshot=on -no-reboot
+          spawn -noecho qemu-system-arm -d int,guest_errors -D evidence/qemu-exceptions.log -M vexpress-a9 -cpu cortex-a9 -m 1024 -smp 1 -nographic -monitor none -nic none -kernel uboot/u-boot -drive if=sd,file=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img,format=raw,snapshot=on -no-reboot
           proc fail {message} {
               puts stderr $message
               catch {exec kill -TERM [exp_pid]}
