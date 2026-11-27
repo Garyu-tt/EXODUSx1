@@ -1,4 +1,4 @@
-name: EXODUS R119 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R120 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -17,7 +17,7 @@ jobs:
       - name: Install cross tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends clang lld llvm binutils xz-utils
+          sudo apt-get install -y --no-install-recommends clang lld llvm binutils xz-utils qemu-system-arm
       - name: Acquire original FreeBSD 15.1 ARM64 sysroot
         run: |
           set -euo pipefail
@@ -225,6 +225,113 @@ jobs:
            ./test-stock ../hello-page.elf | tee "$cc-results.txt"
           done
           rm -f test-stock
+      - name: Execute original CRT to first verified FreeBSD SVC
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/runtime/bare evidence/runtime/build
+          cp evidence/admission/{elf64_loader.c,elf64_loader.h,elf64_page_plan.c,elf64_page_plan.h,a57_s1.c,a57_s1.h,a57_s2.c,a57_s2.h} evidence/runtime/
+          cp accepted/tls-gate/bare/{boot.S,link.ld,string.h} evidence/runtime/bare/
+          cp evidence/hello-page.elf evidence/runtime/build/guest.elf
+          cd evidence/runtime
+          cat > bare/monitor.c <<'EOF'
+          #include "a57_s1.h"
+          #include "a57_s2.h"
+          #include "elf64_page_plan.h"
+          #include <string.h>
+          #include <stdint.h>
+          #define P 4096u
+          #define N 2048u
+          #define VA UINT64_C(0x200000)
+          #define IPA UINT64_C(0x10000000)
+          #define TI UINT64_C(0x20000000)
+          #define VECTOR (N-1)
+          #define STACK (VECTOR*P-1024u)
+          #define ADDR UINT64_C(0x000000fffffff000)
+          #define READ(r) ({uint64_t v; __asm__ volatile("mrs %0," #r : "=r"(v));v;})
+          #define WRITE(r,v) __asm__ volatile("msr " #r ",%0"::"r"((uint64_t)(v)):"memory")
+          #define DSB() __asm__ volatile("dsb sy":::"memory")
+          #define ISB() __asm__ volatile("isb":::"memory")
+          extern const uint8_t image_start[],image_end[],vectors[],guest_vectors_start[],guest_vectors_end[];
+          extern void enter_guest(void) __attribute__((noreturn));
+          static _Alignas(P) uint8_t mem[N*P],perm[N],ro[16];
+          static _Alignas(P) uint64_t s1[16*512];
+          static _Alignas(8192) uint64_t s2[32*512];
+          void *memset(void *p,int c,size_t n){uint8_t *q=p;while(n--)*q++=(uint8_t)c;return p;}
+          void *memcpy(void *p,const void *s,size_t n){uint8_t *q=p;const uint8_t *r=s;while(n--)*q++=*r++;return p;}
+          int memcmp(const void *a,const void *b,size_t n){const uint8_t *x=a,*y=b;while(n--){if(*x!=*y)return (int)*x-(int)*y;x++;y++;}return 0;}
+          static void putc(char c){volatile uint32_t *u=(void *)0x09000000;while(u[6]&(1u<<5)){}u[0]=(uint32_t)c;}
+          static void msg(const char *s){while(*s)putc(*s++);}
+          static void hex(uint64_t v){for(int i=60;i>=0;i-=4)putc("0123456789abcdef"[(v>>i)&15]);}
+          static void stop(void){for(;;)__asm__ volatile("wfe");}
+          static void fail(const char *s){msg("FAIL: ");msg(s);msg(" ESR2=");hex(READ(esr_el2));msg(" ESR1=");hex(READ(esr_el1));msg(" FAR2=");hex(READ(far_el2));msg(" FAR1=");hex(READ(far_el1));msg(" ELR1=");hex(READ(elr_el1));msg(" ELR2=");hex(READ(elr_el2));msg("\n");stop();}
+          void bad_vector(void){fail("EL2 vector");}
+          static uint64_t rd(const uint8_t *p,unsigned n){uint64_t v=0;for(unsigned i=0;i<n;i++)v|=(uint64_t)p[i]<<(8*i);return v;}
+          static uint64_t *s1leaf(uint64_t v){
+              uint64_t d=s1[v>>30];if((d&3)!=3||(d&ADDR)<TI||(d&ADDR)-TI>=sizeof s1)fail("L1");
+              d=s1[((d&ADDR)-TI)/8+((v>>21)&511)];
+              if((d&3)!=3||(d&ADDR)<TI||(d&ADDR)-TI>=sizeof s1)fail("L2");
+              return &s1[((d&ADDR)-TI)/8+((v>>12)&511)];
+          }
+          void boot(void){
+              if(READ(CurrentEL)!=8)stop();
+              WRITE(vbar_el2,(uintptr_t)vectors);ISB();
+              msg("R120 stock CRT monitor\n");
+              if((READ(id_aa64mmfr0_el1)&15)<2)fail("PA range");
+              struct elf64_plan p;size_t a,b;
+              if(!elf64_load_image(image_start,(uintptr_t)image_end-(uintptr_t)image_start,VA,VA+N*P,mem,sizeof mem,&p))fail("ELF");
+              if(!elf64_page_plan(&p,VA,VA+N*P,VA+VECTOR*P,16,perm,N)||perm[VECTOR])fail("page plan");
+              uint64_t off=rd(image_start+32,8),num=rd(image_start+56,2),phdr=0;
+              for(uint64_t i=0;i<num;i++){const uint8_t *h=image_start+off+56*i;if(rd(h,4)==6)phdr=rd(h+16,8);}
+              if(!phdr)fail("PHDR");
+              uint64_t sp=VA+STACK;
+              /* Standard initial stack, minimal ELF auxv, no synthetic CRT replacement. */
+              const uint64_t words[]={2,sp+512,sp+528,0,sp+544,0,3,phdr,4,56,5,num,6,P,7,0,8,0,9,p.entry,0,0};
+              memcpy(mem+STACK,words,sizeof words);
+              memcpy(mem+STACK+512,"hello",6);memcpy(mem+STACK+528,"exodus",7);memcpy(mem+STACK+544,"MODE=TEST",10);
+              size_t vec=(uintptr_t)guest_vectors_end-(uintptr_t)guest_vectors_start;
+              if(vec>P)fail("vectors");
+              memcpy(mem+VECTOR*P,guest_vectors_start,vec);perm[VECTOR]=5;
+              if(!a57_s1_build(perm,N,VA,IPA,s1,16,TI,&a))fail("S1");
+              uint64_t *leaf=s1leaf(VA+VECTOR*P);
+              *leaf=(*leaf&~((UINT64_C(1)<<53)|(UINT64_C(1)<<6)))|(UINT64_C(1)<<54);
+              memset(ro,4,sizeof ro);
+              struct a57_s2_span spans[]={{IPA,(uintptr_t)mem,N,perm},{TI,(uintptr_t)s1,a,ro}};
+              if(!a57_s2_build(spans,2,s2,32,(uintptr_t)s2,&b))fail("S2");
+              WRITE(hcr_el2,UINT64_C(1)<<31);ISB();
+              WRITE(cptr_el2,0);WRITE(cpacr_el1,UINT64_C(3)<<20);
+              WRITE(vtcr_el2,A57_S2_VTCR);WRITE(vttbr_el2,(UINT64_C(1)<<48)|(uintptr_t)s2);
+              WRITE(mair_el1,0xff);WRITE(tcr_el1,UINT64_C(0x200803519));
+              WRITE(ttbr0_el1,(UINT64_C(1)<<48)|TI);WRITE(ttbr1_el1,0);
+              WRITE(vbar_el1,VA+VECTOR*P);WRITE(sp_el0,sp);WRITE(tpidr_el0,0);
+              DSB();__asm__ volatile("ic iallu; tlbi vmalls12e1is; dsb sy; isb":::"memory");
+              WRITE(sctlr_el1,UINT64_C(0x30d00801));ISB();
+              WRITE(hcr_el2,(UINT64_C(1)<<31)|1);ISB();
+              WRITE(elr_el2,p.entry);WRITE(spsr_el2,0x3c0);ISB();
+              msg("ENTER stock ELF _start=");hex(p.entry);msg("\n");enter_guest();
+          }
+          void trap(uint64_t *regs){
+              uint64_t e=READ(esr_el1),pc=READ(elr_el1);
+              if((READ(esr_el2)>>26)!=0x16||(READ(esr_el2)&0xffff)!=1||(e>>26)!=0x15||pc<VA+4||pc>=VA+N*P)fail("before first syscall");
+              if(perm[(pc-4-VA)/P]!=5||(rd(mem+pc-4-VA,4)&UINT64_C(0xffe0001f))!=UINT64_C(0xd4000001))fail("SVC provenance");
+              msg("STOCK_SVC x8=");hex(regs[8]);msg(" x0=");hex(regs[0]);msg(" x1=");hex(regs[1]);msg(" x2=");hex(regs[2]);msg(" pc=");hex(pc-4);msg("\n");
+              msg("R120_STOCK_FIRST_SVC_PASS\n");stop();
+          }
+          EOF
+          printf '.section .rodata.image,"a"\n.global image_start,image_end\nimage_start: .incbin "build/guest.elf"\nimage_end:\n' > build/image.S
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
+          cat serial.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 1
+          test "$(grep -Fxc R120_STOCK_FIRST_SVC_PASS serial.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
