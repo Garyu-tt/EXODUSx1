@@ -25,6 +25,18 @@ int main(void){
     const char *bad2[]={"repeat 0 {r0=1;}","repeat 1025 {r0=1;}","repeat 2 {r0=1;","repeat 1024 {repeat 1024 {}}","repeat 1 {repeat 1 {repeat 1 {repeat 1 {repeat 1 {r0=1;}}}}}","m[256]=1;","r0=256; m[r0]=1;","r0=m[256];","r0/=0;","r0%=0;","r0=1; }"};
     for(unsigned i=0;i<sizeof bad2/sizeof *bad2;i++){assert(ws_run(bad2[i],probe,&r));assert(!memcmp(&r,&prior,sizeof r));}
     assert(!strcmp(ws_run("repeat 1024 {repeat 1024 {}}",probe,&r),"step_limit"));
+    Workspace sub={0};
+    assert(!ws_put(&sub,"increment","r0+=1;"));
+    assert(!ws_run_in(&sub,"repeat 3 {call increment;} assert r0 == 3; assert r0 != 4;",probe,&r));
+    assert(r.r[0]==3&&r.steps==5);
+    prior=r;
+    assert(!ws_put(&sub,"recursive","call recursive;"));
+    assert(!strcmp(ws_run_in(&sub,"call recursive;",probe,&r),"nesting"));
+    assert(!strcmp(ws_run_in(&sub,"r0=1; assert r0 == 2;",probe,&r),"assertion"));
+    assert(!strcmp(ws_run_in(&sub,"call absent;",probe,&r),"not_found"));
+    assert(!memcmp(&r,&prior,sizeof r));
+    assert(!ws_put(&sub,"increment","r0+=2;"));
+    assert(!ws_run_in(&sub,"call increment;",probe,&r)&&r.r[0]==2);
     /* Ensure underlying numeric VM remains usable as well. */
     TdaVm vm;assert(!tda_vm_run("1 0 7 0",&vm)&&vm.reg[0]==7);
     puts("workspace, editing, bounded interpreter, read-only probe and transactional errors PASS");
