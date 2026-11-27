@@ -46,6 +46,24 @@ def main():
     mb[32] = 101u; mb[33] = 7u; mb[34] = 20u; mb[35] = 99u;
     mb[36] = 102u; mb[37] = 6u; mb[38] = 30u; mb[39] = 99u;
     mb[40] = 102u; mb[41] = 7u; mb[42] = 40u; mb[43] = 99u;
+    mb[28] = 99u;
+    /* Counter rollover: slots 2,3,0,1; four valid requests. */
+    mb[48] = 0xFFFFFFFEu; mb[49] = 2u; mb[50] = 0u;
+    mb[51] = 200u; mb[52] = 99u;
+    for (u32 i = 0; i < 4u; i++) {
+        u32 slot = 56u + ((i + 2u) & 3u) * 4u;
+        mb[slot] = 201u + i; mb[slot+1] = 7u;
+        mb[slot+2] = 10u + i; mb[slot+3] = 99u;
+    }
+    /* Empty and malformed rings; all slot words must be preserved. */
+    mb[72] = 5u; mb[73] = 5u; mb[74] = 0u;
+    mb[75] = 300u; mb[76] = 99u;
+    mb[96] = 5u; mb[97] = 10u; mb[98] = 0u;
+    mb[99] = 400u; mb[100] = 99u;
+    for (u32 i = 0; i < 16u; i++) {
+        mb[80u+i] = 0xA5000000u + i;
+        mb[104u+i] = 0x5A000000u + i;
+    }
     /* The bring-up, in ccplex_boot_cpu0() order (Erista). */""")
     c = replace_once(c, '    hold_cpu0();',
         """    /* Completion marker is written by CPU0 after these reply fields. */
@@ -56,7 +74,29 @@ def main():
         puts_("EXODUS IPC REFERENCE: PASS\\n");
     else
         puts_("EXODUS IPC REFERENCE: FAIL\\n");
-    if (mb[0] == KCPU_MAGIC && mb[24] == 7u && mb[25] == 7u &&
+    u32 edge_ok = mb[48] == 2u && mb[49] == 2u &&
+        mb[50] == 4u && mb[51] == 204u && mb[52] == 0u &&
+        mb[72] == 5u && mb[73] == 5u && mb[74] == 0u &&
+        mb[75] == 300u && mb[76] == 0u &&
+        mb[96] == 5u && mb[97] == 10u && mb[98] == 0u &&
+        mb[99] == 400u && mb[100] == 3u;
+    for (u32 i = 0; i < 4u; i++) {
+        u32 slot = 56u + ((i + 2u) & 3u) * 4u;
+        if (mb[slot] != 201u+i || mb[slot+1] != 7u ||
+            mb[slot+2] != 11u+i || mb[slot+3] != 0u)
+            edge_ok = 0u;
+    }
+    for (u32 i = 0; i < 16u; i++) {
+        if (mb[80u+i] != 0xA5000000u+i ||
+            mb[104u+i] != 0x5A000000u+i)
+            edge_ok = 0u;
+    }
+    if (mb[0] == KCPU_MAGIC && edge_ok)
+        puts_("EXODUS EDGE REFERENCE: PASS\\n");
+    else
+        puts_("EXODUS EDGE REFERENCE: FAIL\\n");
+    if (mb[0] == KCPU_MAGIC && edge_ok && mb[28] == 0u &&
+        mb[24] == 7u && mb[25] == 7u &&
         mb[26] == 4u && mb[27] == 102u &&
         mb[46] == 11u && mb[47] == 0u &&
         mb[34] == 20u && mb[35] == 2u &&
@@ -100,14 +140,27 @@ exodus_second_reject:
         mov     w15, #1
         str     w15, [x1, #88]         /* no result writes */
 exodus_complete:
-        /* Bounded ring: unsigned occupancy, no writes on invalid geometry. */
-        ldr     w17, [x1, #96]
-        ldr     w18, [x1, #100]
-        ldr     w19, [x1, #108]
+        /* Same consumer processes all four independent test rings. */
+        add     x0, x1, #96
+        bl      exodus_ring_consume
+        add     x0, x1, #192
+        bl      exodus_ring_consume
+        add     x0, x1, #288
+        bl      exodus_ring_consume
+        add     x0, x1, #384
+        bl      exodus_ring_consume
+        b       exodus_rings_complete
+exodus_ring_consume:
+        /* Header: consumer, producer, completed, last ID, status.
+           Slot table starts 32 bytes from the header. */
+        ldr     w17, [x0]
+        ldr     w18, [x0, #4]
+        ldr     w19, [x0, #12]
         sub     w20, w18, w17
         cmp     w20, #4
-        b.hi    exodus_ring_done
-        add     x16, x1, #128
+        b.hi    exodus_ring_invalid
+        str     wzr, [x0, #16]
+        add     x16, x0, #32
 exodus_ring_next:
         cmp     w17, w18
         b.eq    exodus_ring_done
@@ -123,7 +176,7 @@ exodus_ring_next:
         add     w24, w24, #1
         str     w24, [x21, #8]
         mov     w19, w22
-        str     w19, [x1, #108]
+        str     w19, [x0, #12]
         mov     w24, #0
         b       exodus_ring_reply
 exodus_ring_stale:
@@ -135,12 +188,17 @@ exodus_ring_reply:
         str     w24, [x21, #12]
         dmb     sy
         add     w17, w17, #1
-        str     w17, [x1, #96]
-        ldr     w24, [x1, #104]
+        str     w17, [x0]
+        ldr     w24, [x0, #8]
         add     w24, w24, #1
-        str     w24, [x1, #104]
+        str     w24, [x0, #8]
         b       exodus_ring_next
+exodus_ring_invalid:
+        mov     w24, #3
+        str     w24, [x0, #16]
 exodus_ring_done:
+        ret
+exodus_rings_complete:
         dmb     sy
         ldr     w2, =0x4B435055""")
     # All replacements checked before modifying either file.
