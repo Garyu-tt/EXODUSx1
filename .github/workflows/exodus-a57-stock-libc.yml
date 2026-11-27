@@ -1,4 +1,4 @@
-name: EXODUS R117 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R119 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   stock-libc:
     runs-on: ubuntu-latest
@@ -96,6 +97,134 @@ jobs:
           PY
           sha256sum evidence/hello.elf evidence/hello-page.elf > evidence/elf.sha256
           echo 'PASS: stock static FreeBSD CRT/libc ELF linked (not runtime execution)'
+      - uses: actions/download-artifact@v4
+        with:
+          name: r104-mmu-gate-evidence
+          run-id: '46084467081'
+          github-token: ${{ github.token }}
+          path: accepted
+      - name: Admit original libc ELF into 8 MiB Stage 1 and Stage 2 map
+        run: |
+          set -euo pipefail
+          test -f accepted/tls-gate/elf64_loader.c
+          mkdir -p evidence/admission
+          cp accepted/tls-gate/{elf64_loader.c,elf64_loader.h,elf64_page_plan.c,elf64_page_plan.h,a57_s1.c,a57_s1.h,a57_s2.c,a57_s2.h} evidence/admission/
+          cd evidence/admission
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("elf64_loader.c")
+          s=p.read_text()
+          old="        if(type==0||type==4||type==6)continue;"
+          assert s.count(old)==1
+          # GNU_RELRO and GNU_EH_FRAME are metadata; RELRO remains writable
+          # until CRT has completed relocations. Their ranges are audited separately.
+          s=s.replace(old,old+"\n        if(type==UINT64_C(0x6474e550)||type==UINT64_C(0x6474e552)){\n            if(rd(h+4,4)!=4||!span(rd(h+8,8),rd(h+32,8),n)||rd(h+16,8)<lo||!span(rd(h+16,8),rd(h+40,8),hi))return 0;\n            continue;\n        }")
+          p.write_text(s)
+          PY
+          cat > test_stock.c <<'EOF'
+          #include "elf64_page_plan.h"
+          #include "a57_s1.h"
+          #include "a57_s2.h"
+          #include <assert.h>
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <string.h>
+          #define P 4096u
+          #define N 2048u
+          #define VA UINT64_C(0x200000)
+          #define IPA UINT64_C(0x10000000)
+          #define TI UINT64_C(0x20000000)
+          #define PA UINT64_C(0x40000000)
+          #define S1PA UINT64_C(0x42000000)
+          #define S2PA UINT64_C(0x43000000)
+          #define ADDR UINT64_C(0x000000fffffff000)
+          static _Alignas(P) uint8_t mem[N*P];
+          static _Alignas(P) uint64_t s1[16*512];
+          static _Alignas(8192) uint64_t s2[32*512];
+          static uint8_t perm[N],expected[N*P],ro[16];
+          static uint64_t rd(const uint8_t *p,unsigned n){
+              uint64_t v=0;for(unsigned i=0;i<n;i++)v|=(uint64_t)p[i]<<(8*i);return v;
+          }
+          static uint64_t leaf(const uint64_t *t,size_t cap,uint64_t base,uint64_t v){
+              uint64_t d=t[v>>30];
+              if(!d)return 0;
+              assert((d&3)==3&&(d&ADDR)>=base&&(d&ADDR)-base<cap*P);
+              d=t[((d&ADDR)-base)/8+((v>>21)&511)];
+              if(!d)return 0;
+              assert((d&3)==3&&(d&ADDR)>=base&&(d&ADDR)-base<cap*P);
+              return t[((d&ADDR)-base)/8+((v>>12)&511)];
+          }
+          int main(int argc,char **argv){
+              assert(argc==2);
+              FILE *f=fopen(argv[1],"rb");assert(f);
+              assert(!fseek(f,0,SEEK_END));long n=ftell(f);assert(n>0&&n<32*1024*1024);
+              rewind(f);uint8_t *image=malloc((size_t)n);assert(image);
+              assert(fread(image,1,(size_t)n,f)==(size_t)n&&!fclose(f));
+              struct elf64_plan p;
+              assert(elf64_load_image(image,(size_t)n,VA,VA+N*P,mem,sizeof mem,&p));
+              assert(p.count==4&&p.tls.memsz>4096&&p.tls.filesz<=p.tls.memsz&&p.tls.align<=P);
+              assert(elf64_page_plan(&p,VA,VA+N*P,VA+N*P,16,perm,N));
+              for(size_t i=0;i<p.count;i++){
+                  const struct elf64_segment *q=&p.seg[i];
+                  memcpy(expected+q->va-VA,image+q->file_offset,(size_t)q->filesz);
+              }
+              assert(!memcmp(mem,expected,sizeof mem));
+              assert(perm[(p.entry-VA)/P]==5);
+              assert(!perm[N-17]&&perm[N-16]==6&&perm[N-1]==6);
+              uint64_t ph=rd(image+32,8),num=rd(image+56,2),phva=0,rv=0,rm=0;
+              unsigned relro=0,phdr=0;
+              for(uint64_t i=0;i<num;i++){
+                  const uint8_t *h=image+ph+56*i;
+                  uint64_t type=rd(h,4),fo=rd(h+8,8),v=rd(h+16,8),fs=rd(h+32,8),ms=rd(h+40,8);
+                  if(type==6){
+                      assert(fo==ph&&fs==num*56&&ms==fs&&v>=VA&&v-VA+ms<=sizeof mem);
+                      assert(!memcmp(mem+v-VA,image+fo,(size_t)fs));phva=v;phdr++;
+                  }
+                  if(type==0x6474e552){
+                      assert(ms&&v>=VA&&v-VA+ms<=sizeof mem&&!(v&(P-1))&&!(ms&(P-1)));
+                      for(uint64_t j=(v-VA)/P;j<(v-VA+ms)/P;j++)assert(perm[j]==6);
+                      rv=v;rm=ms;relro++;
+                  }
+              }
+              assert(phdr==1&&relro==1);
+              size_t a,b;assert(a57_s1_build(perm,N,VA,IPA,s1,16,TI,&a)&&a>4);
+              memset(ro,4,sizeof ro);
+              struct a57_s2_span spans[]={{IPA,PA,N,perm},{TI,S1PA,a,ro}};
+              assert(a57_s2_build(spans,2,s2,32,S2PA,&b)&&b>5);
+              for(size_t i=0;i<N;i++){
+                  uint64_t x=leaf(s1,16,TI,VA+i*P),y=leaf(s2,32,S2PA,IPA+i*P);
+                  if(!perm[i]){assert(!x&&!y);continue;}
+                  assert((x&ADDR)==IPA+i*P&&(y&ADDR)==PA+i*P);
+                  assert((x&3)==3&&(y&3)==3);
+                  assert((x&(UINT64_C(1)<<53))&&(x&(UINT64_C(1)<<6)));
+                  assert(!!(x&(UINT64_C(1)<<7))==(perm[i]!=6));
+                  assert(!!(x&(UINT64_C(1)<<54))==(perm[i]!=5));
+                  assert(!!(y&(UINT64_C(1)<<7))==(perm[i]==6));
+                  assert(!!(y&(UINT64_C(1)<<54))==(perm[i]!=5));
+              }
+              for(size_t i=0;i<a;i++){
+                  uint64_t x=leaf(s2,32,S2PA,TI+i*P);
+                  assert((x&ADDR)==S1PA+i*P&&(x&(UINT64_C(1)<<54))&&!(x&(UINT64_C(1)<<7)));
+              }
+              printf("PASS: stock ELF byte mapping, %zu S1 and %zu S2 table pages; PHDR=%llx PHNUM=%llu ENTRY=%llx TLS=%llu\n",a,b,(unsigned long long)phva,(unsigned long long)num,(unsigned long long)p.entry,(unsigned long long)p.tls.memsz);
+              /* Simulate post-relocation transition only; no claim of CRT execution. */
+              for(uint64_t j=(rv-VA)/P;j<(rv-VA+rm)/P;j++)perm[j]=4;
+              assert(a57_s1_build(perm,N,VA,IPA,s1,16,TI,&a));
+              spans[1].pages=a;
+              assert(a57_s2_build(spans,2,s2,32,S2PA,&b));
+              for(uint64_t j=(rv-VA)/P;j<(rv-VA+rm)/P;j++){
+                  assert(leaf(s1,16,TI,VA+j*P)&(UINT64_C(1)<<7));
+                  assert(!(leaf(s2,32,S2PA,IPA+j*P)&(UINT64_C(1)<<7)));
+              }
+              puts("PASS: simulated post-relocation RELRO transition at both stages");
+              free(image);
+          }
+          EOF
+          for cc in gcc clang; do
+           "$cc" -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-sanitize-recover=all -no-pie elf64_loader.c elf64_page_plan.c a57_s1.c a57_s2.c test_stock.c -o test-stock
+           ./test-stock ../hello-page.elf | tee "$cc-results.txt"
+          done
+          rm -f test-stock
       - uses: actions/upload-artifact@v4
         if: always()
         with:
