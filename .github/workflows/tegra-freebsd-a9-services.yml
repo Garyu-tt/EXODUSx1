@@ -91,6 +91,8 @@ jobs:
           echo EXODUS_KEYS_PASS
           step=config
           mkdir -p /var/empty /var/run
+          chown root:wheel /var/empty
+          chmod 755 /var/empty
           cp "$d/client.pub" /home/exodusprobe/authorized_keys
           chown exodusprobe /home/exodusprobe/authorized_keys
           chmod 600 /home/exodusprobe/authorized_keys
@@ -123,10 +125,20 @@ jobs:
                   -o GlobalKnownHostsFile=/dev/null exodusprobe@127.0.0.1 "$@"
           }
           start_server() {
-              /usr/sbin/sshd -t -f "$d/sshd.conf"
-              /usr/sbin/sshd -f "$d/sshd.conf"
-              test -s "$d/sshd.pid"
-              kill -0 "$(cat "$d/sshd.pid")"
+              step=sshd-config
+              /usr/sbin/sshd -t -e -f "$d/sshd.conf"
+              step=sshd-launch
+              /usr/sbin/sshd -E "$d/sshd.log" -f "$d/sshd.conf" || { cat "$d/sshd.log" >&2; return 1; }
+              step=sshd-pid
+              i=0
+              while ! test -s "$d/sshd.pid"; do
+                  i=$((i+1))
+                  if test "$i" -ge 15; then cat "$d/sshd.log" >&2; return 1; fi
+                  sleep 1
+              done
+              kill -0 "$(cat "$d/sshd.pid")" || { cat "$d/sshd.log" >&2; return 1; }
+              step=sshd-listen
+              sockstat -4 -l | grep ':2222' || { cat "$d/sshd.log" >&2; return 1; }
           }
           stop_server() {
               pid=$(cat "$d/sshd.pid")
@@ -139,7 +151,6 @@ jobs:
               done
               rm -f "$d/sshd.pid"
           }
-          step=sshd-start
           start_server
           echo EXODUS_SSHD_STARTED
           step=auth
@@ -196,7 +207,7 @@ jobs:
               send -- "$command\r"
               expect {
                   -re "(?m)^$marker\\r*$" {}
-                  -re {(?m)^EXODUS_SERVICE_RESULT=[1-9][0-9]* stage=[a-z-]+\r*$} {fail "Service script failed: $expect_out(0,string)"}
+                  -re {(?m)^EXODUS_SERVICE_RESULT=[1-9][0-9]* stage=[a-z-]+\r*\n} {fail "Service script failed: $expect_out(0,string)"}
                   timeout {fail "A9 command gate failed: $marker"}
                   eof {fail "A9 emulator exited: $marker"}
               }
