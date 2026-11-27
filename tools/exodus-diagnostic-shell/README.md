@@ -11,3 +11,6 @@ only. One pairing attempt per launch, one client, five-minute idle timeout,
 100 commands max. Native functions require a new binary; existing tests can
 repeat within a session. Ordinary service IPC is not forcibly timed out.
 No ADSP or EL2 acceptance claim. Physical networking and repeated tests pending.
+
+## PC client R02 (same NRO)
+Use `help` or `repeat all 3`, `repeat cpu 5`, etc. At most 10 tests per batch and 100 server commands per session. Validates framing and report identity, verifies existing digest-named files, prints min/median/max for successful measurements, stops on repeat_safe=no. No automatic re-pairing. Replace the PC script only; the current session keeps using its original client until it exits.
