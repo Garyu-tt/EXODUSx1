@@ -1,4 +1,4 @@
-name: EXODUS R106 isolated MMU runtime gate
+name: EXODUS R107 isolated MMU runtime gate
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -101,6 +101,20 @@ jobs:
           cd mmu-gate
           echo '0f9d979179e717bbef1273131911c06e7150fb00241dfab1dae202d3cc71c461  source.tgz' | sha256sum -c -
           tar -xzf source.tgz
+          # EL2 runs with its MMU disabled: avoid compiler-generated unaligned
+          # loads/stores (ESR2=0x96000061, FAR2=0x4008b002 in R106).
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("build-mmu.sh")
+          s=p.read_text()
+          assert s.count("-mgeneral-regs-only")==3
+          p.write_text(s.replace("-mgeneral-regs-only","-mgeneral-regs-only -mstrict-align"))
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          old='msg(" ESR1=");'
+          assert s.count(old)==1
+          p.write_text(s.replace(old,'msg(" ELR2=");hex(READ(elr_el2));'+old))
+          PY
           bash build-mmu.sh | tee BUILD-RESULTS.txt
       - name: Run mandatory Stage 1 and Stage 2 exception tests
         run: |
