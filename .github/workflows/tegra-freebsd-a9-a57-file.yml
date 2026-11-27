@@ -1,8 +1,10 @@
-name: EXODUS native file syscall reference R80
+name: EXODUS compiled C native file syscall reference R87
 on:
   pull_request:
     paths:
       - '.github/workflows/tegra-freebsd-a9-a57-file.yml'
+      - 'exodus/tests/a57_file_c_fixture.c'
+      - 'exodus/tests/a57_native_file_reference.h'
   workflow_dispatch:
 permissions:
   contents: read
@@ -73,6 +75,22 @@ jobs:
           mkfs.vfat -n EXODUSSEED seed.img
           mcopy -i seed.img src.txz "$src/amp_execution_contract.c" "$src/armv7_authority/"{exodus_amp1.c,Makefile,test_kernel_amp.c,guest.sh,awt_clone_relay.c,awt_clone_guest.sh,exodus_awt_clone.c,Makefile.awtclone} "$src/amp_wait_contract.h" "$src/amp_spawn_contract.h" ::
           cp exodus/tests/a57_native_file_reference.h "$src/armv7_authority/"
+          cat > file-c.ld <<'EOF'
+          ENTRY(file_c_entry)
+          SECTIONS {
+            . = 0x1800;
+            .text : { KEEP(*(.text.entry)) *(.text .text.*) *(.rodata .rodata.*) }
+            /DISCARD/ : { *(.comment) *(.note*) *(.eh_frame*) }
+            ASSERT(SIZEOF(.text) <= 2048, "C fixture exceeds guest code slot")
+          }
+          EOF
+          clang --target=aarch64-unknown-freebsd15.1 -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -fno-unwind-tables -fno-asynchronous-unwind-tables -O2 -Wall -Wextra -Werror -c exodus/tests/a57_file_c_fixture.c -o file-c.o
+          ld.lld -T file-c.ld --build-id=none -o file-c.elf file-c.o
+          aarch64-linux-gnu-objcopy -O binary file-c.elf a57-file-c.bin
+          test "$(wc -c < a57-file-c.bin)" -le 2048
+          aarch64-linux-gnu-readelf -h -S -r file-c.elf > evidence/file-c-layout.log
+          aarch64-linux-gnu-objdump -d file-c.elf > evidence/file-c-disassembly.log
+          test -z "$(aarch64-linux-gnu-nm -u file-c.elf)"
           python3 - <<'PY'
           from pathlib import Path
           base=Path("authority/exodus/frankenstein")
@@ -172,70 +190,17 @@ jobs:
           assert s.count(old)==1
           s=s.replace(old,r'''    mov x8,#4091
               svc #0
-              mov x0,#0x2020
-              movz x1,#0x6164
-              movk x1,#0x6174,lsl #16
-              str x1,[x0]
-              mov x1,#0xa02
-              mov x2,#384
-              mov x8,#5
-              svc #0
-              b.cs bad
-              cmp x0,#3
-              b.ne bad
-              mov x1,#0x2030
-              ldr x3,=0x3132333435363738
-              str x3,[x1]
-              mov x2,#8
-              mov x8,#4
-              svc #0
-              b.cs bad
-              cmp x0,#8
-              b.ne bad
-              mov x0,#3
-              mov x8,#6
-              svc #0
-              b.cs bad
-              cbnz x0,bad
-              mov x0,#0x2020
-              mov x1,#0
-              mov x2,#0
-              mov x8,#5
-              svc #0
-              b.cs bad
-              cmp x0,#3
-              b.ne bad
-              mov x1,#0x2040
-              mov x2,#8
-              mov x8,#3
-              svc #0
-              b.cs bad
-              cmp x0,#8
-              b.ne bad
-              mov x1,#0x2040
-              ldr x2,[x1]
-              ldr x3,=0x3132333435363738
-              cmp x2,x3
-              b.ne bad
-              mov x0,#3
-              mov x8,#6
-              svc #0
-              b.cs bad
-              cbnz x0,bad
-              mov x0,#3
-              mov x1,#0x2040
-              mov x2,#8
-              mov x8,#3
-              svc #0
-              b.cc bad
-              cmp x0,#9
-              b.ne bad
-              mov x8,#4089
-              svc #0
+              b file_c_entry
           bad:''')
-          old="    b bad\n.balign 4096\nservice_vectors:" 
+          old="    b bad\n.balign 4096\nservice_vectors:"
           assert s.count(old)==1
-          s=s.replace(old,"    b bad\n    .ltorg\n.balign 4096\nservice_vectors:")
+          s=s.replace(old,r'''    b bad
+              .ltorg
+              .space 2048-(.-user_code)
+          file_c_entry:
+              .incbin "a57-file-c.bin"
+              .balign 4096
+          service_vectors:''')
           p.write_text(s)
           PY
           mcopy -o -i seed.img "$src/armv7_authority/"{awt_clone_relay.c,awt_clone_guest.sh,a57_native_file_reference.h} ::
