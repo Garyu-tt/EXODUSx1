@@ -1,4 +1,4 @@
-"""EXODUS operator client R02; compatible with the R01 Switch NRO."""
+"""EXODUS operator client R04; supports local approval and legacy NRO."""
 import argparse
 import getpass
 import hashlib
@@ -110,6 +110,20 @@ def session(sock,stream,output):
                 return
         if len(rows)>1:summary(rows)
 
+def pair(sock,stream):
+    greeting=stream.readline(81)
+    if greeting==b"EXODUS-DIAG/2\n":
+        print("Confirm the PC address on Switch with A (30 seconds).",flush=True)
+    elif greeting==b"EXODUS-DIAG/1\n":
+        token=getpass.getpass("Legacy Switch pairing code: ")
+        if not re.fullmatch(r"[0-9a-f]{32}",token):
+            raise ValueError("invalid code")
+        sock.sendall(token.encode()+b"\n")
+    else:
+        raise ValueError("unexpected endpoint")
+    if stream.readline(81)!=b"OK\n":
+        raise ValueError("pairing rejected")
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("ip",type=ipaddress.IPv4Address)
@@ -121,15 +135,7 @@ def main():
     with socket.create_connection((str(args.ip),17491),timeout=10) as sock:
         sock.settimeout(60)
         with sock.makefile("rb") as stream:
-            if stream.readline(81)!=b"EXODUS-DIAG/1\n":
-                raise ValueError("unexpected endpoint")
-            token=getpass.getpass("Switch pairing code: ")
-            if not re.fullmatch(r"[0-9a-f]{32}",token):
-                raise ValueError("invalid code")
-            sock.sendall(token.encode()+b"\n")
-            del token
-            if stream.readline(81)!=b"OK\n":
-                raise ValueError("pairing rejected")
+            pair(sock,stream)
             session(sock,stream,args.output)
 
 if __name__=="__main__":main()
