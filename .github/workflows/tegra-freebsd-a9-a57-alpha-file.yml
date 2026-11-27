@@ -1,4 +1,4 @@
-name: EXODUS combined Alpha C file reference R93
+name: EXODUS combined Alpha C file reference R94
 on:
   pull_request:
     paths:
@@ -189,7 +189,7 @@ jobs:
           s=p.read_text()
           old="    cmp x0,#7\n    b.eq parent_wait\n    b fail"
           assert s.count(old)==1
-          s=s.replace(old,"    cmp x0,#7\n    b.eq parent_wait\n    cmp x0,#3\n    b.eq file_call\n    cmp x0,#4\n    b.eq file_call\n    cmp x0,#5\n    b.eq file_call\n    cmp x0,#6\n    b.eq file_call\n    cmp x0,#4089\n    b.eq file_done\n    cmp x0,#4088\n    b.eq graphics_done\n    b fail")
+          s=s.replace(old,"    cmp x0,#7\n    b.eq parent_wait\n    cmp x0,#3\n    b.eq file_call\n    cmp x0,#4\n    b.eq file_call\n    cmp x0,#5\n    b.eq file_call\n    cmp x0,#6\n    b.eq file_call\n    cmp x0,#4089\n    b.eq file_done\n    cmp x0,#4088\n    b.eq graphics_call\n    cmp x0,#4087\n    b.eq graphics_done\n    b fail")
           old="    adr x1,passed\n    b report"
           assert s.count(old)==1
           s=s.replace(old,r'''    adr x0,phase
@@ -225,15 +225,6 @@ jobs:
               ldr x1,[x0]
               cmp x1,#3
               b.ne fail
-              mov x0,#2
-              mov x1,#3
-              mov x2,#5
-              mov x3,#4
-              movz x4,#0x3456
-              movk x4,#0x12,lsl #16
-              bl clone_graphics
-              cbz x0,fail
-              str x0,[sp]
               adr x1,phase
               mov x2,#4
               str x2,[x1]
@@ -243,10 +234,25 @@ jobs:
               add x0,x0,#0x1000
               msr elr_el1,x0
               b restore
-          graphics_done:
+          graphics_call:
               adr x0,phase
               ldr x1,[x0]
               cmp x1,#4
+              b.ne fail
+              ldp x0,x1,[sp,#0]
+              ldp x2,x3,[sp,#16]
+              ldr x4,[sp,#32]
+              bl clone_graphics
+              cbz x0,fail
+              str x0,[sp]
+              adr x1,phase
+              mov x2,#5
+              str x2,[x1]
+              b restore
+          graphics_done:
+              adr x0,phase
+              ldr x1,[x0]
+              cmp x1,#5
               b.ne fail
               adr x1,passed
               b report''')
@@ -256,11 +262,19 @@ jobs:
               svc #0
               b file_c_entry
           graphics_user:
+              mov x0,#2
+              mov x1,#3
+              mov x2,#5
+              mov x3,#4
+              movz x4,#0x3456
+              movk x4,#0x12,lsl #16
+              mov x8,#4088
+              svc #0
               movz x1,#0x0101
               movk x1,#2,lsl #16
               cmp x0,x1
               b.ne bad
-              mov x8,#4088
+              mov x8,#4087
               svc #0
           bad:''')
           old="    b bad\n.balign 4096\nservice_vectors:"
@@ -530,7 +544,7 @@ jobs:
           for kind in ("11 [Hypervisor Call]", "2 [SVC]"):
               old=f'assert lines.count("Taking exception {kind} on CPU 0")==5'
               assert s.count(old)==1
-              s=s.replace(old,old[:-1]+"14")
+              s=s.replace(old,old[:-1]+"15")
           p.write_text(s)
           compile(s,str(p),"exec")
           PY
