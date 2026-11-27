@@ -1,8 +1,9 @@
-name: EXODUS source A9 and A57 runtime ELF reference R75
+name: EXODUS source A9 and compiled FreeBSD A57 C reference R76
 on:
   pull_request:
     paths:
       - '.github/workflows/tegra-freebsd-a9-a57-elf.yml'
+      - 'exodus/tests/a57_freebsd_c_fixture.c'
   workflow_dispatch:
 permissions:
   contents: read
@@ -72,7 +73,25 @@ jobs:
           truncate -s 512M seed.img
           mkfs.vfat -n EXODUSSEED seed.img
           mcopy -i seed.img src.txz "$src/amp_execution_contract.c" "$src/armv7_authority/"{exodus_amp1.c,Makefile,test_kernel_amp.c,guest.sh,amp2_proxy_relay.c,amp2_proxy_guest.sh,exodus_amp2_proxy.c,Makefile.amp2proxy} "$src/amp2_pid_contract.c" ::
-          aarch64-linux-gnu-as -march=armv8-a "$src/amp2_pid_fixture.S" -o fixture.o
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("authority/exodus/frankenstein/el2_freebsd_abi_reference.S")
+          s=p.read_text()
+          # EL1 relay scratch registers belong to the interrupted EL0 context.
+          # Save on private EL1 stack; restore before HVC snapshot or ERET.
+          for old,new in (
+              ("relay_sync:\n    mrs x9", "relay_sync:\n    stp x9,x10,[sp,#-16]!\n    mrs x9"),
+              ("    msr spsr_el1, x9\n    eret\nrelay_submit:\n    hvc #0x44",
+               "    msr spsr_el1, x9\n    ldp x9,x10,[sp],#16\n    eret\nrelay_submit:\n    ldp x9,x10,[sp],#16\n    hvc #0x44"),
+          ):
+              assert s.count(old)==1
+              s=s.replace(old,new)
+          p.write_text(s)
+          PY
+          clang --target=aarch64-unknown-freebsd15.1 -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -fno-unwind-tables -fno-asynchronous-unwind-tables -O2 -Wall -Wextra -Werror -c exodus/tests/a57_freebsd_c_fixture.c -o fixture.o
+          aarch64-linux-gnu-objdump -dr fixture.o | tee evidence/c-fixture-disassembly.log
+          aarch64-linux-gnu-nm -u fixture.o > evidence/c-fixture-undefined.log
+          test ! -s evidence/c-fixture-undefined.log
           aarch64-linux-gnu-ld -z max-page-size=4096 --build-id=none -T "$src/elf_exec_fixture.ld" fixture.o -o elf_input.elf
           aarch64-linux-gnu-objcopy -I binary -O elf64-littleaarch64 -B aarch64 --rename-section .data=.rodata.elf,alloc,load,readonly,data,contents elf_input.elf elf_input.o
           aarch64-linux-gnu-gcc -march=armv8-a -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -fno-pie -no-pie -static -nostdlib -O2 -Wl,--build-id=none,--fatal-warnings -T "$src/el2_freebsd_abi_reference.ld" "$src/el2_freebsd_abi_reference.S" "$src/amp2_pid_bridge.c" "$src/elf64_loader.c" "$src/elf_exec_boot.c" elf_input.o -o amp.elf
@@ -150,7 +169,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: a9-a57-elf-evidence
+          name: a9-a57-compiled-c-evidence
           path: |
             evidence/*.log
             elf_input.elf
