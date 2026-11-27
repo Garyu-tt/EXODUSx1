@@ -102,3 +102,19 @@ Host acceptance contract for existing graph: (1) model distinct CPU/GPU cache do
 Pinned upstream: [Creased/RCM-Emulator 6e727418](https://github.com/Creased/RCM-Emulator/tree/6e7274187861172d67e6ce2d123b89fec31bffc1). Verified [upstream CI run 43427382765](https://github.com/Creased/RCM-Emulator/actions/runs/43427382765) via job and step metadata: Linux build, smoke, regression suite and hwtest end-to-end succeeded; Windows build and smoke succeeded. This is third-party emulator evidence, not EXODUS execution. The emulator models BPMP plus CPU0 A57 and can reach Linux core initialization; it does not boot Horizon, model full SMP or establish dual-kernel/ADSP coexistence. Unknown MMIO may be simple register storage, not accurate peripheral behavior.
 
 Local preflight: compiler/make present; Unicorn and SDL2 development packages absent; GitHub DNS resolution failed. No local emulator execution. Added dedicated read-only-token CI workflow `.github/workflows/tegra-rcm-reference.yml`, pinned public source, synthetic self-contained upstream tests, timeout, log artifact; no real NAND images, keys, device access or deployment. Own CI result pending verification. Do not equate upstream test success with Tumor acceptance.
+
+## R07 — EXODUS reference CI verified (2026-11-27)
+
+[Run 46014071405](https://github.com/Garyu-tt/EXODUSx1/actions/runs/46014071405), [job 140556598707](https://github.com/Garyu-tt/EXODUSx1/actions/runs/46014071405/job/140556598707), tested commit 13c33cd073d986eac765ee6ae6452817552931b4, upstream 6e7274187861172d67e6ce2d123b89fec31bffc1, Unicorn package 2.1.4-3. Job metadata and 1072-line raw log inspected. Five explicit PASS markers:
+
+| Suite | Result | Evidence relevance to existing #349 DAG |
+| --- | --- | --- |
+| ccplex | PASS | Reference CPU0 startup/parking; boot-context remains physical gate |
+| kernelcpu | PASS | Synthetic A57 execution substrate only; not FreeBSD remote syscalls or SMP |
+| se | PASS | Emulator cryptographic reference; not physical device security |
+| usb | PASS | Synthetic USB behavior; not hardware throughput or ownership |
+| display | PASS | Reference display/VIC; gpu-mediation remains physical gate |
+
+[Log artifact 15205301401](https://github.com/Garyu-tt/EXODUSx1/actions/runs/46014071405/artifacts/15205301401), ZIP size 2769 bytes; reported SHA256 39a327c1289b9d8f4d1fc16dc123f35e9b9c4199c6e3dd5053fa9104fda56857, not independently downloaded/hashed.
+
+Compared existing graph on integration/tumor-amp-execution-graph: ARMv7 FreeBSD QEMU boot and mixed-width QEMU IPC already have evidence; retain those scopes. RCM does not emulate A9 ADSP execution, all four A57 cores, or Horizon. No physical gate may be promoted. RCM reference evidence should be linked to boot-context, a57-execution-substrate and gpu-mediation without changing their admission status. Next useful test is an EXODUS-specific synthetic payload exercising CPU0-owned memory and transport state, distinct from upstream regression. Do not duplicate the existing DAG or claim a hardware-compatible payload. No device access.
