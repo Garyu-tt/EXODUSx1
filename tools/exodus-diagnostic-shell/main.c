@@ -270,12 +270,32 @@ static int ws_probe(const char *name,uint64_t *value){
     if(!strcmp(name,"core_mask"))id=InfoType_CoreMask;
     else if(!strcmp(name,"total_memory"))id=InfoType_TotalMemorySize;
     else if(!strcmp(name,"used_memory"))id=InfoType_UsedMemorySize;
+    else if(!strcmp(name,"heap_size"))id=InfoType_HeapRegionSize;
+    else if(!strcmp(name,"alias_size"))id=InfoType_AliasRegionSize;
+    else if(!strcmp(name,"stack_size"))id=InfoType_StackRegionSize;
+    else if(!strcmp(name,"aslr_size"))id=InfoType_AslrRegionSize;
+    else if(!strcmp(name,"system_resource_total"))id=InfoType_SystemResourceSizeTotal;
+    else if(!strcmp(name,"system_resource_used"))id=InfoType_SystemResourceSizeUsed;
+    else if(!strcmp(name,"non_system_total"))id=InfoType_TotalNonSystemMemorySize;
+    else if(!strcmp(name,"non_system_used"))id=InfoType_UsedNonSystemMemorySize;
+    else if(!strcmp(name,"free_threads"))id=InfoType_FreeThreadCount;
+    else if(!strcmp(name,"priority_mask"))id=InfoType_PriorityMask;
+    else if(!strcmp(name,"is_application"))id=InfoType_IsApplication;
     else return 0;
     u64 result=0;
     if(R_FAILED(svcGetInfo(&result,id,CUR_PROCESS_HANDLE,0)))return 0;
     *value=result;return 1;
 }
 static void ws_command(const char *cmd){
+    if(!strcmp(cmd,"probes")){
+        static const char *const names[]={"core","core_mask","ticks","tick_hz","total_memory","used_memory","heap_size","alias_size","stack_size","aslr_size","system_resource_total","system_resource_used","non_system_total","non_system_used","free_threads","priority_mask","is_application"};
+        for(unsigned i=0;i<sizeof names/sizeof *names;i++){
+            uint64_t value=0;
+            if(ws_probe(names[i],&value))logline("probe_%s=0x%016" PRIx64 "\n",names[i],value);
+            else logline("probe_%s=unavailable\n",names[i]);
+        }
+        logline("fs_status=pass\n");return;
+    }
     if(!strcmp(cmd,"ls")){
         unsigned n=0;
         for(unsigned i=0;i<WS_FILES;i++)if(workspace.files[i].name[0])
@@ -300,7 +320,7 @@ static void ws_command(const char *cmd){
         else if(!strncmp(cmd,"run ",4)){
             WsResult result;
             u64 start=armGetSystemTick();
-            err=ws_run(f->source,ws_probe,&result);
+            err=ws_run_in(&workspace,f->source,ws_probe,&result);
             if(!err){
                 logline("script_steps=%u\nscript_elapsed_ns=%" PRIu64 "\n",result.steps,(uint64_t)armTicksToNs(armGetSystemTick()-start));
                 for(unsigned i=0;i<8;i++)logline("script_r%u=0x%016" PRIx64 "\n",i,result.r[i]);
@@ -310,7 +330,7 @@ static void ws_command(const char *cmd){
     logline("fs_status=%s\n",err?err:"pass");
 }
 static bool ws_allowed(const char *cmd){
-    return !strcmp(cmd,"ls")||!strncmp(cmd,"put ",4)||!strncmp(cmd,"cat ",4)||!strncmp(cmd,"rm ",3)||!strncmp(cmd,"run ",4);
+    return !strcmp(cmd,"probes")||!strcmp(cmd,"ls")||!strncmp(cmd,"put ",4)||!strncmp(cmd,"cat ",4)||!strncmp(cmd,"rm ",3)||!strncmp(cmd,"run ",4);
 }
 
 static void run_test(const char *cmd){
@@ -410,7 +430,7 @@ int main(void){
     consoleInit(NULL);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
-    printf("EXODUS Diagnostic Shell R06\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
+    printf("EXODUS Diagnostic Shell R07\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
     bool approve=false;
     while(appletMainLoop()){
         padUpdate(&pad);u64 keys=padGetButtonsDown(&pad);
