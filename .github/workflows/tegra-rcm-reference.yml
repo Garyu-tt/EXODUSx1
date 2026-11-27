@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [docs/tegra-research-evidence-r01]
-    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c', 'exodus/tests/tumor_doorbell_reference.c', 'exodus/tests/tumor_doorbell_wakeup_model.c', 'exodus/tests/tumor_adsp_recovery_model.c', 'exodus/tests/tumor_smmu_retirement_model.c', 'exodus/tests/tumor_address_domain_model.c', 'exodus/tests/tumor_elf32_load_plan_reference.c']
+    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c', 'exodus/tests/tumor_doorbell_reference.c', 'exodus/tests/tumor_doorbell_wakeup_model.c', 'exodus/tests/tumor_adsp_recovery_model.c', 'exodus/tests/tumor_smmu_retirement_model.c', 'exodus/tests/tumor_address_domain_model.c', 'exodus/tests/tumor_elf32_load_plan_reference.c', 'exodus/tests/tumor_a9_boot_fixture.S', 'exodus/tests/tumor_a9_boot_fixture.ld', 'exodus/tests/tumor_a9_elf_execution_reference.c']
 permissions:
   contents: read
 jobs:
@@ -89,6 +89,15 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends build-essential pkg-config libunicorn-dev libsdl2-dev gcc-arm-none-eabi libnewlib-arm-none-eabi gcc-aarch64-linux-gnu python3
+      - name: Execute toolchain ARM ELF32 on Unicorn Cortex-A9
+        run: |
+          set -o pipefail
+          mkdir -p a9-elf-reference
+          arm-none-eabi-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_a9_boot_fixture.S -o a9-elf-reference/boot.o
+          arm-none-eabi-ld -z max-page-size=0x1000 -T exodus/tests/tumor_a9_boot_fixture.ld a9-elf-reference/boot.o -o a9-elf-reference/boot.elf
+          arm-none-eabi-readelf -h -l a9-elf-reference/boot.elf | tee a9-elf-reference/headers.txt
+          cc -std=c11 -O2 -Wall -Wextra -Werror exodus/tests/tumor_a9_elf_execution_reference.c $(pkg-config --cflags --libs unicorn) -o /tmp/a9-elf-reference
+          timeout 10s /tmp/a9-elf-reference a9-elf-reference/boot.elf | tee a9-elf-reference/execution.log
       - name: Compile A9 and A57 atomic ISA references (not fabric proof)
         run: |
           set -o pipefail
@@ -164,6 +173,9 @@ jobs:
         with:
           name: rcm-reference-test
           path: |
+            a9-elf-reference/boot.elf
+            a9-elf-reference/headers.txt
+            a9-elf-reference/execution.log
             cache-reference/*.txt
             atomic-reference/*.txt
             tumor-elf32-load-plan-reference.log
