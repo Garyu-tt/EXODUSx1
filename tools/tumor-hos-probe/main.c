@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <malloc.h>
 
 static char logbuf[8192];
 static size_t used;
@@ -168,9 +169,90 @@ static void bandwidth_test(void) {
     free(a);free(b);
 }
 
+
+/* R03: ordinary audio renderer session, silent PCM, bounded frame waits. */
+static void audio_trial(unsigned voices) {
+    AudioRendererConfig cfg={
+        .output_rate=AudioRendererOutputRate_48kHz,
+        .num_voices=voices,.num_effects=0,.num_sinks=1,
+        .num_mix_objs=1,.num_mix_buffers=2
+    };
+    enum { SAMPLES=24000, POOL_SIZE=49152 };
+    AudioDriver drv={0};
+    AudioDriverWaveBuf waves[8]={0};
+    void *pcm=memalign(0x1000,POOL_SIZE);
+    if(!pcm){logline("audio%u=allocation_failed\n",voices);return;}
+    memset(pcm,0,POOL_SIZE);
+    armDCacheFlush(pcm,POOL_SIZE);
+    bool driver=false,started=false,ok=false;
+    unsigned frames=0,completed=0,drops=0;
+    u64 begin=0,elapsed=0;
+    Result rc=audrenInitialize(&cfg);
+    logline("audio%u_init_rc=0x%08" PRIx32 "\n",voices,(uint32_t)rc);
+    if(R_FAILED(rc)){free(pcm);return;}
+    rc=audrvCreate(&drv,&cfg,2);
+    logline("audio%u_driver_rc=0x%08" PRIx32 "\n",voices,(uint32_t)rc);
+    if(R_FAILED(rc))goto cleanup;
+    driver=true;
+    int pool=audrvMemPoolAdd(&drv,pcm,POOL_SIZE);
+    if(pool<0||!audrvMemPoolAttach(&drv,pool))goto cleanup;
+    static const u8 channels[]={0,1};
+    if(audrvDeviceSinkAdd(&drv,AUDREN_DEFAULT_DEVICE_NAME,2,channels)<0)goto cleanup;
+    for(unsigned i=0;i<voices;i++){
+        if(!audrvVoiceInit(&drv,i,1,PcmFormat_Int16,48000))goto cleanup;
+        audrvVoiceSetDestinationMix(&drv,i,AUDREN_FINAL_MIX_ID);
+        audrvVoiceSetMixFactor(&drv,i,1.0f,0,0);
+        audrvVoiceSetMixFactor(&drv,i,1.0f,0,1);
+        waves[i].data_raw=pcm;
+        waves[i].size=SAMPLES*sizeof(int16_t);
+        waves[i].end_sample_offset=SAMPLES;
+        if(!audrvVoiceAddWaveBuf(&drv,i,&waves[i]))goto cleanup;
+        audrvVoiceStart(&drv,i);
+    }
+    rc=audrvUpdate(&drv);
+    logline("audio%u_submit_rc=0x%08" PRIx32 "\n",voices,(uint32_t)rc);
+    if(R_FAILED(rc))goto cleanup;
+    rc=audrenStartAudioRenderer();
+    logline("audio%u_start_rc=0x%08" PRIx32 "\n",voices,(uint32_t)rc);
+    if(R_FAILED(rc))goto cleanup;
+    started=true;
+    begin=armGetSystemTick();
+    Event *event=audrenGetFrameEvent();
+    if(!event)goto cleanup;
+    for(unsigned n=0;n<300;n++){
+        if(armGetSystemTick()-begin>armNsToTicks(2500000000ull))break;
+        rc=eventWait(event,100000000ull);
+        if(R_FAILED(rc)){logline("audio%u_event_rc=0x%08" PRIx32 "\n",voices,(uint32_t)rc);break;}
+        frames++;
+        rc=audrvUpdate(&drv);
+        if(R_FAILED(rc)){logline("audio%u_update_rc=0x%08" PRIx32 "\n",voices,(uint32_t)rc);break;}
+        completed=0;
+        for(unsigned i=0;i<voices;i++)if(waves[i].state==AudioDriverWaveBufState_Done)completed++;
+        if(completed==voices)break;
+    }
+    elapsed=armGetSystemTick()-begin;
+    for(unsigned i=0;i<voices;i++){
+        u32 samples=audrvVoiceGetPlayedSampleCount(&drv,i);
+        u32 dropped=audrvVoiceGetVoiceDropsCount(&drv,i);
+        drops+=dropped;
+        logline("audio%u_voice%u_samples=%" PRIu32 "\n",voices,i,(uint32_t)samples);
+    }
+    ok=completed==voices&&drops==0&&frames>0;
+cleanup:
+    if(started){
+        rc=audrenStopAudioRenderer();
+        logline("audio%u_stop_rc=0x%08" PRIx32 "\n",voices,(uint32_t)rc);
+        if(R_FAILED(rc))ok=false;
+    }
+    if(driver)audrvClose(&drv);
+    audrenExit();
+    free(pcm);
+    logline("audio%u_frames=%u\naudio%u_completed=%u\naudio%u_drops=%u\naudio%u_elapsed_ns=%" PRIu64 "\naudio%u=%s\n",voices,frames,voices,completed,voices,drops,voices,(uint64_t)armTicksToNs(elapsed),voices,ok?"pass":"incomplete");
+}
+
 int main(void) {
     consoleInit(NULL);
-    logline("schema=1\nkind=hos_userland_inventory\nprobe_revision=2\n");
+    logline("schema=1\nkind=hos_userland_inventory\nprobe_revision=3\n");
     u32 version=hosversionGet();
     logline("hos_version=%u.%u.%u\n",(unsigned)HOSVER_MAJOR(version),(unsigned)HOSVER_MINOR(version),(unsigned)HOSVER_MICRO(version));
     query("process_total_bytes",InfoType_TotalMemorySize);
@@ -200,9 +282,12 @@ int main(void) {
     bandwidth_test();
     service_test("audren","audren:u");
     service_test("audout","audout:u");
+    audio_trial(1);
+    audio_trial(4);
+    audio_trial(8);
     logline("adsp_execution=not_tested\na57_el2=not_tested\ndual_kernel=not_tested\ndeployment_authorized=0\n");
     if(!overflow){
-        int fd=open("sdmc:/TUMORH02.TXT",O_WRONLY|O_CREAT|O_EXCL,0644);
+        int fd=open("sdmc:/TUMORH03.TXT",O_WRONLY|O_CREAT|O_EXCL,0644);
         if(fd<0)printf("Report not saved (errno=%d)\n",errno);
         else{
             size_t off=0;
