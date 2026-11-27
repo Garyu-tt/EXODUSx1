@@ -73,6 +73,21 @@ jobs:
           truncate -s 512M seed.img
           mkfs.vfat -n EXODUSSEED seed.img
           mcopy -i seed.img src.txz "$src/amp_execution_contract.c" "$src/armv7_authority/"{exodus_amp1.c,Makefile,test_kernel_amp.c,guest.sh,amp2_proxy_relay.c,amp2_proxy_guest.sh,exodus_amp2_proxy.c,Makefile.amp2proxy} "$src/amp2_pid_contract.c" ::
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("authority/exodus/frankenstein/el2_freebsd_abi_reference.S")
+          s=p.read_text()
+          # EL1 relay scratch registers belong to the interrupted EL0 context.
+          # Save on private EL1 stack; restore before HVC snapshot or ERET.
+          for old,new in (
+              ("relay_sync:\n    mrs x9", "relay_sync:\n    stp x9,x10,[sp,#-16]!\n    mrs x9"),
+              ("    msr spsr_el1, x9\n    eret\nrelay_submit:\n    hvc #0x44",
+               "    msr spsr_el1, x9\n    ldp x9,x10,[sp],#16\n    eret\nrelay_submit:\n    ldp x9,x10,[sp],#16\n    hvc #0x44"),
+          ):
+              assert s.count(old)==1
+              s=s.replace(old,new)
+          p.write_text(s)
+          PY
           clang --target=aarch64-unknown-freebsd15.1 -march=armv8-a -mgeneral-regs-only -ffreestanding -fno-builtin -fno-stack-protector -fno-pic -fno-pie -fno-unwind-tables -fno-asynchronous-unwind-tables -O2 -Wall -Wextra -Werror -c exodus/tests/a57_freebsd_c_fixture.c -o fixture.o
           aarch64-linux-gnu-objdump -dr fixture.o | tee evidence/c-fixture-disassembly.log
           aarch64-linux-gnu-nm -u fixture.o > evidence/c-fixture-undefined.log
