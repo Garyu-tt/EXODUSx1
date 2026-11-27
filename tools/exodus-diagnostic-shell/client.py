@@ -1,4 +1,4 @@
-"""EXODUS operator client R05; supports local approval and legacy NRO."""
+"""EXODUS operator client R06; supports local approval and legacy NRO."""
 import argparse
 import getpass
 import hashlib
@@ -9,7 +9,7 @@ import statistics
 from pathlib import Path
 
 COMMANDS = ("info", "cpu", "memory", "timer", "audio", "all", "quit")
-HELP = "ls | put NAME SOURCE | cat NAME | run NAME | rm NAME | vm OPCODES... | info | cpu | memory | timer | audio | all | repeat COMMAND N (2-10) | help | quit"
+HELP = "ls | put NAME SOURCE | cat NAME | run NAME | rm NAME | vm OPCODES... | info | cpu | memory | timer | audio | all | repeat COMMAND N (2-10) | repeat run NAME N | help | quit"
 
 def report(stream):
     header = stream.readline(81)
@@ -53,6 +53,8 @@ def plan(line):
             return [" ".join(words)]
         raise ValueError("invalid VM program")
     if len(words)==1 and words[0] in COMMANDS: return words
+    if len(words)==4 and words[:2]==["repeat","run"] and re.fullmatch(r"[A-Za-z0-9_-]{1,24}",words[2]) and re.fullmatch(r"[0-9]{1,2}",words[3]) and 2<=int(words[3])<=10:
+        return ["run "+words[2]]*int(words[3])
     if len(words)==3 and words[0]=="repeat" and words[1] in COMMANDS[:-1]:
         if re.fullmatch(r"[0-9]{1,2}",words[2]) and 2<=int(words[2])<=10:
             return [words[1]]*int(words[2])
@@ -60,6 +62,7 @@ def plan(line):
 
 def summary(rows):
     for name, unit, values in [
+        ("script", "us", [int(r["script_elapsed_ns"])/1000 for r in rows if r.get("fs_status")=="pass" and r.get("script_elapsed_ns","").isdigit()]),
         ("copy", "GB/s", [int(r["copy_bytes"])/int(r["copy_ns"]) for r in rows
                           if r.get("copy_integrity")=="pass" and r.get("copy_ns","").isdigit()
                           and int(r["copy_ns"])>0 and r.get("copy_bytes","").isdigit()]),
@@ -110,6 +113,9 @@ def session(sock,stream,output):
                 summary(rows)
                 print("Server marked repeat unsafe; ending session")
                 return
+            if row.get("fs_status","pass")!="pass":
+                print("Workspace command failed; stopping batch")
+                break
         if len(rows)>1:summary(rows)
 
 def pair(sock,stream):
