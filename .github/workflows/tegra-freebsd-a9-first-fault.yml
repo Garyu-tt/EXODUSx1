@@ -1,0 +1,74 @@
+name: Tegra FreeBSD direct A9 first exception trace
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths: ['.github/workflows/tegra-freebsd-a9-first-fault.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: freebsd-direct-a9
+          run-id: '46035241552'
+          github-token: ${{ github.token }}
+          path: prior
+      - name: Prepare exact audited kernel
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm gcc-arm-linux-gnueabihf device-tree-compiler python3
+          mkdir -p evidence
+          printf '%s  %s\n' 0c535d1cbe4640c676531b0a9fcca9eef704e008521d858541e72f9a88d2806d prior/kernel.elf | sha256sum -c -
+          python3 exodus/tests/tumor_freebsd_direct_a9.py prior/kernel.elf evidence | tee evidence/load-plan.log
+          arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_freebsd_direct_a9.S -o handoff.o
+          arm-linux-gnueabihf-ld -Ttext=0x60010000 -e _start handoff.o -o handoff.elf
+          arm-linux-gnueabihf-objcopy -O binary handoff.elf handoff.bin
+          dtc -I dts -O dtb -o evidence/board.dtb exodus/tests/tumor_freebsd_direct_a9.dts
+      - name: Capture bounded translated blocks and first exceptions
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, resource, subprocess
+          out=pathlib.Path("evidence")
+          trace=out/"first-fault.log"
+          def cap():
+              resource.setrlimit(resource.RLIMIT_FSIZE,(8*1024*1024,8*1024*1024))
+          args=["qemu-system-arm","-M","vexpress-a9","-cpu","cortex-a9","-m","1024","-smp","1","-display","none","-serial","stdio","-monitor","none","-nic","none","-no-reboot","-d","int,in_asm","-D",str(trace),"-device","loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on","-device","loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on","-device","loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on"]
+          with (out/"serial.log").open("wb") as serial:
+              p=subprocess.Popen(args,stdin=subprocess.DEVNULL,stdout=serial,stderr=subprocess.STDOUT,preexec_fn=cap)
+              try: p.wait(timeout=12)
+              except subprocess.TimeoutExpired:
+                  p.kill()
+                  p.wait()
+          print("QEMU diagnostic termination:",p.returncode)
+          lines=trace.read_text(errors="replace").splitlines()
+          print("Trace bytes:",trace.stat().st_size)
+          events=[i for i,l in enumerate(lines) if re.search(r"Taking exception|Data Abort|Prefetch Abort|Undefined Instruction",l,re.I)]
+          report=[]
+          for n,i in enumerate(events[:4]):
+              report.extend([f"=== exception candidate {n+1}, trace line {i+1} ===",*lines[max(0,i-50):i+16]])
+          if not events:
+              report.extend(["No exception marker found; initial blocks:",*lines[:100]])
+          text="\n".join(report)+"\n"
+          (out/"first-fault-summary.log").write_text(text)
+          print(text)
+          # This gate checks diagnostic capture, not successful kernel boot.
+          assert lines, "empty QEMU trace"
+          assert events, "no exception event captured"
+          PY
+      - name: Preserve bounded diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-a9-first-fault
+          path: |
+            evidence/*.log
+            evidence/*.dtb
+          if-no-files-found: warn
