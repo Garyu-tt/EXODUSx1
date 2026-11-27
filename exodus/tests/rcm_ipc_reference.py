@@ -65,7 +65,7 @@ def main():
         mb[104u+i] = 0x5A000000u + i;
     }
     /* Separate mailbox for live, post-start generation handoff. */
-    for (u32 i = 120u; i < 128u; i++) mb[i] = 0u;
+    for (u32 i = 120u; i < 144u; i++) mb[i] = 0u;
     /* The bring-up, in ccplex_boot_cpu0() order (Erista). */""")
     c = replace_once(c, """    while (mb[0] != KCPU_MAGIC && REG(TIMERUS) - start < 200000)
         udelay(100);""",
@@ -133,7 +133,31 @@ def main():
         puts_("EXODUS RING REFERENCE: PASS\\n");
     else
         puts_("EXODUS RING REFERENCE: FAIL\\n");
-    hold_cpu0();""")
+    hold_cpu0();
+    /* Retained mailbox and a new CPU0 engine after an emulated reset. */
+    mb[128] = 0x52535432u;
+    mb[129] = 0u;
+    mb[130] = 8u; mb[131] = 0xABCD1234u;
+    mb[132] = 0u; mb[133] = 0u;
+    mb[134] = 9u; mb[135] = 80u; mb[136] = 0u;
+    mb[137] = 0xC001CAFEu;
+    udelay(10000);
+    u32 reset_ok = mb[129] == 0u && mb[137] == 0xC001CAFEu;
+    release_cpu0();
+    start = REG(TIMERUS);
+    while (mb[129] != 0x52454356u && REG(TIMERUS) - start < 200000)
+        udelay(100);
+    reset_ok = reset_ok && mb[129] == 0x52454356u &&
+        mb[131] == 0xABCD1234u && mb[132] == 1u &&
+        mb[133] == 9u && mb[136] == 81u &&
+        mb[137] == 0xC001CAFEu;
+    hold_cpu0();
+    if (reset_ok)
+        puts_("EXODUS RESET REFERENCE: PASS\\n");
+    else {
+        puts_("EXODUS RESET REFERENCE: FAIL\\n");
+        puts_("EXODUS RING REFERENCE: FAIL\\n");
+    }""")
     asm = replace_once(peer.read_text(), "        ldr     w2, =0x4B435055",
         """        /* EXODUS synthetic request/reply; no native pointers. */
         ldr     w13, [x1, #36]         /* sequence */
@@ -277,6 +301,38 @@ exodus_live_reject:
 exodus_live_done:
         dmb     sy
         ldr     w2, =0x4B435055""")
+    asm = replace_once(asm, "_start:\\n", """_start:
+        ldr     x0, =MBOX
+        ldr     w1, [x0, #512]
+        ldr     w2, =0x52535432
+        cmp     w1, w2
+        b.eq    exodus_reset_entry
+""")
+    asm += """
+        .text
+        .balign 4
+exodus_reset_entry:
+        /* Fresh CPU engine, retained memory; only a synthetic mailbox. */
+        mov     w3, #9
+        str     w3, [x0, #532]
+        ldr     w4, [x0, #520]
+        cmp     w4, w3
+        cset    w4, ne
+        str     w4, [x0, #528]
+        ldr     w4, [x0, #536]
+        cmp     w4, w3
+        b.ne    exodus_reset_park
+        ldr     w4, [x0, #540]
+        add     w4, w4, #1
+        str     w4, [x0, #544]
+        dmb     sy
+        ldr     w4, =0x52454356
+        str     w4, [x0, #516]
+exodus_reset_park:
+        wfe
+        b       exodus_reset_park
+        .ltorg
+"""
     # All replacements checked before modifying either file.
     host.write_text(c)
     peer.write_text(asm)
