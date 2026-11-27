@@ -1,0 +1,115 @@
+name: EXODUS R104 isolated MMU runtime gate
+on:
+  push:
+    branches: [integration/exodus-a57-mmu-gate]
+    paths: ['.github/workflows/exodus-a57-mmu-gate.yml']
+  pull_request:
+    paths: ['.github/workflows/exodus-a57-mmu-gate.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mmu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install emulator and compiler
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm clang lld binutils
+      - name: Restore exact local R103 source snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p mmu-gate
+          base64 -d > mmu-gate/source.tgz <<'B64'
+          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
+          AAAAAAAA/sgL0VQqRgB4AAA=
+          B64
+          cd mmu-gate
+          echo '0f9d979179e717bbef1273131911c06e7150fb00241dfab1dae202d3cc71c461  source.tgz' | sha256sum -c -
+          tar -xzf source.tgz
+          bash build-mmu.sh | tee BUILD-RESULTS.txt
+      - name: Run mandatory Stage 1 and Stage 2 exception tests
+        run: |
+          set -euo pipefail
+          cd mmu-gate
+          bash run-mmu.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r104-mmu-gate-evidence
+          path: mmu-gate/
+          if-no-files-found: warn
