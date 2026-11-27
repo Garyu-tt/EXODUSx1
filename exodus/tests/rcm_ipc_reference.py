@@ -301,7 +301,7 @@ exodus_live_reject:
 exodus_live_done:
         dmb     sy
         ldr     w2, =0x4B435055""")
-    asm = replace_once(asm, "_start:\\n", """_start:
+    asm = replace_once(asm, "_start:\n", """_start:
         ldr     x0, =MBOX
         ldr     w1, [x0, #512]
         ldr     w2, =0x52535432
