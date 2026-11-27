@@ -1,4 +1,4 @@
-name: EXODUS A9 A57 compositor transport reference R73
+name: EXODUS A9 A57 display and input reference R74
 on:
   pull_request:
     paths:
@@ -94,7 +94,9 @@ jobs:
               }
               q[5]=2;q[24]=q[12];q[25]=q[13];q[26]=q[14];q[27]=255;
               q[28]=0x14;q[29]=0x20;q[30]=0x30;q[31]=255;
-              return !memcmp(q,r,64);
+              q[32]=1;q[33]=1;q[34]=2;
+              if(memcmp(q,r,64))return 0;
+              return (uint64_t)r[32]|((uint64_t)r[33]<<8)|((uint64_t)r[34]<<16);
           }
           '''
           p.write_text(s)
@@ -102,10 +104,13 @@ jobs:
           s=p.read_text()
           old="    adr x1,passed\n    b report"
           assert s.count(old)==1
-          s=s.replace(old,"    ldp x0,x1,[sp,#0]\n    ldp x2,x3,[sp,#16]\n    ldr x4,[sp,#32]\n    bl clone_graphics\n    cbz x0,fail\n    adr x1,passed\n    b report")
+          s=s.replace(old,"    ldp x0,x1,[sp,#0]\n    ldp x2,x3,[sp,#16]\n    ldr x4,[sp,#32]\n    bl clone_graphics\n    cbz x0,fail\n    str x0,[sp]\n    adr x1,phase\n    mov x2,#3\n    str x2,[x1]\n    b restore\ngraphics_done:\n    adr x0,phase\n    ldr x1,[x0]\n    cmp x1,#3\n    b.ne fail\n    adr x1,passed\n    b report")
           old="    mov x8,#4091\n    svc #0"
           assert s.count(old)==1
-          s=s.replace(old,"    mov x0,#2\n    mov x1,#3\n    mov x2,#5\n    mov x3,#4\n    movz x4,#0x3456\n    movk x4,#0x12,lsl #16\n    mov x8,#4091\n    svc #0")
+          s=s.replace(old,"    mov x0,#2\n    mov x1,#3\n    mov x2,#5\n    mov x3,#4\n    movz x4,#0x3456\n    movk x4,#0x12,lsl #16\n    mov x8,#4091\n    svc #0\n    movz x1,#0x0101\n    movk x1,#2,lsl #16\n    cmp x0,x1\n    b.ne bad\n    mov x8,#4089\n    svc #0")
+          old="    cmp x0,#4091\n    b.eq parent_done\n    cmp x0,#7"
+          assert s.count(old)==1
+          s=s.replace(old,"    cmp x0,#4091\n    b.eq parent_done\n    cmp x0,#4089\n    b.eq graphics_done\n    cmp x0,#7")
           p.write_text(s)
           PY
           cc -std=c11 -Wall -Wextra -Werror -pedantic -fsanitize=undefined -fno-sanitize-recover=all tools/kernel_bridge/a57_display_reference.c -o "$PWD/display-reference"
@@ -181,10 +186,14 @@ jobs:
                       expected_pixels=bytes(v for y in range(12) for x in range(16)
                                             for v in ((0x12,0x34,0x56,255) if 2<=x<7 and 3<=y<7 else (0x14,0x20,0x30,255)))
                       assert path.read_bytes()==expected_pixels
-                      assert len(p.stdout)==64
+                      assert len(p.stdout)==64 and p.stdout[32:35]==bytes([1,1,2])
                       write_all(vm.stdin,p.stdout)
                       print("PASS: A57 EL0 display request rendered through existing compositor",flush=True)
           '''+old)
+          for kind in ("11 [Hypervisor Call]", "2 [SVC]"):
+              old=f'assert lines.count("Taking exception {kind} on CPU 0")==5'
+              assert s.count(old)==1
+              s=s.replace(old,old[:-1]+"6")
           p.write_text(s)
           compile(s,str(p),"exec")
           PY
@@ -196,7 +205,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: a9-a57-display-evidence
+          name: a9-a57-display-input-evidence
           path: |
             evidence/*.log
             evidence/a57-frame.rgba
