@@ -1,0 +1,7 @@
+# R63 — native guest ping-pong PASS and cross-ISA reference
+
+R62 run 46053252171 completed successfully at 32 and 64 MiB. Job 140689512562 reports hw.realmem=33554432, EXODUS_PINGPONG_1000_PASS, EXODUS_POST_VM_PASS. Free pages before fixture 824, after 856 (3506176 bytes), wired pages 5111 to 5157. 1000 request/reply rounds (2000 messages), no reported errors, checked child exit and munmap. Single vCPU coherent FreeBSD reference only.
+
+R63 creates tumor_cross_isa_reference.c (389150923847a83b447d5774aaf9157e0870cff7) and CI (aaa71feec18d6b8b57132d4b685fbbf88fdcf282). Independently built ARMv7 and AArch64 static Linux binaries, separate QEMU-user processes map the same 4096-byte file. Two 128-byte lanes with 64-byte spaced atomic uint32 publication/ACK, 24-byte TMR1-compatible frame with big-endian 64-bit generation/sequence, release/acquire, bounded waits, 1000 round trips each of two role assignments crossing uint32 wrap; negative control expects rejection of mismatched generation without ACK. Python host checks final tokens and pointer widths. This independently reimplements wire format, not production codec integration. Coherent host mapping under Linux QEMU-user is not cross-kernel FreeBSD/ARM64, physical ADSP, or noncoherent cache proof. CI 46053397114 queued at observation; no runtime success claim. Keep 32 MiB target for FreeBSD. No physical access.
+
+CI: https://github.com/Garyu-tt/EXODUSx1/actions/runs/46053397114
