@@ -112,7 +112,7 @@ jobs:
                   child.sendline("service growfs onestart; df -h /; printf 'EXODUS_A9_%s\\n' ROOT_READY")
                   child.expect(r"(?m)^EXODUS_A9_ROOT_READY\r*\n",timeout=180)
                   child.expect(r"(?m)^(root@[^\r\n]* )?# *$",timeout=30)
-          '''.replace("\n        ","\n")+s[end:]
+          '''+s[end:]
           old='        child.sendline("shutdown -p now")\n        child.expect(pexpect.EOF,timeout=180)'
           assert s.count(old)==1
           s=s.replace(old,'        child.sendline("sync")\n        child.expect(r"# ",timeout=30)')
