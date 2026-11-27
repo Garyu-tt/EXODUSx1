@@ -1,4 +1,4 @@
-"""EXODUS operator client R04; supports local approval and legacy NRO."""
+"""EXODUS operator client R05; supports local approval and legacy NRO."""
 import argparse
 import getpass
 import hashlib
@@ -9,7 +9,7 @@ import statistics
 from pathlib import Path
 
 COMMANDS = ("info", "cpu", "memory", "timer", "audio", "all", "quit")
-HELP = "vm OPCODES... | info | cpu | memory | timer | audio | all | repeat COMMAND N (2-10) | help | quit"
+HELP = "ls | put NAME SOURCE | cat NAME | run NAME | rm NAME | vm OPCODES... | info | cpu | memory | timer | audio | all | repeat COMMAND N (2-10) | help | quit"
 
 def report(stream):
     header = stream.readline(81)
@@ -46,6 +46,8 @@ def fields(body, command):
 def plan(line):
     words=line.split()
     if words==["help"]: return []
+    if line=="ls" or re.fullmatch(r"(?:cat|run|rm) [A-Za-z0-9_-]{1,24}",line): return [line]
+    if re.fullmatch(r"put [A-Za-z0-9_-]{1,24} [ -~]{1,768}",line): return [line]
     if words and words[0]=="vm" and 2<=len(words)<=193:
         if len(line)<=1023 and all(re.fullmatch(r"(?:[0-9]+|0x[0-9a-fA-F]+|0o[0-7]+|0b[01]+)",x) for x in words[1:]):
             return [" ".join(words)]
@@ -112,7 +114,7 @@ def session(sock,stream,output):
 
 def pair(sock,stream):
     greeting=stream.readline(81)
-    if greeting==b"EXODUS-DIAG/2\n":
+    if greeting in (b"EXODUS-DIAG/2\n",b"EXODUS-DIAG/3\n"):
         print("Confirm the PC address on Switch with A (30 seconds).",flush=True)
     elif greeting==b"EXODUS-DIAG/1\n":
         token=getpass.getpass("Legacy Switch pairing code: ")

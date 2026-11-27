@@ -258,13 +258,66 @@ cleanup:
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
-#include "diag_vm.h"
+#include "workspace.h"
+static Workspace workspace;
+
+
+static int ws_probe(const char *name,uint64_t *value){
+    u32 id;
+    if(!strcmp(name,"ticks")){*value=armGetSystemTick();return 1;}
+    if(!strcmp(name,"core")){*value=svcGetCurrentProcessorNumber();return 1;}
+    if(!strcmp(name,"core_mask"))id=InfoType_CoreMask;
+    else if(!strcmp(name,"total_memory"))id=InfoType_TotalMemorySize;
+    else if(!strcmp(name,"used_memory"))id=InfoType_UsedMemorySize;
+    else return 0;
+    u64 result=0;
+    if(R_FAILED(svcGetInfo(&result,id,CUR_PROCESS_HANDLE,0)))return 0;
+    *value=result;return 1;
+}
+static void ws_command(const char *cmd){
+    if(!strcmp(cmd,"ls")){
+        unsigned n=0;
+        for(unsigned i=0;i<WS_FILES;i++)if(workspace.files[i].name[0])
+            logline("file%u=%s\n",n++,workspace.files[i].name);
+        logline("fs_count=%u\nfs_status=pass\n",n);return;
+    }
+    const char *arg=strchr(cmd,' ');
+    if(!arg){logline("fs_status=argument\n");return;}arg++;
+    char name[25];size_t n=strcspn(arg," ");
+    if(!n||n>=sizeof name){logline("fs_status=name\n");return;}
+    memcpy(name,arg,n);name[n]=0;
+    if(!ws_name(name)){logline("fs_status=name\n");return;}
+    const char *err=NULL;
+    if(!strncmp(cmd,"put ",4)){
+        err=arg[n]==' '?ws_put(&workspace,name,arg+n+1):"argument";
+    }else if(arg[n])err="argument";
+    else if(!strncmp(cmd,"rm ",3))err=ws_rm(&workspace,name);
+    else{
+        WsFile *f=ws_find(&workspace,name);
+        if(!f)err="not_found";
+        else if(!strncmp(cmd,"cat ",4))logline("fs_source=%s\n",f->source);
+        else if(!strncmp(cmd,"run ",4)){
+            WsResult result;
+            u64 start=armGetSystemTick();
+            err=ws_run(f->source,ws_probe,&result);
+            if(!err){
+                logline("script_steps=%u\nscript_elapsed_ns=%" PRIu64 "\n",result.steps,(uint64_t)armTicksToNs(armGetSystemTick()-start));
+                for(unsigned i=0;i<8;i++)logline("script_r%u=0x%016" PRIx64 "\n",i,result.r[i]);
+            }
+        }else err="command";
+    }
+    logline("fs_status=%s\n",err?err:"pass");
+}
+static bool ws_allowed(const char *cmd){
+    return !strcmp(cmd,"ls")||!strncmp(cmd,"put ",4)||!strncmp(cmd,"cat ",4)||!strncmp(cmd,"rm ",3)||!strncmp(cmd,"run ",4);
+}
 
 static void run_test(const char *cmd){
     used=0;overflow=false;logbuf[0]=0;
     logline("schema=1\nkind=exodus_diagnostic_shell\ncommand=%s\n",cmd);
     u32 v=hosversionGet();
     logline("hos_version=%u.%u.%u\n",(unsigned)HOSVER_MAJOR(v),(unsigned)HOSVER_MINOR(v),(unsigned)HOSVER_MICRO(v));
+    if(ws_allowed(cmd))ws_command(cmd);
     if(!strncmp(cmd,"vm ",3)){
         TdaVm v;u64 start=armGetSystemTick();
         const char *err=tda_vm_run(cmd+3,&v);
@@ -313,6 +366,7 @@ static void run_test(const char *cmd){
     logline("repeat_safe=%s\n",unsafe_to_repeat?"no":"yes");
 }
 static bool allowed(const char *s){
+    if(ws_allowed(s))return true;
     if(!strncmp(s,"vm ",3))return true;
     static const char *const cmds[]={"info","cpu","memory","timer","audio","all"};
     for(unsigned i=0;i<sizeof cmds/sizeof *cmds;i++)if(!strcmp(s,cmds[i]))return true;
@@ -323,7 +377,7 @@ static int wait_io(int fd,short events,int timeout){
     int n=poll(&p,1,timeout);
     return n>0&&(p.revents&events)?1:n==0?0:-1;
 }
-/* All network buffers are bounded, no executable payloads or file paths. */
+/* All network buffers are bounded, no native executable payloads or real file paths. */
 static bool send_all(int fd,const char *p,size_t n){
     u64 end=armGetSystemTick()+armNsToTicks(5000000000ull);
     while(n&&armGetSystemTick()<end){
@@ -355,7 +409,7 @@ int main(void){
     consoleInit(NULL);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
-    printf("EXODUS Diagnostic Shell R04\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
+    printf("EXODUS Diagnostic Shell R05\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
     bool approve=false;
     while(appletMainLoop()){
         padUpdate(&pad);u64 keys=padGetButtonsDown(&pad);
@@ -385,7 +439,7 @@ int main(void){
     if(client<0)goto done;
     if(fcntl(client,F_SETFL,O_NONBLOCK)<0)goto done;
     char line[1024];
-    if(!send_text(client,"EXODUS-DIAG/2\n"))goto done;
+    if(!send_text(client,"EXODUS-DIAG/3\n"))goto done;
     printf("PC: %s\nA: approve this PC. PLUS: reject.\n",inet_ntoa(peer.sin_addr));
     consoleUpdate(NULL);
     bool confirmed=false;

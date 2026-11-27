@@ -20,7 +20,7 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(plan("help"),[])
         self.assertEqual(plan("repeat all 3"),["all"]*3)
         self.assertEqual(plan("cpu"),["cpu"])
-        for s in ("repeat quit 2","repeat all 11","repeat all 1","ls","repeat cpu -2"):
+        for s in ("repeat quit 2","repeat all 11","repeat all 1","cat ../x","repeat cpu -2"):
             with self.subTest(s=s),self.assertRaises(ValueError):plan(s)
     def test_summary(self):
         out=io.StringIO()
@@ -41,3 +41,14 @@ class ClientTests(unittest.TestCase):
         with patch("client.getpass.getpass",return_value="a"*32):
             pair(sock,io.BytesIO(b"EXODUS-DIAG/1\nOK\n"))
         sock.sendall.assert_called_once_with(b"a"*32+b"\n")
+
+    def test_workspace_plan(self):
+        for cmd in ("ls","put bench r0=core_mask(); r0*=0o7;","run bench","cat bench","rm bench"):
+            self.assertEqual(plan(cmd),[cmd])
+        for cmd in ("put ../file r0=1;","put x "+("a"*769),"put x a\nb"):
+            with self.assertRaises(ValueError):plan(cmd)
+    def test_protocol3_pair(self):
+        sock=Mock()
+        with redirect_stdout(io.StringIO()):
+            pair(sock,io.BytesIO(b"EXODUS-DIAG/3\nOK\n"))
+        sock.sendall.assert_not_called()
