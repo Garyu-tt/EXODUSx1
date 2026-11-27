@@ -5,12 +5,33 @@ on:
       - '.github/workflows/tegra-freebsd-a9-a57-file.yml'
       - 'exodus/tests/a57_file_c_fixture.c'
       - 'exodus/tests/a57_native_file_reference.h'
+      - 'exodus/tests/test_a57_file_abi.c'
   workflow_dispatch:
 permissions:
   contents: read
   actions: read
 jobs:
+  file-abi-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: File ABI regression tests
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          set -euo pipefail
+          "$CC" -DFIO_HOST_TEST -std=c11 -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -no-pie exodus/tests/test_a57_file_abi.c exodus/tests/a57_file_c_fixture.c -o file-abi-host
+          ./file-abi-host
+          ./file-abi-host preopen
+          ./file-abi-host c
   memory:
+    needs: file-abi-host
     runs-on: ubuntu-latest
     env:
       RAM_MIB: '512'
