@@ -15,6 +15,23 @@ static char logbuf[8192];
 static size_t used;
 static bool overflow;
 static bool unsafe_to_repeat;
+static bool sleep_saved, sleep_previous;
+static Result sleep_query_rc, sleep_set_rc;
+#define SESSION_IDLE_NS 1800000000000ull
+static void session_power_begin(void){
+    sleep_query_rc=appletIsAutoSleepDisabled(&sleep_previous);
+    sleep_saved=R_SUCCEEDED(sleep_query_rc);
+    if(sleep_saved)sleep_set_rc=appletSetAutoSleepDisabled(true);
+    else sleep_set_rc=sleep_query_rc;
+    printf("Session auto-sleep override: %s (rc=%08x)\n",R_SUCCEEDED(sleep_set_rc)?"active":"unavailable",(unsigned)sleep_set_rc);
+}
+static void session_power_end(void){
+    if(sleep_saved&&R_SUCCEEDED(sleep_set_rc)){
+        Result r=appletSetAutoSleepDisabled(sleep_previous);
+        printf("Auto-sleep restore rc=%08x\n",(unsigned)r);
+    }
+    sleep_saved=false;
+}
 static void logline(const char *fmt, ...) {
     if (overflow) return;
     va_list ap;
@@ -348,6 +365,11 @@ static void run_test(const char *cmd){
             for(unsigned i=0;i<8;i++)logline("vm_r%u=0x%016" PRIx64 "\n",i,v.reg[i]);
         }
     }
+    if(!strcmp(cmd,"ping")||!strcmp(cmd,"info")||!strcmp(cmd,"all")){
+        bool disabled=false;Result power_rc=appletIsAutoSleepDisabled(&disabled);
+        logline("shell_revision=8\nsession_idle_seconds=1800\nauto_sleep_query_rc=0x%08" PRIx32 "\nauto_sleep_set_rc=0x%08" PRIx32 "\n",(uint32_t)power_rc,(uint32_t)sleep_set_rc);
+        if(R_SUCCEEDED(power_rc))logline("auto_sleep_disabled=%s\n",disabled?"yes":"no");
+    }
     if(!strcmp(cmd,"info")||!strcmp(cmd,"all")){
         query("process_total_bytes",InfoType_TotalMemorySize);
         query("process_used_bytes",InfoType_UsedMemorySize);
@@ -389,7 +411,7 @@ static void run_test(const char *cmd){
 static bool allowed(const char *s){
     if(ws_allowed(s))return true;
     if(!strncmp(s,"vm ",3))return true;
-    static const char *const cmds[]={"info","cpu","memory","timer","audio","all"};
+    static const char *const cmds[]={"ping","info","cpu","memory","timer","audio","all"};
     for(unsigned i=0;i<sizeof cmds/sizeof *cmds;i++)if(!strcmp(s,cmds[i]))return true;
     return false;
 }
@@ -412,7 +434,7 @@ static bool send_all(int fd,const char *p,size_t n){
 static bool send_text(int fd,const char *s){return send_all(fd,s,strlen(s));}
 static bool read_line(int fd,char *out,size_t cap,PadState *pad){
     size_t n=0;
-    u64 end=armGetSystemTick()+armNsToTicks(300000000000ull);
+    u64 end=armGetSystemTick()+armNsToTicks(SESSION_IDLE_NS);
     while(appletMainLoop()&&armGetSystemTick()<end){
         padUpdate(pad);if(padGetButtonsDown(pad)&HidNpadButton_Plus)return false;
         int ready=wait_io(fd,POLLIN,100);
@@ -430,7 +452,7 @@ int main(void){
     consoleInit(NULL);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
-    printf("EXODUS Diagnostic Shell R07\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
+    printf("EXODUS Diagnostic Shell R08\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
     bool approve=false;
     while(appletMainLoop()){
         padUpdate(&pad);u64 keys=padGetButtonsDown(&pad);
@@ -477,7 +499,9 @@ int main(void){
         svcSleepThread(16000000);
     }
     if(!confirmed){send_text(client,"ERR pairing\n");goto done;}
-    printf("Paired. Diagnostic commands only.\n");consoleUpdate(NULL);
+    printf("Paired. 30-minute idle limit; PLUS stops session.\n");consoleUpdate(NULL);
+    session_power_begin();
+    consoleUpdate(NULL);
     if(!send_text(client,"OK\n"))goto done;
     for(unsigned count=0;count<100&&appletMainLoop();count++){
         if(!read_line(client,line,sizeof line,&pad))break;
@@ -491,6 +515,7 @@ int main(void){
         if(unsafe_to_repeat)break;
     }
 done:
+    session_power_end();
     if(client>=0)close(client);
     if(listener>=0)close(listener);
     socketExit();
