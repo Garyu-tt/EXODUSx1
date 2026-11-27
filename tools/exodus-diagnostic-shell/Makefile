@@ -7,6 +7,6 @@ all: exodus-diagnostic-shell.nro
 exodus-diagnostic-shell.elf: main.c diag_vm.h
 	$(CC) $(CFLAGS) -specs=$(DEVKITPRO)/libnx/switch.specs $< -L$(DEVKITPRO)/libnx/lib -lnx -o $@
 exodus-diagnostic-shell.nacp:
-	$(TOOLS)/nacptool --create "EXODUS Diagnostic Shell" "InfraCare-IT" "3.0" $@
+	$(TOOLS)/nacptool --create "EXODUS Diagnostic Shell" "InfraCare-IT" "4.0" $@
 exodus-diagnostic-shell.nro: exodus-diagnostic-shell.elf exodus-diagnostic-shell.nacp
 	$(TOOLS)/elf2nro $< $@ --nacp=exodus-diagnostic-shell.nacp
