@@ -1,0 +1,55 @@
+name: Tegra FreeBSD direct A9 kernel reference
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-freebsd-direct-a9.yml'
+      - 'exodus/tests/tumor_freebsd_direct_a9.*'
+permissions:
+  contents: read
+jobs:
+  direct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install isolated tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm gcc-arm-linux-gnueabihf device-tree-compiler python3 curl xz-utils
+      - name: Extract exact audited kernel and build direct handoff
+        run: |
+          set -o pipefail
+          mkdir -p evidence
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 240 https://download.freebsd.org/releases/arm/armv7/15.1-RELEASE/kernel.txz -o kernel.txz
+          member="$(tar -tJf kernel.txz | grep -E '^(\./)?boot/kernel/kernel$')"
+          test -n "$member"
+          tar -xJOf kernel.txz "$member" > kernel.elf
+          python3 exodus/tests/tumor_freebsd_direct_a9.py kernel.elf evidence | tee evidence/load-plan.log
+          arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_freebsd_direct_a9.S -o handoff.o
+          arm-linux-gnueabihf-ld -Ttext=0x60010000 -e _start handoff.o -o handoff.elf
+          arm-linux-gnueabihf-objcopy -O binary handoff.elf handoff.bin
+          dtc -I dts -O dtb -o evidence/board.dtb exodus/tests/tumor_freebsd_direct_a9.dts
+      - name: Attempt direct real kernel entry without EFI or root disk
+        run: |
+          set -o pipefail
+          set +e
+          timeout 60s qemu-system-arm -M vexpress-a9 -cpu cortex-a9 -m 1024 -smp 1 -nographic -monitor none -serial stdio -nic none -no-reboot -device loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on -device loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on -device loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on 2>&1 | tee evidence/direct-boot.log
+          status=${PIPESTATUS[0]}
+          set -e
+          echo "QEMU exit status: $status" | tee -a evidence/direct-boot.log
+          case "$status" in 0|124) ;; *) exit 1;; esac
+          grep -E 'FreeBSD 15\.1-RELEASE.*GENERIC arm' evidence/direct-boot.log
+          echo 'PASS: actual FreeBSD kernel banner reached by direct ARM handoff'
+      - name: Preserve experimental evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-direct-a9
+          path: |
+            evidence/*.log
+            evidence/*.dtb
+          if-no-files-found: warn
