@@ -264,6 +264,7 @@ static Workspace workspace;
 
 static int ws_probe(const char *name,uint64_t *value){
     u32 id;
+    if(!strcmp(name,"tick_hz")){*value=armNsToTicks(1000000000ull);return 1;}
     if(!strcmp(name,"ticks")){*value=armGetSystemTick();return 1;}
     if(!strcmp(name,"core")){*value=svcGetCurrentProcessorNumber();return 1;}
     if(!strcmp(name,"core_mask"))id=InfoType_CoreMask;
@@ -409,7 +410,7 @@ int main(void){
     consoleInit(NULL);
     padConfigureInput(1,HidNpadStyleSet_NpadStandard);
     PadState pad;padInitializeDefault(&pad);
-    printf("EXODUS Diagnostic Shell R05\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
+    printf("EXODUS Diagnostic Shell R06\nTrusted isolated LAN only. No encryption.\nA: listen for one PC; PLUS: exit.\n");
     bool approve=false;
     while(appletMainLoop()){
         padUpdate(&pad);u64 keys=padGetButtonsDown(&pad);

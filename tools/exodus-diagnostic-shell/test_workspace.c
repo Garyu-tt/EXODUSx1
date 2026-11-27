@@ -17,6 +17,14 @@ int main(void){
     assert(!strcmp(ws_put(&w,"extra","r0=1;"),"full"));
     assert(!ws_rm(&w,"test")&&!ws_find(&w,"test"));
     assert(!ws_put(&w,"extra","r0=1;"));
+    assert(!ws_run("r0=0; repeat 16 { m[r0]=r0; m[r0]*=r0; r0+=1; } r1=m[15]; r1/=5; r2=m[3]; r2%=4;",probe,&r));
+    assert(r.r[0]==16&&r.r[1]==45&&r.r[2]==1&&r.mem[15]==225);
+    assert(!ws_run("repeat 2 { repeat 3 { r0+=1; } }",probe,&r)&&r.r[0]==6);
+    assert(!ws_run("r0=m[15];",probe,&r)&&r.r[0]==0);
+    prior=r;
+    const char *bad2[]={"repeat 0 {r0=1;}","repeat 1025 {r0=1;}","repeat 2 {r0=1;","repeat 1024 {repeat 1024 {}}","repeat 1 {repeat 1 {repeat 1 {repeat 1 {repeat 1 {r0=1;}}}}}","m[256]=1;","r0=256; m[r0]=1;","r0=m[256];","r0/=0;","r0%=0;","r0=1; }"};
+    for(unsigned i=0;i<sizeof bad2/sizeof *bad2;i++){assert(ws_run(bad2[i],probe,&r));assert(!memcmp(&r,&prior,sizeof r));}
+    assert(!strcmp(ws_run("repeat 1024 {repeat 1024 {}}",probe,&r),"step_limit"));
     /* Ensure underlying numeric VM remains usable as well. */
     TdaVm vm;assert(!tda_vm_run("1 0 7 0",&vm)&&vm.reg[0]==7);
     puts("workspace, editing, bounded interpreter, read-only probe and transactional errors PASS");
