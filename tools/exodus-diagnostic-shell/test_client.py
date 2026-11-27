@@ -57,3 +57,6 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(plan("repeat run bench 3"),["run bench"]*3)
         for cmd in ("repeat run ../x 3","repeat run bench 11","repeat run bench 0"):
             with self.assertRaises(ValueError):plan(cmd)
+
+    def test_probe_inventory(self):
+        self.assertEqual(plan("probes"),["probes"])
