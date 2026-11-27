@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/tegra-freebsd-direct-a9.yml'
       - 'exodus/tests/tumor_freebsd_direct_a9.*'
+      - 'exodus/tests/tumor_qemu_boot_observer.py'
 permissions:
   contents: read
 jobs:
@@ -70,6 +71,9 @@ jobs:
           tr -d '\r' < evidence/extraction.log | grep -Fxq EXODUS_KERNEL_EXPORT_PASS
           mcopy -i export.img ::/KERNEL.ELF kernel.elf
           printf '%s  %s\n' 0c535d1cbe4640c676531b0a9fcca9eef704e008521d858541e72f9a88d2806d kernel.elf | sha256sum -c -
+          arm-linux-gnueabihf-readelf -h -l kernel.elf > evidence/kernel-headers.log
+          arm-linux-gnueabihf-nm -n kernel.elf > evidence/kernel-symbols.log
+          cp kernel.elf evidence/kernel.elf
           python3 exodus/tests/tumor_freebsd_direct_a9.py kernel.elf evidence | tee evidence/load-plan.log
           arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_freebsd_direct_a9.S -o handoff.o
           arm-linux-gnueabihf-ld -Ttext=0x60010000 -e _start handoff.o -o handoff.elf
@@ -78,12 +82,7 @@ jobs:
       - name: Attempt direct real kernel entry without EFI or root disk
         run: |
           set -o pipefail
-          set +e
-          timeout 60s qemu-system-arm -M vexpress-a9 -cpu cortex-a9 -m 1024 -smp 1 -nographic -monitor none -serial stdio -nic none -no-reboot -device loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on -device loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on -device loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on 2>&1 | tee evidence/direct-boot.log
-          status=${PIPESTATUS[0]}
-          set -e
-          echo "QEMU exit status: $status" | tee -a evidence/direct-boot.log
-          case "$status" in 0|124) ;; *) exit 1;; esac
+          timeout 90s python3 exodus/tests/tumor_qemu_boot_observer.py evidence
           grep -E 'FreeBSD 15\.1-RELEASE.*GENERIC arm' evidence/direct-boot.log
           echo 'PASS: actual FreeBSD kernel banner reached by direct ARM handoff'
       - name: Preserve experimental evidence
@@ -94,4 +93,5 @@ jobs:
           path: |
             evidence/*.log
             evidence/*.dtb
+            evidence/kernel.elf
           if-no-files-found: warn
