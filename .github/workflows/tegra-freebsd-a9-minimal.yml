@@ -1,0 +1,94 @@
+name: Tegra FreeBSD minimal A9 kernel source build R56
+on:
+  workflow_dispatch:
+  push:
+    branches: [docs/tegra-research-evidence-r01]
+    paths:
+      - '.github/workflows/tegra-freebsd-a9-minimal.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: freebsd/freebsd-src
+          ref: 96841ea08dcfa84b954a32dc5ae1a26c28966cf4
+          path: freebsd
+          persist-credentials: false
+      - name: Install cross-build prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang-19 lld-19 llvm-19 build-essential bison flex libarchive-dev libbz2-dev libssl-dev zlib1g-dev liblzma-dev python3
+          mkdir -p evidence obj
+      - name: Prepare reduced kernel and source UART correction
+        run: |
+          set -o pipefail
+          test "$(git -C freebsd rev-parse HEAD)" = 96841ea08dcfa84b954a32dc5ae1a26c28966cf4
+          sed 's/^ident EXODUS_A9_REF$/ident EXODUS_A9_MIN/' exodus/tests/EXODUS_A9_REF > freebsd/sys/arm/conf/EXODUS_A9_MIN
+          cat >> freebsd/sys/arm/conf/EXODUS_A9_MIN <<'EOF'
+          # R56: local UFS root reference; omit unused filesystems and legacy IPC.
+          nooptions NFS_ROOT
+          nooptions NFSLOCKD
+          nooptions NFSCL
+          nooptions CD9660
+          nooptions PROCFS
+          nooptions SYSVSHM
+          nooptions SYSVMSG
+          nooptions SYSVSEM
+          EOF
+          grep -Fx 'ident EXODUS_A9_MIN' freebsd/sys/arm/conf/EXODUS_A9_MIN
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("freebsd/sys/arm/qemu/virt_machdep.c")
+          s=p.read_text()
+          old="devmap_add_entry(0x1c090000, 0x100000); /* Uart */"
+          assert s.count(old)==1
+          p.write_text(s.replace(old,"devmap_add_entry(0x10000000, 0x100000); /* QEMU vexpress-a9 UART reference */"))
+          PY
+          git -C freebsd diff | tee evidence/source-patch.log
+          cp freebsd/sys/arm/conf/EXODUS_A9_MIN evidence/
+      - name: Build reduced kernel using pinned release source
+        run: |
+          set -o pipefail
+          export MAKEOBJDIRPREFIX="$PWD/obj"
+          export XCC=/usr/bin/clang-19 XCXX=/usr/bin/clang++-19 XCPP=/usr/bin/clang-cpp-19 XLD=/usr/bin/ld.lld-19
+          cd freebsd
+          python3 tools/build/make.py --cross-bindir=/usr/lib/llvm-19/bin -j4 TARGET=arm TARGET_ARCH=armv7 KERNCONF=EXODUS_A9_MIN -DNO_MODULES kernel-toolchain 2>&1 | tee ../evidence/toolchain.log
+          python3 tools/build/make.py --cross-bindir=/usr/lib/llvm-19/bin -j4 TARGET=arm TARGET_ARCH=armv7 KERNCONF=EXODUS_A9_MIN -DNO_MODULES buildkernel 2>&1 | tee ../evidence/buildkernel.log
+      - name: Inspect source-built ELF
+        run: |
+          set -o pipefail
+          kernel="$(find obj -path '*/EXODUS_A9_MIN/kernel' -type f -print -quit)"
+          test -n "$kernel"
+          cp "$kernel" evidence/kernel.elf
+          llvm-readelf-19 -h -l evidence/kernel.elf | tee evidence/kernel-headers.log
+          sha256sum evidence/kernel.elf | tee evidence/kernel.sha256
+          stat -c '%s bytes' evidence/kernel.elf
+          llvm-size-19 evidence/kernel.elf | tee evidence/kernel-size.log
+          python3 - <<'PY' | tee evidence/load-span.log
+          import struct
+          from pathlib import Path
+          b=Path('evidence/kernel.elf').read_bytes()
+          h=struct.unpack_from('<16sHHIIIIIHHHHHH',b)
+          assert h[0][:7]==b'\x7fELF\x01\x01\x01' and h[1:4]==(2,40,1)
+          phoff, phsize, phnum=h[5],h[9],h[10]
+          assert phsize==32 and phoff+phsize*phnum<=len(b)
+          segs=[struct.unpack_from('<8I',b,phoff+i*phsize) for i in range(phnum)]
+          loads=[p for p in segs if p[0]==1]
+          assert loads and min(p[2] for p in loads)==0xc0000000
+          span=max(p[2]+p[5] for p in loads)-min(p[2] for p in loads)
+          print(f'load_span_bytes={span} baseline=7028736 delta={7028736-span}')
+          PY
+          echo 'PASS: reduced FreeBSD source kernel built; boot not tested'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: a9-minimal-source-build-r56
+          path: evidence/
+          if-no-files-found: warn
