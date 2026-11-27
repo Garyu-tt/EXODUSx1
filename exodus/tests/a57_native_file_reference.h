@@ -12,6 +12,7 @@
 enum { F_SIZE=64, F_OPEN=5,F_READ=3,F_WRITE=4,F_CLOSE=6 };
 static int ffd=-1;
 static unsigned fseq;
+static int fcreated;
 static char fdir[]="/var/tmp/exodus-fio.XXXXXX";
 static char fpath[128];
 static void fcleanup(void){
@@ -32,13 +33,20 @@ static int fio(const uint8_t q[64],uint8_t r[64]){
     ssize_t result=-1;
     if(op==F_OPEN){
         if(ffd>=0){errno=EBUSY;}
-        else if(!fseq){
-            if(!mkdtemp(fdir))return 0;
-            if(snprintf(fpath,sizeof fpath,"%s/data",fdir)<0)return 0;
-            if(atexit(fcleanup))return 0;
-            ffd=open(fpath,O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW,0600);
-            if(ffd>=0)result=3;
-        }else {ffd=open(fpath,O_RDONLY|O_NOFOLLOW);if(ffd>=0)result=3;}
+        else {
+            if(!fpath[0]){
+                if(!mkdtemp(fdir))return 0;
+                int count=snprintf(fpath,sizeof fpath,"%s/data",fdir);
+                if(count<0||(size_t)count>=sizeof fpath||atexit(fcleanup)){
+                    rmdir(fdir);fpath[0]=0;
+                    memcpy(fdir,"/var/tmp/exodus-fio.XXXXXX",sizeof fdir);
+                    return 0;
+                }
+            }
+            ffd=fcreated?open(fpath,O_RDONLY|O_NOFOLLOW):
+                open(fpath,O_RDWR|O_CREAT|O_EXCL|O_NOFOLLOW,0600);
+            if(ffd>=0){fcreated=1;result=3;}
+        }
     }else if(ffd<0)errno=EBADF;
     else if(op==F_WRITE)result=write(ffd,q+32,n);
     else if(op==F_READ)result=read(ffd,r+32,n);
