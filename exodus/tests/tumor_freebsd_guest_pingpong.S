@@ -77,11 +77,12 @@ parent_loop:
     bcs fail
     mov r0,#1
     ldr r1,=message
-    mov r2,#message_end-message
+    ldr r2,=message_end-message
     mov r7,#4
     svc #0
     bcs fail
-    cmp r0,#message_end-message
+    ldr r2,=message_end-message
+    cmp r0,r2
     bne fail
     mov r0,#0
     b exit
