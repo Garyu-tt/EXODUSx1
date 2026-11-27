@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [docs/tegra-research-evidence-r01]
-    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c', 'exodus/tests/tumor_doorbell_reference.c', 'exodus/tests/tumor_doorbell_wakeup_model.c']
+    paths: ['.github/workflows/tegra-rcm-reference.yml', 'exodus/tests/rcm_ipc_reference.py', 'exodus/tests/tumor_mailbox_recovery_reference.c', 'exodus/tests/tumor_atomic_isa_reference.c', 'exodus/tests/tumor_ipc32_reference.c', 'exodus/tests/tumor_ipc32_cache_model.c', 'exodus/tests/tumor_ipc32_order_model.c', 'exodus/tests/tumor_ipc32_transport_model.c', 'exodus/tests/tumor_ipc32_platform_contract.c', 'exodus/tests/tumor_cache_isa_reference.c', 'exodus/tests/tumor_doorbell_reference.c', 'exodus/tests/tumor_doorbell_wakeup_model.c', 'exodus/tests/tumor_adsp_recovery_model.c']
 permissions:
   contents: read
 jobs:
@@ -24,6 +24,11 @@ jobs:
           ref: d6b9524ddba5aa429835934db4da685f45ddfaf4
           path: tumor-reference
           persist-credentials: false
+      - name: Test abstract ADSP session recovery policy
+        run: |
+          set -o pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror -I tumor-reference/exodus/frankenstein exodus/tests/tumor_adsp_recovery_model.c -o /tmp/tumor-adsp-recovery-model
+          timeout 10s /tmp/tumor-adsp-recovery-model | tee tumor-adsp-recovery-model.log
       - name: Test advisory IRQ lost-wakeup model
         run: |
           set -o pipefail
@@ -146,6 +151,7 @@ jobs:
           path: |
             cache-reference/*.txt
             atomic-reference/*.txt
+            tumor-adsp-recovery-model.log
             tumor-doorbell-wakeup-model.log
             tumor-doorbell-reference.log
             tumor-ipc32-platform-contract.log
