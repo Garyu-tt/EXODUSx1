@@ -1,0 +1,250 @@
+name: EXODUS A9 functional service baseline
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/tegra-freebsd-a9-services.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  memory:
+    runs-on: ubuntu-latest
+    env:
+      RAM_MIB: '512'
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: a9-reduced-source-build
+          run-id: '46045173543'
+          github-token: ${{ github.token }}
+          path: prior
+      - name: Prepare pinned source-built kernel
+        run: |
+          set -o pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends qemu-system-arm dosfstools mtools gcc-arm-linux-gnueabihf device-tree-compiler python3 curl xz-utils expect clang lld
+          mkdir -p evidence
+          python3 exodus/tests/tumor_freebsd_source_load.py prior/kernel.elf evidence --sha256 e32e0e0120720464ef0789e4e3d6d85fb823a34fb63d3e7e16c8dba5b51b312f --ram-mib "$RAM_MIB" | tee evidence/load-plan.log
+          test "$(cat evidence/entry.txt)" = 0x61000200
+          arm-linux-gnueabihf-objdump -d --disassemble=gem5_devmap_init prior/kernel.elf | tee evidence/source-devmap.log
+          arm-linux-gnueabihf-gcc -mcpu=cortex-a9 -marm -c exodus/tests/tumor_freebsd_direct_a9.S -o handoff.o
+          arm-linux-gnueabihf-ld -Ttext=0x60010000 -e _start handoff.o -o handoff.elf
+          arm-linux-gnueabihf-objcopy -O binary handoff.elf handoff.bin
+          python3 - <<'PY'
+          import os,pathlib
+          source=pathlib.Path("exodus/tests/tumor_a9_root_reference.dts").read_text()
+          old="reg = <0x60000000 0x40000000>;"
+          assert source.count(old)==1
+          ram=int(os.environ["RAM_MIB"])
+          assert source.count("FreeBSD: vfs.root.mountfrom=")==1
+          source=source.replace("FreeBSD: vfs.root.mountfrom=", "FreeBSD: -s vfs.root.mountfrom=")
+          pathlib.Path("evidence/board.dts").write_text(source.replace(old, f"reg = <0x60000000 {ram*1024*1024:#x}>;"))
+          PY
+          dtc -I dts -O dtb -o evidence/board.dtb evidence/board.dts
+          fdtget -t x evidence/board.dtb /memory@60000000 reg | tee evidence/memory-map.log
+      - name: Download verified disposable root disk
+        run: |
+          image=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 300 "https://download.freebsd.org/releases/arm/armv7/ISO-IMAGES/15.1/$image.xz" -o "$image.xz"
+          printf '%s  %s\n' d568d7324825af9072405b11b7d0f4ba892d10ca05687fe4fd65e328e72cf7b8 "$image.xz" | sha256sum -c -
+          printf '%s  %s\n' a50077a25a44a38cf3ff55b0a6e3da839ea96b829e5d975f27e1f3c0a6f0f68ef97a7d5ce845f3f0d76fce800814e57ff9c3499d518257210eb7e32913c720f5 "$image.xz" | sha512sum -c -
+          xz -dk "$image.xz"
+      - name: Prepare disposable service test seed
+        run: |
+          set -euo pipefail
+          cat > services.sh <<'EOF'
+          #!/bin/sh
+          set -eu
+          d=/var/tmp/exodus-services
+          mkdir -m 700 "$d"
+          trap 'if test -s "$d/sshd.pid"; then kill "$(cat "$d/sshd.pid")" 2>/dev/null || :; fi' EXIT
+          test "$(uname -s)" = FreeBSD
+          uname -v | grep EXODUS_A9_REF
+          sysctl -n hw.model | grep -i cortex-a9
+          mkdir -p "$d/storage"
+          printf '%s\n' 'EXODUS persistent test' > "$d/storage/payload"
+          hash=$(sha256 -q "$d/storage/payload")
+          sync
+          mv "$d/storage/payload" "$d/storage/committed"
+          test "$(sha256 -q "$d/storage/committed")" = "$hash"
+          echo EXODUS_STORAGE_PASS
+          ifconfig lo0 inet 127.0.0.1 up
+          ping -c 1 -t 5 127.0.0.1
+          echo EXODUS_LOOPBACK_PASS
+          # Single-user boot has not initialized /etc/rc services.
+          step=account
+          trap 'rc=$?; echo "EXODUS_SERVICE_RESULT=$rc stage=$step"; if test -s "$d/sshd.pid"; then kill "$(cat "$d/sshd.pid")" 2>/dev/null || :; fi' EXIT
+          mkdir -p /home /var/run /var/empty
+          test -w /etc/master.passwd
+          pw useradd -n exodusprobe -u 60001 -m -s /bin/sh -w random > "$d/pw.log" 2>&1 || { cat "$d/pw.log" >&2; exit 1; }
+          rm -f "$d/pw.log"
+          test "$(id -u exodusprobe)" = 60001
+          echo EXODUS_ACCOUNT_PASS
+          step=keys
+          ssh-keygen -q -t ed25519 -N '' -f "$d/host"
+          ssh-keygen -q -t ed25519 -N '' -f "$d/client"
+          echo EXODUS_KEYS_PASS
+          step=config
+          mkdir -p /var/run
+          if ! test -d /var/empty; then
+              install -d -o root -g wheel -m 755 /var/empty
+          fi
+          # Preserve FreeBSD's protected (schg) privilege separation directory.
+          test ! -L /var/empty
+          ls -ldo /var/empty
+          test "$(stat -f %u /var/empty)" = 0
+          mode=$(stat -f %Lp /var/empty)
+          test "$((0$mode & 022))" = 0
+          cp "$d/client.pub" /home/exodusprobe/authorized_keys
+          chown exodusprobe /home/exodusprobe/authorized_keys
+          chmod 600 /home/exodusprobe/authorized_keys
+          awk '{print "[127.0.0.1]:2222 "$1" "$2}' "$d/host.pub" > "$d/known_hosts"
+          cat > "$d/sshd.conf" <<CONF
+          Port 2222
+          ListenAddress 127.0.0.1
+          AddressFamily inet
+          HostKey $d/host
+          PidFile $d/sshd.pid
+          PermitRootLogin no
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PubkeyAuthentication yes
+          AuthorizedKeysFile %h/authorized_keys
+          UsePAM no
+          PermitEmptyPasswords no
+          AllowTcpForwarding no
+          AllowAgentForwarding no
+          X11Forwarding no
+          PermitTunnel no
+          AllowUsers exodusprobe
+          PermitTTY no
+          PermitUserRC no
+          CONF
+          client() {
+              ssh -F /dev/null -4 -T -p 2222 -i "$d/client" \
+                  -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=5 \
+                  -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$d/known_hosts" \
+                  -o GlobalKnownHostsFile=/dev/null exodusprobe@127.0.0.1 "$@"
+          }
+          start_server() {
+              step=sshd-config
+              /usr/sbin/sshd -t -e -f "$d/sshd.conf"
+              step=sshd-launch
+              /usr/sbin/sshd -E "$d/sshd.log" -f "$d/sshd.conf" || { cat "$d/sshd.log" >&2; return 1; }
+              step=sshd-pid
+              i=0
+              while ! test -s "$d/sshd.pid"; do
+                  i=$((i+1))
+                  if test "$i" -ge 15; then cat "$d/sshd.log" >&2; return 1; fi
+                  sleep 1
+              done
+              kill -0 "$(cat "$d/sshd.pid")" || { cat "$d/sshd.log" >&2; return 1; }
+              step=sshd-listen
+              sockstat -4 -l | grep ':2222' || { cat "$d/sshd.log" >&2; return 1; }
+          }
+          stop_server() {
+              pid=$(cat "$d/sshd.pid")
+              kill "$pid"
+              i=0
+              while kill -0 "$pid" 2>/dev/null; do
+                  i=$((i+1))
+                  test "$i" -lt 20
+                  sleep 1
+              done
+              rm -f "$d/sshd.pid"
+          }
+          start_server
+          echo EXODUS_SSHD_STARTED
+          step=auth
+          test "$(client 'id -u')" = 60001
+          rc=0
+          client 'exit 23' || rc=$?
+          test "$rc" = 23
+          echo EXODUS_SSH_AUTH_PASS
+          step=restart
+          stop_server
+          rc=0
+          client 'exit 0' || rc=$?
+          test "$rc" = 255
+          start_server
+          test "$(client 'printf "%s" EXODUS_RESTART_OK')" = EXODUS_RESTART_OK
+          stop_server
+          echo EXODUS_SERVICE_RESTART_PASS
+          sync
+          echo EXODUS_SERVICES_PASS
+          EOF
+          sh -n services.sh
+          truncate -s 8M seed.img
+          mkfs.vfat -n EXODUSSEED seed.img
+          mcopy -i seed.img services.sh ::
+      - name: Boot source-built A9 and verify local system services
+        run: |
+          set -o pipefail
+          cat > boot.exp <<'EOF'
+          set timeout 180
+          set ram $env(RAM_MIB)
+          spawn -noecho qemu-system-arm -M vexpress-a9 -cpu cortex-a9 -m $ram -smp 1 -display none -serial stdio -monitor none -nic none -no-reboot -device loader,file=evidence/kernel.bin,addr=0x61000000,force-raw=on -device loader,file=evidence/board.dtb,addr=0x60040000,force-raw=on -device loader,file=handoff.bin,addr=0x60010000,cpu-num=0,force-raw=on -drive if=none,id=root,file=FreeBSD-15.1-RELEASE-arm-armv7-GENERICSD.img,format=raw,snapshot=on -device virtio-blk-device,drive=root -drive if=none,id=seed,file=seed.img,format=raw,readonly=on -device virtio-blk-device,drive=seed
+          proc fail {message} {
+              puts stderr $message
+              catch {exec kill -TERM [exp_pid]}
+              catch {close}
+              catch {wait}
+              exit 1
+          }
+          expect {
+              -re {mountroot> *} {send -- "ufs:/dev/ufs/rootfs\r"; exp_continue -continue_timer}
+              -re {Enter full pathname of shell or RETURN for /bin/sh: *} {send -- "\r"}
+              -re {(?i)panic:} {fail "A9 kernel panic before single user"}
+              timeout {fail "A9 single-user shell selection timeout"}
+              eof {fail "A9 emulator exited before single user"}
+          }
+          set timeout 90
+          expect {
+              -re {(?m)^(root@[^\r\n]* )?# *$} {}
+              -re {(?i)panic:|failed to reclaim memory} {fail "A9 single-user memory failure"}
+              timeout {fail "A9 single-user prompt timeout"}
+              eof {fail "A9 emulator exited before prompt"}
+          }
+          proc gate {command marker} {
+              send -- "$command\r"
+              expect {
+                  -re "(?m)^$marker\\r*$" {}
+                  -re {(?m)^EXODUS_SERVICE_RESULT=[1-9][0-9]* stage=[a-z-]+\r*\n} {fail "Service script failed: $expect_out(0,string)"}
+                  timeout {fail "A9 command gate failed: $marker"}
+                  eof {fail "A9 emulator exited: $marker"}
+              }
+              expect {
+                  -re {(?m)^(root@[^\r\n]* )?# *$} {}
+                  timeout {fail "A9 prompt after command missing"}
+                  eof {fail "A9 emulator exited after command"}
+              }
+          }
+          gate {printf '%s%s\n' EXODUS_SHELL_ READY} EXODUS_SHELL_READY
+          gate {/bin/sh -c 'set -e; uname -a; sysctl hw.model hw.physmem hw.realmem hw.pagesize; test "$(uname -s)" = FreeBSD; test "$(uname -p)" = armv7; uname -v | grep EXODUS_A9_REF; sysctl -n hw.model | grep -i cortex-a9; printf "%s%s\n" EXODUS_ID_ PASS'} EXODUS_ID_PASS
+          gate {/bin/sh -c 'set -e; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; mount; printf "%s%s\n" EXODUS_VM_ PASS'} EXODUS_VM_PASS
+          gate {/bin/sh -c 'set -e; test -r /etc/rc; sha256 /bin/sh; (uname -p) & child=$!; wait $child; sysctl vm.stats.vm.v_free_count vm.stats.vm.v_wire_count; printf "%s%s\n" EXODUS_A9_REDUCED_ PASS'} EXODUS_A9_REDUCED_PASS
+          gate {mount -uw / && printf '%s%s\n' EXODUS_WRITABLE_ PASS} EXODUS_WRITABLE_PASS
+          gate {mkdir -p /mnt/exodus-seed && mount -t msdosfs -o ro /dev/msdosfs/EXODUSSEED /mnt/exodus-seed && printf '%s%s\n' EXODUS_SEED_ PASS} EXODUS_SEED_PASS
+          set timeout 300
+          gate {sh /mnt/exodus-seed/services.sh; rc=$?; test "$rc" = 0 && printf '%s%s\n' EXODUS_SERVICE_ EXIT_OK} EXODUS_SERVICE_EXIT_OK
+          catch {exec kill -TERM [exp_pid]}
+          catch {close}
+          catch {wait}
+          exit 0
+          EOF
+          timeout 9m expect boot.exp 2>&1 | tee evidence/userspace.log
+          tr -d '\r' < evidence/userspace.log | grep -Fxq EXODUS_A9_REDUCED_PASS
+          for marker in EXODUS_STORAGE_PASS EXODUS_LOOPBACK_PASS EXODUS_SSH_AUTH_PASS EXODUS_SERVICE_RESTART_PASS EXODUS_SERVICES_PASS EXODUS_SERVICE_EXIT_OK; do
+            tr -d '\r' < evidence/userspace.log | grep -Fxq "$marker"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exodus-a9-service-evidence
+          path: evidence/*.log
+          if-no-files-found: warn
