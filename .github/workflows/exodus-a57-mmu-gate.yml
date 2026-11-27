@@ -1,4 +1,4 @@
-name: EXODUS R111 ELF-derived MMU runtime gate
+name: EXODUS R112 ELF MMU and C startup gate
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -367,6 +367,88 @@ jobs:
           test "$(grep -Fxc 'PASS: ELF-derived EL0 entry, R/RX/RW, BSS and stack' ELF-MMU-RESULTS.txt)" = 2
           test "$(grep -Fxc 'PASS: independent ELF contexts' ELF-MMU-RESULTS.txt)" = 1
           test "$(grep -Fxc R110_ELF_MMU_PASS ELF-MMU-RESULTS.txt)" = 1
+      - name: Run C process startup and private thread pointer on ELF MMU
+        run: |
+          set -euo pipefail
+          cp -a elf-mmu-gate start-gate
+          cd start-gate
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          def rep(old,new):
+              global s
+              assert s.count(old)==1, old
+              s=s.replace(old,new)
+          rep('static uint64_t entry;', '''static uint64_t entry;
+          #define STACK_OFF (VECTOR*P-256u)
+          #define TP_OFF (0x20100u)
+          static void prepare_start(unsigned c){
+              uint64_t sp=VA+STACK_OFF;
+              uint64_t words[]={2,sp+128,sp+136,0,sp+144,0,6,4096,9,entry,0,0};
+              memcpy(mem[c]+STACK_OFF,words,sizeof words);
+              memcpy(mem[c]+STACK_OFF+128,"exodus",7);
+              memcpy(mem[c]+STACK_OFF+136,c?"lane-2":"lane-1",7);
+              memcpy(mem[c]+STACK_OFF+144,"MODE=TEST",10);
+              uint64_t v=c+1;
+              memcpy(mem[c]+TP_OFF,&v,sizeof v);
+          }''')
+          # Move helper after declarations of memcpy to avoid implicit prototypes if needed.
+          rep('WRITE(sp_el0,VA+VECTOR*P);','WRITE(sp_el0,VA+STACK_OFF);WRITE(tpidr_el0,VA+TP_OFF);')
+          rep('entry=p.entry;','entry=p.entry;prepare_start(c);')
+          rep('msg("PASS: ELF-derived EL0 entry, R/RX/RW, BSS and stack\\n");','if(load(ctx,TP_OFF)!=0x900+ctx+1)fail("private thread data");\n    if(ctx==0&&load(1,TP_OFF)!=2)fail("thread isolation");\n    if(ctx==1&&load(0,TP_OFF)!=0x901)fail("thread state changed");\n    msg("PASS: C startup stack and private thread pointer\\n");')
+          rep('R110_ELF_MMU_PASS','R112_START_PASS')
+          p.write_text(s)
+          p=Path("bare/elf_guest.S")
+          s=p.read_text()
+          old='_start:\n'
+          assert s.count(old)==1
+          p.write_text(s.replace(old,old+'    mov x0,sp\n    bl start_check\n    cbnz x0,bad\n'))
+          PY
+          cat > bare/start_check.c <<'EOF'
+          #include <stdint.h>
+          static int eq(const char *a,const char *b){
+              while(*a&&*a==*b){a++;b++;}
+              return *a==*b;
+          }
+          int start_check(const uint64_t *sp){
+              if(((uintptr_t)sp&15)||sp[0]!=2||sp[3]||sp[5]||
+                 sp[6]!=6||sp[7]!=4096||sp[8]!=9||sp[9]!=0x201000||sp[10]||sp[11])return 1;
+              uintptr_t tp;
+              __asm__ volatile("mrs %0,tpidr_el0":"=r"(tp));
+              if(tp!=0x220100)return 2;
+              volatile uint64_t *thread=(void *)tp;
+              uint64_t lane=*thread;
+              if(lane<1||lane>2)return 3;
+              if(sp[1]!=(uintptr_t)sp+128||sp[2]!=(uintptr_t)sp+136||sp[4]!=(uintptr_t)sp+144)return 4;
+              if(!eq((const char *)(uintptr_t)sp[1],"exodus")||
+                 !eq((const char *)(uintptr_t)sp[2],lane==1?"lane-1":"lane-2")||
+                 !eq((const char *)(uintptr_t)sp[4],"MODE=TEST"))return 5;
+              *thread=0x900+lane;
+              return 0;
+          }
+          EOF
+          mkdir -p build
+          clang --target=aarch64-unknown-freebsd15.1 -mcpu=cortex-a57 -c bare/elf_guest.S -o build/elf_guest.o
+          clang --target=aarch64-unknown-freebsd15.1 -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -c bare/start_check.c -o build/start_check.o
+          ld.lld -T bare/elf_guest.ld --fatal-warnings -o build/guest.elf build/elf_guest.o build/start_check.o
+          printf '.section .rodata.image,"a"\n.global image_start,image_end\nimage_start: .incbin "build/guest.elf"\nimage_end:\n' > build/image.S
+          flags=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${flags[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/elf-mmu.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          readelf -lW build/guest.elf
+          rc=0
+          timeout 15s /usr/bin/qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/elf-mmu.elf > ELF-MMU-RESULTS.txt 2>&1 || rc=$?
+          cat ELF-MMU-RESULTS.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' ELF-MMU-RESULTS.txt
+          test "$(grep -Fxc 'PASS: C startup stack and private thread pointer' ELF-MMU-RESULTS.txt)" = 2
+          test "$(grep -Fxc 'PASS: independent ELF contexts' ELF-MMU-RESULTS.txt)" = 1
+          test "$(grep -Fxc R112_START_PASS ELF-MMU-RESULTS.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -374,4 +456,5 @@ jobs:
           path: |
             mmu-gate/
             elf-mmu-gate/
+            start-gate/
           if-no-files-found: warn
