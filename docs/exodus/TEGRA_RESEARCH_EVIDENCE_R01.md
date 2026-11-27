@@ -144,3 +144,7 @@ R11 verified [CI 46016656957](https://github.com/Garyu-tt/EXODUSx1/actions/runs/
 ## R13 — Emulated CPU0 reset and retained mailbox
 
 R12 verified [CI 46018220510](https://github.com/Garyu-tt/EXODUSx1/actions/runs/46018220510), job 140570757266, tested commit 9d16193, raw log final IPC and ring PASS, artifact 15207580743. R13 fixture 0aa605ff307cdd6f0941536f67d8f2c44fe219 uses upstream fixture's existing CPU0 hold/release helpers for a second boot in the disposable emulator. Host retains mailbox data, checks no response during held reset, then expects old generation 8 rejection and new generation 9 result, plus untouched sentinel. Recovery uses a separate minimal test entry, not a reboot of FreeBSD or Horizon. Reset failure propagates to the required ring marker. No physical access or deployment. R13 runtime pending.
+
+## R14 — R13 fixture preparation repair
+
+[Run 46018477969](https://github.com/Garyu-tt/EXODUSx1/actions/runs/46018477969), job 140571647452, failed before synthetic CPU reset execution. Upstream build and regression suites succeeded. Raw log identifies RuntimeError in replace_once: the entry-label anchor contained a literal backslash-n rather than a newline. Verified the actual pinned upstream cpu0.S contains exactly one matching entry anchor. Corrected escaping in commit ca29cc7da74ee2c6a94c9fc84b8866501ea12555; runtime recovery remains unverified until the replacement CI completes. No physical access; no physical admission promoted.
