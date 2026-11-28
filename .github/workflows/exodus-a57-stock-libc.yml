@@ -1,4 +1,4 @@
-name: EXODUS R133 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R134 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -719,7 +719,7 @@ jobs:
           from pathlib import Path
           import re
           s=Path("sysroot/usr/include/sys/sysctl.h").read_text()
-          names=["CTL_HW","HW_NCPU","HW_PAGESIZE","CTL_KERN","KERN_OSRELDATE"]
+          names=["CTL_HW","HW_NCPU","HW_PAGESIZE","CTL_KERN","KERN_OSRELDATE","KERN_ARND"]
           out=[]
           for name in names:
               m=re.search(r"(?m)^\s*#\s*define\s+"+name+r"\s+([0-9]+)\b",s)
@@ -745,6 +745,14 @@ jobs:
           Path("evidence/first-mib.txt").write_text(str(matches[0])+"\n")
           PY
           cd evidence/runtime-sysctl
+          # CI-only entropy fixture, generated once per run from host OS.
+          # Never use this image for production: embedded bytes are not secret.
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          Path("build/test-entropy.bin").write_bytes(os.urandom(16384))
+          PY
+          printf '\n.section .rodata.testentropy,"a"\n.global entropy_start,entropy_end\nentropy_start: .incbin "build/test-entropy.bin"\nentropy_end:\n' >> build/image.S
           python3 - <<'PY'
           from pathlib import Path
           p=Path("bare/monitor.c")
@@ -757,12 +765,29 @@ jobs:
               uint64_t ps=READ(spsr_el1);
               WRITE(spsr_el1,error?ps|(UINT64_C(1)<<29):ps&~(UINT64_C(1)<<29));ISB();
           }
-          /* Only read-only numeric system properties of this one-vCPU reference. */
+          extern const uint8_t entropy_start[],entropy_end[];
+          static size_t entropy_used;
+          /* CI-only finite entropy input. No fallback to clocks or fixed seed. */
+          static void sysctl_entropy(uint64_t *r){
+              if(!r[3]||!user_range(r[3],8,6)){sysret(r,14,1);return;}
+              uint64_t cap=rd(mem+r[3]-VA,8),actual=cap<256?cap:256;
+              if(!r[2]){actual=256;memcpy(mem+r[3]-VA,&actual,8);sysret(r,0,0);return;}
+              if(!user_range(r[2],actual,6)){sysret(r,14,1);return;}
+              size_t available=(uintptr_t)entropy_end-(uintptr_t)entropy_start;
+              if(entropy_used>available||actual>available-entropy_used){sysret(r,5,1);return;}
+              memcpy(mem+r[2]-VA,entropy_start+entropy_used,(size_t)actual);
+              entropy_used+=(size_t)actual;
+              memcpy(mem+r[3]-VA,&actual,8);
+              sysret(r,0,0);
+              msg("PASS: sysctl read-only kern.arandom CI entropy bytes=");hex(actual);msg("\n");
+          }
+          /* Only read-only properties of this one-vCPU reference. */
           static int sysctl_read(uint64_t *r){
               if(r[1]!=2||!user_range(r[0],8,4)){sysret(r,22,1);return 1;}
               uint32_t mib[2];memcpy(mib,mem+r[0]-VA,sizeof mib);
               msg("SYSCTL_MIB ");hex(mib[0]);msg(" ");hex(mib[1]);msg("\n");
               if(r[4]||r[5]){sysret(r,1,1);return 1;}
+              if(mib[0]==EX_CTL_KERN&&mib[1]==EX_KERN_ARND){sysctl_entropy(r);return 1;}
               uint32_t value;
               const char *label;
               if(mib[0]==EX_CTL_HW&&mib[1]==EX_HW_NCPU){value=1;label="hw.ncpu";}
