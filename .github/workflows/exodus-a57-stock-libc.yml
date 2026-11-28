@@ -1,4 +1,4 @@
-name: EXODUS R120 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R121 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -231,6 +231,18 @@ jobs:
           mkdir -p evidence/runtime/bare evidence/runtime/build
           cp evidence/admission/{elf64_loader.c,elf64_loader.h,elf64_page_plan.c,elf64_page_plan.h,a57_s1.c,a57_s1.h,a57_s2.c,a57_s2.h} evidence/runtime/
           cp accepted/tls-gate/bare/{boot.S,link.ld,string.h} evidence/runtime/bare/
+          # FreeBSD arm64 CRT entry receives the initial stack address in x0
+          # and the optional rtld cleanup function in x1 (NULL for static).
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("evidence/runtime/bare/boot.S")
+          s=p.read_text()
+          old="enter_guest:\n    eret"
+          assert s.count(old)==1
+          s=s.replace(old,"enter_guest:\n    mrs x0,sp_el0\n"+ "".join("    mov x%d,xzr\n"%i for i in range(1,31))+"    eret")
+          p.write_text(s)
+          PY
+          llvm-objdump -d --start-address=0x230000 --stop-address=0x230060 evidence/hello-page.elf | tee evidence/stock-entry-disassembly.txt
           cp evidence/hello-page.elf evidence/runtime/build/guest.elf
           cd evidence/runtime
           cat > bare/monitor.c <<'EOF'
@@ -275,7 +287,7 @@ jobs:
           void boot(void){
               if(READ(CurrentEL)!=8)stop();
               WRITE(vbar_el2,(uintptr_t)vectors);ISB();
-              msg("R120 stock CRT monitor\n");
+              msg("R121 stock CRT monitor\n");
               if((READ(id_aa64mmfr0_el1)&15)<2)fail("PA range");
               struct elf64_plan p;size_t a,b;
               if(!elf64_load_image(image_start,(uintptr_t)image_end-(uintptr_t)image_start,VA,VA+N*P,mem,sizeof mem,&p))fail("ELF");
