@@ -1,4 +1,4 @@
-name: EXODUS R127 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R129 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -530,6 +530,109 @@ jobs:
           test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
           test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
           test "$(grep -Fxc R127_MMAP_RESUME_PASS serial.txt)" = 1
+      - name: Resume stock libc after arena allocation and monotonic clock
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_clock_gettime[[:space:]]+232([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          grep -Eq '^#define[[:space:]]+CLOCK_MONOTONIC_FAST[[:space:]]+12([[:space:]]|$)' sysroot/usr/include/sys/_clock_id.h sysroot/usr/include/sys/time.h sysroot/usr/include/time.h || { echo "clock constant not verified"; exit 1; }
+          cp -a evidence/runtime-mmap evidence/runtime-clock
+          cd evidence/runtime-clock
+          cat > arena.h <<'EOF'
+          #ifndef EXODUS_ARENA_H
+          #define EXODUS_ARENA_H
+          #include <stdint.h>
+          #include <stddef.h>
+          #define EX_PAGE 4096u
+          struct ex_arena { uint64_t base; size_t pages; uint8_t *bytes,*perm,*owner; };
+          int ex_map(struct ex_arena *a,size_t len,uint64_t align,unsigned prot,uint64_t *addr);
+          int ex_unmap(struct ex_arena *a,uint64_t addr,size_t len);
+          int ex_protect(struct ex_arena *a,uint64_t addr,size_t len,unsigned prot);
+          #endif
+          EOF
+          cat > arena.c <<'EOF'
+          #include "arena.h"
+          #include <string.h>
+          static int valid(const struct ex_arena *a){
+           return a&&a->bytes&&a->perm&&a->owner&&a->pages&&!(a->base&(EX_PAGE-1))&&a->pages<=SIZE_MAX/EX_PAGE&&a->pages<=(UINT64_MAX-a->base)/EX_PAGE;
+          }
+          static int count(size_t len,size_t *n){if(!len)return 0;*n=(len-1)/EX_PAGE+1;return 1;}
+          static int prot_ok(unsigned p){return p==0||p==4||p==6;}
+          int ex_map(struct ex_arena *a,size_t len,uint64_t align,unsigned prot,uint64_t *addr){
+           size_t n;if(!valid(a)||!addr||!count(len,&n)||n>a->pages||align<EX_PAGE||(align&(align-1))||!prot_ok(prot))return 0;
+           for(size_t i=0;i<=a->pages-n;){
+            uint64_t v=a->base+(uint64_t)i*EX_PAGE;
+            if(v&(align-1)){uint64_t skip=(align-(v&(align-1)))/EX_PAGE;if(skip>a->pages-n-i)break;i+=(size_t)skip;continue;}
+            size_t j=0;while(j<n&&!a->owner[i+j]&&!a->perm[i+j])j++;
+            if(j==n){memset(a->bytes+i*EX_PAGE,0,n*EX_PAGE);memset(a->perm+i,(int)prot,n);memset(a->owner+i,2,n);*addr=v;return 1;}
+            i+=j+1;
+           }
+           return 0;
+          }
+          static int owned(struct ex_arena *a,uint64_t v,size_t len,size_t *i,size_t *n){
+           if(!valid(a)||v<a->base||(v&(EX_PAGE-1))||!count(len,n)||v-a->base>=(uint64_t)a->pages*EX_PAGE)return 0;
+           *i=(size_t)((v-a->base)/EX_PAGE);if(*n>a->pages-*i)return 0;
+           for(size_t j=0;j<*n;j++)if(a->owner[*i+j]!=2)return 0;
+           return 1;
+          }
+          int ex_unmap(struct ex_arena *a,uint64_t addr,size_t len){
+           size_t i,n;if(!owned(a,addr,len,&i,&n))return 0;
+           memset(a->perm+i,0,n);memset(a->bytes+i*EX_PAGE,0,n*EX_PAGE);memset(a->owner+i,0,n);return 1;
+          }
+          int ex_protect(struct ex_arena *a,uint64_t addr,size_t len,unsigned prot){
+           size_t i,n;if(!prot_ok(prot)||!owned(a,addr,len,&i,&n))return 0;
+           memset(a->perm+i,(int)prot,n);return 1;
+          }
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          def rep(old,new):
+              global s
+              assert s.count(old)==1,old
+              s=s.replace(old,new)
+          rep('#include "a57_s1.h"','#include "a57_s1.h"\n#include "arena.h"')
+          rep('static _Alignas(P) uint8_t mem[N*P],perm[N],ro[16];','static _Alignas(P) uint8_t mem[N*P],perm[N],ro[16];\nstatic uint8_t owner[N];\nstatic struct ex_arena arena={VA,N,mem,perm,owner};')
+          rep('memcpy(mem+VECTOR*P,guest_vectors_start,vec);perm[VECTOR]=5;','memcpy(mem+VECTOR*P,guest_vectors_start,vec);perm[VECTOR]=5;\n    for(size_t i=0;i<N;i++)if(perm[i]||i>=N-18)owner[i]=1;')
+          start=s.index('    if(v<VA||v+len>VA+VECTOR*P')
+          end=s.index('    WRITE(hcr_el2,UINT64_C(1)<<31);ISB();',start)
+          s=s[:start]+'''    if(!ex_map(&arena,(size_t)len,len,6,&mapped)||mapped!=v)fail("reference arena allocation");
+              size_t a,b;
+          '''+s[end:]
+          rep('const uint64_t v=UINT64_C(0x600000),len=UINT64_C(0x200000);','const uint64_t v=UINT64_C(0x600000),len=UINT64_C(0x200000);\n    uint64_t mapped=0;')
+          rep('    if(regs[8]==58||regs[8]==253)fail("no forward progress");',r'''    if(calls==4){
+                  if(regs[8]!=232||regs[0]!=12||!user_range(regs[1],16,6))fail("clock_gettime profile");
+                  uint64_t f=READ(cntfrq_el0),t=READ(cntpct_el0);
+                  if(!f||f>UINT64_C(4000000000))fail("counter frequency");
+                  uint64_t ts[]={t/f,((t%f)*UINT64_C(1000000000))/f};
+                  memcpy(mem+regs[1]-VA,ts,sizeof ts);
+                  regs[0]=0;
+                  WRITE(spsr_el1,READ(spsr_el1)&~(UINT64_C(1)<<29));ISB();
+                  msg("PASS: clock_gettime monotonic fast returned counter-derived timespec\n");
+                  return;
+              }
+              if(regs[8]==58||regs[8]==253)fail("no forward progress");''')
+          rep('R127_MMAP_RESUME_PASS','R129_CLOCK_RESUME_PASS')
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan arena bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
+          cat serial.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 5
+          test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
+          test "$(grep -Fxc R129_CLOCK_RESUME_PASS serial.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
