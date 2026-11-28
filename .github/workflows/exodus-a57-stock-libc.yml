@@ -1,4 +1,4 @@
-name: EXODUS R129 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R130 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -633,6 +633,55 @@ jobs:
           test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
           test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
           test "$(grep -Fxc R129_CLOCK_RESUME_PASS serial.txt)" = 1
+      - name: Exercise bounded recurring syscall dispatcher on stock libc
+        run: |
+          set -euo pipefail
+          cp -a evidence/runtime-clock evidence/runtime-dispatch
+          cd evidence/runtime-dispatch
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          def rep(old,new):
+              global s
+              assert s.count(old)==1,old
+              s=s.replace(old,new)
+          rep('#define N 2048u','#define N 8192u')
+          rep('mem[N*P],perm[N],ro[16]','mem[N*P],perm[N],ro[32]')
+          rep('s1[16*512]','s1[32*512]')
+          # s1 builder is called during boot and each mapping.
+          assert s.count('s1,16,TI,&a')==2
+          s=s.replace('s1,16,TI,&a','s1,32,TI,&a')
+          rep('const uint64_t v=UINT64_C(0x600000),len=UINT64_C(0x200000);','uint64_t v=0,len=regs[1];')
+          rep('if(regs[0]||regs[1]!=len||regs[2]!=3||regs[3]!=UINT64_C(0x15001002)||','if(regs[0]||!len||len>(uint64_t)N*P||regs[2]!=3||(regs[3]&UINT64_C(0xffffffff00ffffff))!=0x1002||')
+          rep('if(!ex_map(&arena,(size_t)len,len,6,&mapped)||mapped!=v)fail("reference arena allocation");','unsigned shift=(unsigned)(regs[3]>>24);\n    if(shift&& (shift<12||shift>25))fail("mmap alignment");\n    uint64_t align=UINT64_C(1)<<(shift?shift:12);\n    if(!ex_map(&arena,(size_t)len,align,6,&mapped))fail("reference arena exhausted");\n    v=mapped;')
+          # retain explicit syscall dispatch, not ordinal-only matching.
+          rep('if(calls++==0){','if(calls++>=1024)fail("syscall budget exhausted");\n    if(regs[8]==58){')
+          rep('if(calls==2){','if(regs[8]==253){')
+          rep('if(calls==3){','if(regs[8]==477){')
+          rep('if(calls==4){','if(regs[8]==232&&regs[0]==12){')
+          # unknown calls deliberately stop at the next ABI boundary; never synthesize success.
+          rep('    if(regs[8]==58||regs[8]==253)fail("no forward progress");','    msg("UNHANDLED_SVC number=");hex(regs[8]);msg("\\n");')
+          rep('R129_CLOCK_RESUME_PASS','R130_DISPATCH_BOUNDARY_PASS')
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan arena bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
+          cat serial.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" -ge 6
+          test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" -ge 2
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" -ge 1
+          test "$(grep -c '^UNHANDLED_SVC ' serial.txt)" = 1
+          test "$(grep -Fxc R130_DISPATCH_BOUNDARY_PASS serial.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
