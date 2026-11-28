@@ -1,0 +1,884 @@
+name: EXODUS R135 stock FreeBSD arm64 libc and CRT baseline
+on:
+  push:
+    branches: [integration/exodus-a57-mmu-gate]
+    paths: ['.github/workflows/exodus-a57-stock-libc.yml']
+  pull_request:
+    paths: ['.github/workflows/exodus-a57-stock-libc.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  stock-libc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install cross tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends clang lld llvm binutils xz-utils qemu-system-arm
+      - name: Acquire original FreeBSD 15.1 ARM64 sysroot
+        run: |
+          set -euo pipefail
+          mkdir -p evidence sysroot
+          url=https://download.freebsd.org/releases/arm64/aarch64/15.1-RELEASE
+          curl -fL --retry 3 "$url/MANIFEST" -o evidence/MANIFEST
+          curl -fL --retry 3 "$url/base.txz" -o base.txz
+          awk '$1=="base.txz" && length($2)==64 {print $2 "  base.txz"; n++} END {if(n!=1)exit 1}' evidence/MANIFEST > evidence/base.sha256
+          sha256sum -c evidence/base.sha256
+          tar -xJf base.txz -C sysroot --no-same-owner ./usr/include ./usr/lib ./lib
+          test -f sysroot/usr/lib/libc.a
+          test -f sysroot/usr/lib/crt1.o
+          readelf -h sysroot/usr/lib/crt1.o | tee evidence/crt-header.txt
+          sha256sum sysroot/usr/lib/libc.a sysroot/usr/lib/crt1.o > evidence/library.sha256
+      - name: Compile normal program using original CRT and static libc
+        run: |
+          set -euo pipefail
+          cat > evidence/hello.c <<'EOF'
+          #include <stdio.h>
+          #include <string.h>
+          #include <unistd.h>
+          static _Thread_local volatile unsigned counter=23;
+          int main(int argc,char **argv){
+              if(argc!=2||strcmp(argv[1],"exodus")||counter!=23)return 2;
+              counter++;
+              printf("EXODUS libc: %s pid=%ld TLS=%u\n",argv[1],(long)getpid(),counter);
+              return 23;
+          }
+          EOF
+          clang --target=aarch64-unknown-freebsd15.1 --sysroot="$PWD/sysroot" -mcpu=cortex-a57 -fno-pie -O2 -Wall -Wextra -Werror -c evidence/hello.c -o evidence/hello.o
+          clang --target=aarch64-unknown-freebsd15.1 --sysroot="$PWD/sysroot" -fuse-ld=lld -static -Wl,-no-pie -Wl,-Map,evidence/hello.map -Wl,--build-id=none evidence/hello.o -o evidence/hello.elf
+          readelf -h evidence/hello.elf | grep -Eq 'Type:[[:space:]]+EXEC'
+          readelf -h -lW -d evidence/hello.elf | tee evidence/elf-layout.txt
+          readelf -sW evidence/hello.elf > evidence/symbols.txt
+          llvm-nm --undefined-only evidence/hello.elf > evidence/undefined.txt
+          cat evidence/undefined.txt
+          # Undefined weak references are valid in a static ELF; reject all
+          # unresolved non-weak symbols.
+          awk '$7=="UND" && NF>=8 && $5!="WEAK" {print; bad=1} END {exit bad}' evidence/symbols.txt
+          echo 'PASS: no unresolved strong symbols'
+          grep -q 'AArch64' evidence/elf-layout.txt
+          grep -q ' TLS ' evidence/elf-layout.txt
+          ! grep -q ' INTERP ' evidence/elf-layout.txt
+          for sym in _start main printf getpid; do
+            grep -Eq "[[:space:]]$sym$" evidence/symbols.txt
+          done
+          grep -Fq 'libc.a' evidence/hello.map
+          echo 'PASS: original libc map provenance'
+          grep -Fq 'crt1.o' evidence/hello.map
+          echo 'PASS: original CRT map provenance'
+          # Produce a second stock-libc ELF using standard LLD layout policy,
+          # without a bespoke linker script or replacing CRT/libc.
+          clang --target=aarch64-unknown-freebsd15.1 --sysroot="$PWD/sysroot" -fuse-ld=lld -static -Wl,-no-pie,-z,separate-loadable-segments -Wl,-Map,evidence/hello-page.map -Wl,--build-id=none evidence/hello.o -o evidence/hello-page.elf
+          readelf -h -lW -rW evidence/hello-page.elf > evidence/page-layout.txt
+          cat evidence/page-layout.txt
+          python3 - <<'PY'
+          import struct
+          from pathlib import Path
+          s=Path("evidence/hello-page.elf").read_bytes()
+          assert s[:7]==b"\x7fELF\x02\x01\x01"
+          _,machine,_,entry,off=struct.unpack_from("<HHIQQ",s,16)
+          entsize,num=struct.unpack_from("<HH",s,54)
+          assert machine==183 and entsize==56 and 0<num<=64
+          pages=set()
+          ranges=[]
+          for i in range(num):
+              typ,flags,fo,va,pa,fs,ms,align=struct.unpack_from("<IIQQQQQQ",s,off+i*entsize)
+              if typ!=1: continue
+              assert flags in (4,5,6) and 0<ms and fs<=ms and fo+fs<=len(s)
+              assert (va-fo)%4096==0
+              r=set(range(va//4096,(va+ms+4095)//4096))
+              assert not pages.intersection(r), "shared PT_LOAD page"
+              pages.update(r)
+              ranges.append((va,va+ms))
+          assert any(a<=entry<b for a,b in ranges)
+          print("PASS: disjoint 4KiB PT_LOAD pages; image span",max(b for a,b in ranges)-min(a for a,b in ranges))
+          PY
+          sha256sum evidence/hello.elf evidence/hello-page.elf > evidence/elf.sha256
+          echo 'PASS: stock static FreeBSD CRT/libc ELF linked (not runtime execution)'
+      - uses: actions/download-artifact@v4
+        with:
+          name: r104-mmu-gate-evidence
+          run-id: '46084467081'
+          github-token: ${{ github.token }}
+          path: accepted
+      - name: Admit original libc ELF into 8 MiB Stage 1 and Stage 2 map
+        run: |
+          set -euo pipefail
+          test -f accepted/tls-gate/elf64_loader.c
+          mkdir -p evidence/admission
+          cp accepted/tls-gate/{elf64_loader.c,elf64_loader.h,elf64_page_plan.c,elf64_page_plan.h,a57_s1.c,a57_s1.h,a57_s2.c,a57_s2.h} evidence/admission/
+          cd evidence/admission
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("elf64_loader.c")
+          s=p.read_text()
+          old="        if(type==0||type==4||type==6)continue;"
+          assert s.count(old)==1
+          # GNU_RELRO and GNU_EH_FRAME are metadata; RELRO remains writable
+          # until CRT has completed relocations. Their ranges are audited separately.
+          s=s.replace(old,old+"\n        if(type==UINT64_C(0x6474e550)||type==UINT64_C(0x6474e552)){\n            if(rd(h+4,4)!=4||!span(rd(h+8,8),rd(h+32,8),n)||rd(h+16,8)<lo||!span(rd(h+16,8),rd(h+40,8),hi))return 0;\n            continue;\n        }")
+          p.write_text(s)
+          PY
+          cat > test_stock.c <<'EOF'
+          #include "elf64_page_plan.h"
+          #include "a57_s1.h"
+          #include "a57_s2.h"
+          #include <assert.h>
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <string.h>
+          #define P 4096u
+          #define N 2048u
+          #define VA UINT64_C(0x200000)
+          #define IPA UINT64_C(0x10000000)
+          #define TI UINT64_C(0x20000000)
+          #define PA UINT64_C(0x40000000)
+          #define S1PA UINT64_C(0x42000000)
+          #define S2PA UINT64_C(0x43000000)
+          #define ADDR UINT64_C(0x000000fffffff000)
+          static _Alignas(P) uint8_t mem[N*P];
+          static _Alignas(P) uint64_t s1[16*512];
+          static _Alignas(8192) uint64_t s2[32*512];
+          static uint8_t perm[N],expected[N*P],ro[16];
+          static uint64_t rd(const uint8_t *p,unsigned n){
+              uint64_t v=0;for(unsigned i=0;i<n;i++)v|=(uint64_t)p[i]<<(8*i);return v;
+          }
+          static uint64_t leaf(const uint64_t *t,size_t cap,uint64_t base,uint64_t v){
+              uint64_t d=t[v>>30];
+              if(!d)return 0;
+              assert((d&3)==3&&(d&ADDR)>=base&&(d&ADDR)-base<cap*P);
+              d=t[((d&ADDR)-base)/8+((v>>21)&511)];
+              if(!d)return 0;
+              assert((d&3)==3&&(d&ADDR)>=base&&(d&ADDR)-base<cap*P);
+              return t[((d&ADDR)-base)/8+((v>>12)&511)];
+          }
+          int main(int argc,char **argv){
+              assert(argc==2);
+              FILE *f=fopen(argv[1],"rb");assert(f);
+              assert(!fseek(f,0,SEEK_END));long n=ftell(f);assert(n>0&&n<32*1024*1024);
+              rewind(f);uint8_t *image=malloc((size_t)n);assert(image);
+              assert(fread(image,1,(size_t)n,f)==(size_t)n&&!fclose(f));
+              struct elf64_plan p;
+              assert(elf64_load_image(image,(size_t)n,VA,VA+N*P,mem,sizeof mem,&p));
+              assert(p.count==4&&p.tls.memsz>4096&&p.tls.filesz<=p.tls.memsz&&p.tls.align<=P);
+              assert(elf64_page_plan(&p,VA,VA+N*P,VA+N*P,16,perm,N));
+              for(size_t i=0;i<p.count;i++){
+                  const struct elf64_segment *q=&p.seg[i];
+                  memcpy(expected+q->va-VA,image+q->file_offset,(size_t)q->filesz);
+              }
+              assert(!memcmp(mem,expected,sizeof mem));
+              assert(perm[(p.entry-VA)/P]==5);
+              assert(!perm[N-17]&&perm[N-16]==6&&perm[N-1]==6);
+              uint64_t ph=rd(image+32,8),num=rd(image+56,2),phva=0,rv=0,rm=0;
+              unsigned relro=0,phdr=0;
+              for(uint64_t i=0;i<num;i++){
+                  const uint8_t *h=image+ph+56*i;
+                  uint64_t type=rd(h,4),fo=rd(h+8,8),v=rd(h+16,8),fs=rd(h+32,8),ms=rd(h+40,8);
+                  if(type==6){
+                      assert(fo==ph&&fs==num*56&&ms==fs&&v>=VA&&v-VA+ms<=sizeof mem);
+                      assert(!memcmp(mem+v-VA,image+fo,(size_t)fs));phva=v;phdr++;
+                  }
+                  if(type==0x6474e552){
+                      assert(ms&&v>=VA&&v-VA+ms<=sizeof mem&&!(v&(P-1))&&!(ms&(P-1)));
+                      for(uint64_t j=(v-VA)/P;j<(v-VA+ms)/P;j++)assert(perm[j]==6);
+                      rv=v;rm=ms;relro++;
+                  }
+              }
+              assert(phdr==1&&relro==1);
+              size_t a,b;assert(a57_s1_build(perm,N,VA,IPA,s1,16,TI,&a)&&a>4);
+              memset(ro,4,sizeof ro);
+              struct a57_s2_span spans[]={{IPA,PA,N,perm},{TI,S1PA,a,ro}};
+              assert(a57_s2_build(spans,2,s2,32,S2PA,&b)&&b>5);
+              for(size_t i=0;i<N;i++){
+                  uint64_t x=leaf(s1,16,TI,VA+i*P),y=leaf(s2,32,S2PA,IPA+i*P);
+                  if(!perm[i]){assert(!x&&!y);continue;}
+                  assert((x&ADDR)==IPA+i*P&&(y&ADDR)==PA+i*P);
+                  assert((x&3)==3&&(y&3)==3);
+                  assert((x&(UINT64_C(1)<<53))&&(x&(UINT64_C(1)<<6)));
+                  assert(!!(x&(UINT64_C(1)<<7))==(perm[i]!=6));
+                  assert(!!(x&(UINT64_C(1)<<54))==(perm[i]!=5));
+                  assert(!!(y&(UINT64_C(1)<<7))==(perm[i]==6));
+                  assert(!!(y&(UINT64_C(1)<<54))==(perm[i]!=5));
+              }
+              for(size_t i=0;i<a;i++){
+                  uint64_t x=leaf(s2,32,S2PA,TI+i*P);
+                  assert((x&ADDR)==S1PA+i*P&&(x&(UINT64_C(1)<<54))&&!(x&(UINT64_C(1)<<7)));
+              }
+              printf("PASS: stock ELF byte mapping, %zu S1 and %zu S2 table pages; PHDR=%llx PHNUM=%llu ENTRY=%llx TLS=%llu\n",a,b,(unsigned long long)phva,(unsigned long long)num,(unsigned long long)p.entry,(unsigned long long)p.tls.memsz);
+              /* Simulate post-relocation transition only; no claim of CRT execution. */
+              for(uint64_t j=(rv-VA)/P;j<(rv-VA+rm)/P;j++)perm[j]=4;
+              assert(a57_s1_build(perm,N,VA,IPA,s1,16,TI,&a));
+              spans[1].pages=a;
+              assert(a57_s2_build(spans,2,s2,32,S2PA,&b));
+              for(uint64_t j=(rv-VA)/P;j<(rv-VA+rm)/P;j++){
+                  assert(leaf(s1,16,TI,VA+j*P)&(UINT64_C(1)<<7));
+                  assert(!(leaf(s2,32,S2PA,IPA+j*P)&(UINT64_C(1)<<7)));
+              }
+              puts("PASS: simulated post-relocation RELRO transition at both stages");
+              free(image);
+          }
+          EOF
+          for cc in gcc clang; do
+           "$cc" -std=c11 -O1 -g -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-sanitize-recover=all -no-pie elf64_loader.c elf64_page_plan.c a57_s1.c a57_s2.c test_stock.c -o test-stock
+           ./test-stock ../hello-page.elf | tee "$cc-results.txt"
+          done
+          rm -f test-stock
+      - name: Prepare fail-closed serial acceptance runner
+        run: |
+          mkdir -p evidence
+          cat > evidence/run-qemu.py <<'PY'
+          import os, selectors, subprocess, sys, time
+          from pathlib import Path
+          expected=sys.argv[1].encode()
+          command=["qemu-system-aarch64","-machine","virt,virtualization=on,secure=off","-cpu","cortex-a57","-m","128M","-smp","1","-nic","none","-display","none","-monitor","none","-serial","stdio","-no-reboot","-kernel","build/stock.elf"]
+          proc=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+          data=bytearray()
+          terminal=False
+          limit=time.monotonic()+20
+          try:
+              with selectors.DefaultSelector() as sel:
+                  sel.register(proc.stdout,selectors.EVENT_READ)
+                  while time.monotonic()<limit:
+                      if not sel.select(max(0,limit-time.monotonic())):
+                          break
+                      part=os.read(proc.stdout.fileno(),65536)
+                      if not part: break
+                      data.extend(part)
+                      if len(data)>4*1024*1024:
+                          break
+                      # Require an exact, newline-terminated marker, not a substring.
+                      lines=data.split(b"\n")[:-1]
+                      if any(b"FAIL:" in line for line in lines):
+                          break
+                      if expected in (line.rstrip(b"\r") for line in lines):
+                          terminal=True
+                          break
+          finally:
+              if proc.poll() is None:
+                  proc.terminate()
+              try:
+                  rest,_=proc.communicate(timeout=2)
+              except subprocess.TimeoutExpired:
+                  proc.kill()
+                  rest,_=proc.communicate()
+              data.extend(rest)
+              Path("serial.txt").write_bytes(data)
+              sys.stdout.buffer.write(data)
+          lines=data.splitlines()
+          if not terminal or lines.count(expected)!=1 or any(b"FAIL:" in line for line in lines):
+              raise SystemExit("QEMU acceptance failed: missing/duplicate marker, fault or timeout")
+          PY
+      - name: Execute original CRT to first verified FreeBSD SVC
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/runtime/bare evidence/runtime/build
+          cp evidence/admission/{elf64_loader.c,elf64_loader.h,elf64_page_plan.c,elf64_page_plan.h,a57_s1.c,a57_s1.h,a57_s2.c,a57_s2.h} evidence/runtime/
+          cp accepted/tls-gate/bare/{boot.S,link.ld,string.h} evidence/runtime/bare/
+          # FreeBSD arm64 CRT entry receives the initial stack address in x0
+          # and the optional rtld cleanup function in x1 (NULL for static).
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("evidence/runtime/bare/boot.S")
+          s=p.read_text()
+          old="enter_guest:\n    eret"
+          assert s.count(old)==1
+          s=s.replace(old,"enter_guest:\n    mrs x0,sp_el0\n"+ "".join("    mov x%d,xzr\n"%i for i in range(1,31))+"    eret")
+          p.write_text(s)
+          PY
+          llvm-objdump -d --start-address=0x230000 --stop-address=0x230060 evidence/hello-page.elf | tee evidence/stock-entry-disassembly.txt
+          cp evidence/hello-page.elf evidence/runtime/build/guest.elf
+          cd evidence/runtime
+          cat > bare/monitor.c <<'EOF'
+          #include "a57_s1.h"
+          #include "a57_s2.h"
+          #include "elf64_page_plan.h"
+          #include <string.h>
+          #include <stdint.h>
+          #define P 4096u
+          #define N 2048u
+          #define VA UINT64_C(0x200000)
+          #define IPA UINT64_C(0x10000000)
+          #define TI UINT64_C(0x20000000)
+          #define VECTOR (N-1)
+          #define STACK (VECTOR*P-1024u)
+          #define ADDR UINT64_C(0x000000fffffff000)
+          #define READ(r) ({uint64_t v; __asm__ volatile("mrs %0," #r : "=r"(v));v;})
+          #define WRITE(r,v) __asm__ volatile("msr " #r ",%0"::"r"((uint64_t)(v)):"memory")
+          #define DSB() __asm__ volatile("dsb sy":::"memory")
+          #define ISB() __asm__ volatile("isb":::"memory")
+          extern const uint8_t image_start[],image_end[],vectors[],guest_vectors_start[],guest_vectors_end[];
+          extern void enter_guest(void) __attribute__((noreturn));
+          static _Alignas(P) uint8_t mem[N*P],perm[N],ro[16];
+          static _Alignas(P) uint64_t s1[16*512];
+          static _Alignas(8192) uint64_t s2[32*512];
+          void *memset(void *p,int c,size_t n){uint8_t *q=p;while(n--)*q++=(uint8_t)c;return p;}
+          void *memcpy(void *p,const void *s,size_t n){uint8_t *q=p;const uint8_t *r=s;while(n--)*q++=*r++;return p;}
+          int memcmp(const void *a,const void *b,size_t n){const uint8_t *x=a,*y=b;while(n--){if(*x!=*y)return (int)*x-(int)*y;x++;y++;}return 0;}
+          static void putc(char c){volatile uint32_t *u=(void *)0x09000000;while(u[6]&(1u<<5)){}u[0]=(uint32_t)c;}
+          static void msg(const char *s){while(*s)putc(*s++);}
+          static void hex(uint64_t v){for(int i=60;i>=0;i-=4)putc("0123456789abcdef"[(v>>i)&15]);}
+          static void stop(void){for(;;)__asm__ volatile("wfe");}
+          static void fail(const char *s){msg("FAIL: ");msg(s);msg(" ESR2=");hex(READ(esr_el2));msg(" ESR1=");hex(READ(esr_el1));msg(" FAR2=");hex(READ(far_el2));msg(" FAR1=");hex(READ(far_el1));msg(" ELR1=");hex(READ(elr_el1));msg(" ELR2=");hex(READ(elr_el2));msg("\n");stop();}
+          void bad_vector(void){fail("EL2 vector");}
+          static uint64_t rd(const uint8_t *p,unsigned n){uint64_t v=0;for(unsigned i=0;i<n;i++)v|=(uint64_t)p[i]<<(8*i);return v;}
+          static uint64_t *s1leaf(uint64_t v){
+              uint64_t d=s1[v>>30];if((d&3)!=3||(d&ADDR)<TI||(d&ADDR)-TI>=sizeof s1)fail("L1");
+              d=s1[((d&ADDR)-TI)/8+((v>>21)&511)];
+              if((d&3)!=3||(d&ADDR)<TI||(d&ADDR)-TI>=sizeof s1)fail("L2");
+              return &s1[((d&ADDR)-TI)/8+((v>>12)&511)];
+          }
+          void boot(void){
+              if(READ(CurrentEL)!=8)stop();
+              WRITE(vbar_el2,(uintptr_t)vectors);ISB();
+              msg("R121 stock CRT monitor\n");
+              if((READ(id_aa64mmfr0_el1)&15)<2)fail("PA range");
+              struct elf64_plan p;size_t a,b;
+              if(!elf64_load_image(image_start,(uintptr_t)image_end-(uintptr_t)image_start,VA,VA+N*P,mem,sizeof mem,&p))fail("ELF");
+              if(!elf64_page_plan(&p,VA,VA+N*P,VA+VECTOR*P,16,perm,N)||perm[VECTOR])fail("page plan");
+              uint64_t off=rd(image_start+32,8),num=rd(image_start+56,2),phdr=0;
+              for(uint64_t i=0;i<num;i++){const uint8_t *h=image_start+off+56*i;if(rd(h,4)==6)phdr=rd(h+16,8);}
+              if(!phdr)fail("PHDR");
+              uint64_t sp=VA+STACK;
+              /* Standard initial stack, minimal ELF auxv, no synthetic CRT replacement. */
+              const uint64_t words[]={2,sp+512,sp+528,0,sp+544,0,3,phdr,4,56,5,num,6,P,7,0,8,0,9,p.entry,0,0};
+              memcpy(mem+STACK,words,sizeof words);
+              memcpy(mem+STACK+512,"hello",6);memcpy(mem+STACK+528,"exodus",7);memcpy(mem+STACK+544,"MODE=TEST",10);
+              size_t vec=(uintptr_t)guest_vectors_end-(uintptr_t)guest_vectors_start;
+              if(vec>P)fail("vectors");
+              memcpy(mem+VECTOR*P,guest_vectors_start,vec);perm[VECTOR]=5;
+              if(!a57_s1_build(perm,N,VA,IPA,s1,16,TI,&a))fail("S1");
+              uint64_t *leaf=s1leaf(VA+VECTOR*P);
+              *leaf=(*leaf&~((UINT64_C(1)<<53)|(UINT64_C(1)<<6)))|(UINT64_C(1)<<54);
+              memset(ro,4,sizeof ro);
+              struct a57_s2_span spans[]={{IPA,(uintptr_t)mem,N,perm},{TI,(uintptr_t)s1,a,ro}};
+              if(!a57_s2_build(spans,2,s2,32,(uintptr_t)s2,&b))fail("S2");
+              WRITE(hcr_el2,UINT64_C(1)<<31);ISB();
+              WRITE(cptr_el2,0);WRITE(cpacr_el1,UINT64_C(3)<<20);
+              WRITE(vtcr_el2,A57_S2_VTCR);WRITE(vttbr_el2,(UINT64_C(1)<<48)|(uintptr_t)s2);
+              WRITE(mair_el1,0xff);WRITE(tcr_el1,UINT64_C(0x200803519));
+              WRITE(ttbr0_el1,(UINT64_C(1)<<48)|TI);WRITE(ttbr1_el1,0);
+              WRITE(vbar_el1,VA+VECTOR*P);WRITE(sp_el0,sp);WRITE(tpidr_el0,0);
+              DSB();__asm__ volatile("ic iallu; tlbi vmalls12e1is; dsb sy; isb":::"memory");
+              WRITE(sctlr_el1,UINT64_C(0x30d00801));ISB();
+              WRITE(hcr_el2,(UINT64_C(1)<<31)|1);ISB();
+              WRITE(elr_el2,p.entry);WRITE(spsr_el2,0x3c0);ISB();
+              msg("ENTER stock ELF _start=");hex(p.entry);msg("\n");enter_guest();
+          }
+          void trap(uint64_t *regs){
+              uint64_t e=READ(esr_el1),pc=READ(elr_el1);
+              if((READ(esr_el2)>>26)!=0x16||(READ(esr_el2)&0xffff)!=1||(e>>26)!=0x15||pc<VA+4||pc>=VA+N*P)fail("before first syscall");
+              if(perm[(pc-4-VA)/P]!=5||(rd(mem+pc-4-VA,4)&UINT64_C(0xffe0001f))!=UINT64_C(0xd4000001))fail("SVC provenance");
+              msg("STOCK_SVC x8=");hex(regs[8]);msg(" x0=");hex(regs[0]);msg(" x1=");hex(regs[1]);msg(" x2=");hex(regs[2]);msg(" pc=");hex(pc-4);msg("\n");
+              msg("R120_STOCK_FIRST_SVC_PASS\n");stop();
+          }
+          EOF
+          printf '.section .rodata.image,"a"\n.global image_start,image_end\nimage_start: .incbin "build/guest.elf"\nimage_end:\n' > build/image.S
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          python3 ../run-qemu.py R120_STOCK_FIRST_SVC_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 1
+          test "$(grep -Fxc R120_STOCK_FIRST_SVC_PASS serial.txt)" = 1
+      - name: Resume original CRT after bounded readlink error
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_readlink[[:space:]]+58([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          grep -Eq '^#define[[:space:]]+ENOENT[[:space:]]+2([[:space:]]|$)' sysroot/usr/include/sys/errno.h
+          cp -a evidence/runtime evidence/runtime-resume
+          cd evidence/runtime-resume
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          anchor="void trap(uint64_t *regs){"
+          assert s.count(anchor)==1
+          s=s.replace(anchor,r'''static unsigned calls;
+          static int user_range(uint64_t v,uint64_t n,unsigned need){
+              if(v<VA||v>=VA+VECTOR*P||n>VA+VECTOR*P-v)return 0;
+              for(uint64_t j=0;j<n;){
+                  if((perm[(v+j-VA)/P]&need)!=need)return 0;
+                  uint64_t take=P-((v+j)&(P-1));
+                  j+=take<n-j?take:n-j;
+              }
+              return 1;
+          }
+          static int user_path(uint64_t v,const char *want){
+              for(unsigned i=0;i<256;i++){
+                  if(v>UINT64_MAX-i||!user_range(v+i,1,4))fail("bad path pointer");
+                  unsigned char ch=mem[v+i-VA];
+                  if(ch!=(unsigned char)want[i])return 0;
+                  if(!ch)return 1;
+              }
+              return 0;
+          }
+          static void print_path(uint64_t v){
+              msg("READLINK_PATH ");
+              for(unsigned i=0;i<256;i++){
+                  if(v>UINT64_MAX-i||!user_range(v+i,1,4))fail("bad path pointer");
+                  unsigned char ch=mem[v+i-VA];
+                  if(!ch){msg("\n");return;}
+                  putc(ch>=32&&ch<127?(char)ch:'?');
+              }
+              fail("unterminated path");
+          }
+          '''+anchor)
+          old='    msg("R120_STOCK_FIRST_SVC_PASS\\n");stop();'
+          assert s.count(old)==1
+          s=s.replace(old,r'''    if(calls++==0){
+                  if(regs[8]!=58)fail("unexpected first syscall");
+                  print_path(regs[0]);
+                  if(!user_path(regs[0],"/etc/malloc.conf"))fail("unsupported readlink path");
+                  if(!regs[2]||regs[2]>4096||!user_range(regs[1],regs[2],6))fail("readlink output");
+                  /* Empty reference filesystem: this exact symlink is absent.
+                     FreeBSD arm64 returns positive errno in x0 with NZCV.C set. */
+                  regs[0]=2;
+                  WRITE(spsr_el1,READ(spsr_el1)|(UINT64_C(1)<<29));
+                  ISB();
+                  msg("PASS: readlink /etc/malloc.conf returned ENOENT\n");
+                  return;
+              }
+              if(regs[8]==58)fail("readlink repeated; no forward progress");
+              msg("R123_STOCK_RESUME_PASS\n");stop();''')
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          python3 ../run-qemu.py R123_STOCK_RESUME_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 2
+          test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
+          test "$(grep -Fxc R123_STOCK_RESUME_PASS serial.txt)" = 1
+      - name: Resume original CRT after credential query
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_issetugid[[:space:]]+253([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          cp -a evidence/runtime-resume evidence/runtime-credentials
+          cd evidence/runtime-credentials
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          old='    if(regs[8]==58)fail("readlink repeated; no forward progress");\n    msg("R123_STOCK_RESUME_PASS\\n");stop();'
+          assert s.count(old)==1
+          s=s.replace(old,r'''    if(calls==2){
+                  if(regs[8]!=253)fail("unexpected second syscall");
+                  /* Reference process has no setuid/setgid history.
+                     No credentials or elevated privileges are granted here. */
+                  regs[0]=0;
+                  WRITE(spsr_el1,READ(spsr_el1)&~(UINT64_C(1)<<29));
+                  ISB();
+                  msg("PASS: issetugid returned zero for unprivileged reference process\n");
+                  return;
+              }
+              if(regs[8]==58||regs[8]==253)fail("no forward progress");
+              msg("NEXT_SVC x3=");hex(regs[3]);msg(" x4=");hex(regs[4]);msg(" x5=");hex(regs[5]);msg(" x6=");hex(regs[6]);msg(" x7=");hex(regs[7]);msg("\n");
+              msg("R125_STOCK_RESUME_PASS\n");stop();''')
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          python3 ../run-qemu.py R125_STOCK_RESUME_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 3
+          test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
+          test "$(grep -Fxc R125_STOCK_RESUME_PASS serial.txt)" = 1
+      - name: Resume original libc after aligned anonymous mmap
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_mmap[[:space:]]+477([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          cp -a evidence/runtime-credentials evidence/runtime-mmap
+          cd evidence/runtime-mmap
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          anchor="void trap(uint64_t *regs){"
+          assert s.count(anchor)==1
+          s=s.replace(anchor,r'''static void map_anonymous(uint64_t *regs){
+              const uint64_t v=UINT64_C(0x600000),len=UINT64_C(0x200000);
+              if(regs[0]||regs[1]!=len||regs[2]!=3||regs[3]!=UINT64_C(0x15001002)||
+                 (uint32_t)regs[4]!=UINT32_MAX||regs[5])fail("unsupported mmap profile");
+              if(v<VA||v+len>VA+VECTOR*P||(v&(len-1)))fail("mmap placement");
+              size_t first=(size_t)((v-VA)/P),count=(size_t)(len/P),a,b;
+              for(size_t i=first;i<first+count;i++)if(perm[i])fail("mmap overlap");
+              /* Fixed reference arena, not a general VM allocator. No physical MMIO. */
+              memset(mem+v-VA,0,(size_t)len);
+              memset(perm+first,6,count);
+              WRITE(hcr_el2,UINT64_C(1)<<31);ISB();
+              DSB();__asm__ volatile("tlbi vmalls12e1is; dsb ish; isb":::"memory");
+              if(!a57_s1_build(perm,N,VA,IPA,s1,16,TI,&a))fail("mmap S1");
+              uint64_t *leaf=s1leaf(VA+VECTOR*P);
+              *leaf=(*leaf&~((UINT64_C(1)<<53)|(UINT64_C(1)<<6)))|(UINT64_C(1)<<54);
+              struct a57_s2_span spans[]={{IPA,(uintptr_t)mem,N,perm},{TI,(uintptr_t)s1,a,ro}};
+              if(!a57_s2_build(spans,2,s2,32,(uintptr_t)s2,&b))fail("mmap S2");
+              DSB();
+              WRITE(hcr_el2,(UINT64_C(1)<<31)|1);ISB();
+              __asm__ volatile("tlbi vmalls12e1is; dsb ish; isb":::"memory");
+              if(!user_range(v,len,6)||(*s1leaf(v)&(UINT64_C(1)<<54))==0)fail("mmap permissions");
+              regs[0]=v;
+              WRITE(spsr_el1,READ(spsr_el1)&~(UINT64_C(1)<<29));ISB();
+              msg("PASS: aligned anonymous mmap installed in Stage 1 and Stage 2\n");
+          }
+          '''+anchor)
+          old='    if(regs[8]==58||regs[8]==253)fail("no forward progress");'
+          assert s.count(old)==1
+          s=s.replace(old,r'''    if(calls==3){
+                  if(regs[8]!=477)fail("unexpected third syscall");
+                  map_anonymous(regs);
+                  return;
+              }
+              if(regs[8]==58||regs[8]==253)fail("no forward progress");''')
+          s=s.replace("R125_STOCK_RESUME_PASS","R127_MMAP_RESUME_PASS")
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          python3 ../run-qemu.py R127_MMAP_RESUME_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 4
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
+          test "$(grep -Fxc R127_MMAP_RESUME_PASS serial.txt)" = 1
+      - name: Resume stock libc after arena allocation and monotonic clock
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_clock_gettime[[:space:]]+232([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          grep -Eq '^#define[[:space:]]+CLOCK_MONOTONIC_FAST[[:space:]]+12([[:space:]]|$)' sysroot/usr/include/sys/_clock_id.h sysroot/usr/include/sys/time.h sysroot/usr/include/time.h || { echo "clock constant not verified"; exit 1; }
+          cp -a evidence/runtime-mmap evidence/runtime-clock
+          cd evidence/runtime-clock
+          cat > arena.h <<'EOF'
+          #ifndef EXODUS_ARENA_H
+          #define EXODUS_ARENA_H
+          #include <stdint.h>
+          #include <stddef.h>
+          #define EX_PAGE 4096u
+          struct ex_arena { uint64_t base; size_t pages; uint8_t *bytes,*perm,*owner; };
+          int ex_map(struct ex_arena *a,size_t len,uint64_t align,unsigned prot,uint64_t *addr);
+          int ex_unmap(struct ex_arena *a,uint64_t addr,size_t len);
+          int ex_protect(struct ex_arena *a,uint64_t addr,size_t len,unsigned prot);
+          #endif
+          EOF
+          cat > arena.c <<'EOF'
+          #include "arena.h"
+          #include <string.h>
+          static int valid(const struct ex_arena *a){
+           return a&&a->bytes&&a->perm&&a->owner&&a->pages&&!(a->base&(EX_PAGE-1))&&a->pages<=SIZE_MAX/EX_PAGE&&a->pages<=(UINT64_MAX-a->base)/EX_PAGE;
+          }
+          static int count(size_t len,size_t *n){if(!len)return 0;*n=(len-1)/EX_PAGE+1;return 1;}
+          static int prot_ok(unsigned p){return p==0||p==4||p==6;}
+          int ex_map(struct ex_arena *a,size_t len,uint64_t align,unsigned prot,uint64_t *addr){
+           size_t n;if(!valid(a)||!addr||!count(len,&n)||n>a->pages||align<EX_PAGE||(align&(align-1))||!prot_ok(prot))return 0;
+           for(size_t i=0;i<=a->pages-n;){
+            uint64_t v=a->base+(uint64_t)i*EX_PAGE;
+            if(v&(align-1)){uint64_t skip=(align-(v&(align-1)))/EX_PAGE;if(skip>a->pages-n-i)break;i+=(size_t)skip;continue;}
+            size_t j=0;while(j<n&&!a->owner[i+j]&&!a->perm[i+j])j++;
+            if(j==n){memset(a->bytes+i*EX_PAGE,0,n*EX_PAGE);memset(a->perm+i,(int)prot,n);memset(a->owner+i,2,n);*addr=v;return 1;}
+            i+=j+1;
+           }
+           return 0;
+          }
+          static int owned(struct ex_arena *a,uint64_t v,size_t len,size_t *i,size_t *n){
+           if(!valid(a)||v<a->base||(v&(EX_PAGE-1))||!count(len,n)||v-a->base>=(uint64_t)a->pages*EX_PAGE)return 0;
+           *i=(size_t)((v-a->base)/EX_PAGE);if(*n>a->pages-*i)return 0;
+           for(size_t j=0;j<*n;j++)if(a->owner[*i+j]!=2)return 0;
+           return 1;
+          }
+          int ex_unmap(struct ex_arena *a,uint64_t addr,size_t len){
+           size_t i,n;if(!owned(a,addr,len,&i,&n))return 0;
+           memset(a->perm+i,0,n);memset(a->bytes+i*EX_PAGE,0,n*EX_PAGE);memset(a->owner+i,0,n);return 1;
+          }
+          int ex_protect(struct ex_arena *a,uint64_t addr,size_t len,unsigned prot){
+           size_t i,n;if(!prot_ok(prot)||!owned(a,addr,len,&i,&n))return 0;
+           memset(a->perm+i,(int)prot,n);return 1;
+          }
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          def rep(old,new):
+              global s
+              assert s.count(old)==1,old
+              s=s.replace(old,new)
+          rep('#include "a57_s1.h"','#include "a57_s1.h"\n#include "arena.h"')
+          rep('static _Alignas(P) uint8_t mem[N*P],perm[N],ro[16];','static _Alignas(P) uint8_t mem[N*P],perm[N],ro[16];\nstatic uint8_t owner[N];\nstatic struct ex_arena arena={VA,N,mem,perm,owner};')
+          rep('memcpy(mem+VECTOR*P,guest_vectors_start,vec);perm[VECTOR]=5;','memcpy(mem+VECTOR*P,guest_vectors_start,vec);perm[VECTOR]=5;\n    for(size_t i=0;i<N;i++)if(perm[i]||i>=N-18)owner[i]=1;')
+          start=s.index('    if(v<VA||v+len>VA+VECTOR*P')
+          end=s.index('    WRITE(hcr_el2,UINT64_C(1)<<31);ISB();',start)
+          s=s[:start]+'''    if(!ex_map(&arena,(size_t)len,len,6,&mapped)||mapped!=v)fail("reference arena allocation");
+              size_t a,b;
+          '''+s[end:]
+          rep('const uint64_t v=UINT64_C(0x600000),len=UINT64_C(0x200000);','const uint64_t v=UINT64_C(0x600000),len=UINT64_C(0x200000);\n    uint64_t mapped=0;')
+          rep('    if(regs[8]==58||regs[8]==253)fail("no forward progress");',r'''    if(calls==4){
+                  if(regs[8]!=232||regs[0]!=12||!user_range(regs[1],16,6))fail("clock_gettime profile");
+                  uint64_t f=READ(cntfrq_el0),t=READ(cntpct_el0);
+                  if(!f||f>UINT64_C(4000000000))fail("counter frequency");
+                  uint64_t ts[]={t/f,((t%f)*UINT64_C(1000000000))/f};
+                  memcpy(mem+regs[1]-VA,ts,sizeof ts);
+                  regs[0]=0;
+                  WRITE(spsr_el1,READ(spsr_el1)&~(UINT64_C(1)<<29));ISB();
+                  msg("PASS: clock_gettime monotonic fast returned counter-derived timespec\n");
+                  return;
+              }
+              if(regs[8]==58||regs[8]==253)fail("no forward progress");''')
+          rep('R127_MMAP_RESUME_PASS','R129_CLOCK_RESUME_PASS')
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan arena bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
+          python3 ../run-qemu.py R129_CLOCK_RESUME_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 5
+          test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
+          test "$(grep -Fxc R129_CLOCK_RESUME_PASS serial.txt)" = 1
+      - name: Exercise bounded recurring syscall dispatcher on stock libc
+        run: |
+          set -euo pipefail
+          cp -a evidence/runtime-clock evidence/runtime-dispatch
+          cd evidence/runtime-dispatch
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          def rep(old,new):
+              global s
+              assert s.count(old)==1,old
+              s=s.replace(old,new)
+          rep('#define N 2048u','#define N 8192u')
+          rep('mem[N*P],perm[N],ro[16]','mem[N*P],perm[N],ro[32]')
+          rep('s1[16*512]','s1[32*512]')
+          # s1 builder is called during boot and each mapping.
+          assert s.count('s1,16,TI,&a')==2
+          s=s.replace('s1,16,TI,&a','s1,32,TI,&a')
+          rep('const uint64_t v=UINT64_C(0x600000),len=UINT64_C(0x200000);','uint64_t v=0,len=regs[1];')
+          rep('if(regs[0]||regs[1]!=len||regs[2]!=3||regs[3]!=UINT64_C(0x15001002)||','if(regs[0]||!len||len>(uint64_t)N*P||regs[2]!=3||(regs[3]&UINT64_C(0xffffffff00ffffff))!=0x1002||')
+          rep('if(!ex_map(&arena,(size_t)len,len,6,&mapped)||mapped!=v)fail("reference arena allocation");','unsigned shift=(unsigned)(regs[3]>>24);\n    if(shift&& (shift<12||shift>25))fail("mmap alignment");\n    uint64_t align=UINT64_C(1)<<(shift?shift:12);\n    if(!ex_map(&arena,(size_t)len,align,6,&mapped))fail("reference arena exhausted");\n    v=mapped;')
+          # retain explicit syscall dispatch, not ordinal-only matching.
+          rep('if(calls++==0){','if(calls++>=1024)fail("syscall budget exhausted");\n    if(regs[8]==58){')
+          rep('if(calls==2){','if(regs[8]==253){')
+          rep('if(calls==3){','if(regs[8]==477){')
+          rep('if(calls==4){','if(regs[8]==232&&regs[0]==12){')
+          # unknown calls deliberately stop at the next ABI boundary; never synthesize success.
+          rep('    if(regs[8]==58||regs[8]==253)fail("no forward progress");','    msg("UNHANDLED_SVC number=");hex(regs[8]);msg("\\n");')
+          rep('R129_CLOCK_RESUME_PASS','R130_DISPATCH_BOUNDARY_PASS')
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan arena bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
+          python3 ../run-qemu.py R130_DISPATCH_BOUNDARY_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" -ge 6
+          test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" -ge 2
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" -ge 1
+          test "$(grep -c '^UNHANDLED_SVC ' serial.txt)" = 1
+          test "$(grep -Fxc R130_DISPATCH_BOUNDARY_PASS serial.txt)" = 1
+      - name: Resume stock libc after read-only hardware sysctl
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS___sysctl[[:space:]]+202([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          cp -a evidence/runtime-dispatch evidence/runtime-sysctl
+          # Extract exact numeric constants from official headers, without host headers.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("sysroot/usr/include/sys/sysctl.h").read_text()
+          names=["CTL_HW","HW_NCPU","HW_PAGESIZE","CTL_KERN","KERN_OSRELDATE","KERN_ARND"]
+          out=[]
+          for name in names:
+              m=re.search(r"(?m)^\s*#\s*define\s+"+name+r"\s+([0-9]+)\b",s)
+              assert m,name
+              out.append("#define EX_"+name+" "+m[1])
+          Path("evidence/runtime-sysctl/sysctl_ids.h").write_text("\n".join(out)+"\n")
+          PY
+          # Confirm actual MIB at the first previously observed read-only address.
+          python3 - <<'PY'
+          import struct
+          from pathlib import Path
+          image=Path("evidence/hello-page.elf").read_bytes()
+          off=struct.unpack_from("<Q",image,32)[0]
+          size,num=struct.unpack_from("<HH",image,54)
+          addr=0x2065e8
+          matches=[]
+          for i in range(num):
+              typ,flags,fo,va,pa,fs,ms,align=struct.unpack_from("<IIQQQQQQ",image,off+i*size)
+              if typ==1 and va<=addr and addr-va+8<=fs:
+                  matches.append(struct.unpack_from("<II",image,fo+addr-va))
+          assert len(matches)==1,matches
+          print("First observed MIB:",matches[0])
+          Path("evidence/first-mib.txt").write_text(str(matches[0])+"\n")
+          PY
+          cd evidence/runtime-sysctl
+          # CI-only entropy fixture, generated once per run from host OS.
+          # Never use this image for production: embedded bytes are not secret.
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          Path("build/test-entropy.bin").write_bytes(os.urandom(16384))
+          PY
+          printf '\n.section .rodata.testentropy,"a"\n.global entropy_start,entropy_end\nentropy_start: .incbin "build/test-entropy.bin"\nentropy_end:\n' >> build/image.S
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          anchor="void trap(uint64_t *regs){"
+          assert s.count(anchor)==1
+          s=s.replace(anchor,r'''#include "sysctl_ids.h"
+          static void sysret(uint64_t *regs,uint64_t value,int error){
+              regs[0]=value;
+              uint64_t ps=READ(spsr_el1);
+              WRITE(spsr_el1,error?ps|(UINT64_C(1)<<29):ps&~(UINT64_C(1)<<29));ISB();
+          }
+          extern const uint8_t entropy_start[],entropy_end[];
+          static size_t entropy_used;
+          /* CI-only finite entropy input. No fallback to clocks or fixed seed. */
+          static void sysctl_entropy(uint64_t *r){
+              if(!r[3]||!user_range(r[3],8,6)){sysret(r,14,1);return;}
+              uint64_t cap=rd(mem+r[3]-VA,8),actual=cap<256?cap:256;
+              if(!r[2]){actual=256;memcpy(mem+r[3]-VA,&actual,8);sysret(r,0,0);return;}
+              if(!user_range(r[2],actual,6)){sysret(r,14,1);return;}
+              size_t available=(uintptr_t)entropy_end-(uintptr_t)entropy_start;
+              if(entropy_used>available||actual>available-entropy_used){sysret(r,5,1);return;}
+              memcpy(mem+r[2]-VA,entropy_start+entropy_used,(size_t)actual);
+              entropy_used+=(size_t)actual;
+              memcpy(mem+r[3]-VA,&actual,8);
+              sysret(r,0,0);
+              msg("PASS: sysctl read-only kern.arandom CI entropy bytes=");hex(actual);msg("\n");
+          }
+          /* Only read-only properties of this one-vCPU reference. */
+          static int sysctl_read(uint64_t *r){
+              if(r[1]!=2||!user_range(r[0],8,4)){sysret(r,22,1);return 1;}
+              uint32_t mib[2];memcpy(mib,mem+r[0]-VA,sizeof mib);
+              msg("SYSCTL_MIB ");hex(mib[0]);msg(" ");hex(mib[1]);msg("\n");
+              if(r[4]||r[5]){sysret(r,1,1);return 1;}
+              if(mib[0]==EX_CTL_KERN&&mib[1]==EX_KERN_ARND){sysctl_entropy(r);return 1;}
+              uint32_t value;
+              const char *label;
+              if(mib[0]==EX_CTL_HW&&mib[1]==EX_HW_NCPU){value=1;label="hw.ncpu";}
+              else if(mib[0]==EX_CTL_HW&&mib[1]==EX_HW_PAGESIZE){value=P;label="hw.pagesize";}
+              else return 0;
+              if(!r[3]||!user_range(r[3],8,6)){sysret(r,14,1);return 1;}
+              uint64_t cap=rd(mem+r[3]-VA,8),actual=sizeof value;
+              if(r[2]&&cap<actual){
+                  memcpy(mem+r[3]-VA,&actual,8);sysret(r,12,1);return 1;
+              }
+              if(r[2]&&!user_range(r[2],actual,6)){sysret(r,14,1);return 1;}
+              if(r[2])memcpy(mem+r[2]-VA,&value,sizeof value);
+              memcpy(mem+r[3]-VA,&actual,8);
+              sysret(r,0,0);msg("PASS: sysctl read-only ");msg(label);msg("\n");return 1;
+          }
+          '''+anchor)
+          old='    msg("UNHANDLED_SVC number=");'
+          assert s.count(old)==1
+          s=s.replace(old,'    if(regs[8]==202&&sysctl_read(regs))return;\n'+old)
+          s=s.replace("R130_DISPATCH_BOUNDARY_PASS","R131_SYSCTL_BOUNDARY_PASS")
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan arena bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
+          python3 ../run-qemu.py R131_SYSCTL_BOUNDARY_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" -ge 9
+          test "$(grep -c '^PASS: sysctl read-only ' serial.txt)" -ge 1
+          test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" -ge 2
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" -ge 1
+          test "$(grep -c '^UNHANDLED_SVC ' serial.txt)" = 1
+          test "$(grep -Fxc R131_SYSCTL_BOUNDARY_PASS serial.txt)" = 1
+      - name: Resume stock libc after current thread CPU affinity query
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_cpuset_getaffinity[[:space:]]+487([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("sysroot/usr/include/sys/cpuset.h").read_text()
+          for name,value in [("CPU_LEVEL_WHICH",3),("CPU_WHICH_TID",1)]:
+              assert re.search(r"(?m)^\s*#\s*define\s+"+name+r"\s+"+str(value)+r"\b",s),name
+          PY
+          cp -a evidence/runtime-sysctl evidence/runtime-cpuset
+          cd evidence/runtime-cpuset
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          anchor="    if(regs[8]==202&&sysctl_read(regs))return;"
+          assert s.count(anchor)==1
+          s=s.replace(anchor,anchor+r'''
+              if(regs[8]==487){
+                  /* One vCPU, current thread only, exact observed FreeBSD ABI profile. */
+                  if(regs[0]!=3||regs[1]!=1||regs[2]!=UINT64_MAX||regs[3]!=128){
+                      sysret(regs,22,1);return;
+                  }
+                  if(!user_range(regs[4],regs[3],6)){sysret(regs,14,1);return;}
+                  memset(mem+regs[4]-VA,0,(size_t)regs[3]);
+                  mem[regs[4]-VA]=1;
+                  sysret(regs,0,0);
+                  msg("PASS: cpuset_getaffinity returned CPU 0 for current thread\n");
+                  return;
+              }''')
+          s=s.replace("R131_SYSCTL_BOUNDARY_PASS","R135_CPUSET_BOUNDARY_PASS")
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan arena bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
+          python3 ../run-qemu.py R135_CPUSET_BOUNDARY_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" -ge 10
+          test "$(grep -Fxc 'PASS: cpuset_getaffinity returned CPU 0 for current thread' serial.txt)" -ge 1
+          test "$(grep -c '^PASS: sysctl read-only ' serial.txt)" -ge 1
+          test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" -ge 2
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" -ge 1
+          test "$(grep -c '^UNHANDLED_SVC ' serial.txt)" = 1
+          test "$(grep -Fxc R135_CPUSET_BOUNDARY_PASS serial.txt)" = 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exodus-stock-freebsd-libc-baseline
+          path: evidence/
+          if-no-files-found: warn
