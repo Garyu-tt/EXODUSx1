@@ -1,4 +1,4 @@
-name: EXODUS R132 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R133 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -225,6 +225,51 @@ jobs:
            ./test-stock ../hello-page.elf | tee "$cc-results.txt"
           done
           rm -f test-stock
+      - name: Prepare fail-closed serial acceptance runner
+        run: |
+          mkdir -p evidence
+          cat > evidence/run-qemu.py <<'PY'
+          import os, selectors, subprocess, sys, time
+          from pathlib import Path
+          expected=sys.argv[1].encode()
+          command=["qemu-system-aarch64","-machine","virt,virtualization=on,secure=off","-cpu","cortex-a57","-m","128M","-smp","1","-nic","none","-display","none","-monitor","none","-serial","stdio","-no-reboot","-kernel","build/stock.elf"]
+          proc=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+          data=bytearray()
+          terminal=False
+          limit=time.monotonic()+20
+          try:
+              with selectors.DefaultSelector() as sel:
+                  sel.register(proc.stdout,selectors.EVENT_READ)
+                  while time.monotonic()<limit:
+                      if not sel.select(max(0,limit-time.monotonic())):
+                          break
+                      part=os.read(proc.stdout.fileno(),65536)
+                      if not part: break
+                      data.extend(part)
+                      if len(data)>4*1024*1024:
+                          break
+                      # Require an exact, newline-terminated marker, not a substring.
+                      lines=data.split(b"\n")[:-1]
+                      if any(b"FAIL:" in line for line in lines):
+                          break
+                      if expected in (line.rstrip(b"\r") for line in lines):
+                          terminal=True
+                          break
+          finally:
+              if proc.poll() is None:
+                  proc.terminate()
+              try:
+                  rest,_=proc.communicate(timeout=2)
+              except subprocess.TimeoutExpired:
+                  proc.kill()
+                  rest,_=proc.communicate()
+              data.extend(rest)
+              Path("serial.txt").write_bytes(data)
+              sys.stdout.buffer.write(data)
+          lines=data.splitlines()
+          if not terminal or lines.count(expected)!=1 or any(b"FAIL:" in line for line in lines):
+              raise SystemExit("QEMU acceptance failed: missing/duplicate marker, fault or timeout")
+          PY
       - name: Execute original CRT to first verified FreeBSD SVC
         run: |
           set -euo pipefail
@@ -337,10 +382,7 @@ jobs:
           clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
           clang --target=aarch64-none-elf -c build/image.S -o build/image.o
           ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
-          rc=0
-          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
-          cat serial.txt
-          [[ $rc = 124 || $rc = 0 ]]
+          python3 ../run-qemu.py R120_STOCK_FIRST_SVC_PASS
           ! grep -q 'FAIL:' serial.txt
           test "$(grep -c '^STOCK_SVC ' serial.txt)" = 1
           test "$(grep -Fxc R120_STOCK_FIRST_SVC_PASS serial.txt)" = 1
@@ -413,10 +455,7 @@ jobs:
           clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
           clang --target=aarch64-none-elf -c build/image.S -o build/image.o
           ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
-          rc=0
-          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
-          cat serial.txt
-          [[ $rc = 124 || $rc = 0 ]]
+          python3 ../run-qemu.py R123_STOCK_RESUME_PASS
           ! grep -q 'FAIL:' serial.txt
           test "$(grep -c '^STOCK_SVC ' serial.txt)" = 2
           test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
@@ -455,10 +494,7 @@ jobs:
           clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
           clang --target=aarch64-none-elf -c build/image.S -o build/image.o
           ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
-          rc=0
-          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
-          cat serial.txt
-          [[ $rc = 124 || $rc = 0 ]]
+          python3 ../run-qemu.py R125_STOCK_RESUME_PASS
           ! grep -q 'FAIL:' serial.txt
           test "$(grep -c '^STOCK_SVC ' serial.txt)" = 3
           test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
@@ -520,10 +556,7 @@ jobs:
           clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
           clang --target=aarch64-none-elf -c build/image.S -o build/image.o
           ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
-          rc=0
-          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
-          cat serial.txt
-          [[ $rc = 124 || $rc = 0 ]]
+          python3 ../run-qemu.py R127_MMAP_RESUME_PASS
           ! grep -q 'FAIL:' serial.txt
           test "$(grep -c '^STOCK_SVC ' serial.txt)" = 4
           test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" = 1
@@ -622,10 +655,7 @@ jobs:
           clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
           clang --target=aarch64-none-elf -c build/image.S -o build/image.o
           ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
-          rc=0
-          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
-          cat serial.txt
-          [[ $rc = 124 || $rc = 0 ]]
+          python3 ../run-qemu.py R129_CLOCK_RESUME_PASS
           ! grep -q 'FAIL:' serial.txt
           test "$(grep -c '^STOCK_SVC ' serial.txt)" = 5
           test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" = 1
@@ -672,10 +702,7 @@ jobs:
           clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
           clang --target=aarch64-none-elf -c build/image.S -o build/image.o
           ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
-          rc=0
-          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
-          cat serial.txt
-          [[ $rc = 124 || $rc = 0 ]]
+          python3 ../run-qemu.py R130_DISPATCH_BOUNDARY_PASS
           ! grep -q 'FAIL:' serial.txt
           test "$(grep -c '^STOCK_SVC ' serial.txt)" -ge 6
           test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" -ge 2
@@ -765,10 +792,7 @@ jobs:
           clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
           clang --target=aarch64-none-elf -c build/image.S -o build/image.o
           ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
-          rc=0
-          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
-          cat serial.txt
-          [[ $rc = 124 || $rc = 0 ]]
+          python3 ../run-qemu.py R131_SYSCTL_BOUNDARY_PASS
           ! grep -q 'FAIL:' serial.txt
           test "$(grep -c '^STOCK_SVC ' serial.txt)" -ge 9
           test "$(grep -c '^PASS: sysctl read-only ' serial.txt)" -ge 1
