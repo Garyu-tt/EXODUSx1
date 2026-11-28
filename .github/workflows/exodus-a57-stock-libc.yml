@@ -1,4 +1,4 @@
-name: EXODUS R121 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R123 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -344,6 +344,83 @@ jobs:
           ! grep -q 'FAIL:' serial.txt
           test "$(grep -c '^STOCK_SVC ' serial.txt)" = 1
           test "$(grep -Fxc R120_STOCK_FIRST_SVC_PASS serial.txt)" = 1
+      - name: Resume original CRT after bounded readlink error
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_readlink[[:space:]]+58([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          grep -Eq '^#define[[:space:]]+ENOENT[[:space:]]+2([[:space:]]|$)' sysroot/usr/include/sys/errno.h
+          cp -a evidence/runtime evidence/runtime-resume
+          cd evidence/runtime-resume
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          anchor="void trap(uint64_t *regs){"
+          assert s.count(anchor)==1
+          s=s.replace(anchor,r'''static unsigned calls;
+          static int user_range(uint64_t v,uint64_t n,unsigned need){
+              if(v<VA||v>=VA+VECTOR*P||n>VA+VECTOR*P-v)return 0;
+              for(uint64_t j=0;j<n;){
+                  if((perm[(v+j-VA)/P]&need)!=need)return 0;
+                  uint64_t take=P-((v+j)&(P-1));
+                  j+=take<n-j?take:n-j;
+              }
+              return 1;
+          }
+          static int user_path(uint64_t v,const char *want){
+              for(unsigned i=0;i<256;i++){
+                  if(v>UINT64_MAX-i||!user_range(v+i,1,4))fail("bad path pointer");
+                  unsigned char ch=mem[v+i-VA];
+                  if(ch!=(unsigned char)want[i])return 0;
+                  if(!ch)return 1;
+              }
+              return 0;
+          }
+          static void print_path(uint64_t v){
+              msg("READLINK_PATH ");
+              for(unsigned i=0;i<256;i++){
+                  if(v>UINT64_MAX-i||!user_range(v+i,1,4))fail("bad path pointer");
+                  unsigned char ch=mem[v+i-VA];
+                  if(!ch){msg("\n");return;}
+                  putc(ch>=32&&ch<127?(char)ch:'?');
+              }
+              fail("unterminated path");
+          }
+          '''+anchor)
+          old='    msg("R120_STOCK_FIRST_SVC_PASS\\n");stop();'
+          assert s.count(old)==1
+          s=s.replace(old,r'''    if(calls++==0){
+                  if(regs[8]!=58)fail("unexpected first syscall");
+                  print_path(regs[0]);
+                  if(!user_path(regs[0],"/etc/malloc.conf"))fail("unsupported readlink path");
+                  if(!regs[2]||regs[2]>4096||!user_range(regs[1],regs[2],6))fail("readlink output");
+                  /* Empty reference filesystem: this exact symlink is absent.
+                     FreeBSD arm64 returns positive errno in x0 with NZCV.C set. */
+                  regs[0]=2;
+                  WRITE(spsr_el1,READ(spsr_el1)|(UINT64_C(1)<<29));
+                  ISB();
+                  msg("PASS: readlink /etc/malloc.conf returned ENOENT\n");
+                  return;
+              }
+              if(regs[8]==58)fail("readlink repeated; no forward progress");
+              msg("R123_STOCK_RESUME_PASS\n");stop();''')
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
+          cat serial.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 2
+          test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
+          test "$(grep -Fxc R123_STOCK_RESUME_PASS serial.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
