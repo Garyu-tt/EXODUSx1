@@ -1,4 +1,4 @@
-name: EXODUS R131 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R132 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -701,7 +701,22 @@ jobs:
           Path("evidence/runtime-sysctl/sysctl_ids.h").write_text("\n".join(out)+"\n")
           PY
           # Confirm actual MIB at the first previously observed read-only address.
-          llvm-objdump -s --start-address=0x2065e8 --stop-address=0x2065f0 evidence/hello-page.elf | head -c 2048 > evidence/first-mib.txt
+          python3 - <<'PY'
+          import struct
+          from pathlib import Path
+          image=Path("evidence/hello-page.elf").read_bytes()
+          off=struct.unpack_from("<Q",image,32)[0]
+          size,num=struct.unpack_from("<HH",image,54)
+          addr=0x2065e8
+          matches=[]
+          for i in range(num):
+              typ,flags,fo,va,pa,fs,ms,align=struct.unpack_from("<IIQQQQQQ",image,off+i*size)
+              if typ==1 and va<=addr and addr-va+8<=fs:
+                  matches.append(struct.unpack_from("<II",image,fo+addr-va))
+          assert len(matches)==1,matches
+          print("First observed MIB:",matches[0])
+          Path("evidence/first-mib.txt").write_text(str(matches[0])+"\n")
+          PY
           cd evidence/runtime-sysctl
           python3 - <<'PY'
           from pathlib import Path
