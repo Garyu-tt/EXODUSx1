@@ -1,4 +1,4 @@
-name: EXODUS R123 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R125 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -421,6 +421,49 @@ jobs:
           test "$(grep -c '^STOCK_SVC ' serial.txt)" = 2
           test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
           test "$(grep -Fxc R123_STOCK_RESUME_PASS serial.txt)" = 1
+      - name: Resume original CRT after credential query
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_issetugid[[:space:]]+253([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          cp -a evidence/runtime-resume evidence/runtime-credentials
+          cd evidence/runtime-credentials
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          old='    if(regs[8]==58)fail("readlink repeated; no forward progress");\n    msg("R123_STOCK_RESUME_PASS\\n");stop();'
+          assert s.count(old)==1
+          s=s.replace(old,r'''    if(calls==2){
+                  if(regs[8]!=253)fail("unexpected second syscall");
+                  /* Reference process has no setuid/setgid history.
+                     No credentials or elevated privileges are granted here. */
+                  regs[0]=0;
+                  WRITE(spsr_el1,READ(spsr_el1)&~(UINT64_C(1)<<29));
+                  ISB();
+                  msg("PASS: issetugid returned zero for unprivileged reference process\n");
+                  return;
+              }
+              if(regs[8]==58||regs[8]==253)fail("no forward progress");
+              msg("NEXT_SVC x3=");hex(regs[3]);msg(" x4=");hex(regs[4]);msg(" x5=");hex(regs[5]);msg(" x6=");hex(regs[6]);msg(" x7=");hex(regs[7]);msg("\n");
+              msg("R125_STOCK_RESUME_PASS\n");stop();''')
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
+          cat serial.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 3
+          test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
+          test "$(grep -Fxc R125_STOCK_RESUME_PASS serial.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
