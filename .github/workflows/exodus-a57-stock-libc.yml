@@ -1,4 +1,4 @@
-name: EXODUS R130 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R131 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -682,6 +682,85 @@ jobs:
           test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" -ge 1
           test "$(grep -c '^UNHANDLED_SVC ' serial.txt)" = 1
           test "$(grep -Fxc R130_DISPATCH_BOUNDARY_PASS serial.txt)" = 1
+      - name: Resume stock libc after read-only hardware sysctl
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS___sysctl[[:space:]]+202([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          cp -a evidence/runtime-dispatch evidence/runtime-sysctl
+          # Extract exact numeric constants from official headers, without host headers.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("sysroot/usr/include/sys/sysctl.h").read_text()
+          names=["CTL_HW","HW_NCPU","HW_PAGESIZE","CTL_KERN","KERN_OSRELDATE"]
+          out=[]
+          for name in names:
+              m=re.search(r"(?m)^\s*#\s*define\s+"+name+r"\s+([0-9]+)\b",s)
+              assert m,name
+              out.append("#define EX_"+name+" "+m[1])
+          Path("evidence/runtime-sysctl/sysctl_ids.h").write_text("\n".join(out)+"\n")
+          PY
+          # Confirm actual MIB at the first previously observed read-only address.
+          llvm-objdump -s --start-address=0x2065e8 --stop-address=0x2065f0 evidence/hello-page.elf | head -c 2048 > evidence/first-mib.txt
+          cd evidence/runtime-sysctl
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          anchor="void trap(uint64_t *regs){"
+          assert s.count(anchor)==1
+          s=s.replace(anchor,r'''#include "sysctl_ids.h"
+          static void sysret(uint64_t *regs,uint64_t value,int error){
+              regs[0]=value;
+              uint64_t ps=READ(spsr_el1);
+              WRITE(spsr_el1,error?ps|(UINT64_C(1)<<29):ps&~(UINT64_C(1)<<29));ISB();
+          }
+          /* Only read-only numeric system properties of this one-vCPU reference. */
+          static int sysctl_read(uint64_t *r){
+              if(r[1]!=2||!user_range(r[0],8,4)){sysret(r,22,1);return 1;}
+              uint32_t mib[2];memcpy(mib,mem+r[0]-VA,sizeof mib);
+              msg("SYSCTL_MIB ");hex(mib[0]);msg(" ");hex(mib[1]);msg("\n");
+              if(r[4]||r[5]){sysret(r,1,1);return 1;}
+              uint32_t value;
+              const char *label;
+              if(mib[0]==EX_CTL_HW&&mib[1]==EX_HW_NCPU){value=1;label="hw.ncpu";}
+              else if(mib[0]==EX_CTL_HW&&mib[1]==EX_HW_PAGESIZE){value=P;label="hw.pagesize";}
+              else return 0;
+              if(!r[3]||!user_range(r[3],8,6)){sysret(r,14,1);return 1;}
+              uint64_t cap=rd(mem+r[3]-VA,8),actual=sizeof value;
+              if(r[2]&&cap<actual){
+                  memcpy(mem+r[3]-VA,&actual,8);sysret(r,12,1);return 1;
+              }
+              if(r[2]&&!user_range(r[2],actual,6)){sysret(r,14,1);return 1;}
+              if(r[2])memcpy(mem+r[2]-VA,&value,sizeof value);
+              memcpy(mem+r[3]-VA,&actual,8);
+              sysret(r,0,0);msg("PASS: sysctl read-only ");msg(label);msg("\n");return 1;
+          }
+          '''+anchor)
+          old='    msg("UNHANDLED_SVC number=");'
+          assert s.count(old)==1
+          s=s.replace(old,'    if(regs[8]==202&&sysctl_read(regs))return;\n'+old)
+          s=s.replace("R130_DISPATCH_BOUNDARY_PASS","R131_SYSCTL_BOUNDARY_PASS")
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan arena bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
+          cat serial.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" -ge 9
+          test "$(grep -c '^PASS: sysctl read-only ' serial.txt)" -ge 1
+          test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" -ge 2
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" -ge 1
+          test "$(grep -c '^UNHANDLED_SVC ' serial.txt)" = 1
+          test "$(grep -Fxc R131_SYSCTL_BOUNDARY_PASS serial.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
