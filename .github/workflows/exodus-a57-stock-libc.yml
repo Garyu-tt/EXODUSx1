@@ -1,4 +1,4 @@
-name: EXODUS R125 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R127 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -464,6 +464,72 @@ jobs:
           test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
           test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
           test "$(grep -Fxc R125_STOCK_RESUME_PASS serial.txt)" = 1
+      - name: Resume original libc after aligned anonymous mmap
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_mmap[[:space:]]+477([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          cp -a evidence/runtime-credentials evidence/runtime-mmap
+          cd evidence/runtime-mmap
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          anchor="void trap(uint64_t *regs){"
+          assert s.count(anchor)==1
+          s=s.replace(anchor,r'''static void map_anonymous(uint64_t *regs){
+              const uint64_t v=UINT64_C(0x600000),len=UINT64_C(0x200000);
+              if(regs[0]||regs[1]!=len||regs[2]!=3||regs[3]!=UINT64_C(0x15001002)||
+                 (uint32_t)regs[4]!=UINT32_MAX||regs[5])fail("unsupported mmap profile");
+              if(v<VA||v+len>VA+VECTOR*P||(v&(len-1)))fail("mmap placement");
+              size_t first=(size_t)((v-VA)/P),count=(size_t)(len/P),a,b;
+              for(size_t i=first;i<first+count;i++)if(perm[i])fail("mmap overlap");
+              /* Fixed reference arena, not a general VM allocator. No physical MMIO. */
+              memset(mem+v-VA,0,(size_t)len);
+              memset(perm+first,6,count);
+              WRITE(hcr_el2,UINT64_C(1)<<31);ISB();
+              DSB();__asm__ volatile("tlbi vmalls12e1is; dsb ish; isb":::"memory");
+              if(!a57_s1_build(perm,N,VA,IPA,s1,16,TI,&a))fail("mmap S1");
+              uint64_t *leaf=s1leaf(VA+VECTOR*P);
+              *leaf=(*leaf&~((UINT64_C(1)<<53)|(UINT64_C(1)<<6)))|(UINT64_C(1)<<54);
+              struct a57_s2_span spans[]={{IPA,(uintptr_t)mem,N,perm},{TI,(uintptr_t)s1,a,ro}};
+              if(!a57_s2_build(spans,2,s2,32,(uintptr_t)s2,&b))fail("mmap S2");
+              DSB();
+              WRITE(hcr_el2,(UINT64_C(1)<<31)|1);ISB();
+              __asm__ volatile("tlbi vmalls12e1is; dsb ish; isb":::"memory");
+              if(!user_range(v,len,6)||(*s1leaf(v)&(UINT64_C(1)<<54))==0)fail("mmap permissions");
+              regs[0]=v;
+              WRITE(spsr_el1,READ(spsr_el1)&~(UINT64_C(1)<<29));ISB();
+              msg("PASS: aligned anonymous mmap installed in Stage 1 and Stage 2\n");
+          }
+          '''+anchor)
+          old='    if(regs[8]==58||regs[8]==253)fail("no forward progress");'
+          assert s.count(old)==1
+          s=s.replace(old,r'''    if(calls==3){
+                  if(regs[8]!=477)fail("unexpected third syscall");
+                  map_anonymous(regs);
+                  return;
+              }
+              if(regs[8]==58||regs[8]==253)fail("no forward progress");''')
+          s=s.replace("R125_STOCK_RESUME_PASS","R127_MMAP_RESUME_PASS")
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,image}.o
+          rc=0
+          timeout 20s qemu-system-aarch64 -machine virt,virtualization=on,secure=off -cpu cortex-a57 -m 128M -smp 1 -nic none -display none -monitor none -serial stdio -no-reboot -kernel build/stock.elf > serial.txt 2>&1 || rc=$?
+          cat serial.txt
+          [[ $rc = 124 || $rc = 0 ]]
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" = 4
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: issetugid returned zero for unprivileged reference process' serial.txt)" = 1
+          test "$(grep -Fxc 'PASS: readlink /etc/malloc.conf returned ENOENT' serial.txt)" = 1
+          test "$(grep -Fxc R127_MMAP_RESUME_PASS serial.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
