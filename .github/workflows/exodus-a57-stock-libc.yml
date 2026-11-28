@@ -1,4 +1,4 @@
-name: EXODUS R134 stock FreeBSD arm64 libc and CRT baseline
+name: EXODUS R135 stock FreeBSD arm64 libc and CRT baseline
 on:
   push:
     branches: [integration/exodus-a57-mmu-gate]
@@ -825,6 +825,57 @@ jobs:
           test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" -ge 1
           test "$(grep -c '^UNHANDLED_SVC ' serial.txt)" = 1
           test "$(grep -Fxc R131_SYSCTL_BOUNDARY_PASS serial.txt)" = 1
+      - name: Resume stock libc after current thread CPU affinity query
+        run: |
+          set -euo pipefail
+          grep -Eq '^#define[[:space:]]+SYS_cpuset_getaffinity[[:space:]]+487([[:space:]]|$)' sysroot/usr/include/sys/syscall.h
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path("sysroot/usr/include/sys/cpuset.h").read_text()
+          for name,value in [("CPU_LEVEL_WHICH",3),("CPU_WHICH_TID",1)]:
+              assert re.search(r"(?m)^\s*#\s*define\s+"+name+r"\s+"+str(value)+r"\b",s),name
+          PY
+          cp -a evidence/runtime-sysctl evidence/runtime-cpuset
+          cd evidence/runtime-cpuset
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("bare/monitor.c")
+          s=p.read_text()
+          anchor="    if(regs[8]==202&&sysctl_read(regs))return;"
+          assert s.count(anchor)==1
+          s=s.replace(anchor,anchor+r'''
+              if(regs[8]==487){
+                  /* One vCPU, current thread only, exact observed FreeBSD ABI profile. */
+                  if(regs[0]!=3||regs[1]!=1||regs[2]!=UINT64_MAX||regs[3]!=128){
+                      sysret(regs,22,1);return;
+                  }
+                  if(!user_range(regs[4],regs[3],6)){sysret(regs,14,1);return;}
+                  memset(mem+regs[4]-VA,0,(size_t)regs[3]);
+                  mem[regs[4]-VA]=1;
+                  sysret(regs,0,0);
+                  msg("PASS: cpuset_getaffinity returned CPU 0 for current thread\n");
+                  return;
+              }''')
+          s=s.replace("R131_SYSCTL_BOUNDARY_PASS","R135_CPUSET_BOUNDARY_PASS")
+          p.write_text(s)
+          PY
+          FLAGS=(--target=aarch64-none-elf -mcpu=cortex-a57 -mgeneral-regs-only -mstrict-align -ffreestanding -fno-builtin -fno-stack-protector -Wall -Wextra -Werror -O2 -I. -Ibare)
+          for src in a57_s1 a57_s2 elf64_loader elf64_page_plan arena bare/monitor; do
+           clang "${FLAGS[@]}" -c "$src.c" -o "build/$(basename "$src").o"
+          done
+          clang --target=aarch64-none-elf -mcpu=cortex-a57 -c bare/boot.S -o build/boot.o
+          clang --target=aarch64-none-elf -c build/image.S -o build/image.o
+          ld.lld -T bare/link.ld --fatal-warnings -o build/stock.elf build/{boot,monitor,a57_s1,a57_s2,elf64_loader,elf64_page_plan,arena,image}.o
+          python3 ../run-qemu.py R135_CPUSET_BOUNDARY_PASS
+          ! grep -q 'FAIL:' serial.txt
+          test "$(grep -c '^STOCK_SVC ' serial.txt)" -ge 10
+          test "$(grep -Fxc 'PASS: cpuset_getaffinity returned CPU 0 for current thread' serial.txt)" -ge 1
+          test "$(grep -c '^PASS: sysctl read-only ' serial.txt)" -ge 1
+          test "$(grep -Fxc 'PASS: clock_gettime monotonic fast returned counter-derived timespec' serial.txt)" -ge 2
+          test "$(grep -Fxc 'PASS: aligned anonymous mmap installed in Stage 1 and Stage 2' serial.txt)" -ge 1
+          test "$(grep -c '^UNHANDLED_SVC ' serial.txt)" = 1
+          test "$(grep -Fxc R135_CPUSET_BOUNDARY_PASS serial.txt)" = 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
